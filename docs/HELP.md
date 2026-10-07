@@ -752,7 +752,7 @@ programma deve superare per leggere ST-language come SoundText.
 Il motore della notazione e' anche una **libreria Python autonoma**,
 `st_language`, senza dipendenze esterne: e' la stessa che usa SoundText,
 quindi i due danno sempre lo stesso risultato. Si installa con
-`pip install git+https://github.com/openssound/st-language.git` e offre dei comandi da terminale:
+`pip install st-language` e offre dei comandi da terminale:
 
 ```
 st-language check brano.st           # errori e avvisi (battute, testo cantato)

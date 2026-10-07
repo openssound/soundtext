@@ -1,7 +1,6 @@
 PySide6>=6.6
-# la notazione ST-language (repository openssound/st-language): finche' non e' su PyPI si
-# installa da GitHub (serve git); poi basta "st-language>=2.6"
-st-language @ git+https://github.com/openssound/st-language.git@main
+# la notazione ST-language (libreria su PyPI, repository openssound/st-language)
+st-language>=2.7
 mido>=1.3
 # backend di mido per le tastiere MIDI esterne ("Suona con la tastiera"): facoltativo
 python-rtmidi>=1.5

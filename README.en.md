@@ -83,7 +83,7 @@ Arch/CachyOS, Fedora and openSUSE.
   `.st` format are described in [docs/spec/ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)
   (CC BY 4.0, also in Italian) with a conformance suite; the engine is the
   Python library `st_language`, with no dependencies, installed with
-  `pip install git+https://github.com/openssound/st-language.git` and providing the `st-language check | midi | musicxml`
+  `pip install st-language` and providing the `st-language check | midi | musicxml`
   commands (section 2.14 of the guide).
 - **Current State** (section 4): grid and velocity persist along the
   sequential scan of the track.

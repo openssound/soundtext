@@ -89,7 +89,7 @@ d'installation pour Debian/Ubuntu, Arch/CachyOS, Fedora et openSUSE.
   format `.st` sont décrits dans [docs/spec/ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)
   (CC BY 4.0, en anglais et en italien) avec une suite de conformité ; le
   moteur est la bibliothèque Python `st_language`, sans dépendances, qui
-  s'installe avec `pip install git+https://github.com/openssound/st-language.git` et fournit les commandes
+  s'installe avec `pip install st-language` et fournit les commandes
   `st-language check | midi | musicxml` (section 2.14 du guide).
 - **État courant** (section 4) : grille et vélocité persistent pendant le
   parcours séquentiel de la piste.

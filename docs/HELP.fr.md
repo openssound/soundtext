@@ -779,7 +779,7 @@ réussir pour lire ST-language comme SoundText.
 Le moteur de la notation est aussi une **bibliothèque Python autonome**,
 `st_language`, sans dépendances externes : c'est celle qu'utilise
 SoundText, donc les deux donnent toujours le même résultat. Elle
-s'installe avec `pip install git+https://github.com/openssound/st-language.git` et fournit des
+s'installe avec `pip install st-language` et fournit des
 commandes en ligne :
 
 ```

@@ -761,7 +761,7 @@ como SoundText.
 El motor de la notación es también una **biblioteca Python autónoma**,
 `st_language`, sin dependencias externas: es la misma que usa SoundText,
 así que los dos dan siempre el mismo resultado. Se instala con
-`pip install git+https://github.com/openssound/st-language.git` y ofrece comandos de terminal:
+`pip install st-language` y ofrece comandos de terminal:
 
 ```
 st-language check cancion.st         # errores y avisos (compases, letra)

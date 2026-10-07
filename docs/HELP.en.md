@@ -739,7 +739,7 @@ pass to read ST-language like SoundText.
 The notation engine is also a **standalone Python library**,
 `st_language`, with no external dependencies: it is the same one SoundText
 uses, so both always give the same result. Install it with
-`pip install git+https://github.com/openssound/st-language.git`; it provides command-line tools:
+`pip install st-language`; it provides command-line tools:
 
 ```
 st-language check song.st            # errors and warnings (bars, lyrics)
