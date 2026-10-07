@@ -6,6 +6,13 @@ on:
   push:
     tags:
       - "v*"
+  # A mano (Actions -> Build Release -> Run workflow): costruisce solo il
+  # portable Linux e lo allega a una release gia' esistente (es. v1.6.0).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag della release a cui allegare il portable Linux (es. v1.6.0)"
+        required: true
 
 # Il default dei permessi del token in questo repo (privato) e' "read": senza
 # questo blocco, softprops/action-gh-release fallirebbe nel creare/aggiornare
@@ -20,6 +27,7 @@ jobs:
   # Release (build-linux la trova gia' pronta e le aggiunge solo l'AppImage,
   # vedi sotto - evita che i due job la creino in parallelo in conflitto).
   build-windows:
+    if: github.event_name == 'push'
     runs-on: windows-2025
     steps:
       - name: Checkout codice
@@ -130,6 +138,7 @@ jobs:
   # -------------------------------------------------------------------- LINUX
   build-linux:
     needs: build-windows
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout codice
@@ -211,3 +220,52 @@ jobs:
             setup-appimage.sh
             scarica_strumenti.sh
             scarica_strumenti.py
+
+  # ---------------------------------------------------------- LINUX PORTABLE
+  # Il tar.gz di build-linux-portable.sh (eseguibile, dati, SoundFont GM,
+  # libfluidsynth con le sue dipendenze e setup-portable-linux.sh). Su Ubuntu
+  # 22.04, la piu' vecchia disponibile: PyInstaller produce file che vanno
+  # solo su distribuzioni uguali o piu' recenti di quella di build.
+  build-linux-portable:
+    needs: build-linux
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.build-linux.result == 'success') }}
+    runs-on: ubuntu-22.04
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout codice
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Imposta Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Installa FluidSynth (da includere nel pacchetto)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfluidsynth3
+
+      - name: Scarica SoundFont (allegato alla release "resources", non versionato in git)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p soundfonts
+          gh release download resources --repo ${{ github.repository }} --pattern "FluidR3_GM.sf2" --dir soundfonts --clobber
+
+      - name: Build portable
+        run: |
+          ./build-linux-portable.sh
+          tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/setup-portable-linux.sh"
+          tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/soundfonts/FluidR3_GM.sf2"
+          tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/lib/libfluidsynth"
+          mv SoundText-portable-linux-x64.tar.gz "SoundText-linux-portable-${TAG}.tar.gz"
+
+      - name: Pubblica il portable sulla Release GitHub
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.TAG }}
+          files: |
+            SoundText-linux-portable-*.tar.gz
