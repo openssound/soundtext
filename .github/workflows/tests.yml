@@ -1,0 +1,91 @@
+name: Tests
+
+# Esegue la suite di test a ogni push e pull request (a differenza di
+# build-release.yml, che parte solo sui tag v*): una regressione si vede
+# subito sul commit che l'ha introdotta, non al momento della release.
+# Su Linux, Windows e macOS: le parti che dipendono dal sistema (ricerca
+# della libreria FluidSynth, decodificatore audio di Qt, blocchi dei file
+# del salvataggio automatico, percorsi) si rompono proprio cambiando sistema.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest (${{ matrix.os }})
+    strategy:
+      fail-fast: false            # un sistema che fallisce non ferma gli altri
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout codice
+        uses: actions/checkout@v7
+
+      - name: Imposta Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Librerie di sistema: Qt in modalita' offscreen (EGL/xkbcommon/
+      # fontconfig), QtMultimedia (pulse; il decodificatore audio e' quello di
+      # PySide6), PortAudio per sounddevice, libfluidsynth (core.fluid).
+      - name: Installa librerie di sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libpulse0 \
+            libportaudio2 libfluidsynth3
+
+      # FluidSynth da Homebrew (/opt/homebrew/lib, dove core.fluid la cerca);
+      # PortAudio e' gia' dentro il pacchetto pip di sounddevice.
+      - name: Installa FluidSynth (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fluidsynth
+
+      # DLL della release ufficiale di FluidSynth, in C:\tools\fluidsynth\bin
+      # (una delle cartelle in cui core.fluid la cerca) e nel PATH.
+      - name: Installa FluidSynth (Windows)
+        if: runner.os == 'Windows'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
+          $release = Invoke-RestMethod -Headers $headers "https://api.github.com/repos/FluidSynth/fluidsynth/releases/latest"
+          $asset = $release.assets | Where-Object { $_.name -match "win10-x64.*\.zip$" } | Select-Object -First 1
+          if (-not $asset) { throw "Nessun asset win10-x64 trovato nell'ultima release di FluidSynth." }
+          $zipPath = Join-Path $env:TEMP $asset.name
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
+          $extractDir = Join-Path $env:TEMP "fluidsynth-extract"
+          Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+          $fluidDll = Get-ChildItem $extractDir -Recurse -Filter "libfluidsynth*.dll" | Select-Object -First 1
+          if (-not $fluidDll) { throw "libfluidsynth*.dll non trovata nell'archivio scaricato." }
+          New-Item -ItemType Directory -Force -Path C:\tools\fluidsynth\bin | Out-Null
+          Copy-Item (Join-Path $fluidDll.Directory.FullName "*") C:\tools\fluidsynth\bin -Force
+          "C:\tools\fluidsynth\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Controlla i componenti audio
+        run: >
+          python -c "from core import fluid, audio_decode;
+          print('FluidSynth:', fluid.version() if fluid.available() else fluid.load_error());
+          print('Decodificatore:', audio_decode.decoder_description() or 'nessuno')"
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Esegui i test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+

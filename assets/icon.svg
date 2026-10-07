@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2f3a"/><stop offset="1" stop-color="#16181f"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)"/>
+  <!-- box azzurro (colore ACCENT dell'app) con testo e nota -->
+  <rect x="30" y="60" width="196" height="136" rx="20" fill="#5aa9e6"/>
+  <rect x="30" y="60" width="196" height="136" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="6"/>
+  <g fill="#ffffff">
+    <rect x="58" y="98" width="88" height="15" rx="7.5"/>
+    <rect x="58" y="136" width="58" height="15" rx="7.5"/>
+    <rect x="173" y="86" width="13" height="72" rx="3"/>
+    <path d="M180 86 C197 92 211 103 211 125 C211 133 208 139 204 143 C204 122 195 114 180 111 Z"/>
+    <ellipse cx="166" cy="160" rx="23" ry="17" transform="rotate(-22 166 160)"/>
+  </g>
+</svg>

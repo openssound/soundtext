@@ -1,0 +1,49 @@
+__pycache__/
+*.pyc
+# artefatti delle build portable (build-windows-portable.ps1, build-linux-portable.sh)
+.build-venv/
+.build-fluidsynth/
+build/
+dist/
+*.egg-info/
+SoundText-portable-win64.zip
+SoundText-portable-linux-x64.tar.gz
+# output di installer-windows.iss
+SoundText-setup-win64.exe
+# output di package-for-linux.ps1
+SoundText-src-for-linux.zip
+# artefatti di build-appimage.sh
+.build-tools/
+SoundText.AppDir/
+SoundText-x86_64.AppImage
+# AppImage delle release (scaricate o costruite localmente)
+*.AppImage
+venv/
+*.spec
+# unica eccezione: la build PyInstaller degli script portable
+!soundtext.spec
+soundfonts/
+*.sf2
+*.sf3
+# brani personali, non versionati
+songs/
+# libreria MIDI personale (&Nome): non versionata
+midi/
+# audio delle tracce audio (cartelle <Progetto>_audio/ accanto ai .st) ed
+# esportazioni: file grossi, mai versionati (vedi CLAUDE.md)
+*_audio/
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.ogg
+*.aif
+*.aiff
+# unica eccezione: il segnale di riferimento (1 s, 144 KB) con cui NAM misura la
+# "loudness" dei profili (da neural-amp-modeler, licenza MIT), vedi core/nam.py
+!assets/nam_loudness_input.wav
+# profili NAM scaricati (scarica_profili_nam.py): ognuno li scarica sul proprio computer
+profili_nam/
+
+# registro dei prompt (personale, non versionato)
+prompts.md

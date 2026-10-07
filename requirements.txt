@@ -1,0 +1,14 @@
+PySide6>=6.6
+# la notazione ST-language (repository openssound/st-language): finche' non e' su PyPI si
+# installa da GitHub (serve git); poi basta "st-language>=2.6"
+st-language @ git+https://github.com/openssound/st-language.git@main
+mido>=1.3
+# backend di mido per le tastiere MIDI esterne ("Suona con la tastiera"): facoltativo
+python-rtmidi>=1.5
+sounddevice>=0.4
+numpy>=1.24,<2
+# su CPU senza AVX install.sh e run.sh aggiungono "pedalboard<0.9.17"
+# (dalla 0.9.17 i wheel richiedono AVX e l'import va in SIGILL)
+pedalboard>=0.9
+# impaginazione della partitura (Vista -> Partitura, esportazione PDF): facoltativo
+verovio>=4.0

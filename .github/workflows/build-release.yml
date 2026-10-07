@@ -1,0 +1,213 @@
+name: Build Release
+
+# Si attiva SOLO quando crei e pubblichi un tag che inizia con "v" (es. v1.0.0).
+# Non si attiva sui normali commit/push, così non consuma build ad ogni modifica.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Il default dei permessi del token in questo repo (privato) e' "read": senza
+# questo blocco, softprops/action-gh-release fallirebbe nel creare/aggiornare
+# la Release (serve write su contents). Concesso solo qui, non a livello di
+# repo/organizzazione.
+permissions:
+  contents: write
+
+jobs:
+  # ------------------------------------------------------------------ WINDOWS
+  # Nessuna dipendenza da build-linux: parte subito, e' lui a creare la
+  # Release (build-linux la trova gia' pronta e le aggiunge solo l'AppImage,
+  # vedi sotto - evita che i due job la creino in parallelo in conflitto).
+  build-windows:
+    runs-on: windows-2025
+    steps:
+      - name: Checkout codice
+        uses: actions/checkout@v7
+
+      - name: Imposta Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build con PyInstaller
+        run: |
+          pyinstaller --name SoundText --windowed --onedir --icon assets\soundtext.ico --collect-data verovio --collect-data st_language main.py
+
+      # Cartelle dati lette a runtime accanto all'eseguibile (vedi
+      # core.version.get_app_root): guida utente, icona, esempi, libreria
+      # MIDI. PyInstaller non le include da solo; stesso elenco di
+      # build-windows-portable.ps1. Prima di zip e installer, che partono
+      # entrambi da dist\SoundText.
+      - name: Affianca le cartelle dati
+        run: |
+          foreach ($dir in @("assets", "docs", "locales", "songs", "examples", "midi", "licenses")) {
+            # midi\: solo la cartella, vuota (la libreria MIDI e' dell'utente)
+            if ($dir -eq "midi") { New-Item -ItemType Directory -Force -Path "dist\SoundText\midi" | Out-Null; continue }
+            if (Test-Path $dir) { Copy-Item $dir (Join-Path "dist\SoundText" $dir) -Recurse -Force }
+          }
+          # le immagini della guida PDF non servono al programma (la guida e' docs\HELP.md)
+          Remove-Item "dist\SoundText\docs\guida_brano" -Recurse -Force -ErrorAction SilentlyContinue
+          # licenza e avvisi delle librerie di terze parti vanno distribuiti col programma
+          foreach ($file in @("LICENSE", "THIRD_PARTY_NOTICES.md", "scarica_strumenti.py", "scarica_strumenti.bat", "setup-windows.bat")) { Copy-Item $file "dist\SoundText" -Force }
+          $verovioData = python -c "import os, verovio; print(os.path.join(os.path.dirname(verovio.__file__), 'data'))"
+          Copy-Item $verovioData "dist\SoundText\verovio-data" -Recurse -Force
+          if (-not (Test-Path "dist\SoundText\docs\HELP.md")) { throw "Guida utente mancante nella build." }
+          if (-not (Test-Path "dist\SoundText\locales\en.json")) { throw "Traduzioni mancanti nella build." }
+          if (Test-Path "dist\SoundText\docs\guida_brano") { throw "Le immagini della guida PDF non devono stare nella build." }
+          if (Get-ChildItem "dist\SoundText\midi" -Recurse -ErrorAction SilentlyContinue) { throw "La cartella midi della build deve essere vuota." }
+
+      # DLL di FluidSynth scaricate dai release ufficiali GitHub (stesso
+      # approccio di build-windows-portable.ps1, qui senza conferma
+      # interattiva): affiancate direttamente a SoundText.exe, dove Windows
+      # le trova da solo tramite l'ordine di ricerca DLL standard - NON in
+      # una sottocartella (li' non verrebbero trovate). Richiesta autenticata:
+      # quella anonima ha un limite per indirizzo IP, condiviso fra tutti i
+      # runner che escono dallo stesso indirizzo, e la build v1.5.2 e' fallita
+      # per "API rate limit exceeded".
+      - name: Aggiungi FluidSynth
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
+          $release = Invoke-RestMethod -Headers $headers "https://api.github.com/repos/FluidSynth/fluidsynth/releases/latest"
+          $asset = $release.assets | Where-Object { $_.name -match "win10-x64.*\.zip$" } | Select-Object -First 1
+          if (-not $asset) { throw "Nessun asset win10-x64 trovato nell'ultima release di FluidSynth." }
+          $zipPath = Join-Path $env:TEMP $asset.name
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
+          $extractDir = Join-Path $env:TEMP "fluidsynth-extract"
+          Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+          $fluidDll = Get-ChildItem $extractDir -Recurse -Filter "libfluidsynth*.dll" | Select-Object -First 1
+          if (-not $fluidDll) { throw "libfluidsynth*.dll non trovata nell'archivio scaricato." }
+          Copy-Item (Join-Path $fluidDll.Directory.FullName "*.dll") dist\SoundText -Force
+
+      # In soundfonts\, non nella radice: e' li' che core.playback._find_soundfont()
+      # cerca un SoundFont incluso a fianco dell'eseguibile (vedi quella funzione).
+      # Il repository e' privato: un Invoke-WebRequest anonimo sull'URL
+      # pubblico dell'asset riceve la pagina di login (404) invece del file -
+      # serve un download autenticato, per cui si usa 'gh release download'
+      # (gia' installato sui runner, autenticato in automatico da GH_TOKEN).
+      - name: Scarica SoundFont (allegato alla release "resources", non versionato in git)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\SoundText\soundfonts | Out-Null
+          gh release download resources --repo ${{ github.repository }} --pattern "FluidR3_GM.sf2" --dir dist\SoundText\soundfonts --clobber
+
+      - name: Crea zip
+        run: |
+          Compress-Archive -Path dist\SoundText -DestinationPath SoundText-windows-${{ github.ref_name }}.zip
+
+      # Vero installer .exe (Program Files, voci menu Start, disinstallatore),
+      # in aggiunta allo zip portable sopra - vedi installer-windows.iss.
+      - name: Installa Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compila l'installer con Inno Setup
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version installer-windows.iss
+          Move-Item SoundText-setup-win64.exe "SoundText-setup-${{ github.ref_name }}.exe"
+
+      # Allegato direttamente alla Release del tag (creandola se non esiste
+      # ancora), non a un artifact temporaneo di Actions: quello storage e'
+      # a parte ed e' capitato piu' volte che la quota (condivisa fra tutti
+      # i repo dell'account) fosse esaurita, facendo fallire l'upload anche
+      # a build riuscita (vedi git log per i tentativi precedenti).
+      - name: Pubblica gli asset sulla Release GitHub
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            SoundText-windows-*.zip
+            SoundText-setup-*.exe
+
+  # -------------------------------------------------------------------- LINUX
+  build-linux:
+    needs: build-windows
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout codice
+        uses: actions/checkout@v7
+
+      - name: Imposta Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Installa dipendenze di sistema (fluidsynth + strumenti AppImage)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fluidsynth libfluidsynth-dev fuse libfuse2
+
+      - name: Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build con PyInstaller
+        run: |
+          pyinstaller --name SoundText --windowed --onedir --collect-data verovio --collect-data st_language main.py
+
+      - name: Prepara la struttura AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp -r dist/SoundText/* AppDir/usr/bin/
+          # Cartelle dati accanto all'eseguibile (vedi core.version.get_app_root),
+          # stesso elenco di build-linux-portable.sh.
+          for dir in assets docs locales songs examples midi licenses; do
+            # midi/: solo la cartella, vuota (la libreria MIDI e' dell'utente)
+            if [ "$dir" = midi ]; then mkdir -p AppDir/usr/bin/midi; continue; fi
+            if [ -d "$dir" ]; then cp -r "$dir" AppDir/usr/bin/; fi
+          done
+          # le immagini della guida PDF non servono al programma (la guida e' docs/HELP.md)
+          rm -rf AppDir/usr/bin/docs/guida_brano
+          # licenza e avvisi delle librerie di terze parti vanno distribuiti col programma
+          cp LICENSE THIRD_PARTY_NOTICES.md AppDir/usr/bin/
+          cp -r "$(python -c "import os, verovio; print(os.path.join(os.path.dirname(verovio.__file__), 'data'))")" AppDir/usr/bin/verovio-data
+          test -f AppDir/usr/bin/docs/HELP.md
+          test -f AppDir/usr/bin/locales/en.json
+          test ! -e AppDir/usr/bin/docs/guida_brano
+          test -d AppDir/usr/bin/midi
+          test -z "$(find AppDir/usr/bin/midi -mindepth 1 -print -quit)"
+          cp assets/icon.png AppDir/soundtext.png
+
+          cat > AppDir/soundtext.desktop << 'EOF'
+          [Desktop Entry]
+          Name=SoundText
+          Exec=SoundText
+          Icon=soundtext
+          Type=Application
+          Categories=AudioVideo;Audio;Music;
+          EOF
+
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "$HERE/usr/bin/SoundText" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+      - name: Scarica appimagetool
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Crea AppImage
+        run: |
+          ./appimagetool-x86_64.AppImage AppDir SoundText-linux-${{ github.ref_name }}.AppImage
+
+      - name: Pubblica l'AppImage sulla Release GitHub
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            SoundText-linux-*.AppImage
+            setup-appimage.sh
+            scarica_strumenti.sh
+            scarica_strumenti.py
