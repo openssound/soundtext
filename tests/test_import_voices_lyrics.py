@@ -14,11 +14,10 @@ from fractions import Fraction
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import mido
-import pytest
 
 from core.import_lyrics import add_lyrics, midi_text, midi_text_bytes, syllables
 from core.midi_import import import_midi_channel_into_track, import_midi_file
-from core.notation import notation_warnings, parse_track_text, tokenize
+from core.notation import notation_warnings, parse_track_text
 from core.voice_merge import check_round_trip, merge_voices, merged_text
 
 

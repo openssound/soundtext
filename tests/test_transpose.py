@@ -5,7 +5,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _config_isolation  # noqa: E402,F401
 
-import pytest  # noqa: E402
 
 from st_language.notation import (  # noqa: E402
     Pattern, compute_token_spans, parse_track_text, tokenize, validate_track_text,

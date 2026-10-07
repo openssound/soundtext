@@ -17,7 +17,7 @@ import pytest
 
 from core.model import Project
 from core.notation import (
-    NotationError, check_bar_lines, parse_track_text, split_note_value, swing_time, tokenize,
+    check_bar_lines, parse_track_text, split_note_value, swing_time, tokenize,
     transpose_tokens, validate_track_text,
 )
 

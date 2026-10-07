@@ -1,7 +1,7 @@
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QFont
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QListWidget, QLabel,
     QPushButton, QLineEdit, QSpinBox, QCheckBox, QComboBox, QMessageBox,
@@ -12,7 +12,7 @@ from core import settings as app_settings
 from core.instruments import (
     all_instruments, add_custom_instrument, remove_custom_instrument,
     is_custom_instrument, InstrumentProfile, DEFAULT_INSTRUMENTS,
-    gm_instrument_catalog, gm_family_for_program, GM_FAMILY_DEFAULTS,
+    gm_family_for_program, GM_FAMILY_DEFAULTS,
     GM_DRUM_KITS, sorted_instrument_names,
 )
 from core.i18n import tr

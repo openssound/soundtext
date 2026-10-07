@@ -79,6 +79,27 @@ def test_moved_vst3_is_found_by_file_name(tmp_path, monkeypatch):
     assert plugins.resolve_ref("vst3:/altro/Sconosciuto.vst3") == "vst3:/altro/Sconosciuto.vst3"
 
 
+def test_vst3_outside_the_plugin_folders_is_not_loaded(tmp_path, monkeypatch):
+    """Un .st ricevuto da altri non puo' far caricare un VST3 da un percorso
+    qualsiasi: solo dalle cartelle dei plugin (o, per nome, da li')."""
+    dirs = tmp_path / "plugins"
+    dirs.mkdir()
+    (dirs / "Buono.vst3").mkdir()
+    other = tmp_path / "scaricati"
+    other.mkdir()
+    (other / "Strano.vst3").mkdir()
+    (other / "Buono.vst3").mkdir()
+    monkeypatch.setattr(plugins, "vst3_dirs", lambda: [str(dirs)])
+    calls = []
+    monkeypatch.setitem(plugins._hosts, "ui", type("H", (), {"call": lambda self, r, t: calls.append(r)})())
+    with pytest.raises(plugins.PluginError):
+        plugins.describe("vst3:" + str(other / "Strano.vst3"))
+    assert calls == []                                   # il processo dei plugin non l'ha mai visto
+    # lo stesso nome di un plugin installato si usa da la' (come per un progetto spostato)
+    assert plugins.resolve_ref("vst3:" + str(other / "Buono.vst3")) == "vst3:" + str(dirs / "Buono.vst3")
+    assert plugins.in_plugin_dirs(str(dirs / "Buono.vst3"))
+
+
 # ------------------------------------------------------------------ processo separato
 
 def test_hanging_plugin_times_out_and_host_restarts():

@@ -699,7 +699,7 @@ def _lstm_run(net: _LSTM, x: np.ndarray, h: List[np.ndarray], c: List[np.ndarray
     Restituisce l'uscita (passi, colonne) se richiesta."""
     steps, cols = x.shape
     hidden = net.layers[0].h0.shape[0]
-    xh, z, s, g, tc = [], None, None, None, None
+    xh, z, g, tc = [], None, None, None
     for i, layer in enumerate(net.layers):
         buf = np.empty((layer.w.shape[1], cols), dtype=np.float32)
         buf[layer.w.shape[1] - hidden:] = h[i]

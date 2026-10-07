@@ -24,7 +24,7 @@ from .arrangement import flatten_clips_to_text
 from .notation import upgrade_midi_refs
 from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key, clamp_params
 from .instruments import (
-    list_instrument_names, get_instrument, is_custom_instrument,
+    list_instrument_names, is_custom_instrument,
     ensure_instrument_available, resolve_instrument_type, InstrumentProfile,
 )
 from .version import get_app_root, pick_writable_dir, USER_DATA_ROOT

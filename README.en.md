@@ -255,6 +255,8 @@ phase or outside the MVP standard): OMR import from traditional scores.
 
 ## Installation
 
+Get the code with `git clone https://github.com/openssound/soundtext.git` (or **Code → Download ZIP** on GitHub). The ready-made packages (AppImage, Windows installer, portable versions) are in the [Releases](https://github.com/openssound/soundtext/releases), when one is published.
+
 Pick the method that fits your system. For **plugins and NAM amplifiers** you then need to download the free plugins (`scarica_strumenti`) and the NAM profiles (menu **Instruments → Download recommended NAM profiles...**): they are not bundled. An Internet connection is required.
 
 | System | How to install | After installing |
@@ -270,6 +272,7 @@ Pick the method that fits your system. For **plugins and NAM amplifiers** you th
 ### Manual installation from source
 
 ```bash
+git clone https://github.com/openssound/soundtext.git
 cd soundtext
 python3 -m venv venv
 source venv/bin/activate

@@ -12,8 +12,7 @@ import mido
 from .import_lyrics import midi_text_bytes
 
 from .model import Project, Track, send_percent_to_cc
-from .instruments import PERCUSSION_MAP, DRUM_MIDI_CHANNEL, InstrumentProfile
-from .chords import parse_chord_symbol, voice_chord, pitch_to_midi, apply_bass_note
+from .chords import pitch_to_midi
 from .notation import Event
 from st_language.midi import (  # noqa: F401  (note e articolazioni: nella libreria)
     SLIDE_PITCH_BEND_RANGE_SEMITONES, _ARTICULATION_DURATION_FACTOR, _apply_articulation, _resolve_event_notes,

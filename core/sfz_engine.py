@@ -17,7 +17,7 @@ import ctypes.util
 import os
 import sys
 import threading
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 from .i18n import tr

@@ -1624,5 +1624,6 @@
  "Un abbellimento (d'g, d'G) va subito prima della sua nota": "Une note d'agrément (d'g, d'G) se place juste avant sa note",
  "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "Une note d'agrément (d'g, d'G) se place juste avant sa note, pas avant un silence",
  "Un salto finisce a $fine oppure va a $coda, non tutti e due": "Un saut finit à $fine ou va à $coda, pas les deux",
- "Un solo salto per testo: $dc oppure $ds": "Un seul saut par texte : $dc ou $ds"
+ "Un solo salto per testo: $dc oppure $ds": "Un seul saut par texte : $dc ou $ds",
+ "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "Le plugin '{path}' n'est pas dans un dossier de plugins : pour l'utiliser, ajoutez son dossier dans Sons → Dossiers des plugins VST3"
 }

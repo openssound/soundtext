@@ -1,5 +1,4 @@
 """Le sinfonie a box suonano esattamente come quelle a testo."""
-import glob
 import os
 import sys
 

@@ -11,7 +11,7 @@ import _config_isolation  # noqa: F401  (prima di importare core)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.notation import parse_track_text, validate_track_text, Pattern, tokenize, NotationError
+from core.notation import parse_track_text, validate_track_text, Pattern, tokenize
 from core.instruments import (
     add_custom_instrument, remove_custom_instrument, get_instrument,
     list_instrument_names, InstrumentProfile, CUSTOM_INSTRUMENTS_FILE,
@@ -19,7 +19,7 @@ from core.instruments import (
 )
 from core.model import Project
 from core.midi_export import export_project_to_midi, export_single_track_to_midi
-from core.midi_import import import_midi_file, import_midi_channel_into_track, list_midi_channels
+from core.midi_import import import_midi_file, list_midi_channels
 from core import midi_convert
 
 
@@ -614,7 +614,7 @@ def test_embedded_instrument_autoloads_on_open():
     """Funzionalita' richiesta: se una song usa uno strumento personalizzato
     non ancora presente in locale, viene caricato/registrato automaticamente
     e la traccia non va persa."""
-    from core.project_io import project_to_text, parse_project_text, save_project_file, load_project_file
+    from core.project_io import save_project_file, load_project_file
     from core.instruments import add_custom_instrument, get_instrument
 
     _reset_custom_instruments()
@@ -975,7 +975,7 @@ def test_extract_patterns_preserves_musical_content():
     key = lambda e: (e.letter, e.octave, e.velocity, e.start, e.duration)
     assert [key(e) for e in orig_events] == [key(e) for e in new_events]
 
-    expand_summary = expand_patterns_for_project(p)
+    expand_patterns_for_project(p)
     assert not p.patterns  # nessun pattern residuo dopo l'espansione totale
     final_events = p.tracks[0].parsed_events(p.patterns)
     assert [key(e) for e in orig_events] == [key(e) for e in final_events]

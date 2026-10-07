@@ -12,9 +12,7 @@ quelli predefiniti.
 
 import json
 import os
-import re
-import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict
 from typing import Optional, Dict, List
 from .i18n import tr
 

@@ -19,10 +19,10 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.notation import parse_track_text, validate_track_text, tokenize, NotationError
+from core.notation import parse_track_text, validate_track_text, NotationError
 from core.model import Project
 from core.project_io import (
-    parse_project_text, project_to_text, save_project_file, load_project_file,
+    parse_project_text, project_to_text, load_project_file,
     compute_bar_beat_offsets,
 )
 from core.midi_export import export_project_to_midi
@@ -925,7 +925,8 @@ def test_channel_assignment_moves_tracks_beyond_15_to_the_next_port():
     """20 tracce melodiche (8 voci di chitarra e 12 strumenti diversi): ognuna ha
     il suo canale; dalla sedicesima si passa alla porta 1 (slot = porta * 16 +
     canale), senza mai usare il canale delle percussioni."""
-    from core.midi_export import _assign_channels, DRUM_MIDI_CHANNEL
+    from core.instruments import DRUM_MIDI_CHANNEL
+    from core.midi_export import _assign_channels
     p, _guitar = _many_track_project(8, [1, 3, 22, 35, 66, 18, 30, 28, 40, 24, 57, 71])
     mapping = _assign_channels(p.tracks)
     slots = [mapping[t.name] for t in p.tracks]

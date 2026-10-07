@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
 
 from core.model import Project, Clip
 from core.arrangement import flatten_clips_to_text, split_text_into_box_segments
-from core.instruments import list_instrument_names, get_instrument, set_session_instruments
+from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
                            RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note

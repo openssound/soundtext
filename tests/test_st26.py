@@ -4,7 +4,7 @@ intestazione 'ST:' e parole chiave inglesi, battuta in levare."""
 import pytest
 
 from st_language import notation
-from st_language.notation import NotationError, notation_warnings, parse_track_text, tokenize
+from st_language.notation import NotationError, parse_track_text, tokenize
 
 
 def _notes(text, patterns=None, **kwargs):

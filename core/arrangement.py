@@ -12,8 +12,8 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from .model import Clip
-from .notation import (Pattern, parse_track_text, compute_token_spans, context_prefix_before, RE_REST,
-                       COMMENT_MARK, BAR_CHECK, all_token_spans, is_lyric, tokenize, expand_patterns,
+from .notation import (Pattern, compute_token_spans, context_prefix_before, RE_REST,
+                       BAR_CHECK, all_token_spans, is_lyric, tokenize, expand_patterns,
                        RE_BAR_ANCHOR, NotationError, upgrade_midi_refs)
 from .i18n import tr
 from st_language.song import (  # noqa: F401  (unione dei box: nella libreria)

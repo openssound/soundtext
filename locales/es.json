@@ -1624,5 +1624,6 @@
  "Un abbellimento (d'g, d'G) va subito prima della sua nota": "Una nota de adorno (d'g, d'G) va justo antes de su nota",
  "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "Una nota de adorno (d'g, d'G) va justo antes de su nota, no de un silencio",
  "Un salto finisce a $fine oppure va a $coda, non tutti e due": "Un salto termina en $fine o va a $coda, no las dos cosas",
- "Un solo salto per testo: $dc oppure $ds": "Un solo salto por texto: $dc o $ds"
+ "Un solo salto per testo: $dc oppure $ds": "Un solo salto por texto: $dc o $ds",
+ "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "El plugin '{path}' no está en una carpeta de plugins: para usarlo, añade su carpeta en Sonidos → Carpetas de plugins VST3"
 }

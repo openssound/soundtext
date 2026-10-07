@@ -195,6 +195,8 @@ def broken_reason(ref: str) -> str:
 def _call(channel: str, ref: Optional[str], request: tuple, timeout: float):
     if ref and ref in _broken:
         raise PluginError(_broken[ref])
+    if ref:
+        _check_allowed(ref)
     try:
         return _hosts[channel].call(request, timeout)
     except PluginError as e:
@@ -411,12 +413,37 @@ def forget_scan():
 _describe_cache: Dict[str, PluginInfo] = {}
 
 
+def in_plugin_dirs(path: str) -> bool:
+    """Se il plugin sta in una delle cartelle dei plugin (quelle del sistema
+    o quelle aggiunte da Suoni → Cartelle dei plugin VST3, vedi vst3_dirs)."""
+    real = os.path.realpath(path)
+    for d in vst3_dirs():
+        base = os.path.realpath(d)
+        try:
+            if os.path.commonpath([real, base]) == base:
+                return True
+        except ValueError:            # dischi diversi su Windows
+            continue
+    return False
+
+
+def _check_allowed(ref: str) -> None:
+    """Un VST3 e' codice che gira sul computer: si carica solo dalle
+    cartelle dei plugin, mai da un percorso qualsiasi scritto in un file
+    .st ricevuto da altri. Un percorso che non esiste non si carica
+    comunque (lo dira' il processo dei plugin)."""
+    fmt, path, _name = parse_ref(ref)
+    if fmt == "vst3" and os.path.exists(path) and not in_plugin_dirs(path):
+        raise PluginError(tr("Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi "
+                             "la sua cartella in Suoni → Cartelle dei plugin VST3", path=path))
+
+
 def resolve_ref(ref: str) -> str:
     """Il riferimento come va usato su questa macchina: un VST3 che non c'e'
     piu' nel percorso salvato (progetto aperto su un altro computer) si
     cerca per nome del file nelle cartelle dei plugin."""
     fmt, path, name = parse_ref(ref)
-    if fmt != "vst3" or os.path.exists(path):
+    if fmt != "vst3" or (os.path.exists(path) and in_plugin_dirs(path)):
         return ref
     base = os.path.basename(path.rstrip("/\\")).lower()
     for bundle in find_vst3_bundles():

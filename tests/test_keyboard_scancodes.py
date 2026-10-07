@@ -11,7 +11,6 @@ Esecuzione:
 import _config_isolation  # noqa: F401  (isola la configurazione: prima di importare core)
 import os
 import sys
-import time
 
 import pytest
 

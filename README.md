@@ -264,6 +264,8 @@ tradizionali.
   importano come i `.wav`, ricampionati a 48 kHz.
 ## Installazione
 
+Il codice si scarica con `git clone https://github.com/openssound/soundtext.git` (oppure **Code → Download ZIP** su GitHub). I pacchetti pronti (AppImage, installer per Windows, versioni portable) sono nelle [Release](https://github.com/openssound/soundtext/releases), quando ne viene pubblicata una.
+
 Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve poi scaricare i plugin gratuiti (`scarica_strumenti`) e i profili NAM (menu **Strumenti → Scarica profili NAM consigliati...**): non sono inclusi. Serve una connessione a Internet.
 
 | Sistema | Come installare | Dopo l'installazione |
@@ -279,6 +281,7 @@ Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve
 ### Installazione manuale dal sorgente
 
 ```bash
+git clone https://github.com/openssound/soundtext.git
 cd soundtext
 python3 -m venv venv
 source venv/bin/activate
