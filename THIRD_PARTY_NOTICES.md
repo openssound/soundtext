@@ -21,6 +21,7 @@ build possono contenere versioni successive degli stessi componenti.
 | [Python](https://www.python.org) 3 | Python Software Foundation | PSF License | `licenses/Python-PSF.txt` | sì (interprete incluso da PyInstaller) |
 | [PySide6 / Qt for Python](https://www.qt.io/qt-for-python) 6.11 e [Qt](https://www.qt.io) 6 | The Qt Company Ltd. e altri contributori | LGPL-3.0 | `licenses/LGPL-3.0.txt` (con `LICENSE` per la GPL-3.0 a cui rimanda) | sì, come librerie separate e sostituibili |
 | [FFmpeg](https://ffmpeg.org) (dentro PySide6, per il decodificatore di Qt Multimedia: lettura di mp3, m4a, flac, ogg) | FFmpeg developers | LGPL-2.1 o successiva (build LGPL fornita da Qt) | `licenses/LGPL-2.1.txt` | sì, come librerie separate e sostituibili |
+| [ST-language](https://github.com/openssound/st-language) 2.6 (la notazione testuale e il formato `.st`, libreria separata dello stesso autore) | Sergio Scolaro | GPL-3.0-or-later (la specifica: CC BY 4.0) | `LICENSE` | sì (installata da GitHub o da PyPI) |
 | [NumPy](https://numpy.org) 1.26 | NumPy Developers; le build includono anche OpenBLAS, LAPACK e altre librerie, con i loro avvisi | BSD-3-Clause (NumPy) e licenze permissive delle librerie incluse | `licenses/numpy.txt` | sì |
 | [mido](https://github.com/mido/mido) 1.3 | Ole Martin Bjørndalen | MIT | `licenses/mido.txt` | sì |
 | [python-rtmidi](https://github.com/SpotlightKid/python-rtmidi) 1.5 (con [RtMidi](https://github.com/thestk/rtmidi) di Gary P. Scavone) | Christopher Arndt; Gary P. Scavone | MIT (RtMidi: licenza in stile MIT) | `licenses/python-rtmidi.md` | sì |
@@ -61,7 +62,7 @@ lilv: la carica dal sistema con ctypes, se c'è.
 | SoundFont **FluidR3_GM** (`soundfonts/FluidR3_GM.sf2`) | Frank Wen (2000-2002, 2008) | MIT | `licenses/FluidR3_GM.txt` | sì |
 | [NeuralAmpModelerCore](https://github.com/sdatkinson/NeuralAmpModelerCore): il calcolo dei profili `.nam` di `core/nam.py` segue il motore ufficiale | Steven Atkinson | MIT | `licenses/NeuralAmpModelerCore.txt` | sì (come codice derivato) |
 | [neural-amp-modeler](https://github.com/sdatkinson/neural-amp-modeler): il segnale di riferimento per la loudness, `assets/nam_loudness_input.wav` | Steven Atkinson | MIT | `licenses/neural-amp-modeler.txt` | sì |
-| [MTXT](https://github.com/Daninet/mtxt): la tabella dei nomi delle voci (`voice`) per i 128 programmi General MIDI in `st_language/mtxt.py` viene dall'implementazione di riferimento | Dani Biró | MIT (o Apache-2.0, a scelta) | `licenses/mtxt.txt` | sì (come dati derivati) |
+| [MTXT](https://github.com/Daninet/mtxt): la tabella dei nomi delle voci (`voice`) per i 128 programmi General MIDI in `st_language/mtxt.py` (libreria ST-language, repository openssound/st-language, che ne riporta l'avviso) viene dall'implementazione di riferimento | Dani Biró | MIT (o Apache-2.0, a scelta) | `licenses/mtxt.txt` | sì (come dati derivati) |
 
 ## Non inclusi
 
