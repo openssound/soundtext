@@ -8,7 +8,7 @@ import os
 import sys
 
 APP_NAME = "SoundText"
-APP_VERSION = "1.5.9"
+APP_VERSION = "1.6.0"
 
 
 def get_app_root() -> str:
