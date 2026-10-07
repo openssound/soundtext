@@ -1625,5 +1625,9 @@
  "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "Une note d'agrément (d'g, d'G) se place juste avant sa note, pas avant un silence",
  "Un salto finisce a $fine oppure va a $coda, non tutti e due": "Un saut finit à $fine ou va à $coda, pas les deux",
  "Un solo salto per testo: $dc oppure $ds": "Un seul saut par texte : $dc ou $ds",
- "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "Le plugin '{path}' n'est pas dans un dossier de plugins : pour l'utiliser, ajoutez son dossier dans Sons → Dossiers des plugins VST3"
+ "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "Le plugin '{path}' n'est pas dans un dossier de plugins : pour l'utiliser, ajoutez son dossier dans Sons → Dossiers des plugins VST3",
+ "Sostieni SoundText...": "Soutenir SoundText...",
+ "SoundText e' gratuito e libero: se ti e' utile puoi sostenerne lo sviluppo (si apre la pagina nel browser).": "SoundText est gratuit et libre : s'il vous est utile, vous pouvez soutenir son développement (la page s'ouvre dans le navigateur).",
+ "Sostieni SoundText": "Soutenir SoundText",
+ "Puoi sostenere SoundText da questa pagina:\n{url}": "Vous pouvez soutenir SoundText depuis cette page :\n{url}"
 }

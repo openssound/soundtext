@@ -1625,5 +1625,9 @@
  "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "A grace note (d'g, d'G) goes right before its note, not before a rest",
  "Un salto finisce a $fine oppure va a $coda, non tutti e due": "A jump ends at $fine or goes to $coda, not both",
  "Un solo salto per testo: $dc oppure $ds": "Only one jump per text: $dc or $ds",
- "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "The plugin '{path}' is not in a plugin folder: to use it, add its folder in Sounds → VST3 plugin folders"
+ "Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi la sua cartella in Suoni → Cartelle dei plugin VST3": "The plugin '{path}' is not in a plugin folder: to use it, add its folder in Sounds → VST3 plugin folders",
+ "Sostieni SoundText...": "Support SoundText...",
+ "SoundText e' gratuito e libero: se ti e' utile puoi sostenerne lo sviluppo (si apre la pagina nel browser).": "SoundText is free and open source: if you find it useful, you can support its development (opens the page in the browser).",
+ "Sostieni SoundText": "Support SoundText",
+ "Puoi sostenere SoundText da questa pagina:\n{url}": "You can support SoundText from this page:\n{url}"
 }

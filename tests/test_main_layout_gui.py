@@ -650,3 +650,27 @@ def test_menus_group_import_and_export_in_submenus(monkeypatch):
     commands[("Traccia › Esporta questa traccia", "WAV asciutto (per il re-amping)...")].trigger()
     assert exported == [("Voce", False), ("Voce", True)]
     assert ("Traccia › Esporta questa traccia", "MIDI...") in commands
+
+
+# ------------------------------------------------------------------ Aiuto -> Sostieni SoundText
+
+def _help_actions(w):
+    menu = next(a.menu() for a in w.menuBar().actions() if a.menu() and a.text() == "&Aiuto")
+    return [a.text() for a in menu.actions() if a.text()]
+
+
+def test_support_entry_appears_only_with_a_support_url(monkeypatch):
+    import core.version
+    monkeypatch.setattr(core.version, "SUPPORT_URL", "")
+    w = MainWindow()
+    assert "Sostieni SoundText..." not in _help_actions(w) and w.support_action is None
+    w.close()
+
+    opened = []
+    monkeypatch.setattr(core.version, "SUPPORT_URL", "https://example.org/sostieni")
+    monkeypatch.setattr("PySide6.QtGui.QDesktopServices.openUrl", lambda url: opened.append(url.toString()) or True)
+    w = MainWindow()
+    assert "Sostieni SoundText..." in _help_actions(w)
+    w.support_action.trigger()
+    assert opened == ["https://example.org/sostieni"]
+    w.close()

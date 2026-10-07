@@ -592,6 +592,14 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Apri il file di log"), self.open_log_file,
             tooltip=tr("Errori e problemi registrati dall'app (utile per capire perche' qualcosa non funziona).")
         ))
+        from core.version import SUPPORT_URL
+        self.support_action = None
+        if SUPPORT_URL:
+            self.support_action = self._action(
+                tr("Sostieni SoundText..."), self.open_support_page,
+                tooltip=tr("SoundText e' gratuito e libero: se ti e' utile puoi sostenerne lo sviluppo "
+                           "(si apre la pagina nel browser)."))
+            help_menu.addAction(self.support_action)
         help_menu.addSeparator()
         help_menu.addAction(self._action(tr("Informazioni su SoundText..."), self.show_about))
 
@@ -921,6 +929,15 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             plugins.forget_scan()
             self.statusBar().showMessage(tr("Cartelle dei plugin aggiornate: l'elenco si rifa' alla prossima scelta."),
                                          5000)
+
+    def open_support_page(self, *_):
+        """Apre nel browser la pagina per sostenere il progetto (SUPPORT_URL)."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        from core.version import SUPPORT_URL
+        if not QDesktopServices.openUrl(QUrl(SUPPORT_URL)):
+            QMessageBox.information(self, tr("Sostieni SoundText"),
+                                    tr("Puoi sostenere SoundText da questa pagina:\n{url}", url=SUPPORT_URL))
 
     def open_log_file(self, *_):
         from PySide6.QtCore import QUrl
