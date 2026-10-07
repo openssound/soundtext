@@ -76,8 +76,15 @@ d'installation pour Debian/Ubuntu, Arch/CachyOS, Fedora et openSUSE.
   la tonalité), section 2.21 ; valable aussi pour les fichiers de la bibliothèque MIDI (`&"Basse"+7`).
 - **Levée et `reset:`** : la mesure en levée (`Levare: 1`) place la
   mesure 1 où elle doit être ; `reset:` remet l'état initial ; le fichier
-  déclare sa version (`ST: 2.6`) et accepte aussi les mots-clés anglais,
+  déclare sa version (`ST: 2.7`) et accepte aussi les mots-clés anglais,
   section 2.22.
+- **Accords, notes d'agrément, D.C./D.S. et couplets (ST 2.7)** : nouveaux
+  accords (`C7#5`, `Cm11`, `C69`, `Cmaj7#11`...) et percussions
+  (`triangle`, `agogo_hi`...), notes d'agrément (`d'g c`), signes `$arp`,
+  `$sfz`, `$trem`, accords sans son (`$Am7`),
+  `$segno`/`$coda`/`$fine`/`$dc`/`$ds`, plusieurs couplets de paroles, titre
+  et auteurs, tonalité par mesure et instruments transpositeurs dans la
+  partition, section 2.23.
 - **Spécification formelle et bibliothèque autonome** : la notation et le
   format `.st` sont décrits dans [docs/spec/ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)
   (CC BY 4.0, en anglais et en italien) avec une suite de conformité ; le

@@ -177,6 +177,14 @@ class Project:
     pickup: float = 0.0
     # Versione del linguaggio dichiarata dal file ("ST: 2.6"), se c'era.
     st_version: Optional[tuple] = None
+    # Tonalita' per battuta ("Tonalita: 1: C, 17: G"): [(battuta, "G")]; se
+    # popolata, key e' la tonalita' della battuta 1.
+    key_changes: List[tuple] = field(default_factory=list)
+    # Titolo e autori del brano (intestazioni Titolo:, Autore:, Parole:):
+    # vanno nella partitura; senza titolo la partitura usa name.
+    title: str = ""
+    composer: str = ""
+    lyricist: str = ""
 
     def meter(self) -> Meter:
         """Dove cominciano le battute del progetto (per le ancore bar=N)."""

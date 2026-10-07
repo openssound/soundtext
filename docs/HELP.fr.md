@@ -26,6 +26,7 @@ Trouvez ici le sujet qui vous intéresse et allez à la section indiquée (les n
 | [Ancres de mesure (bar=N)](#2.20) | [2.20](#2.20) |
 | [Transposition (transpose=, %Nom+N)](#2.21) | [2.21](#2.21) |
 | [reset:, levée, version du fichier (ST 2.6)](#2.22) | [2.22](#2.22) |
+| [Accords, notes d'agrément, D.C./D.S., couplets, titre (ST 2.7)](#2.23) | [2.23](#2.23) |
 | [Motifs (%Nom) : réutiliser et réorganiser des parties](#4) | [4](#4) |
 | [Bibliothèque MIDI (&"Nom") et dossier des morceaux songs/](#5) | [5](#5), [5bis](#5bis) |
 | [Percussions et batterie écrite à la main](#6) | [6](#6) |
@@ -1178,12 +1179,69 @@ seuls à l'ouverture, et restent identiques ; si vous écrivez `&Riff` sans
 guillemets, l'éditeur vous indique comment le corriger.
 
 **Version et mots anglais dans le fichier.** Le fichier `.st` commence
-par `ST: 2.6`, la version du langage dans laquelle il est écrit ; en
+par `ST: 2.7`, la version du langage dans laquelle il est écrit ; en
 ouvrant un fichier d'une version plus récente, le programme avertit. Le
 programme lit aussi les mots-clés en anglais (`Track`, `Instrument`,
 `Meter`, `Key`, `Pickup`, `percussion=`, `octave=`, `yes`), pratique pour
 qui écrit les fichiers à la main ; à l'enregistrement il utilise toujours
 les formes italiennes.
+
+### 2.23 Accords, notes d'agrément, D.C./D.S., couplets et titre (ST 2.7)
+
+**Plus d'accords.** En plus des habituels : `C7#5` (aussi `Caug7`),
+`C7b5`, `Cm11`, `Cm13`, `C69` (sixte et neuvième : dans `C6/9` la barre
+serait la basse), `Cmaj7#11`, `C7#11`, `C9sus4`, `C7b13`, `Cadd11`,
+`Cmadd9`, `C7sus2`, `Csus` (= `Csus4`), `C13b9`.
+
+**Plus de percussions.** Le reste de la batterie General MIDI :
+`triangle`, `triangle_mute`, `agogo_hi`, `agogo_low`, `guiro_short`,
+`guiro_long`, `whistle_short`, `whistle_long`, `cuica_mute`,
+`cuica_open`, `vibraslap` et `side_stick` (le même son que `rimshot`).
+
+**Valeurs et tempo.** `c'128` est la quadruple croche ; la lettre `D` fait
+les duolets (`8D: c d`, deux croches dans le temps de trois, comme en
+6/8). Le tempo accepte les décimales (`tempo=72.5`) et la figure comptée :
+`tempo=60'4.` font 60 noires pointées par minute ; la partition écrit
+ainsi le métronome.
+
+**Notes d'agrément.** `d'g c` est une acciaccatura (le ré avant le do),
+`d'G c` une appoggiature ; elles marchent aussi sur les accords, les
+blocs et les percussions (`snare'g snare` est un fla). Elles ne prennent
+pas de temps écrit : elles sonnent juste avant la note, qui perd cette
+durée.
+
+**Nouveaux signes sur les notes.** `C$arp` (accord arpégé),
+`c$staccatissimo`, `c$sfz` (sforzando), `c$fp` (forte-piano), `c$trem`
+(trémolo ; à la batterie `snare$trem` est un roulement), `c$harmonic`
+(harmonique).
+
+**Grilles d'accords sans son.** `$Am7` écrit l'accord au-dessus de la
+portée sans le jouer : pratique pour un lead sheet avec seulement la
+mélodie (`$C c d e f $G7 g a b c`).
+
+**D.C., D.S., Coda et Fine.** Ils s'écrivent comme des signes : `$segno`,
+`$coda`, `$tocoda`, `$fine`, `$dc` (da capo), `$ds` (dal segno). Ils se
+jouent comme un musicien les joue ; au retour les reprises se font une
+seule fois, avec la dernière fin :
+
+```
+4: c d e f | g a b c*5 $fine | e d c d | 4e $dc     // D.C. al Fine
+4: $segno c d e f | g a b c*5 $tocoda | 4e $ds $coda | 4c |   // D.S. al Coda
+```
+
+**Plusieurs couplets.** Des paroles qui commencent par le numéro du
+couplet vont sous la même musique : `"Ma- ry had a lit- tle lamb"` puis
+`"2: Ev- ry where that Ma- ry went"`. La partition écrit une ligne par
+couplet.
+
+**Titre, auteurs, changements de tonalité, instruments transpositeurs.**
+En haut du fichier `.st` on peut écrire `Titolo:` (ou `Title:`),
+`Autore:` (`Composer:`) et `Parole:` (`Lyricist:`), qui vont dans la
+partition, et la tonalité par mesure comme le tempo :
+`Tonalita: 1: C, 17: G`. Dans un instrument défini dans le fichier,
+`trasposizione=-2` le rend transpositeur (trompette en si♭ : -2, saxo
+alto en mi♭ : -9) : on écrit toujours en sons réels et la partition écrit
+sa partie transposée. Le fichier enregistré déclare `ST: 2.7`.
 
 ## 3. État courant
 

@@ -19,6 +19,7 @@ from st_language.midi import (  # noqa: F401  (note e articolazioni: nella libre
     SLIDE_PITCH_BEND_RANGE_SEMITONES, _ARTICULATION_DURATION_FACTOR, _apply_articulation, _resolve_event_notes,
     _assign_channels, midi_ports_needed, MIDI_CHANNELS, control_points, PITCH_BEND, TUNE, tune_controls,
     effective_articulation, sounding_span, shift_ticks, needs_bend_range, decorated_velocity, ornament_spans,
+    sounding_events,
 )
 from st_language.timing import fermata_spans, with_fermatas
 
@@ -337,7 +338,8 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
         controls_before: Dict[int, Tuple[float, int]] = {}
         volume_scale = track.volume * master_factor / 100.0
 
-        for ev in events:
+        # le note di abbellimento (d'g) suonano subito prima della loro nota
+        for ev in sounding_events(events):
             if ev.kind == "control":
                 for beat, cc, value in control_points(ev, volume_scale):
                     if beat < start_offset_beats:
@@ -446,7 +448,7 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
                 if humanize:
                     velocity_jitter = HUMANIZE_MAX_VELOCITY_JITTER * (humanize_amount / 100.0)
                     note_velocity = max(1, min(127, velocity + round(random.uniform(-velocity_jitter, velocity_jitter))))
-                for a, b, pitch in ornament_spans(ev, n, note_start_tick, note_end_tick, project.key):
+                for a, b, pitch in ornament_spans(ev, n, note_start_tick, note_end_tick, project.key, notes):
                     note_spans.append((a, b, pitch, note_velocity))
 
         # Rete di sicurezza: se il pedale sustain e' ancora attivo alla fine

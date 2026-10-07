@@ -73,8 +73,15 @@ instalación para Debian/Ubuntu, Arch/CachyOS, Fedora y openSUSE.
   tonalidad), sección 2.21; también vale para los archivos de la biblioteca MIDI (`&"Bajo"+7`).
 - **Anacrusa y `reset:`**: el compás de anacrusa (`Levare: 1`) pone el
   compás 1 donde debe estar; `reset:` devuelve el estado inicial; el
-  archivo declara su versión (`ST: 2.6`) y acepta también palabras clave
+  archivo declara su versión (`ST: 2.7`) y acepta también palabras clave
   en inglés, sección 2.22.
+- **Acordes, notas de adorno, D.C./D.S. y estrofas (ST 2.7)**: nuevos
+  acordes (`C7#5`, `Cm11`, `C69`, `Cmaj7#11`...) y percusiones
+  (`triangle`, `agogo_hi`...), notas de adorno (`d'g c`), signos `$arp`,
+  `$sfz`, `$trem`, cifrados sin sonido (`$Am7`),
+  `$segno`/`$coda`/`$fine`/`$dc`/`$ds`, varias estrofas de letra, título y
+  autores, tonalidad por compás e instrumentos transpositores en la
+  partitura, sección 2.23.
 - **Especificación formal y biblioteca autónoma**: la notación y el formato
   `.st` se describen en [docs/spec/ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)
   (CC BY 4.0, en inglés y en italiano) con una suite de conformidad; el

@@ -70,8 +70,14 @@ installazione per Debian/Ubuntu, Arch/CachyOS, Fedora e openSUSE.
   sezione 2.21; vale anche per i file della libreria MIDI (`&"Basso"+7`).
 - **Levare e `reset:`**: la battuta in levare (`Levare: 1`) sposta la
   battuta 1 dove deve stare; `reset:` riporta lo stato iniziale; il file
-  dichiara la versione (`ST: 2.6`) e accetta anche le parole chiave
+  dichiara la versione (`ST: 2.7`) e accetta anche le parole chiave
   inglesi, sezione 2.22.
+- **Accordi, abbellimenti, D.C./D.S. e strofe (ST 2.7)**: nuovi accordi
+  (`C7#5`, `Cm11`, `C69`, `Cmaj7#11`...) e percussioni (`triangle`,
+  `agogo_hi`...), note di abbellimento (`d'g c`), segni `$arp`, `$sfz`,
+  `$trem`, sigle senza suono (`$Am7`), `$segno`/`$coda`/`$fine`/`$dc`/`$ds`,
+  piu' strofe di testo, titolo e autori, tonalita' per battuta e strumenti
+  traspositori nella partitura, sezione 2.23.
 - **Specifica formale e libreria autonoma**: la notazione e il formato `.st`
   sono descritti in [docs/spec/ST-language.it.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.it.md)
   (CC BY 4.0, anche in inglese) con una suite di conformita'; il motore e' la

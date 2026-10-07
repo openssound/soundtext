@@ -17,7 +17,7 @@ import re
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .instruments import PERCUSSION_MAP, InstrumentProfile
-from .notation import DYNAMICS_TO_VELOCITY, Pattern
+from .notation import DECORATIONS, DYNAMICS_TO_VELOCITY, Pattern
 from .chords import CHORD_QUALITIES, applicable_voicings
 
 # Delimitatori di token nell'editor: spazio e le parentesi che aprono un
@@ -36,6 +36,8 @@ _LOWERCASE_WORDS = sorted(set(PERCUSSION_MAP) | set(_NON_PERCUSSION_LOWERCASE_WO
 _CHORD_TOKEN_RE = re.compile(r"^(\d*)([A-G])([#b♭]?)([A-Za-z0-9#]*)$")
 _VOICING_SUFFIX_RE = re.compile(r"^(\d*[A-G][#b♭]?[A-Za-z0-9#]*)\.([A-Za-z0-9]*)$")
 _LOWERCASE_TOKEN_RE = re.compile(r"^(\d*)([a-z_][a-zA-Z_0-9]*)$")
+# Segni di navigazione (da soli: $segno, $dc...) e segni sulle note (c$arp)
+_NAVIGATION_WORDS = ["segno", "coda", "tocoda", "fine", "dc", "ds"]
 
 
 def current_word_bounds(text: str, pos: int) -> Tuple[int, int]:
@@ -77,6 +79,19 @@ def completions_for_word(
         names = midi_ref_names() if midi_ref_names else []
         prefix = word[1:].lstrip('"')
         return [f'&"{n}"' for n in sorted(names) if n.startswith(prefix) and f'&"{n}"' != word]
+
+    if "$" in word and not word.startswith('$"'):
+        before, _, after = word.rpartition("$")
+        if after[:1].isupper():
+            # sigla senza suono: $Am7 (le qualita' come per gli accordi)
+            m = _CHORD_TOKEN_RE.match(after)
+            if not m or m.group(1):
+                return []
+            _mult, letter, accidental, suffix = m.groups()
+            return [f"{before}${letter}{accidental}{q}" for q in CHORD_QUALITIES
+                    if q and q.startswith(suffix) and q != suffix]
+        names = DECORATIONS if before else _NAVIGATION_WORDS
+        return [f"{before}${n}" for n in names if n.startswith(after) and n != after]
 
     m = _VOICING_SUFFIX_RE.match(word)
     if m:

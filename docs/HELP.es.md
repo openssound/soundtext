@@ -26,6 +26,7 @@ Busca aquí el tema que te interesa y ve a la sección indicada (los números so
 | [Anclas de compás (bar=N)](#2.20) | [2.20](#2.20) |
 | [Transposición (transpose=, %Nombre+N)](#2.21) | [2.21](#2.21) |
 | [reset:, anacrusa, versión del archivo (ST 2.6)](#2.22) | [2.22](#2.22) |
+| [Acordes, notas de adorno, D.C./D.S., estrofas, título (ST 2.7)](#2.23) | [2.23](#2.23) |
 | [Patrones (%Nombre): reutilizar y reorganizar partes](#4) | [4](#4) |
 | [Biblioteca MIDI (&"Nombre") y carpeta de canciones songs/](#5) | [5](#5), [5bis](#5bis) |
 | [Percusión y batería escrita a mano](#6) | [6](#6) |
@@ -1153,11 +1154,67 @@ solas al abrirlas, y quedan iguales; si escribes `&Riff` sin comillas el
 editor te dice cómo corregirlo.
 
 **Versión y palabras en inglés en el archivo.** El archivo `.st` empieza
-con `ST: 2.6`, la versión del lenguaje en que está escrito; al abrir un
+con `ST: 2.7`, la versión del lenguaje en que está escrito; al abrir un
 archivo de una versión más reciente, el programa avisa. El programa lee
 también las palabras clave en inglés (`Track`, `Instrument`, `Meter`,
 `Key`, `Pickup`, `percussion=`, `octave=`, `yes`), cómodo para quien
 escribe los archivos a mano; al guardar usa siempre las formas italianas.
+
+### 2.23 Acordes, notas de adorno, D.C./D.S., estrofas y título (ST 2.7)
+
+**Más acordes.** Además de los de siempre: `C7#5` (también `Caug7`),
+`C7b5`, `Cm11`, `Cm13`, `C69` (sexta y novena: en `C6/9` la barra sería el
+bajo), `Cmaj7#11`, `C7#11`, `C9sus4`, `C7b13`, `Cadd11`, `Cmadd9`,
+`C7sus2`, `Csus` (= `Csus4`), `C13b9`.
+
+**Más percusiones.** El resto de la batería General MIDI: `triangle`,
+`triangle_mute`, `agogo_hi`, `agogo_low`, `guiro_short`, `guiro_long`,
+`whistle_short`, `whistle_long`, `cuica_mute`, `cuica_open`, `vibraslap`
+y `side_stick` (el mismo sonido que `rimshot`).
+
+**Valores y tempo.** `c'128` es la semigarrapatea; la letra `D` hace
+dosillos (`8D: c d`, dos corcheas en el tiempo de tres, como en 6/8). El
+tempo acepta decimales (`tempo=72.5`) y la figura que se cuenta:
+`tempo=60'4.` son 60 negras con puntillo por minuto; la partitura escribe
+así el metrónomo.
+
+**Notas de adorno.** `d'g c` es una acciaccatura (el Re antes del Do),
+`d'G c` una apoyatura; valen también para acordes, bloques y percusiones
+(`snare'g snare` es un flam). No ocupan tiempo escrito: suenan justo antes
+de la nota, que pierde esa duración.
+
+**Nuevos signos en las notas.** `C$arp` (acorde arpegiado),
+`c$staccatissimo`, `c$sfz` (sforzando), `c$fp` (forte-piano), `c$trem`
+(trémolo; en la batería `snare$trem` es un redoble), `c$harmonic`
+(armónico).
+
+**Cifrados sin sonido.** `$Am7` escribe el cifrado sobre el pentagrama
+sin tocarlo: útil para un lead sheet con solo la melodía
+(`$C c d e f $G7 g a b c`).
+
+**D.C., D.S., Coda y Fine.** Se escriben como signos: `$segno`, `$coda`,
+`$tocoda`, `$fine`, `$dc` (da capo), `$ds` (dal segno). Se tocan como los
+toca un músico; en la vuelta las repeticiones se hacen una sola vez, con
+la última casilla:
+
+```
+4: c d e f | g a b c*5 $fine | e d c d | 4e $dc     // D.C. al Fine
+4: $segno c d e f | g a b c*5 $tocoda | 4e $ds $coda | 4c |   // D.S. al Coda
+```
+
+**Más estrofas.** Una letra que empieza con el número de la estrofa va
+bajo la misma música: `"Ma- ry had a lit- tle lamb"` y luego
+`"2: Ev- ry where that Ma- ry went"`. La partitura escribe una línea por
+estrofa.
+
+**Título, autores, cambios de tonalidad, instrumentos transpositores.**
+Al principio del archivo `.st` se pueden escribir `Titolo:` (o `Title:`),
+`Autore:` (`Composer:`) y `Parole:` (`Lyricist:`), que van a la
+partitura, y la tonalidad por compás como el tempo:
+`Tonalita: 1: C, 17: G`. En un instrumento definido en el archivo,
+`trasposizione=-2` lo hace transpositor (trompeta en Si♭: -2, saxo alto
+en Mi♭: -9): se escribe siempre en sonidos reales y la partitura escribe
+su parte transportada. El archivo guardado declara `ST: 2.7`.
 
 ## 3. Estado actual
 

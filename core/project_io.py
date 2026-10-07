@@ -38,6 +38,7 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
     _convert_pan_to_0_127, _pan_0_127_to_normalized, _convert_volume, _parse_instrument_body,
     _parse_mixer_body, _notation_body_lines, _extract_named_blocks, _extract_box_blocks,
     RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks,
+    RE_KEY_LIST_HDR, RE_TITLE, RE_COMPOSER, RE_LYRICIST, parse_key_list,
 )
 
 
@@ -72,6 +73,7 @@ def _instrument_body_text(instr: InstrumentProfile) -> str:
         f"program={instr.gm_program} percussione={'si' if instr.is_percussion else 'no'} "
         f"ottava={instr.default_octave} range={instr.range_low}-{instr.range_high} "
         f"poly={'si' if instr.polyphonic else 'no'} voicing={instr.voicing_style}"
+        + (f" trasposizione={instr.transposition}" if getattr(instr, "transposition", 0) else "")
     )
 
 
@@ -377,11 +379,32 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
             project.master_volume = _convert_volume(m.group(1))
             continue
 
+        m = RE_KEY_LIST_HDR.match(line)
+        if m:
+            if mode:
+                flush()
+            project.key_changes = parse_key_list(m.group(1))
+            first = next((k for b, k in project.key_changes if b == 1), None)
+            project.key = first if first is not None else project.key_changes[0][1]
+            continue
+
         m = RE_KEY.match(line)
         if m:
             if mode:
                 flush()
             project.key = m.group(1).strip()
+            continue
+
+        found = None
+        for rx, attr in ((RE_TITLE, "title"), (RE_COMPOSER, "composer"), (RE_LYRICIST, "lyricist")):
+            m = rx.match(line)
+            if m:
+                found = (attr, m.group(1).strip())
+                break
+        if found:
+            if mode:
+                flush()
+            setattr(project, *found)
             continue
 
         m = RE_AMBIENTE.match(line)
@@ -511,12 +534,20 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     else:
         metrica_line = f"Metrica: {project.time_sig}"
     # la versione del linguaggio in cima (i lettori piu' vecchi la ignorano)
-    lines = ["ST: %d.%d" % LANGUAGE_VERSION, tempo_line, metrica_line]
+    lines = ["ST: %d.%d" % LANGUAGE_VERSION]
+    for label, value in (("Titolo", project.title), ("Autore", project.composer), ("Parole", project.lyricist)):
+        if value:
+            lines.append(f"{label}: {value}")
+    lines += [tempo_line, metrica_line]
     if project.pickup:
         lines.append(f"Levare: {format_pickup(project.pickup)}")
     if project.master_volume != 100:
         lines.append(f"Master: {project.master_volume}")
-    if project.key:
+    if project.key_changes:
+        # la tonalita' della battuta 1 e' quella del campo Tonalita' (project.key)
+        changes = [(b, project.key if b == 1 and project.key else k) for b, k in project.key_changes]
+        lines.append("Tonalita: " + ", ".join(f"{b}: {k}" for b, k in changes))
+    elif project.key:
         lines.append(f"Tonalita: {project.key}")
     if project.reverb_room != DEFAULT_REVERB_ROOM:
         lines.append(f"Ambiente: {project.reverb_room}")

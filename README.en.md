@@ -72,7 +72,13 @@ Arch/CachyOS, Fedora and openSUSE.
   section 2.21; it works on MIDI library files too (`&"Bass"+7`).
 - **Pickup bar and `reset:`**: the pickup bar (`Levare: 1`) puts bar 1
   where it belongs; `reset:` restores the initial state; the file declares
-  its version (`ST: 2.6`) and also accepts English keywords, section 2.22.
+  its version (`ST: 2.7`) and also accepts English keywords, section 2.22.
+- **Chords, grace notes, D.C./D.S. and verses (ST 2.7)**: new chords
+  (`C7#5`, `Cm11`, `C69`, `Cmaj7#11`...) and drums (`triangle`,
+  `agogo_hi`...), grace notes (`d'g c`), marks `$arp`, `$sfz`, `$trem`,
+  chord symbols without sound (`$Am7`), `$segno`/`$coda`/`$fine`/`$dc`/`$ds`,
+  several lyric verses, title and authors, key per bar and transposing
+  instruments in the score, section 2.23.
 - **Formal specification and standalone library**: the notation and the
   `.st` format are described in [docs/spec/ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)
   (CC BY 4.0, also in Italian) with a conformance suite; the engine is the

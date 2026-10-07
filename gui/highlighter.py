@@ -23,7 +23,7 @@ from core.notation import (
     strip_comments, comment_spans, split_note_value, RE_PATTERN_REF, RE_MIDI_REF, RE_GRID,
     RE_VELOCITY, RE_REST, RE_NOTE, RE_CHORD, RE_PERC, RE_SLIDE,
     RE_TEMPO_SET, RE_RAMP_UP, RE_RAMP_DOWN, RE_CONTROL, RE_SWING, RE_SHIFT, RE_PITCH_MODE,
-    RE_KEY_MODE, RE_BAR_ANCHOR, RE_TRANSPOSE, RESET_TOKEN,
+    RE_KEY_MODE, RE_BAR_ANCHOR, RE_TRANSPOSE, RESET_TOKEN, RE_NAVIGATION, RE_HARMONY,
 )
 from .theme import get_active_theme
 
@@ -269,6 +269,10 @@ class NotationHighlighter(QSyntaxHighlighter):
                 or RE_SHIFT.match(tok) or RE_PITCH_MODE.match(tok) or RE_KEY_MODE.match(tok) \
                 or RE_BAR_ANCHOR.match(tok) or RE_TRANSPOSE.match(tok) or tok == RESET_TOKEN:
             return self.fmt_state
+        if RE_NAVIGATION.match(tok):
+            return self.fmt_repeat        # $segno, $dc...: struttura, come i ritornelli
+        if RE_HARMONY.match(tok):
+            return self.fmt_chord         # $Am7: sigla senza suono
         if RE_REST.match(tok):
             return self.fmt_rest
         if RE_SLIDE.match(tok):

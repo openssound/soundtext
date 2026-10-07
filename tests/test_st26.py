@@ -120,7 +120,7 @@ def test_saved_file_declares_the_version_and_the_pickup():
     from core.project_io import parse_project_text, project_to_text
     text = project_to_text(parse_project_text(ENGLISH))
     lines = text.splitlines()
-    assert lines[0] == "ST: 2.6"
+    assert lines[0] == "ST: %d.%d" % __import__("st_language").stfile.LANGUAGE_VERSION
     assert "Levare: 1" in lines and "Metrica: 3/4" in lines and "Strumento Viola2:" in text
     again = parse_project_text(text)
     assert again.pickup == 1.0 and again.get_track("Melodia").instrument.gm_program == 41

@@ -1361,7 +1361,7 @@
  "Usa predefinito": "Usar el predeterminado",
  "Usa rilevamento automatico del SoundFont": "Usar la detección automática del SoundFont",
  "Valore di '{name}' fuori dall'intervallo {low}..{high}": "Valor de '{name}' fuera del intervalo {low}..{high}",
- "Valore di nota non valido: dopo l'apostrofo va 1, 2, 4, 8, 16, 32 o 64 (es. c'8 croma, c'4. semiminima puntata, c'8T croma di terzina)": "Valor de nota no válido: después del apóstrofo va 1, 2, 4, 8, 16, 32 o 64 (p. ej. c'8 corchea, c'4. negra con puntillo, c'8T corchea de tresillo)",
+ "Valore di nota non valido: dopo l'apostrofo va 1, 2, 4, 8, 16, 32, 64 o 128 (es. c'8 croma, c'4. semiminima puntata, c'8T croma di terzina)": "Valor de nota no válido: después del apóstrofo va 1, 2, 4, 8, 16, 32, 64 o 128 (p. ej. c'8 corchea, c'4. negra con puntillo, c'8T corchea de tresillo)",
  "Valori predefiniti": "Valores predeterminados",
  "Valzer (1 del 3/4, oom-pah-pah)": "Vals (1 del 3/4, oom-pah-pah)",
  "Valzer (3/4)": "Vals (3/4)",
@@ -1611,5 +1611,18 @@
  "Nome del file MIDI '&\"' non chiuso": "Nombre de archivo MIDI '&\"' sin cerrar",
  "Libreria MIDI (&\"Nome\") — {midi_dir}": "Biblioteca MIDI (&\"Nombre\") — {midi_dir}",
  "Anteprima/modifica (canale con piu' note, convertito in notazione testuale).\nRichiamabile in una traccia con &\"Nome\" (ricerca in tutte le sottocartelle) o\n&\"Sottocartella/Nome\" (percorso esplicito, per evitare ambiguita').\nCombinabile con ripetizione e trasposizione: 2&\"Nome\"+5.": "Vista previa/edición (canal con más notas, convertido en notación de texto).\nSe puede llamar en una pista con &\"Nombre\" (búsqueda en todas las subcarpetas) o\n&\"Subcarpeta/Nombre\" (ruta explícita, para evitar ambigüedades).\nCombinable con repetición y transposición: 2&\"Nombre\"+5.",
- "Nome da usare per &\"Nome\" (senza estensione).\nPuoi includere una sottocartella, es. Blues/bass_line:": "Nombre que se usará para &\"Nombre\" (sin extensión).\nPuedes incluir una subcarpeta, p. ej. Blues/bass_line:"
+ "Nome da usare per &\"Nome\" (senza estensione).\nPuoi includere una sottocartella, es. Blues/bass_line:": "Nombre que se usará para &\"Nombre\" (sin extensión).\nPuedes incluir una subcarpeta, p. ej. Blues/bass_line:",
+ "$coda dopo il salto vuole un $tocoda da cui arrivarci": "$coda después del salto necesita un $tocoda desde el que llegar",
+ "$ds (dal segno) vuole un $segno prima": "$ds (dal segno) necesita un $segno antes",
+ "$fine va fra il punto a cui si torna e il salto ($dc o $ds)": "$fine va entre el punto al que se vuelve y el salto ($dc o $ds)",
+ "$tocoda va fra il punto a cui si torna e il salto ($dc o $ds)": "$tocoda va entre el punto al que se vuelve y el salto ($dc o $ds)",
+ "$tocoda vuole un $coda dopo il salto ($dc o $ds)": "$tocoda necesita un $coda después del salto ($dc o $ds)",
+ "Dopo il salto ($dc o $ds) la musica non si suona: metti la coda dopo $coda": "La música después del salto ($dc o $ds) no se toca: pon la coda después de $coda",
+ "La legatura di valore (~) deve arrivare a una nota uguale, non a un abbellimento": "La ligadura de valor (~) debe llegar a una nota igual, no a una nota de adorno",
+ "Un abbellimento (d'g, d'G) non puo' avere una legatura di valore (~) ne' una forcella": "Una nota de adorno (d'g, d'G) no puede tener ligadura de valor (~) ni regulador",
+ "Un abbellimento (d'g, d'G) va su una nota, un accordo, un blocco o una percussione": "Una nota de adorno (d'g, d'G) va en una nota, un acorde, un bloque o una percusión",
+ "Un abbellimento (d'g, d'G) va subito prima della sua nota": "Una nota de adorno (d'g, d'G) va justo antes de su nota",
+ "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "Una nota de adorno (d'g, d'G) va justo antes de su nota, no de un silencio",
+ "Un salto finisce a $fine oppure va a $coda, non tutti e due": "Un salto termina en $fine o va a $coda, no las dos cosas",
+ "Un solo salto per testo: $dc oppure $ds": "Un solo salto por texto: $dc o $ds"
 }

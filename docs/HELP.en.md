@@ -26,6 +26,7 @@ Find the topic you need here, then go to the section shown (the numbers are thos
 | [Bar anchors (bar=N)](#2.20) | [2.20](#2.20) |
 | [Transposition (transpose=, %Name+N)](#2.21) | [2.21](#2.21) |
 | [reset:, pickup bar, file version (ST 2.6)](#2.22) | [2.22](#2.22) |
+| [Chords, grace notes, D.C./D.S., verses, title (ST 2.7)](#2.23) | [2.23](#2.23) |
 | [Patterns (%Name): reusing and rearranging parts](#4) | [4](#4) |
 | [MIDI library (&"Name") and the songs/ folder](#5) | [5](#5), [5bis](#5bis) |
 | [Percussion and hand-written drums](#6) | [6](#6) |
@@ -1118,11 +1119,63 @@ same; if you write `&Riff` without quotes the editor tells you how to fix
 it.
 
 **Version and English keywords in the file.** The `.st` file starts with
-`ST: 2.6`, the version of the language it is written in; opening a file of
+`ST: 2.7`, the version of the language it is written in; opening a file of
 a newer version, the program warns. The program also reads the keywords
 in English (`Track`, `Instrument`, `Meter`, `Key`, `Pickup`,
 `percussion=`, `octave=`, `yes`), handy for those who write files by
 hand; when saving it always uses the Italian forms.
+
+### 2.23 Chords, grace notes, D.C./D.S., verses and title (ST 2.7)
+
+**More chords.** Besides the usual ones: `C7#5` (also `Caug7`), `C7b5`,
+`Cm11`, `Cm13`, `C69` (six-nine: in `C6/9` the slash would be the bass),
+`Cmaj7#11`, `C7#11`, `C9sus4`, `C7b13`, `Cadd11`, `Cmadd9`, `C7sus2`,
+`Csus` (= `Csus4`), `C13b9`.
+
+**More drums.** The rest of the General MIDI drum set: `triangle`,
+`triangle_mute`, `agogo_hi`, `agogo_low`, `guiro_short`, `guiro_long`,
+`whistle_short`, `whistle_long`, `cuica_mute`, `cuica_open`, `vibraslap`
+and `side_stick` (the same sound as `rimshot`).
+
+**Values and tempo.** `c'128` is a 128th note; the letter `D` makes
+duplets (`8D: c d`, two eighths in the time of three, as in 6/8). Tempo
+accepts decimals (`tempo=72.5`) and the counted note: `tempo=60'4.` is 60
+dotted quarters per minute; the score writes the metronome that way.
+
+**Grace notes.** `d'g c` is an acciaccatura (the D before the C), `d'G c`
+an appoggiatura; they also work on chords, blocks and drums (`snare'g
+snare` is a flam). They take no written time: they sound just before the
+note, which loses that much of its length.
+
+**New marks on notes.** `C$arp` (rolled chord), `c$staccatissimo`,
+`c$sfz` (sforzando), `c$fp` (forte-piano), `c$trem` (tremolo; on drums
+`snare$trem` is a roll), `c$harmonic` (harmonic).
+
+**Chord symbols without sound.** `$Am7` writes the symbol above the
+staff without playing it: handy for a lead sheet with only the melody
+(`$C c d e f $G7 g a b c`).
+
+**D.C., D.S., Coda and Fine.** They are written as signs: `$segno`,
+`$coda`, `$tocoda`, `$fine`, `$dc` (da capo), `$ds` (dal segno). They are
+played as a musician plays them; on the way back the repeats are played
+once, with the last ending:
+
+```
+4: c d e f | g a b c*5 $fine | e d c d | 4e $dc     // D.C. al Fine
+4: $segno c d e f | g a b c*5 $tocoda | 4e $ds $coda | 4c |   // D.S. al Coda
+```
+
+**More verses.** A lyric that starts with the verse number goes under the
+same music: `"Ma- ry had a lit- tle lamb"` and then
+`"2: Ev- ry where that Ma- ry went"`. The score writes one line per verse.
+
+**Title, authors, key changes, transposing instruments.** At the top of
+the `.st` file you can write `Titolo:` (or `Title:`), `Autore:`
+(`Composer:`) and `Parole:` (`Lyricist:`), which go into the score, and
+the key per bar like the tempo: `Tonalita: 1: C, 17: G`. In an instrument
+defined in the file, `trasposizione=-2` makes it transposing (B♭ trumpet:
+-2, E♭ alto sax: -9): you always write at sounding pitch and the score
+writes its part transposed. The saved file declares `ST: 2.7`.
 
 ## 3. Current State
 

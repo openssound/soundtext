@@ -1361,7 +1361,7 @@
  "Usa predefinito": "Use default",
  "Usa rilevamento automatico del SoundFont": "Use automatic SoundFont detection",
  "Valore di '{name}' fuori dall'intervallo {low}..{high}": "Value of '{name}' outside the range {low}..{high}",
- "Valore di nota non valido: dopo l'apostrofo va 1, 2, 4, 8, 16, 32 o 64 (es. c'8 croma, c'4. semiminima puntata, c'8T croma di terzina)": "Invalid note value: after the apostrophe put 1, 2, 4, 8, 16, 32 or 64 (e.g. c'8 eighth note, c'4. dotted quarter note, c'8T triplet eighth note)",
+ "Valore di nota non valido: dopo l'apostrofo va 1, 2, 4, 8, 16, 32, 64 o 128 (es. c'8 croma, c'4. semiminima puntata, c'8T croma di terzina)": "Invalid note value: after the apostrophe put 1, 2, 4, 8, 16, 32, 64 or 128 (e.g. c'8 eighth note, c'4. dotted quarter note, c'8T triplet eighth note)",
  "Valori predefiniti": "Default values",
  "Valzer (1 del 3/4, oom-pah-pah)": "Waltz (1 of 3/4, oom-pah-pah)",
  "Valzer (3/4)": "Waltz (3/4)",
@@ -1611,5 +1611,18 @@
  "Nome del file MIDI '&\"' non chiuso": "MIDI file name '&\"' not closed",
  "Libreria MIDI (&\"Nome\") — {midi_dir}": "MIDI library (&\"Name\") — {midi_dir}",
  "Anteprima/modifica (canale con piu' note, convertito in notazione testuale).\nRichiamabile in una traccia con &\"Nome\" (ricerca in tutte le sottocartelle) o\n&\"Sottocartella/Nome\" (percorso esplicito, per evitare ambiguita').\nCombinabile con ripetizione e trasposizione: 2&\"Nome\"+5.": "Preview/edit (channel with the most notes, converted to text notation).\nCan be recalled in a track with &\"Name\" (searched in all subfolders) or\n&\"Subfolder/Name\" (explicit path, to avoid ambiguity).\nCan be combined with repetition and transposition: 2&\"Name\"+5.",
- "Nome da usare per &\"Nome\" (senza estensione).\nPuoi includere una sottocartella, es. Blues/bass_line:": "Name to use for &\"Name\" (without extension).\nYou can include a subfolder, e.g. Blues/bass_line:"
+ "Nome da usare per &\"Nome\" (senza estensione).\nPuoi includere una sottocartella, es. Blues/bass_line:": "Name to use for &\"Name\" (without extension).\nYou can include a subfolder, e.g. Blues/bass_line:",
+ "$coda dopo il salto vuole un $tocoda da cui arrivarci": "$coda after the jump needs a $tocoda to get there from",
+ "$ds (dal segno) vuole un $segno prima": "$ds (dal segno) needs a $segno before it",
+ "$fine va fra il punto a cui si torna e il salto ($dc o $ds)": "$fine goes between the point you go back to and the jump ($dc or $ds)",
+ "$tocoda va fra il punto a cui si torna e il salto ($dc o $ds)": "$tocoda goes between the point you go back to and the jump ($dc or $ds)",
+ "$tocoda vuole un $coda dopo il salto ($dc o $ds)": "$tocoda needs a $coda after the jump ($dc or $ds)",
+ "Dopo il salto ($dc o $ds) la musica non si suona: metti la coda dopo $coda": "Music after the jump ($dc or $ds) is never played: put the coda after $coda",
+ "La legatura di valore (~) deve arrivare a una nota uguale, non a un abbellimento": "A tie (~) must reach the same note, not a grace note",
+ "Un abbellimento (d'g, d'G) non puo' avere una legatura di valore (~) ne' una forcella": "A grace note (d'g, d'G) cannot have a tie (~) or a hairpin",
+ "Un abbellimento (d'g, d'G) va su una nota, un accordo, un blocco o una percussione": "A grace note (d'g, d'G) goes on a note, a chord, a block or a drum",
+ "Un abbellimento (d'g, d'G) va subito prima della sua nota": "A grace note (d'g, d'G) goes right before its note",
+ "Un abbellimento (d'g, d'G) va subito prima della sua nota, non di una pausa": "A grace note (d'g, d'G) goes right before its note, not before a rest",
+ "Un salto finisce a $fine oppure va a $coda, non tutti e due": "A jump ends at $fine or goes to $coda, not both",
+ "Un solo salto per testo: $dc oppure $ds": "Only one jump per text: $dc or $ds"
 }
