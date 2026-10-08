@@ -334,7 +334,7 @@ disponibili, altrimenti l'inglese).
    si apre l'editor a destra.
 3. Scrivi la notazione, es.:
    ```
-   16: 100@ c*4 e*4 g*4 e*4 Cmaj7 [kick hihat]
+   16: 100@ c*4 e*4 g*4 e*4 Cmaj7
    ```
    La validazione sintattica appare sotto l'editor in tempo reale.
 4. Usa Solo/Mute/Volume/Pan sulla striscia della traccia per il mixaggio.
