@@ -23,17 +23,19 @@ BAD = "#e05555"
 WARN = "#e0a030"   # avvisi che non bloccano (es. controlli di battuta)
 
 _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_PANEL,
-             BG_FIELD=BG_FIELD, BG_HOVER=BG_HOVER, BORDER=BORDER, TEXT=TEXT, TEXT_DIM=TEXT_DIM)
+             BG_FIELD=BG_FIELD, BG_HOVER=BG_HOVER, BORDER=BORDER, TEXT=TEXT, TEXT_DIM=TEXT_DIM,
+             LINK=ACCENT)
 
 # ACCENT resta lo stesso blu in entrambi i temi: e' abbastanza chiaro da
 # restare leggibile come bordo/handle/sfondo di stato "attivo" (col testo
 # scuro fisso usato da QPushButton:checkable:checked) sia su sfondo scuro
 # che chiaro. Cio' che cambia davvero fra i due temi sono i neutri
 # (sfondi/bordi/testo) e ACCENT_DIM (sfondo di hover/selezione, che deve
-# restare in contrasto col TEXT del tema).
+# restare in contrasto col TEXT del tema). LINK (i link della guida e dei
+# QTextBrowser) invece cambia: ACCENT su bianco come testo si legge poco.
 _LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#cfe3f5", BG_BASE="#f5f5f5", BG_PANEL="#ffffff",
               BG_FIELD="#ffffff", BG_HOVER="#e8f0f8", BORDER="#d3d3d6", TEXT="#1c1c1e",
-              TEXT_DIM="#6b6b6f")
+              TEXT_DIM="#6b6b6f", LINK="#1d5f99")
 
 
 # Stato del tema attivo, usato dai widget che si disegnano con un
@@ -409,7 +411,8 @@ def palette_for(theme_name: str):
                       (QPalette.Text, "TEXT"), (QPalette.Button, "BG_FIELD"),
                       (QPalette.ButtonText, "TEXT"), (QPalette.ToolTipBase, "BG_PANEL"),
                       (QPalette.ToolTipText, "TEXT"), (QPalette.PlaceholderText, "TEXT_DIM"),
-                      (QPalette.Highlight, "ACCENT"), (QPalette.Mid, "BORDER")):
+                      (QPalette.Highlight, "ACCENT"), (QPalette.Mid, "BORDER"),
+                      (QPalette.Link, "LINK"), (QPalette.LinkVisited, "LINK")):
         pal.setColor(role, QColor(p[key]))
     pal.setColor(QPalette.HighlightedText, QColor("#10151a"))
     for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
