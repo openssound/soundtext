@@ -295,7 +295,7 @@ SoundFont) in the **Help → User guide** menu inside the app, or in
 
 ## Starting the app
 
-On Linux/macOS the `run.sh` script creates the `venv/` virtualenv at the
+On Linux/macOS, and on Windows from Git Bash, the `run.sh` script creates the `venv/` virtualenv at the
 first start with the dependencies of `requirements.txt` (it updates them
 when the file changes) and starts the app; it accepts the same arguments as
 `main.py`:

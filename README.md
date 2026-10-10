@@ -304,7 +304,7 @@ SoundFont) nel menu **Aiuto → Guida utente** dentro l'app, o in
 
 ## Avvio
 
-Su Linux/macOS lo script `run.sh` crea al primo avvio il virtualenv `venv/`
+Su Linux/macOS, e su Windows da Git Bash, lo script `run.sh` crea al primo avvio il virtualenv `venv/`
 con le dipendenze di `requirements.txt` (le aggiorna quando il file cambia)
 e avvia l'app; accetta gli stessi argomenti di `main.py`:
 

@@ -7,7 +7,9 @@ mido>=1.3
 # backend di mido per le tastiere MIDI esterne ("Suona con la tastiera"): facoltativo
 python-rtmidi>=1.5
 sounddevice>=0.4
-numpy>=1.24,<2
+# numpy 1.x non esiste per Python 3.13 e successivi: li' serve numpy 2
+numpy>=1.24,<2; python_version < "3.13"
+numpy>=2.1; python_version >= "3.13"
 # su CPU senza AVX install.sh e run.sh aggiungono "pedalboard<0.9.17"
 # (dalla 0.9.17 i wheel richiedono AVX e l'import va in SIGILL)
 pedalboard>=0.9

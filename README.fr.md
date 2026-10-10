@@ -322,7 +322,7 @@ ou dans `docs/HELP.fr.md`.
 
 ## Démarrage
 
-Sous Linux/macOS le script `run.sh` crée au premier démarrage le
+Sous Linux/macOS, et sous Windows depuis Git Bash, le script `run.sh` crée au premier démarrage le
 virtualenv `venv/` avec les dépendances de `requirements.txt` (il les met à
 jour quand le fichier change) et lance l'application ; il accepte les mêmes
 arguments que `main.py` :
