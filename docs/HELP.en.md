@@ -2015,8 +2015,12 @@ plugin is marked as **"not responding"** until the next start of the app.
 An effect that does not work lets the sound through unchanged. A track
 whose plugin instrument does not work plays with the SoundFont, and the
 reason goes into the log file (Help). Some plugins simply cannot be loaded:
-in the list they appear greyed out, with the reason next to them (for
-example "not responding", or a plugin that only accepts mono audio).
+in the list they appear greyed out, with the reason next to them: hover
+over the name to read it (for example "not responding", or a plugin that
+only accepts mono audio). A plugin that did not respond or closed during
+the first search (it happens with large plugins, like Surge XT, on a slow
+computer) is tried again by itself at the next search; for the other
+errors use **Refresh list**.
 
 **Limitations**:
 - plugin instruments play in song playback, in the Effects panel loop and

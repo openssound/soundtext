@@ -24,6 +24,7 @@ from core import score_render
 from core.i18n import tr
 from core.musicxml_export import project_to_musicxml
 from core.notation import validate_track_text
+from .file_dialogs import file_dialog_options
 
 # Larghezza in pixel di una pagina a zoom 100%.
 PAGE_PIXELS = 794
@@ -270,7 +271,7 @@ class ScoreDialog(QDialog):
             return
         default = self.host._default_export_path(".pdf") if hasattr(self.host, "_default_export_path") else ""
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta partitura (PDF)"), default, tr("PDF (*.pdf)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         if not path.lower().endswith(".pdf"):

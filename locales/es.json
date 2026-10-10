@@ -1629,5 +1629,10 @@
  "Sostieni SoundText...": "Apoyar SoundText...",
  "SoundText e' gratuito e libero: se ti e' utile puoi sostenerne lo sviluppo (si apre la pagina nel browser).": "SoundText es gratuito y libre: si te resulta útil puedes apoyar su desarrollo (se abre la página en el navegador).",
  "Sostieni SoundText": "Apoyar SoundText",
- "Puoi sostenere SoundText da questa pagina:\n{url}": "Puedes apoyar SoundText desde esta página:\n{url}"
+ "Puoi sostenere SoundText da questa pagina:\n{url}": "Puedes apoyar SoundText desde esta página:\n{url}",
+ "Windows non carica {name}: {error}": "Windows no carga {name}: {error}",
+ "il plugin e' per {arch}, SoundText e' per {expected}": "el plugin es para {arch}, SoundText es para {expected}",
+ "il plugin non ha la versione per questo Windows ({expected}); dentro ci sono: {present}": "el plugin no tiene la versión para este Windows ({expected}); contiene: {present}",
+ "nessuna": "ninguna",
+ "{name} non e' un plugin VST3 (manca GetPluginFactory)": "{name} no es un plugin VST3 (falta GetPluginFactory)"
 }

@@ -16,6 +16,7 @@ from core.instruments import (
     GM_DRUM_KITS, sorted_instrument_names,
 )
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 VOICING_STYLES = ["spread", "root_only", "root_fifth", "monophonic"]
 
@@ -404,7 +405,7 @@ class InstrumentManagerDialog(QDialog):
         from core.project_io import ensure_soundfonts_dir
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli SoundFont per '{name}'", name=name), ensure_soundfonts_dir(),
                                               tr("SoundFont (*.sf2)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         app_settings.set_instrument_soundfont(name, path)

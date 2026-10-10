@@ -2103,8 +2103,11 @@ arranque de la aplicación. Un efecto que no funciona deja pasar el sonido
 sin cambios. Una pista cuyo instrumento plugin no funciona suena con el
 SoundFont, y el motivo queda en el archivo de registro (Ayuda). Algunos
 plugins no se pueden cargar de ninguna forma: en la lista aparecen en gris,
-con el motivo al lado (por ejemplo «no responde», o un plugin que solo
-acepta audio mono).
+con el motivo al lado: pasa el ratón por el nombre para leerlo (por
+ejemplo «no responde», o un plugin que solo acepta audio mono). Un plugin
+que no respondió o se cerró en la primera búsqueda (pasa con plugins
+grandes, como Surge XT, en un ordenador lento) se vuelve a probar solo en
+la búsqueda siguiente; para los demás errores usa **Actualizar lista**.
 
 **Límites**:
 - los instrumentos plugin suenan en la escucha de la canción, en el bucle

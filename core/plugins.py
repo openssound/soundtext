@@ -48,9 +48,10 @@ from .i18n import tr
 log = logging.getLogger(__name__)
 
 # Caricare un plugin grande puo' richiedere decine di secondi (Surge XT:
-# circa 20 fra caricamento ed elenco dei suoi 600 parametri): il tempo
-# massimo deve starci largo, anche se un plugin bloccato si scopre piu' tardi.
-DESCRIBE_TIMEOUT = 60.0
+# circa 20 su Linux fra caricamento ed elenco dei suoi 600 parametri, oltre
+# 80 su Windows con la versione da 775): il tempo massimo deve starci largo,
+# anche se un plugin bloccato si scopre piu' tardi.
+DESCRIBE_TIMEOUT = 180.0
 UI_TIMEOUT = 15.0
 EDITOR_TIMEOUT = 24 * 3600.0
 
@@ -227,9 +228,10 @@ def vst3_dirs() -> List[str]:
     """Le cartelle in cui cercare i VST3: quelle standard del sistema e
     quelle aggiunte in Opzioni."""
     from .settings import get_plugin_dirs
-    out = []
+    out, seen = [], set()
     for d in default_vst3_dirs() + get_plugin_dirs():
-        if d and d not in out:
+        if d and _same_path_key(d) not in seen:
+            seen.add(_same_path_key(d))
             out.append(d)
     return out
 
@@ -248,7 +250,17 @@ def find_vst3_bundles(dirs: Optional[List[str]] = None) -> List[str]:
             path = os.path.join(d, name)
             if name.lower().endswith(".vst3") and os.path.isfile(path):
                 found.append(path)
-    return sorted(set(found))
+    # la stessa cartella scritta in due modi (C:/... e C:\..., maiuscole
+    # diverse, cartella aggiunta a mano che e' gia' fra quelle di sistema)
+    # darebbe lo stesso plugin due volte
+    unique = {}
+    for path in found:
+        unique.setdefault(_same_path_key(path), os.path.normpath(path))
+    return sorted(unique.values())
+
+
+def _same_path_key(path: str) -> str:
+    return os.path.normcase(os.path.normpath(os.path.abspath(path)))
 
 
 @dataclass
@@ -365,12 +377,27 @@ def _describe_bundle(bundle: str) -> List[dict]:
     return out
 
 
+def _should_retry(entry: dict, refresh: bool) -> bool:
+    """Un bundle gia' descritto si ricarica comunque se non si era potuto
+    usare: sempre se si era bloccato o chiuso (un caso, per esempio un
+    primo caricamento lento), e a ogni «Cerca di nuovo» per gli altri
+    errori, che magari nel frattempo l'utente ha risolto."""
+    problems = [d.get("problem") for d in (entry.get("infos") or [entry.get("info") or {}])
+                if d.get("problem") and d.get("name") not in MULTI_OUTPUT_ALTERNATIVES]
+    if not problems:
+        return False
+    transient = (tr("il plugin non risponde"), tr("il plugin si e' chiuso in modo anomalo"),
+                 tr("il processo dei plugin si e' chiuso"))
+    return refresh or any(p in transient for p in problems)
+
+
 def scan_plugins(refresh: bool = False, progress: Optional[Callable[[str], None]] = None) -> List[PluginInfo]:
     """Tutti i plugin trovati, VST3 e LV2, ordinati per nome. I VST3 vanno
     caricati una volta per sapere cosa sono (effetto o strumento): il
     risultato si ricorda (plugins_cache.json nella cartella delle
     impostazioni) finche' il file del plugin non cambia. 'refresh' rifa'
-    la ricerca da capo (ma non ricarica i VST3 gia' noti e invariati)."""
+    la ricerca da capo (ma non ricarica i VST3 gia' noti e invariati,
+    salvo quelli che non si erano potuti usare: vedi _should_retry)."""
     global _scan_result
     with _scan_lock:
         if _scan_result is not None and not refresh:
@@ -385,7 +412,7 @@ def scan_plugins(refresh: bool = False, progress: Optional[Callable[[str], None]
         for bundle in find_vst3_bundles():
             stamp = _bundle_stamp(bundle)
             entry = cache.get(bundle)
-            if not entry or entry.get("mtime") != stamp:
+            if not entry or entry.get("mtime") != stamp or _should_retry(entry, refresh):
                 if progress:
                     progress(os.path.basename(bundle))
                 entry = {"mtime": stamp, "infos": _describe_bundle(bundle)}

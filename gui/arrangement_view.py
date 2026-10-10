@@ -63,6 +63,7 @@ from .theme import ACCENT, BORDER, TEXT_DIM, get_active_theme
 from .track_header import TrackHeaderWidget, make_add_track_button, refresh_add_track_icon
 from .track_widget import AUDIO_TRACK_COLOR, _family_color
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 PX_PER_BEAT = 24   # scala orizzontale corrente: cambia con lo zoom (vedi ArrangementView.set_zoom)
 DEFAULT_PX_PER_BEAT = 24
@@ -1688,7 +1689,7 @@ class ArrangementView(QWidget):
     def _pick_audio_file(self, title: str):
         patterns = " ".join(f"*{ext}" for ext in audio_tracks.AUDIO_FILE_EXTENSIONS)
         path, _ = QFileDialog.getOpenFileName(self, title, "", tr("Audio ({patterns});;Tutti i file (*)", patterns=patterns),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         return path or None
 
     def _import_audio_file(self, src_path: str):
@@ -1841,7 +1842,7 @@ class ArrangementView(QWidget):
     def _export_clip(self, clip: Clip):
         suggested = f"{clip.name.replace(' ', '_')}.box"
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta box"), f"{ensure_songs_dir()}/{suggested}",
-                                               tr("Box (*.box)"), options=QFileDialog.Option.DontUseNativeDialog)
+                                               tr("Box (*.box)"), options=file_dialog_options())
         if not path:
             return
         try:
@@ -1852,7 +1853,7 @@ class ArrangementView(QWidget):
 
     def _import_clip(self, track_name: str, beat: float):
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa box"), ensure_songs_dir(), tr("Box (*.box)"),
-                                               options=QFileDialog.Option.DontUseNativeDialog)
+                                               options=file_dialog_options())
         if not path:
             return
         try:

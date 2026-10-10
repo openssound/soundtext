@@ -11,6 +11,7 @@ from core import midi_convert, midi_library
 from core.instruments import get_instrument, list_instrument_names
 from core.playback import PlaybackEngine
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 
 class MidiLibraryDialog(QDialog):
@@ -140,7 +141,7 @@ class MidiLibraryDialog(QDialog):
 
     def _import_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa MIDI nella libreria"), "", tr("MIDI (*.mid *.midi)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         dest_name, ok = QInputDialog.getText(

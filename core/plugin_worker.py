@@ -48,6 +48,81 @@ from core.i18n import tr
 HIDDEN_VST3_PARAMS = {"buffer_size_frames", "sample_rate_frames"}
 
 
+# Architetture dei VST3 per Windows: cartella dentro il bundle
+# (Contents/<cartella>/) e codice "Machine" dell'intestazione PE della DLL.
+_WIN_ARCH_DIRS = {"AMD64": ("x86_64-win", "arm64ec-win"), "ARM64": ("arm64-win", "arm64ec-win", "x86_64-win"),
+                  "x86": ("x86-win",)}
+_PE_MACHINES = {0x8664: "x64", 0x014C: "x86 (32 bit)", 0xAA64: "ARM64", 0xA641: "ARM64EC"}
+
+
+def pe_machine(path: str) -> str:
+    """L'architettura di una DLL Windows (dall'intestazione PE), o ''."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4096)
+        offset = struct.unpack_from("<I", head, 0x3C)[0]
+        if head[:2] != b"MZ" or head[offset:offset + 4] != b"PE\0\0":
+            return ""
+        return _PE_MACHINES.get(struct.unpack_from("<H", head, offset + 4)[0], "")
+    except (OSError, struct.error):
+        return ""
+
+
+def vst3_binary(bundle: str, machine: str):
+    """(DLL da caricare, cartelle di architettura presenti) di un VST3 per
+    Windows: il file stesso se e' un VST3 "a file singolo", altrimenti
+    quella in Contents/<arch>-win/ adatta a questa macchina (None se manca)."""
+    if os.path.isfile(bundle):
+        return bundle, []
+    contents = os.path.join(bundle, "Contents")
+    present = sorted(d for d in (os.listdir(contents) if os.path.isdir(contents) else [])
+                     if d.lower().endswith("-win"))
+    for arch in _WIN_ARCH_DIRS.get(machine, ("x86_64-win",)):
+        folder = os.path.join(contents, arch)
+        if os.path.isdir(folder):
+            for name in sorted(os.listdir(folder)):
+                if name.lower().endswith(".vst3"):
+                    return os.path.join(folder, name), present
+    return None, present
+
+
+def _windows_machine() -> str:
+    """L'architettura per cui gira questo Python: "AMD64", "ARM64" o "x86"."""
+    import platform
+    if struct.calcsize("P") == 4:
+        return "x86"
+    return {"amd64": "AMD64", "x86_64": "AMD64", "arm64": "ARM64", "aarch64": "ARM64"}.get(
+        platform.machine().lower(), "AMD64")
+
+
+def windows_load_diagnosis(bundle: str) -> str:
+    """Perche' Windows non carica il VST3, quando pedalboard dice solo
+    "unsupported plugin format or scan failure": la versione per questa
+    architettura manca, la DLL e' di un'altra architettura, le manca una
+    DLL di cui ha bisogno, o non esporta GetPluginFactory. '' se non si
+    trova niente di preciso."""
+    machine = _windows_machine()
+    binary, present = vst3_binary(bundle, machine)
+    expected = {"AMD64": "x64", "ARM64": "ARM64", "x86": "x86 (32 bit)"}[machine]
+    if binary is None:
+        return tr("il plugin non ha la versione per questo Windows ({expected}); dentro ci sono: {present}",
+                  expected=expected, present=", ".join(present) or tr("nessuna"))
+    arch = pe_machine(binary)
+    if arch and arch != expected and not (machine == "ARM64" and arch in ("ARM64EC", "x64")):
+        return tr("il plugin e' per {arch}, SoundText e' per {expected}", arch=arch, expected=expected)
+    if sys.platform != "win32":
+        return ""
+    import ctypes
+    try:
+        dll = ctypes.WinDLL(binary)
+    except OSError as e:
+        return tr("Windows non carica {name}: {error}", name=os.path.basename(binary),
+                  error=(e.strerror or str(e)).strip())
+    if not hasattr(dll, "GetPluginFactory"):
+        return tr("{name} non e' un plugin VST3 (manca GetPluginFactory)", name=os.path.basename(binary))
+    return ""
+
+
 def parse_ref(ref: str):
     """'vst3:/percorso/X.vst3' o 'vst3:/percorso/X.vst3|Nome' (bundle con piu'
     plugin), 'lv2:uri' -> (formato, percorso o uri, nome o None)."""
@@ -56,6 +131,17 @@ def parse_ref(ref: str):
         path, _, name = rest.partition("|")
         return fmt, path, name or None
     return fmt, rest, None
+
+
+def _vst3_binary(path: str) -> str:
+    """Su Windows pedalboard non riesce a leggere un VST3 dato come cartella
+    bundle ("unsupported plugin format or scan failure", es. Surge XT, sfizz):
+    gli si passa la DLL dentro Contents/<arch>-win adatta a questa macchina
+    (vedi vst3_binary). Altrove il bundle va bene."""
+    if sys.platform != "win32" or not os.path.isdir(path):
+        return path
+    binary, _present = vst3_binary(path, _windows_machine())
+    return binary or path
 
 
 def _wasapi_output_device():
@@ -133,7 +219,16 @@ class _Worker:
         _fmt, path, name = parse_ref(ref)
         if not os.path.exists(path):
             raise RuntimeError(tr("plugin non trovato: {path}", path=path))
-        return pedalboard.VST3Plugin(path, plugin_name=name) if name else pedalboard.VST3Plugin(path)
+        binary = _vst3_binary(path)
+        try:
+            return pedalboard.VST3Plugin(binary, plugin_name=name) if name else pedalboard.VST3Plugin(binary)
+        except Exception as e:
+            # su Windows il messaggio di JUCE non dice perche': lo si cerca
+            if sys.platform == "win32" and "Unable to scan plugin" in str(e):
+                reason = windows_load_diagnosis(path)
+                if reason:
+                    raise RuntimeError(f"{e} — {reason}") from e
+            raise
 
     def instance(self, ref: str, rate: int):
         key = (ref, int(rate))
@@ -201,20 +296,31 @@ class _Worker:
         for key, p in inst.parameters.items():
             if key in HIDDEN_VST3_PARAMS:
                 continue
-            entry = {"key": key, "label": p.name, "minimum": 0.0, "maximum": 1.0,
-                     "default": float(p.raw_value), "raw": True, "text": p.string_value,
-                     "units": p.units or "", "toggled": False, "integer": False, "logarithmic": False,
-                     "choices": []}
-            values = getattr(p, "valid_values", None)
-            if values and 1 < len(values) <= 64 and all(isinstance(v, str) for v in values):
-                steps = len(values) - 1
-                entry["choices"] = [(i / steps, str(v)) for i, v in enumerate(values)]
-            elif getattr(p, "type", None) is bool:
-                entry["toggled"] = True
+            # un parametro che non si lascia leggere si salta: il plugin resta usabile
+            try:
+                entry = {"key": key, "label": p.name, "minimum": 0.0, "maximum": 1.0,
+                         "default": float(p.raw_value), "raw": True, "text": p.string_value,
+                         "units": p.units or "", "toggled": False, "integer": False, "logarithmic": False,
+                         "choices": []}
+            except Exception:
+                continue
+            try:
+                values = getattr(p, "valid_values", None)
+                if values and 1 < len(values) <= 64 and all(isinstance(v, str) for v in values):
+                    steps = len(values) - 1
+                    entry["choices"] = [(i / steps, str(v)) for i, v in enumerate(values)]
+                elif getattr(p, "type", None) is bool:
+                    entry["toggled"] = True
+            except Exception:
+                pass
             params.append(entry)
+        try:
+            state = base64.b64encode(inst.raw_state).decode("ascii")
+        except Exception:
+            state = ""          # senza stato iniziale si usa lo stesso
         return {"ref": ref, "format": "vst3", "name": inst.name, "vendor": inst.manufacturer_name or "",
                 "category": inst.category or "", "instrument": bool(inst.is_instrument),
-                "params": params, "state": base64.b64encode(inst.raw_state).decode("ascii"), "problem": ""}
+                "params": params, "state": state, "problem": ""}
 
     def strings(self, ref: str, params: dict, state: str) -> dict:
         if parse_ref(ref)[0] != "vst3":

@@ -24,6 +24,7 @@ from .rhythm_generate_dialog import (
 )
 from .theme import GOOD, BAD, WARN
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 
 class MixerMixin:
@@ -711,7 +712,7 @@ class MixerMixin:
         suggested = os.path.join(os.path.dirname(self._default_export_path(".mid")),
                                  f"{track.name.replace(' ', '_')}.mid")
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta MIDI della traccia"), suggested, tr("MIDI (*.mid)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         try:
@@ -734,7 +735,7 @@ class MixerMixin:
         (tokens_text, guessed_instrument, newly_created) o None se l'utente
         ha annullato o non c'e' nulla da importare."""
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa MIDI"), "", tr("MIDI (*.mid *.midi)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return None
         try:

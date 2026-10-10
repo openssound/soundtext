@@ -12,6 +12,7 @@ from core.tempo_map import (
     seconds_for_beats, value_at_beat,
 )
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 TEXT_DIM_INVERT_BG = "#e8c96d"  # colore di sfondo per il token in esecuzione durante la riproduzione
 
@@ -451,7 +452,7 @@ class PlaybackMixin:
         from core.project_io import ensure_soundfonts_dir
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli file SoundFont"), ensure_soundfonts_dir(),
                                               tr("SoundFont (*.sf2)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         app_settings.set_soundfont_path(path)

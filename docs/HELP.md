@@ -2058,8 +2058,11 @@ avvio dell'app. Un effetto che non funziona lascia passare il suono
 invariato. Una traccia il cui strumento plugin non funziona suona con il
 SoundFont, e il motivo finisce nel file di log (Aiuto). Alcuni plugin non
 si possono proprio caricare: nell'elenco compaiono in grigio, con il
-motivo accanto (per esempio "non risponde", o un plugin che accetta solo
-audio mono).
+motivo accanto: passa il mouse sul nome per leggerlo (per esempio "non
+risponde", o un plugin che accetta solo audio mono). Un plugin che non ha
+risposto o si e' chiuso alla prima ricerca (succede con plugin grandi,
+come Surge XT, su un computer lento) si riprova da solo alla ricerca
+seguente; per gli altri errori usa **Aggiorna elenco**.
 
 **Limiti**:
 - gli strumenti plugin suonano nell'ascolto del brano, nel loop del

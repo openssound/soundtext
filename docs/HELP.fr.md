@@ -2149,8 +2149,12 @@ fonctionne pas laisse passer le son inchangé. Une piste dont l'instrument
 plugin ne fonctionne pas joue avec le SoundFont, et la raison est notée
 dans le fichier journal (Aide). Certains plugins ne peuvent pas du tout
 être chargés : dans la liste ils apparaissent en gris, avec la raison à
-côté (par exemple « ne répond pas », ou un plugin qui n'accepte que de
-l'audio mono).
+côté : passez la souris sur le nom pour la lire (par exemple « ne répond
+pas », ou un plugin qui n'accepte que de l'audio mono). Un plugin qui n'a
+pas répondu ou s'est fermé lors de la première recherche (cela arrive avec
+de gros plugins, comme Surge XT, sur un ordinateur lent) est réessayé tout
+seul à la recherche suivante ; pour les autres erreurs utilisez
+**Actualiser la liste**.
 
 **Limites** :
 - les instruments plugins jouent à l'écoute du morceau, dans la boucle du

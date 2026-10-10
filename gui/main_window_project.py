@@ -33,6 +33,7 @@ from .help_dialog import HelpDialog
 from .about_dialog import AboutDialog
 from .worker import Worker
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 
 class ProjectMixin:
@@ -173,7 +174,7 @@ class ProjectMixin:
             return
         path, _ = QFileDialog.getOpenFileName(self, tr("Apri progetto"), ensure_songs_dir(),
                                               tr("Progetti (*.st *.txt)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         try:
@@ -242,7 +243,7 @@ class ProjectMixin:
     def save_project_as(self):
         path, _ = QFileDialog.getSaveFileName(self, tr("Salva progetto come"), self._default_export_path(".st"),
                                                 tr("Progetto (*.st)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         try:
@@ -276,7 +277,7 @@ class ProjectMixin:
         if not self._confirm_discard_unsaved():
             return
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa MIDI"), "", tr("MIDI (*.mid *.midi)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         try:
@@ -292,7 +293,7 @@ class ProjectMixin:
             return
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa MusicXML"), "",
                                               tr("MusicXML (*.musicxml *.mxl *.xml)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         try:
@@ -319,7 +320,7 @@ class ProjectMixin:
         if not self._confirm_discard_unsaved():
             return
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa ABC"), "", tr("ABC (*.abc)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         try:
@@ -346,7 +347,7 @@ class ProjectMixin:
         if not self._confirm_discard_unsaved():
             return
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa MTXT"), "", tr("MTXT (*.mtxt)"),
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if not path:
             return
         try:
@@ -436,7 +437,7 @@ class ProjectMixin:
         if not self._check_tracks_syntax():
             return
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta MIDI"), self._default_export_path(".mid"), tr("MIDI (*.mid)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         try:
@@ -459,7 +460,7 @@ class ProjectMixin:
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta partitura (MusicXML)"),
                                                 self._default_export_path(".musicxml"),
                                                 tr("MusicXML (*.musicxml *.xml)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         if not os.path.splitext(path)[1]:
@@ -478,7 +479,7 @@ class ProjectMixin:
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta partitura (ABC)"),
                                                 self._default_export_path(".abc"),
                                                 tr("ABC (*.abc)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         if not os.path.splitext(path)[1]:
@@ -496,7 +497,7 @@ class ProjectMixin:
             return
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta MTXT"), self._default_export_path(".mtxt"),
                                                 tr("MTXT (*.mtxt)"),
-                                                options=QFileDialog.Option.DontUseNativeDialog)
+                                                options=file_dialog_options())
         if not path:
             return
         if not os.path.splitext(path)[1]:
@@ -542,7 +543,7 @@ class ProjectMixin:
             QMessageBox.information(self, tr("Partitura"), tr("Nessuna traccia con note da mettere in partitura."))
             return
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta partitura (PDF)"), self._default_export_path(".pdf"),
-                                              tr("PDF (*.pdf)"), options=QFileDialog.Option.DontUseNativeDialog)
+                                              tr("PDF (*.pdf)"), options=file_dialog_options())
         if not path:
             return
         if not path.lower().endswith(".pdf"):
@@ -587,7 +588,7 @@ class ProjectMixin:
         le tracce udibili (tracks=None) o solo tracks (asciutte con 'dry')."""
         from core.playback import render_project_mix_to_wav
         path, _ = QFileDialog.getSaveFileName(self, title, default_path,
-                                                tr("WAV (*.wav)"), options=QFileDialog.Option.DontUseNativeDialog)
+                                                tr("WAV (*.wav)"), options=file_dialog_options())
         if not path:
             return
         if not path.lower().endswith(".wav"):

@@ -397,3 +397,95 @@ def test_vst3_instrument_from_the_test_folder(monkeypatch):
     events = [(0.1, bytes([0x90, 60, 100])), (0.6, bytes([0x80, 60, 0]))]
     y = plugins.render_events(synths[0].ref, {}, "", events, 1.0, RATE)
     assert y.shape == (RATE, 2) and _rms(y[int(0.15 * RATE):int(0.55 * RATE)]) > 1e-3
+
+
+# ------------------------------------------------------------------ ricerca: plugin che non si erano potuti usare
+
+def _fake_scan(monkeypatch, tmp_path, results):
+    """scan_plugins con un bundle finto: 'results' sono le descrizioni che
+    si danno a ogni caricamento, una per volta."""
+    bundle = str(tmp_path / "Surge XT Effects.vst3")
+    os.makedirs(bundle)
+    calls = []
+
+    def describe(path):
+        calls.append(path)
+        return [results[min(len(calls), len(results)) - 1]]
+    monkeypatch.setattr(plugins, "find_vst3_bundles", lambda dirs=None: [bundle])
+    monkeypatch.setattr(plugins, "_describe_bundle", describe)
+    monkeypatch.setattr(plugins, "_hosts", {**plugins._hosts, "ui": type("NoLv2", (), {
+        "call": staticmethod(lambda request, timeout: [])})()})
+    monkeypatch.setattr(plugins, "_scan_cache_path", lambda: str(tmp_path / "cache.json"))
+    plugins.forget_scan()
+    return calls
+
+
+def _effect(problem=""):
+    return {"ref": "vst3:x", "format": "vst3", "name": "Surge XT Effects", "vendor": "Surge Synth Team",
+            "category": "Fx", "instrument": False, "problem": problem}
+
+
+def test_a_plugin_that_did_not_answer_is_tried_again(monkeypatch, tmp_path):
+    calls = _fake_scan(monkeypatch, tmp_path, [_effect("il plugin non risponde"), _effect()])
+    assert not plugins.scan_plugins()[0].usable
+    plugins.forget_scan()
+    assert plugins.scan_plugins()[0].usable           # riprovato da solo alla ricerca dopo
+    plugins.forget_scan()
+    plugins.scan_plugins()
+    assert len(calls) == 2                            # una volta usabile, resta in memoria
+    plugins.forget_scan()
+
+
+def test_search_again_retries_plugins_with_an_error(monkeypatch, tmp_path):
+    calls = _fake_scan(monkeypatch, tmp_path, [_effect("errore del plugin"), _effect()])
+    assert not plugins.scan_plugins()[0].usable
+    plugins.forget_scan()
+    assert not plugins.scan_plugins()[0].usable       # un errore normale non si ritenta da solo...
+    assert plugins.scan_plugins(refresh=True)[0].usable   # ...ma con «Cerca di nuovo» si'
+    assert len(calls) == 2
+    plugins.forget_scan()
+
+
+# ------------------------------------------------------------------ Windows: perche' un VST3 non si carica
+
+def _pe(path, machine):
+    """Una finta DLL: intestazione MZ, offset del PE a 0x3C, firma e Machine."""
+    data = bytearray(512)
+    data[0:2] = b"MZ"
+    data[0x3C:0x40] = (0x80).to_bytes(4, "little")
+    data[0x80:0x84] = b"PE\0\0"
+    data[0x84:0x86] = machine.to_bytes(2, "little")
+    with open(path, "wb") as f:
+        f.write(bytes(data))
+
+
+def test_pe_machine_and_bundle_binary(tmp_path):
+    from core.plugin_worker import pe_machine, vst3_binary
+    bundle = tmp_path / "Surge XT Effects.vst3"
+    (bundle / "Contents" / "x86_64-win").mkdir(parents=True)
+    dll = bundle / "Contents" / "x86_64-win" / "Surge XT Effects.vst3"
+    _pe(dll, 0x8664)
+    assert pe_machine(str(dll)) == "x64"
+    assert vst3_binary(str(bundle), "AMD64") == (str(dll), ["x86_64-win"])
+    assert vst3_binary(str(bundle), "x86")[0] is None
+
+
+def test_windows_diagnosis_names_the_architecture(tmp_path, monkeypatch):
+    import platform
+    from core import plugin_worker
+    monkeypatch.setattr(platform, "machine", lambda: "AMD64")
+    only_arm = tmp_path / "Solo ARM.vst3"
+    (only_arm / "Contents" / "arm64-win").mkdir(parents=True)
+    _pe(only_arm / "Contents" / "arm64-win" / "Solo ARM.vst3", 0xAA64)
+    assert "arm64-win" in plugin_worker.windows_load_diagnosis(str(only_arm))
+    old32 = tmp_path / "Vecchio.vst3"
+    _pe(old32, 0x014C)                                     # VST3 "a file singolo" a 32 bit
+    assert "32 bit" in plugin_worker.windows_load_diagnosis(str(old32))
+
+
+def test_same_folder_written_twice_gives_each_plugin_once(tmp_path):
+    (tmp_path / "Surge Synth Team" / "Surge XT.vst3").mkdir(parents=True)
+    (tmp_path / "Surge Synth Team" / "Surge XT Effects.vst3").mkdir(parents=True)
+    twice = [str(tmp_path), str(tmp_path) + os.sep, os.path.join(str(tmp_path), "Surge Synth Team", "..")]
+    found = plugins.find_vst3_bundles(twice)
+    assert [os.path.basename(p) for p in found] == ["Surge XT Effects.vst3", "Surge XT.vst3"]

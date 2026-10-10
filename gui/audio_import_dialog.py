@@ -33,6 +33,7 @@ from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
 from core.i18n import tr
+from .file_dialogs import file_dialog_options
 
 
 def _min_freq_hz_for_instrument(instr) -> float:
@@ -396,7 +397,7 @@ class AudioImportDialog(QDialog):
 
     def _browse_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli file audio"), "", AUDIO_FILE_FILTER,
-                                              options=QFileDialog.Option.DontUseNativeDialog)
+                                              options=file_dialog_options())
         if path:
             self._set_source(path)
 
