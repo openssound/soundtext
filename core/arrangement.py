@@ -10,7 +10,6 @@ leggibile a mano del formato .st (core.project_io), ma a blocco singolo.
 
 import bisect
 import itertools
-import math
 import re
 from fractions import Fraction
 from typing import Dict, List, Optional, Tuple
@@ -112,7 +111,7 @@ def split_text_into_box_segments(text: str, patterns: Dict[str, Pattern], defaul
     ]
     if meter is not None:
         result = _snap_to_bar_starts(result, seg_end_beats, meter)
-    return _align_to_fill_grid(result, seg_end_beats)
+    return result
 
 
 def _rest_text(beats: float) -> Optional[str]:
@@ -126,27 +125,6 @@ def _rest_text(beats: float) -> Optional[str]:
         if count.denominator == 1:
             return f"{grid}: {count.numerator}r"
     return None
-
-
-def _align_to_fill_grid(segments: List[Tuple[float, str]], end_beats: List[float]
-                        ) -> List[Tuple[float, str]]:
-    """flatten_clips_to_text riempie lo spazio fra un box e l'altro a
-    sedicesimi (FILL_GRID_BEATS): un box che comincia o finisce fuori da
-    quella griglia (in terzina, a 295,333...) farebbe slittare tutto il
-    seguito dell'arrotondamento. Qui ogni segmento comincia e finisce sulla
-    griglia, con una pausa esatta prima e dopo le note: lo spazio fra i
-    segmenti (piu' di GAP_SPLIT_THRESHOLD_BEATS) assorbe i due ritocchi."""
-    grid = FILL_GRID_BEATS
-    out = []
-    for (start, body), end in zip(segments, end_beats):
-        on_grid = math.floor(start / grid + 1e-9) * grid
-        lead = _rest_text(start - on_grid) if start - on_grid > 1e-6 else None
-        if lead:
-            start, body = on_grid, f"{lead} {_DEFAULT_STATE_PREFIX}{body}"
-        tail_beats = math.ceil(end / grid - 1e-9) * grid - end
-        tail = _rest_text(tail_beats) if tail_beats > 1e-6 else None
-        out.append((start, f"{body} {tail}" if tail else body))
-    return out
 
 
 def _snap_to_bar_starts(segments: List[Tuple[float, str]], end_beats: List[float],

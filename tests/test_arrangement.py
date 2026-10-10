@@ -150,8 +150,8 @@ def test_boxes_split_on_bar_starts_and_sound_the_same():
     # c a 0; d in terzina a 5 + 2/3 (battuta 2, che comincia a 4); e a 11,5 (battuta 3, a 8)
     text = "4: c 4r 12: 2r 8T: d 4: 4r 8: 3r 12: e"
     meter = Meter("4/4")
-    # senza metrica: sul sedicesimo prima della nota (vedi _align_to_fill_grid)
-    assert [s for s, _ in split_text_into_box_segments(text, {}, 4)] == [0.0, 5.5, 11.5]
+    # senza metrica i box restano sulla prima nota
+    assert [s for s, _ in split_text_into_box_segments(text, {}, 4)] == [0.0, 5 + 2 / 3, 11.5]
     segments = split_text_into_box_segments(text, {}, 4, meter=meter)
     assert [s for s, _ in segments] == [0.0, 4.0, 8.0]
     clips = [Clip(name=str(i), text=t, start_beat=s) for i, (s, t) in enumerate(segments)]
@@ -169,13 +169,13 @@ def test_box_stays_on_its_first_note_when_the_bar_start_would_overlap():
 
 
 def test_boxes_off_the_sixteenth_grid_do_not_shift_what_follows():
-    """Un box che comincia o finisce in terzina: lo spazio fra i box si
-    riempie a sedicesimi, e senza l'allineamento il resto della traccia
-    slittava di 1/12 di quarto (la Voce di Dancin' Fool dal quarto 295)."""
+    """Un box che comincia o finisce in terzina: con st-language 2.7 lo
+    spazio fra i box si arrotondava ai sedicesimi e il resto della traccia
+    slittava di 1/12 di quarto (la Voce di Dancin' Fool dal quarto 295);
+    dalla 2.8 lo spazio e' una pausa esatta."""
     from core.arrangement import split_text_into_box_segments
     text = "12: c 4: 4r 12: d 4: 8r e"
     segments = split_text_into_box_segments(text, {}, 4)
-    assert all(abs(s * 4 - round(s * 4)) < 1e-9 for s, _ in segments)
     clips = [Clip(name=str(i), text=t, start_beat=s) for i, (s, t) in enumerate(segments)]
     assert _notes(flatten_clips_to_text(clips, {}, 4)) == _notes(text)
 

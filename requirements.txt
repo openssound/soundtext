@@ -2,7 +2,7 @@
 # segmentation fault sui runner Ubuntu di GitHub; la 6.11 e' quella provata
 PySide6>=6.6,<6.12
 # la notazione ST-language (libreria su PyPI, repository openssound/st-language)
-st-language>=2.7
+st-language>=2.8
 mido>=1.3
 # backend di mido per le tastiere MIDI esterne ("Suona con la tastiera"): facoltativo
 python-rtmidi>=1.5
