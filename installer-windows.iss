@@ -12,7 +12,7 @@
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer-windows.iss
 
 #define AppName "SoundText"
-#define AppVersion "1.6.0"
+#define AppVersion "1.6.1"
 #define AppPublisher "SoundText"
 #define AppExeName "SoundText.exe"
 #define DistDir "dist\SoundText"
