@@ -1,4 +1,6 @@
-PySide6>=6.6
+# <6.12: con PySide6 6.12.0 la creazione di QSoundEffect (metronomo) va in
+# segmentation fault sui runner Ubuntu di GitHub; la 6.11 e' quella provata
+PySide6>=6.6,<6.12
 # la notazione ST-language (libreria su PyPI, repository openssound/st-language)
 st-language>=2.7
 mido>=1.3
