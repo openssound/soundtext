@@ -144,6 +144,73 @@ def _vst3_binary(path: str) -> str:
     return binary or path
 
 
+def editor_position(rect, work):
+    """Dove mettere la finestra dell'interfaccia di un plugin perche' si
+    veda tutta, barra del titolo (e la X per chiuderla) compresa: rect e
+    work sono (sinistra, alto, destra, basso) della finestra e dell'area di
+    lavoro dello schermo. Se gia' sta dentro l'area resta dov'e' (None),
+    altrimenti si centra; una finestra piu' grande dello schermo si
+    allinea in alto a sinistra dell'area, cosi' la barra del titolo resta
+    visibile."""
+    left, top, right, bottom = rect
+    w_left, w_top, w_right, w_bottom = work
+    width, height = right - left, bottom - top
+    if left >= w_left and top >= w_top and right <= w_right and bottom <= w_bottom:
+        return None
+    x = w_left + max(0, (w_right - w_left - width) // 2)
+    y = w_top + max(0, (w_bottom - w_top - height) // 2)
+    return x, y
+
+
+def _place_editor_windows(stop, known=frozenset(), timeout: float = 15.0) -> None:
+    """Solo Windows: la finestra dell'interfaccia di un plugin (aperta da
+    pedalboard, che non ne sceglie la posizione) a volte compare in alto a
+    sinistra con la barra del titolo fuori dallo schermo, senza la X per
+    chiuderla. Si aspetta che compaia una nuova finestra di questo processo
+    e la si sposta (vedi editor_position). 'known' sono le finestre che
+    c'erano gia'; 'stop' si imposta quando l'interfaccia si chiude."""
+    import ctypes
+    import time
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    pid = os.getpid()
+    deadline = time.monotonic() + timeout
+    while not stop.is_set() and time.monotonic() < deadline:
+        for hwnd in _process_windows(user32, pid):
+            if hwnd in known:
+                continue
+            rect = wintypes.RECT()
+            work = wintypes.RECT()
+            if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                continue
+            user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(work), 0)     # SPI_GETWORKAREA
+            target = editor_position((rect.left, rect.top, rect.right, rect.bottom),
+                                     (work.left, work.top, work.right, work.bottom))
+            if target is not None:
+                SWP_NOSIZE, SWP_NOZORDER = 0x0001, 0x0004
+                user32.SetWindowPos(hwnd, None, target[0], target[1], 0, 0, SWP_NOSIZE | SWP_NOZORDER)
+            user32.SetForegroundWindow(hwnd)
+            return
+        time.sleep(0.1)
+
+
+def _process_windows(user32, pid: int) -> list:
+    """Le finestre visibili di primo livello del processo pid (Windows)."""
+    import ctypes
+    from ctypes import wintypes
+    found = []
+    proto = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def each(hwnd, _lparam):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+    user32.EnumWindows(proto(each), 0)
+    return found
+
+
 def _wasapi_output_device():
     """Su Windows l'uscita predefinita di PortAudio e' MME, con un buffer
     molto lungo: per suonare dal vivo si usa WASAPI (come LiveSynth)."""
@@ -332,7 +399,21 @@ class _Worker:
         if parse_ref(ref)[0] != "vst3":
             raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3"))
         inst = self.configure(ref, 48000, params, state)
-        inst.show_editor()
+        if sys.platform == "win32":
+            import threading
+            import ctypes
+            stop = threading.Event()
+            try:
+                known = frozenset(_process_windows(ctypes.windll.user32, os.getpid()))
+                threading.Thread(target=_place_editor_windows, args=(stop, known), daemon=True).start()
+            except Exception:                         # non deve mai impedire di aprire l'interfaccia
+                pass
+            try:
+                inst.show_editor()
+            finally:
+                stop.set()
+        else:
+            inst.show_editor()
         values = {k: float(p.raw_value) for k, p in inst.parameters.items() if k not in HIDDEN_VST3_PARAMS}
         new_state = base64.b64encode(inst.raw_state).decode("ascii")
         self.applied_state[(ref, 48000)] = new_state

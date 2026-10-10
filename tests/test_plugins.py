@@ -489,3 +489,14 @@ def test_same_folder_written_twice_gives_each_plugin_once(tmp_path):
     twice = [str(tmp_path), str(tmp_path) + os.sep, os.path.join(str(tmp_path), "Surge Synth Team", "..")]
     found = plugins.find_vst3_bundles(twice)
     assert [os.path.basename(p) for p in found] == ["Surge XT Effects.vst3", "Surge XT.vst3"]
+
+
+def test_editor_window_is_moved_where_its_title_bar_is_visible():
+    """Windows: l'interfaccia di un plugin che compare con la barra del titolo
+    fuori dallo schermo si centra nell'area di lavoro (vedi editor_position)."""
+    from core.plugin_worker import editor_position
+    work = (0, 0, 1920, 1040)                                    # schermo meno la barra delle applicazioni
+    assert editor_position((100, 100, 900, 700), work) is None   # gia' visibile: resta dov'e'
+    assert editor_position((-8, -31, 792, 569), work) == (560, 220)   # titolo sopra lo schermo: centrata
+    assert editor_position((0, -20, 2400, 1300), work) == (0, 0)      # piu' grande dello schermo: in alto a sinistra
+    assert editor_position((1500, 900, 2300, 1500), (1920, 0, 3840, 1080)) == (2480, 240)   # secondo monitor
