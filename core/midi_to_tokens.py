@@ -19,13 +19,13 @@ if TYPE_CHECKING:
 
 SIXTEENTH_FRACTION = 0.25  # in beat (quarti)
 
-# Posizioni sulla timeline dell'import, in unita' intere: 420 = mcm(3,4,5,6,7)
-# per beat, cosi' tutte le suddivisioni supportate (sedicesimi, terzine,
-# sestine, quintine, settimine) cadono su interi e non c'e' deriva.
-BEAT_UNITS = 420
+# Posizioni sulla timeline dell'import, in unita' intere: 840 = mcm(3,4,5,6,7,8)
+# per beat, cosi' tutte le suddivisioni supportate (sedicesimi, trentaduesimi,
+# terzine, sestine, quintine, settimine) cadono su interi e non c'e' deriva.
+BEAT_UNITS = 840
 
 # Suddivisioni per beat -> comando griglia di ST (sezione 2.1bis/3)
-GRID_COMMANDS = {4: "16:", 3: "8T:", 6: "16T:", 5: "16Q:", 7: "16S:"}
+GRID_COMMANDS = {4: "16:", 3: "8T:", 6: "16T:", 5: "16Q:", 7: "16S:", 8: "32:"}
 
 # Scarto massimo (in beat) fra un attacco e il punto di griglia perche' la
 # griglia sia considerata "adatta" a quella battuta (~10 ms a 120 BPM).
@@ -288,7 +288,7 @@ def _dominant_swing_grid(onset_fracs: Dict[int, List[float]]) -> int:
 
 def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None) -> int:
     """Suddivisione per beat (4 = sedicesimi, 3 = terzine 8T, 6 = 16T,
-    5 = quintine 16Q, 7 = settimine 16S) che spiega meglio gli attacchi di
+    5 = quintine 16Q, 7 = settimine 16S, 8 = trentaduesimi) che spiega meglio gli attacchi di
     UNA battuta (fracs = posizione di ciascun attacco dentro il beat, in
     [0, 1)). Vince la griglia binaria se spiega tutti gli attacchi entro
     GRID_FIT_TOLERANCE; una tuplet viene scelta solo se quella binaria non
@@ -328,6 +328,10 @@ def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None) -
         for n in (5, 7):
             if len(unexplained) >= 3 and err(n) <= GRID_FIT_TOLERANCE * 0.4:
                 return n
+    # Trentaduesimi (ribattuti, tremoli): stessa prudenza delle tuplet, un
+    # suonato umano a sedicesimi "sporchi" cade spesso vicino a un 32esimo.
+    if len(unexplained) >= 2 and err(8) <= GRID_FIT_TOLERANCE * 0.4:
+        return 8
     if dominant_grid and dominant_grid != 4 and _fits_grid_ignoring_one_outlier(fracs, dominant_grid):
         return dominant_grid
     return 4

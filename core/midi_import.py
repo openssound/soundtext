@@ -14,7 +14,9 @@ della stessa traccia (blocchi { ; }), il testo cantato (eventi lyrics,
 anche dei file karaoke) testo fra virgolette sulla prima voce.
 """
 
+import bisect
 import logging
+import math
 
 from .model import Project, cc_to_send_percent
 from . import midi_convert
@@ -22,6 +24,7 @@ from .instruments import resolve_or_create_instrument_by_program
 from .key_detect import detect_key
 from .import_lyrics import add_lyrics, beats_from_ticks
 from .voice_merge import merged_text
+from .midi_to_tokens import _dynamics_scale
 from .i18n import tr
 
 
@@ -70,16 +73,18 @@ def import_midi_file(path: str, project_name: str = "Import MIDI",
             tempo_changes=tempo_changes if part_index == tempo_carrier else None)
         text = _channel_text(ch, voices, tpb, project.time_sig, project.metrica_changes)
 
-        # Volume (CC7) e pan (CC10) di base del canale (il primo valore
-        # ricevuto, tipicamente impostato una sola volta a inizio brano):
-        # senza questo, ogni traccia importata partiva sempre da
-        # volume/pan predefiniti (100/centro), perdendo il bilanciamento
-        # del mix originale tra gli strumenti (uno piu' in secondo piano,
-        # uno spostato a sinistra/destra...) - vedi core.midi_convert
-        # DEFAULT_CC_VOLUME/DEFAULT_CC_PAN. Le eventuali variazioni di CC7/
-        # CC11 NEL TEMPO restano gestite a parte da _dynamics_scale (come
-        # velocity delle note), quindi qui conta solo il livello iniziale.
-        volume = ch.volume_cc[0][1] if ch.volume_cc else midi_convert.DEFAULT_CC_VOLUME
+        # Volume (CC7) e pan (CC10) di base del canale: senza questo, ogni
+        # traccia importata partiva sempre da volume/pan predefiniti
+        # (100/centro), perdendo il bilanciamento del mix originale tra gli
+        # strumenti (uno piu' in secondo piano, uno spostato a
+        # sinistra/destra...) - vedi core.midi_convert DEFAULT_CC_VOLUME/
+        # DEFAULT_CC_PAN. Le variazioni di CC7/CC11 NEL TEMPO restano gestite
+        # a parte da _dynamics_scale come velocity delle note, relative al
+        # livello piu' alto del canale: il volume di base e' quindi il CC7 piu'
+        # alto in vigore sulle note, non il primo ricevuto (la batteria di
+        # Dancin' Fool parte da CC7 0 e sale a 100: diventava muta).
+        volume = (track_volume_from_cc(_base_cc_volume(ch)) if ch.volume_cc
+                  else midi_convert.DEFAULT_CC_VOLUME)
         pan = ch.pan_cc[0][1] if ch.pan_cc else midi_convert.DEFAULT_CC_PAN
         reverb = cc_to_send_percent(ch.reverb_cc[0][1]) if ch.reverb_cc else 0
         chorus = cc_to_send_percent(ch.chorus_cc[0][1]) if ch.chorus_cc else 0
@@ -114,6 +119,35 @@ def import_midi_file(path: str, project_name: str = "Import MIDI",
             project.key = detected
 
     return project
+
+
+def _base_cc_volume(ch) -> int:
+    """Il CC7 di base del canale, coerente con _dynamics_scale: se le sue
+    variazioni diventano velocity (relative al livello piu' alto), il CC7 piu'
+    alto in vigore all'attacco delle note; se sono troppo piccole per
+    diventarlo, quello tipico (la mediana). Il primo ricevuto se non ci sono
+    note."""
+    events = sorted(ch.volume_cc, key=lambda e: e[0])
+    ticks = [t for t, _ in events]
+    levels = []
+    for start, *_rest in ch.notes:
+        i = bisect.bisect_right(ticks, start)
+        levels.append(events[i - 1][1] if i else midi_convert.DEFAULT_CC_VOLUME)
+    if not levels:
+        return events[0][1]
+    if _dynamics_scale(ch) is not None:
+        return max(levels)
+    return sorted(levels)[len(levels) // 2]
+
+
+def track_volume_from_cc(cc_volume: int) -> int:
+    """Il volume di traccia che, all'export, suona come il CC7 del file.
+    L'export applica il volume di traccia due volte, come CC7 e come fattore
+    sulla velocity (vedi core.midi_export), e nei synth GM entrambi agiscono
+    circa col quadrato: v^2 * (v/100)^2 = cc^2 da' v = sqrt(100 * cc). Col
+    CC7 del file messo tale e quale il mix si allargava: 120 suonava come 144,
+    70 come 49."""
+    return round(math.sqrt(100 * max(0, cc_volume)))
 
 
 def import_midi_channel_into_track(path: str, channel: int = None,

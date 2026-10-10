@@ -48,6 +48,10 @@ DEFAULT_PITCH_BEND_RANGE_SEMITONES = 2
 
 TEMPO_CHANGE_MIN_FRACTION = 0.02
 
+# Un cambio piu' piccolo (anche 1 BPM) conta se il nuovo tempo resta almeno
+# tanti quarti: 84 -> 85 BPM per 100 quarti sono quasi un secondo di scarto.
+TEMPO_HOLD_MIN_BEATS = 8
+
 def guess_instrument_name(program: Optional[int], is_percussion: bool) -> str:
     """Funzionalita' 6: riconosce lo strumento piu' vicino (per numero di
     Program Change GM) tra quelli disponibili (predefiniti + personalizzati),
@@ -372,13 +376,19 @@ def detect_tempo_and_meter(path: str):
     # TEMPO_CHANGE_MIN_FRACTION (e di 2 BPM): le oscillazioni di 1 BPM di un
     # tempo "registrato" non sono cambi di tempo e riempirebbero il testo di
     # marcatori. Un accelerando graduale emette comunque un marcatore ogni
-    # volta che il tempo si e' spostato abbastanza.
+    # volta che il tempo si e' spostato abbastanza. Un cambio piu' piccolo
+    # conta se il tempo poi resta fermo almeno TEMPO_HOLD_MIN_BEATS quarti
+    # (la fine di un accelerando, una sezione un po' piu' veloce).
     tempo_changes = []
     kept = None
-    for tick, bpm in sorted(tempos.items()):
+    ordered = sorted(tempos.items())
+    hold_ticks = TEMPO_HOLD_MIN_BEATS * mid.ticks_per_beat
+    for i, (tick, bpm) in enumerate(ordered):
+        held = (ordered[i + 1][0] if i + 1 < len(ordered) else float("inf")) - tick
         if kept is None:
             kept = bpm
-        elif abs(bpm - kept) >= max(2, round(kept * TEMPO_CHANGE_MIN_FRACTION)):
+        elif (abs(bpm - kept) >= max(2, round(kept * TEMPO_CHANGE_MIN_FRACTION))
+              or (bpm != kept and held >= hold_ticks)):
             tempo_changes.append((tick, bpm))
             kept = bpm
 

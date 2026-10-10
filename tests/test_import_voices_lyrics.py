@@ -260,7 +260,9 @@ def test_channel_changing_instrument_becomes_one_track_per_instrument(tmp_path):
     project = import_midi_file(path)
     guitar, piano = project.tracks
     assert guitar.instrument.gm_program == 29 and piano.instrument.gm_program == 0
-    assert guitar.volume == 80 and piano.volume == 100
+    # la chitarra suona a CC7 80 e torna a 100: la differenza diventa velocity
+    # (le prime note a 80@), il volume di traccia e' quello piu' alto
+    assert guitar.volume == 100 and piano.volume == 100
     pitches = lambda t: [(e.letter, e.start) for e in parse_track_text(t.text, {}) if e.kind == "note"]
     assert pitches(guitar) == [("d", 0), ("f", 1), ("g", 8)]
     assert pitches(piano) == [("c", 4)]

@@ -1651,6 +1651,50 @@ def test_midi_import_ignores_small_tempo_jitter():
         shutil.rmtree(tmpdir)
 
 
+def test_midi_import_keeps_a_small_tempo_change_that_lasts():
+    """84 -> 85 BPM che resta per molti quarti non e' rumore: ignorarlo fa
+    slittare tutto il seguito (Firth of Fifth: quasi un secondo)."""
+    import mido
+    tmpdir = tempfile.mkdtemp()
+    try:
+        path = os.path.join(tmpdir, "hold.mid")
+        ev = [(0, mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(84))),
+              (480 * 4, mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(85)))]
+        for i in range(40):
+            ev.append((i * 480, mido.Message("note_on", note=60, velocity=80)))
+            ev.append((i * 480 + 400, mido.Message("note_off", note=60, velocity=0)))
+        _write_midi(path, ev)
+        tempo_changes, _ = midi_convert.detect_tempo_and_meter(path)
+        assert tempo_changes == [(480 * 4, 85)]
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_beat_grid_thirty_seconds_for_fast_repeats():
+    # accordo ribattuto a trentaduesimi (Firth of Fifth, quarto 116): con i
+    # sedicesimi meta' dei colpi si sovrapponevano e si perdevano
+    assert midi_convert._choose_beat_grid([0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]) == 8
+    # una sola nota "sporca" vicino a un 32esimo non basta
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.625]) == 4
+
+
+def test_midi_import_keeps_every_thirty_second_repeat():
+    import mido
+    tmpdir = tempfile.mkdtemp()
+    try:
+        path = os.path.join(tmpdir, "ribattuto.mid")
+        ev = []
+        for i in range(16):
+            ev.append((i * 60, mido.Message("note_on", note=60, velocity=80)))
+            ev.append((i * 60 + 50, mido.Message("note_off", note=60, velocity=0)))
+        _write_midi(path, ev)
+        project = import_midi_file(path)
+        starts = [e.start for e in parse_track_text(project.tracks[0].text, {}) if e.kind == "note"]
+        assert starts == [i / 8 for i in range(16)]
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 def test_beat_grid_merges_near_simultaneous_onsets():
     # kick e ride con qualche tick di scarto: 3 punti ritmici, non 7 attacchi
     fracs = [0.0, 0.0, 0.01, 0.143, 0.143, 0.286, 0.286]
@@ -1904,11 +1948,39 @@ def test_midi_import_reads_channel_volume_and_pan_into_track_mixer():
         ]
         _write_midi(path, ev)
         project = import_midi_file(path)
-        # entrambe le tracce sono Piano (program 0): distinguile per volume/pan
-        loud = [t for t in project.tracks if t.volume == 90]
+        # entrambe le tracce sono Piano (program 0): distinguile per volume/pan.
+        # CC7 90 diventa il volume di traccia che all'export suona uguale (vedi
+        # track_volume_from_cc): 95.
+        loud = [t for t in project.tracks if t.volume == 95]
         default = [t for t in project.tracks if t.volume == 100]
         assert len(loud) == 1 and loud[0].pan == 30
         assert len(default) == 1 and default[0].pan == 64
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+
+def test_midi_import_track_starting_at_volume_zero_is_not_muted():
+    """Dancin' Fool: la batteria parte da CC7 0 (due colpi muti) e sale a 100.
+    Il volume di traccia era il primo CC7, 0, e la batteria spariva."""
+    import mido
+    tmpdir = tempfile.mkdtemp()
+    try:
+        path = os.path.join(tmpdir, "zero.mid")
+        ev = [(0, mido.Message("control_change", control=7, value=0, channel=9)),
+              (0, mido.Message("note_on", note=36, velocity=100, channel=9)),
+              (100, mido.Message("note_off", note=36, velocity=0, channel=9)),
+              (480, mido.Message("control_change", control=7, value=100, channel=9))]
+        for i in range(1, 8):
+            ev.append((i * 480, mido.Message("note_on", note=38, velocity=100, channel=9)))
+            ev.append((i * 480 + 100, mido.Message("note_off", note=38, velocity=0, channel=9)))
+        _write_midi(path, ev)
+        project = import_midi_file(path)
+        assert project.tracks[0].volume == 100
+        out = os.path.join(tmpdir, "out.mid")
+        export_project_to_midi(project, out)
+        hits = [m for tr in mido.MidiFile(out).tracks for m in tr if m.type == "note_on" and m.velocity]
+        assert len(hits) >= 7
     finally:
         shutil.rmtree(tmpdir)
 
