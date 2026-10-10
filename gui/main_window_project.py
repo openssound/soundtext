@@ -398,9 +398,14 @@ class ProjectMixin:
         for t in project.tracks:
             if not t.text.strip():
                 continue
-            segments = split_text_into_box_segments(t.text, project.patterns, t.instrument.default_octave)
+            segments = split_text_into_box_segments(t.text, project.patterns, t.instrument.default_octave,
+                                                    meter=project.meter())
             if len(segments) <= 1:
-                t.clips = [Clip(name=t.name, text=(segments[0][1] if segments else t.text), start_beat=0.0)]
+                # Il segmento non ha le pause iniziali: il box comincia dove
+                # comincia lui, non a 0 (altrimenti una parte che entra a
+                # meta' brano suonerebbe dall'inizio).
+                t.clips = [Clip(name=t.name, text=(segments[0][1] if segments else t.text),
+                                start_beat=(segments[0][0] if segments else 0.0))]
             else:
                 t.clips = [
                     Clip(name=f"{t.name} {i + 1}", text=seg_text, start_beat=start_beat)

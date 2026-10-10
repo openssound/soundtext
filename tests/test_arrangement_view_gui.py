@@ -539,3 +539,21 @@ def test_box_dialog_without_name_accepts_the_text():
     assert dlg.name_edit is None
     dlg.accept()
     assert dlg.result_text() == "4: c d"
+
+
+def test_imported_part_entering_mid_song_keeps_its_place_in_a_single_box():
+    """Una traccia importata che diventa un solo box (una parte che entra a
+    meta' brano e poi suona senza pause lunghe) deve cominciare dove entra,
+    non a 0: Firth of Fifth, la chitarra pulita del quarto 68 suonava
+    dall'inizio insieme alla band."""
+    from core.model import Project
+    from core.notation import parse_track_text
+    w = MainWindow()
+    project = Project(name="p")
+    project.add_track("Piano", "Piano", "4: 16r 8: c d e f")   # entra alla battuta 5
+    w._split_tracks_into_boxes(project)
+    track = project.tracks[0]
+    assert [c.start_beat for c in track.clips] == [16.0]
+    starts = [e.start for e in parse_track_text(track.text, {}) if e.kind == "note"]
+    assert starts == [16.0, 16.5, 17.0, 17.5]
+    w.close()

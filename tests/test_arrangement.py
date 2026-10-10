@@ -136,6 +136,58 @@ def test_short_header_with_digits_in_the_instrument_name():
     assert parse_project_text("Piano2:\n  c\n", "x").tracks == []
 
 
+def _notes(text, meter=None):
+    return [(round(float(e.start), 4), e.letter) for e in parse_track_text(text, {}, default_octave=4, meter=meter)
+            if e.kind == "note"]
+
+
+def test_boxes_split_on_bar_starts_and_sound_the_same():
+    """Con la metrica i box dell'import cominciano all'inizio della battuta
+    della prima nota (anche fuori dalla griglia a sedicesimi, in terzina),
+    con una pausa fino a quella nota; le note restano dove sono."""
+    from core.arrangement import split_text_into_box_segments
+    from core.notation import Meter
+    # c a 0; d in terzina a 5 + 2/3 (battuta 2, che comincia a 4); e a 11,5 (battuta 3, a 8)
+    text = "4: c 4r 12: 2r 8T: d 4: 4r 8: 3r 12: e"
+    meter = Meter("4/4")
+    # senza metrica: sul sedicesimo prima della nota (vedi _align_to_fill_grid)
+    assert [s for s, _ in split_text_into_box_segments(text, {}, 4)] == [0.0, 5.5, 11.5]
+    segments = split_text_into_box_segments(text, {}, 4, meter=meter)
+    assert [s for s, _ in segments] == [0.0, 4.0, 8.0]
+    clips = [Clip(name=str(i), text=t, start_beat=s) for i, (s, t) in enumerate(segments)]
+    assert _notes(flatten_clips_to_text(clips, {}, 4, meter=meter), meter) == _notes(text, meter)
+
+
+def test_box_stays_on_its_first_note_when_the_bar_start_would_overlap():
+    """Un'entrata il cui inizio di battuta cade dentro il box precedente
+    resta sulla sua prima nota: i box non si sovrappongono."""
+    from core.arrangement import split_text_into_box_segments
+    from core.notation import Meter
+    # c da 4 a 8,25 (oltre l'inizio della battuta 3, a 8), e a 11,75
+    text = "4: 4r 16: 17c 8: 7r 16: e"
+    assert [s for s, _ in split_text_into_box_segments(text, {}, 4, meter=Meter("4/4"))] == [4.0, 11.75]
+
+
+def test_boxes_off_the_sixteenth_grid_do_not_shift_what_follows():
+    """Un box che comincia o finisce in terzina: lo spazio fra i box si
+    riempie a sedicesimi, e senza l'allineamento il resto della traccia
+    slittava di 1/12 di quarto (la Voce di Dancin' Fool dal quarto 295)."""
+    from core.arrangement import split_text_into_box_segments
+    text = "12: c 4: 4r 12: d 4: 8r e"
+    segments = split_text_into_box_segments(text, {}, 4)
+    assert all(abs(s * 4 - round(s * 4)) < 1e-9 for s, _ in segments)
+    clips = [Clip(name=str(i), text=t, start_beat=s) for i, (s, t) in enumerate(segments)]
+    assert _notes(flatten_clips_to_text(clips, {}, 4)) == _notes(text)
+
+
+def test_tempo_change_between_boxes_keeps_the_track_whole():
+    """tempo=N nella pausa fra due box non occupa tempo: dividendo andava
+    perso insieme alla pausa, e con lui il tempo di tutto il seguito."""
+    from core.arrangement import split_text_into_box_segments
+    assert split_text_into_box_segments("4: c 8r tempo=90 4r d", {}, 4) == [(0.0, "4: c 8r tempo=90 4r d")]
+    assert len(split_text_into_box_segments("4: c 8r 4r d", {}, 4)) == 2
+
+
 if __name__ == "__main__":
     import inspect
     here = sys.modules[__name__]
