@@ -170,6 +170,15 @@ QToolButton:checked {{
     border-color: {ACCENT};
 }}
 
+/* Dialogo file di Qt (Linux, vedi gui.file_dialogs): col padding generico
+dei QToolButton le icone di Indietro/Avanti/Su/Nuova cartella/vista si
+riducevano a puntini illeggibili. */
+QFileDialog QToolButton {{
+    padding: 2px;
+    min-width: 26px;
+    min-height: 26px;
+}}
+
 QPushButton:disabled {{
     color: {TEXT_DIM};
     background-color: {BG_PANEL};

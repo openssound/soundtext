@@ -21,7 +21,7 @@ if __name__ == "__main__" and "--plugin-worker" in sys.argv[1:]:
     _plugin_worker_main()
     sys.exit(0)
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QTranslator
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 from gui.main_window import MainWindow
@@ -68,7 +68,7 @@ def _excepthook(exc_type, exc, tb):
 def _install_qt_translations(app):
     """Testi standard di Qt (pulsanti Si'/No/Annulla, finestre di scelta dei
     file) nella lingua dell'interfaccia (vedi core.i18n)."""
-    from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
+    from PySide6.QtCore import QLibraryInfo, QLocale
     from core.i18n import current_language
     language = current_language()
     QLocale.setDefault(QLocale(language))
@@ -76,6 +76,35 @@ def _install_qt_translations(app):
     if translator.load(f"qtbase_{language}", QLibraryInfo.path(QLibraryInfo.TranslationsPath)):
         app.installTranslator(translator)
         app._qt_translator = translator      # resta vivo quanto l'app
+    if language in _QFILEDIALOG_MISSING:
+        fallback = _MissingQtStrings(_QFILEDIALOG_MISSING[language], app)
+        app.installTranslator(fallback)
+        app._qt_fallback_translator = fallback
+
+
+# Etichette del dialogo file di Qt (Linux) che qtbase_*.qm non traduce: Qt le
+# cerca con la scorciatoia ("&Look in:", "Files of &type:"), mentre i file di
+# traduzione hanno solo le versioni senza "&", e il dialogo restava in parte
+# in inglese.
+_QFILEDIALOG_MISSING = {
+    "it": {"&Look in:": "&Cerca in:", "Files of &type:": "File di &tipo:"},
+    "es": {"&Look in:": "&Ver en:", "Files of &type:": "Ficheros de &tipo:"},
+    "fr": {"&Look in:": "&Voir dans :", "Files of &type:": "Fichiers de &type :"},
+}
+
+
+class _MissingQtStrings(QTranslator):
+    def __init__(self, strings, parent=None):
+        super().__init__(parent)
+        self._strings = strings
+
+    def translate(self, context, source, disambiguation=None, n=-1):
+        if context == "QFileDialog":
+            return self._strings.get(source)
+        return None
+
+    def isEmpty(self):
+        return False
 
 
 def main():
