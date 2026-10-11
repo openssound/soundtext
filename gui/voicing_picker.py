@@ -101,8 +101,12 @@ class NotationEditor(QPlainTextEdit):
         self._completer.setModelSorting(QCompleter.UnsortedModel)
         self._completer.activated.connect(self._insert_completion)
 
+        # L'elenco si apre solo scrivendo: spostare il cursore (click, frecce)
+        # lo chiude e basta. Se si aprisse anche al click, il popup
+        # catturerebbe il secondo click di un doppio click (voicing, %Nome).
+        self._text_at_cursor_move = None
         self.textChanged.connect(self._update_completer)
-        self.cursorPositionChanged.connect(self._update_completer)
+        self.cursorPositionChanged.connect(self._on_cursor_moved)
 
     def use_window_undo(self):
         self._window_undo = True
@@ -169,8 +173,20 @@ class NotationEditor(QPlainTextEdit):
         start, end = current_word_bounds(text, pos)
         return start, end, text[start:end]
 
+    def _on_cursor_moved(self):
+        # Scrivendo il testo cambia fra due movimenti del cursore (e ci pensa
+        # _update_completer, qualunque sia l'ordine dei due segnali).
+        text = self.toPlainText()
+        if text == self._text_at_cursor_move:
+            self._completer.popup().hide()
+        self._text_at_cursor_move = text
+
     def _update_completer(self):
         if self.on_completion_request is None:
+            return
+        if not (self.isVisible() and self.hasFocus()):
+            # Testo caricato dal programma (setPlainText), non digitato.
+            self._completer.popup().hide()
             return
         if self.textCursor().hasSelection():
             self._completer.popup().hide()

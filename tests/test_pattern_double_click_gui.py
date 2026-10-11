@@ -79,3 +79,25 @@ def test_editor_double_click_on_pattern_opens_the_library(monkeypatch):
     win.select_track("Basso")
     assert win._on_editor_double_click(win.editor.toPlainText().index("Riff"), None)
     assert opened == [("Riff", "Bass")]
+
+
+def test_completion_opens_while_typing_but_not_on_click():
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    dlg = BoxEditDialog(None, _project(), "Piano", 120, clip_text="")
+    dlg.show()
+    editor, popup = dlg.body_edit, dlg.body_edit._completer.popup()
+    dlg.activateWindow()
+    QTest.qWaitForWindowActive(dlg)
+    editor.setFocus()
+    assert editor.hasFocus()
+    QTest.keyClicks(editor, "4: c %Ri")
+    assert popup.isVisible()                               # scrivendo: suggerimenti
+    QTest.keyClick(popup, Qt.Key_Escape)
+    assert not popup.isVisible()
+    QTest.mouseClick(editor.viewport(), Qt.LeftButton, pos=editor.cursorRect(editor.textCursor()).center())
+    cursor = editor.textCursor()
+    cursor.setPosition(len("4: c %R"))
+    editor.setTextCursor(cursor)                           # click/frecce su una parola
+    assert not popup.isVisible()
+    dlg.reject()
