@@ -22,10 +22,25 @@ _ENV = "SOUNDTEXT_CONFIG_DIR"
 # la lingua del sistema.
 os.environ.setdefault("SOUNDTEXT_LANGUAGE", "it")
 
+
+def _remove_config_dir(path):
+    """Toglie la cartella temporanea a fine test. Prima chiude le sessioni di
+    recupero (core.autosave) delle finestre rimaste aperte: i loro QLockFile si
+    sbloccherebbero solo alla chiusura di Python, a cartella gia' tolta,
+    stampando "Could not remove our own lock file" per ciascuna."""
+    autosave = sys.modules.get("core.autosave")
+    if autosave is not None:
+        import gc
+        for obj in gc.get_objects():
+            if isinstance(obj, autosave.RecoverySession):
+                obj.close()
+    shutil.rmtree(path, ignore_errors=True)
+
+
 if _ENV not in os.environ:
     _dir = tempfile.mkdtemp(prefix="soundtext-test-config-")
     os.environ[_ENV] = _dir
-    atexit.register(shutil.rmtree, _dir, ignore_errors=True)
+    atexit.register(_remove_config_dir, _dir)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import settings as _settings  # noqa: E402
