@@ -106,3 +106,13 @@ def test_macos_installer_works_without_the_repository_and_reports_failures():
     assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".zshrc" in text
     assert "Library/Logs/SoundText.log" in text and "osascript" in text
     assert os.access(os.path.join(ROOT, "install-macos.sh"), os.X_OK)
+
+
+def test_macos_installer_downloads_the_soundfont_and_checks_it():
+    """Il SoundFont GM non e' in git: l'installer macOS lo scarica dalla release
+    "resources" (come le build Windows/Linux) e ne verifica lo SHA-256."""
+    text = _read("install-macos.sh")
+    assert "releases/download/resources/FluidR3_GM.sf2" in text
+    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
+    assert 'mv "$part" "$SOUNDFONT"' in text                     # il file resta solo se l'hash torna
+    assert "incluso nel repository" not in text

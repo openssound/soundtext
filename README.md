@@ -274,7 +274,7 @@ Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve
 | **Linux, AppImage** | scarica `SoundText-linux-*.AppImage`, `setup-appimage.sh` e `scarica_strumenti.sh`/`.py` nella stessa cartella, poi `./setup-appimage.sh` (installa FUSE 2, FluidSynth, SoundFont GM, PortAudio, lilv e le librerie di Qt; `--integra` aggiunge la voce di menu) | `./scarica_strumenti.sh` |
 | **Linux, portable** (`.tar.gz`) | estrai e lancia `./setup-portable-linux.sh` (stesse librerie di sistema, senza FUSE), poi `./SoundText` | `./scarica_strumenti.sh` |
 | **Windows, installer** (`SoundText-setup-*.exe`) o **portable** (`.zip`) | esegui l'installer, oppure estrai lo zip e lancia `setup-windows.bat` (controlla il Visual C++ Redistributable e Python; FluidSynth è già incluso), poi `SoundText.exe` | `scarica_strumenti.bat` |
-| **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
+| **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv e scarica il SoundFont GM) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
 
 `scarica_strumenti.sh`/`.bat` richiedono Python 3.8+ installato (non serve per usare l'app). `./scarica_strumenti.sh` senza argomenti elenca i gruppi; `host` installa 7-Zip, sfizz e Surge XT; `libreria` compila il motore SFZ interno (circa 5 minuti).
 
