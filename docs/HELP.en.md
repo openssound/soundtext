@@ -2094,6 +2094,14 @@ the track label on the left.
   Play/Stop used for patterns, section 4) with the box's name and text,
   validated before you can confirm.
 
+- In the box editor, the **Expand patterns** checkbox (visible only if the
+  box uses `%Name` references) shows the content of the patterns instead of
+  the references, read-only: with Play the note being played is highlighted
+  inside the patterns too. Unchecking it brings back the `%Name`s.
+- **Double-clicking a `%Name`** (in the text editor or in the box editor)
+  opens the pattern library on that pattern, with the track's instrument in
+  "Listen with:".
+
 ### Right-click menu on a box
 
 - **▶ Play** / **■ Stop**: plays (or stops) the preview of the box's content
@@ -2167,6 +2175,15 @@ already uses boxes, the resulting text is automatically split into several
 boxes wherever there is a continuous rest of more than 3 beats, instead of
 staying one big box — so the content is organised readably right away even
 for a long file, with no need to rearrange it by hand.
+
+For a project written entirely as free text there is the menu **Compose →
+Convert tracks to boxes**: with one click every track without boxes is split
+the same way. Before applying the conversion SoundText checks, track by
+track, that the song sounds exactly as before. If splitting a track would
+lose something (a `vol=` or `ccN=` in the rest between two boxes, a ramp
+across them, a tempo change), it becomes a single box with all its text;
+the same happens if it has no long rests. The summary lists the tracks left
+in a single box. Undo (Ctrl+Z) goes back.
 
 ### Free-text tracks
 

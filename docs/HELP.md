@@ -2142,6 +2142,14 @@ tasto destro sull'etichetta della traccia a sinistra.
   e Play/Stop di anteprima usato per i pattern, sezione 4) con nome e
   testo del box, validati prima di poter confermare.
 
+- Nell'editor del box, la casella **Espandi i pattern** (visibile solo se
+  il box usa dei `%Nome`) mostra il contenuto dei pattern al posto dei
+  richiami, in sola lettura: con Play si vede evidenziata la nota che
+  suona anche dentro i pattern. Togliendo la spunta tornano i `%Nome`.
+- **Doppio click su un `%Nome`** (nell'editor di testo o in quello del
+  box) apre la libreria dei pattern già su quel pattern, con lo strumento
+  della traccia in "Ascolta con:".
+
 ### Menu tasto destro su un box
 
 - **▶ Play** / **■ Stop**: riproduce (o ferma) l'anteprima del contenuto
@@ -2215,6 +2223,16 @@ box, il testo risultante viene automaticamente suddiviso in più box dove
 compare una pausa continua di più di 3 beat, invece di restare un unico
 grande box — così il contenuto è subito organizzato in modo leggibile
 anche per un file lungo, senza bisogno di risistemarlo a mano.
+
+Per un progetto scritto tutto come testo libero c'è il menu **Componi →
+Converti le tracce in box**: con un click ogni traccia senza box viene
+divisa allo stesso modo. Prima di applicare la conversione SoundText
+controlla, traccia per traccia, che il brano suoni esattamente come prima.
+Se dividerla perderebbe qualcosa (un `vol=` o un `ccN=` nella pausa fra due
+box, una rampa a cavallo, un cambio di tempo), la traccia diventa un unico
+box con tutto il suo testo; lo stesso se non ha pause lunghe. Il
+riepilogo elenca le tracce rimaste in un box solo. Si torna indietro con
+Annulla (Ctrl+Z).
 
 ### Tracce in testo libero
 

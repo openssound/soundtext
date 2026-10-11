@@ -1636,5 +1636,13 @@
  "nessuna": "none",
  "{name} non e' un plugin VST3 (manca GetPluginFactory)": "{name} is not a VST3 plugin (GetPluginFactory is missing)",
  "Espandi i pattern": "Expand patterns",
- "Mostra il contenuto dei pattern usati nel box (in sola lettura)": "Show the content of the patterns used in the box (read-only)"
+ "Mostra il contenuto dei pattern usati nel box (in sola lettura)": "Show the content of the patterns used in the box (read-only)",
+ "Converti le tracce in box": "Convert tracks to boxes",
+ "Divide in box (vista Struttura brano) le tracce scritte come testo libero, dove ci sono pause lunghe. Il brano suona esattamente come prima.": "Splits the tracks written as free text into boxes (Song structure view) where there are long rests. The song sounds exactly as before.",
+ "Niente da convertire": "Nothing to convert",
+ "Tutte le tracce con delle note sono gia' divise in box.": "All the tracks with notes are already split into boxes.",
+ "Tracce convertite in box: {0}.": "Tracks converted to boxes: {0}.",
+ "Rimaste come testo libero (convertite non avrebbero suonato esattamente uguali):\n{names}": "Left as free text (converted they would not have sounded exactly the same):\n{names}",
+ "Per tornare indietro: Modifica → Annulla (Ctrl+Z).": "To go back: Edit → Undo (Ctrl+Z).",
+ "In un box solo (senza pause lunghe, o divise avrebbero perso dei comandi come vol= o una rampa):\n{names}": "In a single box (no long rests, or split they would have lost commands such as vol= or a ramp):\n{names}"
 }

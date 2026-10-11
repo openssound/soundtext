@@ -2187,6 +2187,14 @@ derecho en la etiqueta de la pista a la izquierda.
   Play/Stop de vista previa que se usa para los patterns, sección 4) con el
   nombre y el texto del box, validados antes de poder confirmar.
 
+- En el editor del box, la casilla **Expandir los patterns** (visible solo
+  si el box usa `%Nombre`) muestra el contenido de los patterns en lugar de
+  las llamadas, en solo lectura: con Play se ve resaltada la nota que suena
+  también dentro de los patterns. Al desmarcarla vuelven los `%Nombre`.
+- **Doble clic en un `%Nombre`** (en el editor de texto o en el del box)
+  abre la biblioteca de patterns en ese pattern, con el instrumento de la
+  pista en "Escuchar con:".
+
 ### Menú del clic derecho en un box
 
 - **▶ Play** / **■ Stop**: reproduce (o detiene) la vista previa del
@@ -2263,6 +2271,16 @@ donde aparece un silencio continuo de más de 3 tiempos, en lugar de quedar
 un único box grande — así el contenido queda organizado de forma legible
 desde el primer momento, incluso con un archivo largo, sin tener que
 reordenarlo a mano.
+
+Para un proyecto escrito todo como texto libre está el menú **Componer →
+Convertir las pistas en box**: con un clic cada pista sin boxes se divide de
+la misma manera. Antes de aplicar la conversión, SoundText comprueba, pista
+por pista, que la canción suene exactamente igual que antes. Si dividirla
+perdería algo (un `vol=` o un `ccN=` en el silencio entre dos boxes, una
+rampa entre ambos, un cambio de tempo), la pista se convierte en un único
+box con todo su texto; lo mismo si no tiene silencios largos. El resumen
+indica las pistas que quedaron en un solo box. Deshacer (Ctrl+Z) vuelve
+atrás.
 
 ### Pistas de texto libre
 

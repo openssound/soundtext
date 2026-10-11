@@ -4,10 +4,10 @@ import re
 import time
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
 
-from core.model import Project, Clip
-from core.arrangement import flatten_clips_to_text, split_text_into_box_segments
+from core.model import Project
+from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
                            RE_CHORD, relative_text, key_signature_alters, NotationError)
@@ -387,32 +387,44 @@ class ProjectMixin:
 
     def _split_tracks_into_boxes(self, project):
         """Racchiude il testo gia' importato/generato di ogni traccia in uno
-        o piu' box (vedi core.model.Clip/core.arrangement.
-        split_text_into_box_segments, che divide dove una pausa continua
-        supera GAP_SPLIT_THRESHOLD_BEATS, minimizzando le pause "incollate"
-        dentro il testo di un singolo box), cosi' il contenuto e' subito
-        visibile e strutturato anche nella vista Struttura brano invece di
-        apparire come un canvas vuoto (che si vedrebbe solo passando
-        all'editor classico). Una traccia vuota non genera alcun box, come
-        per il salvataggio (vedi core.project_io.project_to_text)."""
+        o piu' box (vedi core.box_conversion.split_track_into_boxes), cosi'
+        il contenuto e' subito visibile e strutturato anche nella vista
+        Struttura brano invece di apparire come un canvas vuoto."""
         for t in project.tracks:
-            if not t.text.strip():
-                continue
-            segments = split_text_into_box_segments(t.text, project.patterns, t.instrument.default_octave,
-                                                    meter=project.meter())
-            if len(segments) <= 1:
-                # Il segmento non ha le pause iniziali: il box comincia dove
-                # comincia lui, non a 0 (altrimenti una parte che entra a
-                # meta' brano suonerebbe dall'inizio).
-                t.clips = [Clip(name=t.name, text=(segments[0][1] if segments else t.text),
-                                start_beat=(segments[0][0] if segments else 0.0))]
-            else:
-                t.clips = [
-                    Clip(name=f"{t.name} {i + 1}", text=seg_text, start_beat=start_beat)
-                    for i, (start_beat, seg_text) in enumerate(segments)
-                ]
-            t.text = flatten_clips_to_text(t.clips, project.patterns, t.instrument.default_octave,
-                                           meter=project.meter())
+            split_track_into_boxes(project, t)
+
+    def convert_to_boxes_action(self, *_):
+        """Converte in box le tracce a testo libero del progetto aperto, solo
+        dove il brano resta identico (vedi core.box_conversion); si annulla
+        con Annulla come ogni altra modifica."""
+        if not convertible_tracks(self.project):
+            QMessageBox.information(self, tr("Niente da convertire"),
+                                    tr("Tutte le tracce con delle note sono gia' divise in box."))
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            converted, kept = convert_project_to_boxes(self.project)
+        finally:
+            QApplication.restoreOverrideCursor()
+        if converted:
+            self._mark_dirty()
+            self.refresh_mixer()
+            if self.current_track_name:
+                self.select_track(self.current_track_name)
+            self.arrangement_view.refresh()
+        message = tr("Tracce convertite in box: {0}.", len(converted))
+        single = [n for n in converted if len(self.project.get_track(n).clips) == 1]
+        if single:
+            message += "\n\n" + tr("In un box solo (senza pause lunghe, o divise avrebbero perso dei comandi "
+                                   "come vol= o una rampa):\n{names}",
+                                   names="\n".join("  - " + n for n in single))
+        if kept:
+            message += "\n\n" + tr("Rimaste come testo libero (convertite non avrebbero suonato "
+                                   "esattamente uguali):\n{names}",
+                                   names="\n".join("  - " + n for n in kept))
+        if converted:
+            message += "\n\n" + tr("Per tornare indietro: Modifica → Annulla (Ctrl+Z).")
+        QMessageBox.information(self, tr("Converti le tracce in box"), message)
 
     def _notify_new_instruments(self, newly_created):
         """Avvisa l'utente quando l'import MIDI ha registrato automaticamente

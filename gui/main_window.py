@@ -452,6 +452,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Espandi pattern nelle tracce..."), self.expand_patterns_action,
             tooltip=tr("Sostituisce ogni riferimento %pattern e &midi con i token letterali corrispondenti.")
         ))
+        compose_menu.addAction(self._action(
+            tr("Converti le tracce in box"), self.convert_to_boxes_action,
+            tooltip=tr("Divide in box (vista Struttura brano) le tracce scritte come testo libero, "
+                       "dove ci sono pause lunghe. Il brano suona esattamente come prima.")
+        ))
         compose_menu.addSeparator()
         compose_menu.addAction(self._action(
             tr("Analizza tonalità..."), self.analyze_key_action,

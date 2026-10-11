@@ -1636,5 +1636,13 @@
  "nessuna": "aucune",
  "{name} non e' un plugin VST3 (manca GetPluginFactory)": "{name} n'est pas un plugin VST3 (GetPluginFactory manque)",
  "Espandi i pattern": "Développer les patterns",
- "Mostra il contenuto dei pattern usati nel box (in sola lettura)": "Affiche le contenu des patterns utilisés dans le box (en lecture seule)"
+ "Mostra il contenuto dei pattern usati nel box (in sola lettura)": "Affiche le contenu des patterns utilisés dans le box (en lecture seule)",
+ "Converti le tracce in box": "Convertir les pistes en box",
+ "Divide in box (vista Struttura brano) le tracce scritte come testo libero, dove ci sono pause lunghe. Il brano suona esattamente come prima.": "Divise en box (vue Structure du morceau) les pistes écrites en texte libre, là où il y a de longs silences. Le morceau sonne exactement comme avant.",
+ "Niente da convertire": "Rien à convertir",
+ "Tutte le tracce con delle note sono gia' divise in box.": "Toutes les pistes avec des notes sont déjà divisées en box.",
+ "Tracce convertite in box: {0}.": "Pistes converties en box : {0}.",
+ "Rimaste come testo libero (convertite non avrebbero suonato esattamente uguali):\n{names}": "Restées en texte libre (converties, elles n'auraient pas sonné exactement pareil) :\n{names}",
+ "Per tornare indietro: Modifica → Annulla (Ctrl+Z).": "Pour revenir en arrière : Édition → Annuler (Ctrl+Z).",
+ "In un box solo (senza pause lunghe, o divise avrebbero perso dei comandi come vol= o una rampa):\n{names}": "Dans un seul box (pas de longs silences, ou divisées elles auraient perdu des commandes comme vol= ou une rampe) :\n{names}"
 }

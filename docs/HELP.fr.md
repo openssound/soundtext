@@ -2233,6 +2233,15 @@ clic droit sur l'étiquette de la piste à gauche.
   Lecture/Stop d'aperçu utilisé pour les patterns, section 4) avec le nom et
   le texte du box, validés avant de pouvoir confirmer.
 
+- Dans l'éditeur du box, la case **Développer les patterns** (visible
+  seulement si le box utilise des `%Nom`) affiche le contenu des patterns à
+  la place des appels, en lecture seule : avec Play, la note jouée est
+  surlignée même à l'intérieur des patterns. En la décochant, les `%Nom`
+  reviennent.
+- **Double-clic sur un `%Nom`** (dans l'éditeur de texte ou dans celui du
+  box) ouvre la bibliothèque de patterns sur ce pattern, avec l'instrument
+  de la piste dans « Écouter avec : ».
+
 ### Menu du clic droit sur un box
 
 - **▶ Play** / **■ Stop** : joue (ou arrête) l'aperçu du contenu du box avec
@@ -2308,6 +2317,16 @@ piste déjà en box, le texte obtenu est automatiquement divisé en plusieurs
 box là où apparaît un silence continu de plus de 3 temps, au lieu de rester
 un seul grand box — ainsi le contenu est tout de suite organisé de façon
 lisible même pour un fichier long, sans devoir le réarranger à la main.
+
+Pour un projet écrit entièrement en texte libre, il y a le menu **Composer →
+Convertir les pistes en box** : en un clic, chaque piste sans box est
+divisée de la même façon. Avant d'appliquer la conversion, SoundText
+vérifie, piste par piste, que le morceau sonne exactement comme avant. Si
+la diviser ferait perdre quelque chose (un `vol=` ou un `ccN=` dans le
+silence entre deux box, une rampe à cheval, un changement de tempo), la
+piste devient un seul box avec tout son texte ; de même si elle n'a pas de
+longs silences. Le récapitulatif indique les pistes restées en un seul box.
+Annuler (Ctrl+Z) revient en arrière.
 
 ### Pistes en texte libre
 
