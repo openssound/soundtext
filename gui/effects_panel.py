@@ -37,6 +37,7 @@ from core.effects import (
 from core.model import Effect
 
 from . import theme
+from .file_dialogs import file_dialog_options
 from core.i18n import tr
 
 DEFAULT_LOOP_SECONDS = 10
@@ -1003,7 +1004,8 @@ class EffectsPanel(QFrame):
         start = os.path.dirname(current) if current else existing_nam_dir() or os.path.dirname(
             getattr(self.host, "current_path", None) or "") or os.path.expanduser("~")
         path, _filter = QFileDialog.getOpenFileName(
-            self, tr("Scegli un profilo NAM"), start, tr("Profili NAM (*.nam)"))
+            self, tr("Scegli un profilo NAM"), start, tr("Profili NAM (*.nam)"),
+            options=file_dialog_options())
         if not path:
             return ""
         problem = nam_problem(path)
@@ -1020,7 +1022,8 @@ class EffectsPanel(QFrame):
         start = os.path.dirname(current) if current else existing_cab_dir() or os.path.dirname(
             getattr(self.host, "current_path", None) or "") or os.path.expanduser("~")
         path, _filter = QFileDialog.getOpenFileName(
-            self, tr("Scegli la risposta all'impulso (IR) della cassa"), start, tr("File WAV (*.wav *.WAV)"))
+            self, tr("Scegli la risposta all'impulso (IR) della cassa"), start, tr("File WAV (*.wav *.WAV)"),
+            options=file_dialog_options())
         if not path:
             return ""
         problem = ir_file_problem(path)

@@ -31,6 +31,7 @@ from core.lv2_host import decode_state as decode_lv2_state, encode_state as enco
 from core.plugins import PluginError, PluginInfo
 
 from . import theme
+from .file_dialogs import file_dialog_options
 from core.i18n import tr
 
 NO_PLUGIN = "__nessuno__"
@@ -214,7 +215,8 @@ class PluginPickerDialog(QDialog):
         if not os.path.isdir(start):
             start = os.path.expanduser("~")
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli uno strumento SFZ"), start,
-                                              tr("Strumenti SFZ (*.sfz)") + ";;" + tr("Tutti i file (*)"))
+                                              tr("Strumenti SFZ (*.sfz)") + ";;" + tr("Tutti i file (*)"),
+                                              options=file_dialog_options())
         if not path:
             return False
         self._sfz_ref = "sfz:" + path
@@ -291,7 +293,8 @@ class _FileRow:
             start = os.path.expanduser("~")
         label = self.param.label.lower()
         filters = [f for word, f in _FILE_FILTERS.items() if word in label] + [tr("Tutti i file (*)")]
-        path, _ = QFileDialog.getOpenFileName(self.parent, self.param.label, start, ";;".join(filters))
+        path, _ = QFileDialog.getOpenFileName(self.parent, self.param.label, start, ";;".join(filters),
+                                              options=file_dialog_options())
         if path:
             self._emit(path)
 
@@ -610,7 +613,8 @@ class PluginDirsDialog(QDialog):
         layout.addLayout(row)
 
     def _add(self):
-        path = QFileDialog.getExistingDirectory(self, tr("Cartella dei plugin VST3"), os.path.expanduser("~"))
+        path = QFileDialog.getExistingDirectory(self, tr("Cartella dei plugin VST3"), os.path.expanduser("~"),
+                                                 file_dialog_options() | QFileDialog.Option.ShowDirsOnly)
         if path and path not in self.dirs():
             self.list.addItem(path)
 
