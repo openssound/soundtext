@@ -9,13 +9,21 @@
 #   - copia il codice sorgente in ~/.local/share/soundtext (senza mai
 #     cancellare le sottocartelle songs/ e soundfonts/, dove l'app salva
 #     i progetti e i SoundFont dell'utente);
-#   - se il package manager non fornisce un SoundFont GM di sistema, copia
-#     quello gia' incluso nel repository (soundfonts/FluidR3_GM.sf2) in
-#     ~/.local/share/soundfonts/, dove l'app lo rileva automaticamente;
+#   - se il package manager non fornisce un SoundFont GM di sistema, usa
+#     soundfonts/FluidR3_GM.sf2 se c'e' accanto allo script, altrimenti lo
+#     scarica (circa 150 MB, licenza MIT, non versionato in git) dalla
+#     release "resources" del repository, in ~/.local/share/soundfonts/,
+#     dove l'app lo rileva automaticamente;
 #   - crea un virtualenv Python dedicato e ci installa i pacchetti pip
 #     (PySide6, mido, sounddevice, numpy, pedalboard);
-#   - installa un comando "soundtext" in ~/.local/bin e una voce nel
-#     menu applicazioni (con icona).
+#   - installa un comando "soundtext" in ~/.local/bin (e, se manca,
+#     aggiunge ~/.local/bin al PATH in ~/.bashrc o ~/.zshrc) e una voce nel
+#     menu applicazioni (con icona); avviato dal menu, se il programma non
+#     parte mostra un avviso col log (~/.local/state/soundtext/soundtext.log).
+#
+# Va lanciato dalla cartella del repository; se accanto allo script non ci
+# sono i sorgenti (per esempio e' stato scaricato da solo), li scarica da
+# GitHub.
 #
 # Uso:
 #   ./install.sh              installa (o aggiorna un'installazione esistente)
@@ -38,7 +46,14 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
 LAUNCHER="$BIN_DIR/soundtext"
 DESKTOP_FILE="$DESKTOP_DIR/soundtext.desktop"
 ICON_FILE="$ICON_DIR/soundtext.png"
-SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Con "curl ... | bash" BASH_SOURCE e' vuoto: si parte dalla cartella corrente
+# (e, se li' non ci sono i sorgenti, li si scarica: vedi sotto).
+SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+SOURCE_URL="https://github.com/openssound/soundtext/archive/refs/heads/main.tar.gz"
+# SoundFont GM (lo stesso degli installer Windows/macOS, allegato alla release
+# "resources" perche' troppo grande per git) e il suo SHA-256.
+SOUNDFONT_URL="https://github.com/openssound/soundtext/releases/download/resources/FluidR3_GM.sf2"
+SOUNDFONT_SHA256="74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
 
 ASSUME_YES=0
 ACTION="install"
@@ -48,7 +63,7 @@ for arg in "$@"; do
         --uninstall) ACTION="uninstall" ;;
         --purge) ACTION="purge" ;;
         -h|--help)
-            sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,38p' "${BASH_SOURCE[0]:-$0}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
@@ -99,6 +114,36 @@ do_uninstall() {
 
 if [ "$ACTION" = "uninstall" ] || [ "$ACTION" = "purge" ]; then
     do_uninstall
+fi
+
+# ---------------------------------------------------------------------------
+# Sorgenti: dalla cartella dello script, altrimenti scaricati da GitHub
+# ---------------------------------------------------------------------------
+
+has_sources() {
+    [ -f "$1/main.py" ] && [ -f "$1/requirements.txt" ] && [ -d "$1/core" ] && [ -d "$1/gui" ]
+}
+
+if ! has_sources "$SRC_DIR"; then
+    warn "Accanto allo script ($SRC_DIR) non ci sono i sorgenti di $APP_NAME"
+    warn "(main.py, requirements.txt, core/, gui/): li scarico da GitHub."
+    if ! command -v curl >/dev/null 2>&1; then
+        error "curl non trovato: scarica il repository completo (Code -> Download ZIP"
+        error "su https://github.com/openssound/soundtext, oppure git clone),"
+        error "estrailo e lancia ./install.sh da quella cartella."
+        exit 1
+    fi
+    DOWNLOAD_DIR="$(mktemp -d)"
+    trap 'rm -rf "$DOWNLOAD_DIR"' EXIT
+    if ! curl -fsSL "$SOURCE_URL" | tar -xz -C "$DOWNLOAD_DIR" --strip-components=1 \
+        || ! has_sources "$DOWNLOAD_DIR"; then
+        error "Download dei sorgenti non riuscito ($SOURCE_URL)."
+        error "Scarica il repository completo (Code -> Download ZIP, oppure git"
+        error "clone), estrailo e lancia ./install.sh da quella cartella."
+        exit 1
+    fi
+    SRC_DIR="$DOWNLOAD_DIR"
+    info "Sorgenti scaricati."
 fi
 
 # ---------------------------------------------------------------------------
@@ -172,8 +217,8 @@ install_system_deps() {
                 "$aur" -S --needed --noconfirm soundfont-fluid || failed+=("soundfont-fluid (AUR)")
             else
                 warn "Nessun SoundFont GM di sistema trovato e nessun helper AUR"
-                warn "(yay/paru) disponibile: uso quello incluso nel repository come"
-                warn "ripiego (vedi passo successivo). Per un pacchetto di sistema"
+                warn "(yay/paru) disponibile: lo scarico come ripiego (vedi passo"
+                warn "successivo). Per un pacchetto di sistema"
                 warn "installa 'soundfont-fluid' da AUR manualmente."
             fi
         fi
@@ -209,12 +254,38 @@ install_soundfont() {
 
     local bundled="$INSTALL_DIR/soundfonts/FluidR3_GM.sf2"
     if [ -f "$bundled" ]; then
-        info "Copio il SoundFont GM incluso nel repository in $target..."
+        info "Copio il SoundFont GM (soundfonts/FluidR3_GM.sf2) in $target..."
         mkdir -p "$target_dir"
         cp "$bundled" "$target"
+        return
+    fi
+
+    # Nessun SoundFont di sistema (pacchetto non disponibile o non
+    # installato) e nessuno accanto allo script: soundfonts/ non e' in git,
+    # quindi lo si scarica, verificandone lo SHA-256.
+    if ! command -v curl >/dev/null 2>&1; then
+        warn "Nessun SoundFont GM trovato e curl non disponibile per scaricarlo:"
+        warn "senza, l'app non produrra' audio. Scaricalo da $SOUNDFONT_URL"
+        warn "e mettilo in $target."
+        return
+    fi
+    if ! confirm "Nessun SoundFont GM trovato: scarico FluidR3_GM.sf2 (circa 150 MB, serve per sentire l'audio)?"; then
+        warn "SoundFont GM non scaricato: senza, l'app non produrra' audio. Impostane"
+        warn "uno da Riproduzione -> Scegli SoundFont (.sf2)... dentro l'app."
+        return
+    fi
+    info "Scarico il SoundFont GM in $target_dir..."
+    mkdir -p "$target_dir"
+    local part="$target.part"
+    if curl -fL --progress-bar -o "$part" "$SOUNDFONT_URL" \
+        && [ "$(sha256sum "$part" | awk '{print $1}')" = "$SOUNDFONT_SHA256" ]; then
+        mv "$part" "$target"
+        info "SoundFont GM installato: l'app lo rileva automaticamente."
     else
-        warn "Nessun SoundFont GM trovato: senza, l'app non produrra' audio."
-        warn "Impostane uno da Riproduzione -> Scegli SoundFont (.sf2)... dentro l'app."
+        rm -f "$part"
+        warn "Download del SoundFont non riuscito (o file diverso dall'originale):"
+        warn "senza, l'app non produrra' audio. Rilancia lo script, oppure scaricalo"
+        warn "da $SOUNDFONT_URL e mettilo in $target."
     fi
 }
 
@@ -289,6 +360,13 @@ fi
 # rsync/cp non cancellano mai file esistenti non presenti nella sorgente:
 # songs/ e soundfonts/ dell'utente restano intatti tra un aggiornamento e l'altro.
 
+for needed in main.py requirements.txt; do
+    if [ ! -f "$INSTALL_DIR/$needed" ]; then
+        error "$INSTALL_DIR/$needed manca dopo la copia dei sorgenti: installazione interrotta."
+        exit 1
+    fi
+done
+
 install_soundfont
 
 info "Creo il virtualenv Python (puo' richiedere qualche minuto, PySide6 e' grande)..."
@@ -299,7 +377,23 @@ PIP_EXTRA=()
 if [ -r /proc/cpuinfo ] && ! grep -qw avx /proc/cpuinfo; then
     PIP_EXTRA=("pedalboard<0.9.17")
 fi
-"$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" "${PIP_EXTRA[@]}"
+if ! "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" "${PIP_EXTRA[@]}"; then
+    # python-rtmidi e' facoltativo (solo tastiere MIDI esterne) ed e' il
+    # pacchetto che piu' spesso va compilato (servono gli header ALSA e un
+    # compilatore): senza, il resto dell'installazione non si blocca.
+    warn "pip non e' riuscito a installare tutti i pacchetti: riprovo senza"
+    warn "python-rtmidi (facoltativo, serve solo per suonare con una tastiera MIDI)."
+    REQ_NO_RTMIDI="$(mktemp)"
+    grep -v '^python-rtmidi' "$INSTALL_DIR/requirements.txt" > "$REQ_NO_RTMIDI"
+    "$INSTALL_DIR/venv/bin/pip" install -r "$REQ_NO_RTMIDI" "${PIP_EXTRA[@]}"
+    rm -f "$REQ_NO_RTMIDI"
+fi
+
+if ! "$INSTALL_DIR/venv/bin/python3" -c "import PySide6, st_language, mido" >/dev/null 2>&1; then
+    error "Il virtualenv non riesce a importare PySide6/st_language/mido: guarda"
+    error "gli errori di pip qui sopra e rilancia lo script."
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Comando "soundtext", voce di menu e icona
@@ -307,9 +401,29 @@ fi
 
 info "Installo il comando 'soundtext' in $BIN_DIR..."
 mkdir -p "$BIN_DIR"
+# Da terminale l'output resta nel terminale; avviato dal menu applicazioni
+# (nessun terminale) va in un log e, se il programma si chiude con un
+# errore, un avviso dice dove guardare invece di non far comparire nulla.
 cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
-exec "$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/main.py" "\$@"
+if [ -t 2 ]; then
+    exec "$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/main.py" "\$@"
+fi
+LOG="\${XDG_STATE_HOME:-\$HOME/.local/state}/soundtext/soundtext.log"
+mkdir -p "\$(dirname "\$LOG")"
+"$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/main.py" "\$@" >"\$LOG" 2>&1
+status=\$?
+if [ "\$status" -ne 0 ]; then
+    msg="SoundText non si e' avviato (errore \$status). Dettagli in \$LOG"
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -i soundtext "SoundText" "\$msg"
+    elif command -v zenity >/dev/null 2>&1; then
+        zenity --error --text="\$msg"
+    elif command -v kdialog >/dev/null 2>&1; then
+        kdialog --error "\$msg"
+    fi
+fi
+exit "\$status"
 EOF
 chmod +x "$LAUNCHER"
 
@@ -336,14 +450,28 @@ command -v gtk-update-icon-cache >/dev/null 2>&1 && \
 echo
 info "Installazione completata."
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    warn "$BIN_DIR non e' nel tuo PATH, quindi 'soundtext' da terminale non"
-    warn "funzionera' finche' non lo aggiungi. La voce nel menu applicazioni"
-    warn "funziona comunque gia' da subito."
+    PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+    case "${SHELL##*/}" in
+        zsh)  RC_FILE="$HOME/.zshrc" ;;
+        bash) RC_FILE="$HOME/.bashrc" ;;
+        *)    RC_FILE="" ;;
+    esac
     if [ -n "${FISH_VERSION:-}" ] || [ "${SHELL##*/}" = "fish" ]; then
-        warn "Con fish: fish_add_path $BIN_DIR"
+        warn "$BIN_DIR non e' nel tuo PATH: con fish aggiungilo con"
+        warn "'fish_add_path $BIN_DIR' (la voce nel menu applicazioni funziona gia')."
+    elif [ -z "$RC_FILE" ]; then
+        warn "$BIN_DIR non e' nel tuo PATH, quindi 'soundtext' da terminale non"
+        warn "funzionera' finche' non aggiungi '$PATH_LINE' al file di avvio"
+        warn "della tua shell (la voce nel menu applicazioni funziona gia')."
+    elif [ -f "$RC_FILE" ] && grep -qF "$PATH_LINE" "$RC_FILE"; then
+        info "$BIN_DIR e' gia' aggiunto al PATH in $RC_FILE: apri un nuovo terminale."
+    elif confirm "Aggiungo $BIN_DIR al PATH in $RC_FILE, per usare 'soundtext' da terminale?"; then
+        printf '\n# SoundText (install.sh)\n%s\n' "$PATH_LINE" >> "$RC_FILE"
+        info "Aggiunto a $RC_FILE: apri un nuovo terminale per usare 'soundtext'."
     else
-        warn "Con bash/zsh: aggiungi 'export PATH=\"$BIN_DIR:\$PATH\"' al tuo"
-        warn "~/.bashrc o ~/.zshrc, poi riapri il terminale."
+        warn "$BIN_DIR non e' nel tuo PATH, quindi 'soundtext' da terminale non"
+        warn "funzionera' finche' non aggiungi '$PATH_LINE' a $RC_FILE"
+        warn "(la voce nel menu applicazioni funziona gia')."
     fi
 fi
 echo "Avvia $APP_NAME dal menu applicazioni, oppure da terminale con: soundtext"

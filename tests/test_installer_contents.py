@@ -116,3 +116,18 @@ def test_macos_installer_downloads_the_soundfont_and_checks_it():
     assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
     assert 'mv "$part" "$SOUNDFONT"' in text                     # il file resta solo se l'hash torna
     assert "incluso nel repository" not in text
+
+
+def test_linux_installer_works_without_the_repository_and_reports_failures():
+    """Come install-macos.sh: sorgenti scaricati se mancano, SoundFont GM
+    scaricato (e verificato) se il sistema non ne fornisce uno, rtmidi
+    facoltativo, PATH aggiornato e avviso se l'avvio dal menu fallisce."""
+    text = _read("install.sh")
+    assert "has_sources \"$SRC_DIR\"" in text and "archive/refs/heads/main.tar.gz" in text
+    assert '"$INSTALL_DIR/$needed"' in text
+    assert "releases/download/resources/FluidR3_GM.sf2" in text
+    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
+    assert "grep -v '^python-rtmidi'" in text
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".bashrc" in text
+    assert "soundtext.log" in text and "notify-send" in text
+    assert "incluso nel repository" not in text
