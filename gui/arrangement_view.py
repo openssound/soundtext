@@ -952,7 +952,8 @@ class ArrangementView(QWidget):
         track = self.host.project.get_track(item.track_name)
         dlg = BoxEditDialog(self, self.host.project, track.instrument_name, self.host.project.tempo_bpm,
                              clip_name=clip.name, clip_text=clip.text, title=tr("Modifica box — {name}", name=track.name),
-                             start_beat=clip.start_beat, track_name=track.name)
+                             start_beat=clip.start_beat, track_name=track.name,
+                             on_patterns_edited=getattr(self.host, "_after_patterns_edited", None))
         if dlg.exec() != BoxEditDialog.Accepted:
             return
         clip.name = dlg.result_name()
@@ -965,7 +966,8 @@ class ArrangementView(QWidget):
         track = self.host.project.get_track(track_name)
         dlg = BoxEditDialog(self, self.host.project, track.instrument_name, self.host.project.tempo_bpm,
                              clip_text=track.text, title=tr("Testo libero — {name}", name=track.name), with_name=False,
-                             track_name=track.name)
+                             track_name=track.name,
+                             on_patterns_edited=getattr(self.host, "_after_patterns_edited", None))
         if dlg.exec() != BoxEditDialog.Accepted or dlg.result_text() == track.text.strip():
             return
         track.text = dlg.result_text()
@@ -979,7 +981,8 @@ class ArrangementView(QWidget):
         track = self.host.project.get_track(track_name)
         dlg = BoxEditDialog(self, self.host.project, track.instrument_name, self.host.project.tempo_bpm,
                              clip_name=track.name, clip_text=track.text,
-                             title=tr("Nuovo box — {name}", name=track.name), track_name=track.name)
+                             title=tr("Nuovo box — {name}", name=track.name), track_name=track.name,
+                             on_patterns_edited=getattr(self.host, "_after_patterns_edited", None))
         if dlg.exec() != BoxEditDialog.Accepted or not dlg.result_text().strip():
             return
         track.clips = [Clip(name=dlg.result_name(), text=dlg.result_text(), start_beat=0.0)]
@@ -989,7 +992,8 @@ class ArrangementView(QWidget):
         track = self.host.project.get_track(track_name)
         dlg = BoxEditDialog(self, self.host.project, track.instrument_name, self.host.project.tempo_bpm,
                              title=tr("Nuovo box — {name}", name=track.name), start_beat=_snap(beat),
-                             track_name=track.name)
+                             track_name=track.name,
+                             on_patterns_edited=getattr(self.host, "_after_patterns_edited", None))
         if dlg.exec() != BoxEditDialog.Accepted:
             return
         clip = Clip(name=dlg.result_name(), text=dlg.result_text(), start_beat=beat)

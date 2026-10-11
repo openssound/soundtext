@@ -514,7 +514,8 @@ def test_track_without_boxes_offers_editing_its_free_text(monkeypatch):
     class FakeDialog:
         Accepted = 1
 
-        def __init__(self, parent, project, instrument_name, tempo_bpm, clip_text="", title="", with_name=True, track_name=None):
+        def __init__(self, parent, project, instrument_name, tempo_bpm, clip_text="", title="", with_name=True, track_name=None,
+                     **_):
             opened.update(text=clip_text, with_name=with_name)
 
         def exec(self):

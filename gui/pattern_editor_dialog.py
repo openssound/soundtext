@@ -1,3 +1,5 @@
+import re
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -6,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.model import Project
-from core.notation import validate_track_text, tokenize, Pattern
+from core.notation import validate_track_text, tokenize, Pattern, comment_spans
 from core.completion import completions_for_word
 from core.instruments import get_instrument, list_instrument_names
 from core.playback import PlaybackEngine
@@ -21,10 +23,28 @@ from .highlighter import NotationHighlighter
 from core.i18n import tr
 
 
-class PatternEditorDialog(QDialog):
-    """Gestione della libreria di pattern universali (sezione 6 delle specifiche)."""
+_RE_REF_IN_TEXT = re.compile(r"\d*%(\w+)(?:[+-]\d+)?")
 
-    def __init__(self, project: Project, parent=None):
+
+def pattern_ref_at(text: str, offset: int, patterns) -> str:
+    """Il nome del pattern richiamato (%Nome, anche 2%Nome o %Nome+3) dal
+    token alla posizione 'offset' di 'text', o "" se li' non c'e' un
+    richiamo a un pattern esistente (o se e' dentro un commento)."""
+    for m in _RE_REF_IN_TEXT.finditer(text):
+        if m.start() <= offset < m.end() and m.group(1) in patterns:
+            if any(a <= m.start() < b for a, b in comment_spans(text)):
+                return ""
+            return m.group(1)
+    return ""
+
+
+class PatternEditorDialog(QDialog):
+    """Gestione della libreria di pattern universali (sezione 6 delle specifiche).
+    pattern_name: il pattern da mostrare all'apertura (es. doppio click su un
+    %Nome); instrument_name: lo strumento iniziale di "Ascolta con:" (quello
+    della traccia da cui lo si apre)."""
+
+    def __init__(self, project: Project, parent=None, pattern_name: str = "", instrument_name: str = ""):
         super().__init__(parent)
         self.project = project
         self.setWindowTitle(tr("Libreria Pattern (%Nome)"))
@@ -120,7 +140,12 @@ class PatternEditorDialog(QDialog):
         # Evidenziazione, nel corpo del pattern, di cio' che sta suonando
         # (l'anteprima suona %nome, che si espande nello stesso testo).
         self._play_highlight = PlayHighlighter(self.body_edit, self, "_playback")
-        if self.list_widget.count():
+        if instrument_name and self.instrument_combo.findText(instrument_name) >= 0:
+            self.instrument_combo.setCurrentText(instrument_name)
+        found = self.list_widget.findItems(pattern_name, Qt.MatchExactly) if pattern_name else []
+        if found:
+            self.list_widget.setCurrentItem(found[0])
+        elif self.list_widget.count():
             self.list_widget.setCurrentRow(0)
 
     def _load_pattern(self, name):

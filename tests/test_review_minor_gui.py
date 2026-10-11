@@ -69,7 +69,7 @@ def test_editor_shows_the_renamed_pattern(monkeypatch):
     w.select_track("Piano")
 
     class _RenamingDialog:
-        def __init__(self, project, parent):
+        def __init__(self, project, parent, **_):
             self.project = project
 
         def exec(self):

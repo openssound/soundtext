@@ -17,7 +17,8 @@ from typing import Dict, List, Optional, Tuple
 from .model import Clip
 from .notation import (Pattern, compute_token_spans, context_prefix_before, RE_REST,
                        BAR_CHECK, all_token_spans, is_lyric, tokenize, expand_patterns,
-                       RE_BAR_ANCHOR, NotationError, upgrade_midi_refs, Meter, RE_TEMPO_SET)
+                       RE_BAR_ANCHOR, NotationError, upgrade_midi_refs, Meter, RE_TEMPO_SET,
+                       RE_PATTERN_REF, PitchRewriter, map_nested_tokens, tokenize_spans)
 from .i18n import tr
 from st_language.song import (  # noqa: F401  (unione dei box: nella libreria)
     FILL_GRID_BEATS, _FILL_GRID_TOKEN, _DEFAULT_STATE_PREFIX, clip_duration_beats, flatten_clips_to_text,
@@ -202,3 +203,34 @@ def load_box_file(path: str) -> Clip:
     body_lines = [line[2:] if line.startswith("  ") else line for line in lines[1:]]
     text = upgrade_midi_refs("\n".join(body_lines).strip())     # &Nome delle versioni prima della 2.6
     return Clip(name=name, text=text, start_beat=0.0)
+
+
+def expand_pattern_refs_text(text: str, patterns: Dict[str, Pattern], default_octave: int) -> str:
+    """Il testo con ogni riferimento %Nome (anche dentro gruppi N(...) e
+    blocchi di voci, e nei pattern annidati) sostituito dal contenuto del
+    pattern, ripetuto e trasposto come indica il riferimento: per leggere
+    cosa c'e' dentro i pattern di un box (vedi gui.box_edit_dialog). Il
+    resto del testo (impaginazione, commenti) resta com'e'. Solo da
+    guardare: un pattern si legge in ottave assolute e senza tonalita', il
+    testo espanso dentro un tratto rel:/key= suonerebbe diverso."""
+
+    def expand(tok: str, depth: int) -> str:
+        m = RE_PATTERN_REF.match(tok)
+        if not m or m.group(2) not in patterns or depth > 32:
+            return tok
+        mult_s, name, offset = m.groups()
+        body = [map_nested_tokens(t, lambda t: expand(t, depth + 1)) for t in patterns[name].tokens]
+        if offset:
+            rewriter = PitchRewriter(int(offset), default_octave)
+            body = [map_nested_tokens(t, rewriter) for t in tokenize(" ".join(body))]
+        return " ".join(body * (int(mult_s) if mult_s else 1))
+
+    out, last = [], 0
+    for tok, start, end in tokenize_spans(text):
+        expanded = map_nested_tokens(tok, lambda t: expand(t, 0)) if "%" in tok else tok
+        if expanded != tok:
+            out.append(text[last:start])
+            out.append(expanded)
+            last = end
+    out.append(text[last:])
+    return "".join(out)

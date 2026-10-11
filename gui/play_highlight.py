@@ -43,6 +43,7 @@ class PlayHighlighter(QObject):
         self._playback_attr = playback_attr
         self._text = None          # testo dell'editor congelato all'avvio
         self._spans = None
+        self._span_args = None
         self._lead_beats = 0.0
         self._tempo_map = None
         self._start_wall = None
@@ -62,21 +63,35 @@ class PlayHighlighter(QObject):
         pausa di tanti beat (vedi core.arrangement.anchored_preview_text):
         l'ascolto parte da li' e le ancore bar=N contano da li'."""
         self.stop()
-        text = self.editor.toPlainText()
-        try:
-            # Sul testo intero dell'editor, non su quello ripulito dagli spazi
-            # passato a project: gli offset devono corrispondere al documento.
-            self._spans = compute_token_spans(text, patterns, midi_dir=midi_dir, default_octave=default_octave,
-                                              meter=project.meter(), origin_beat=lead_beats)
-        except Exception:
-            self._spans = None
-        self._text = text
+        self._span_args = (patterns, midi_dir, default_octave, project.meter())
         self._lead_beats = lead_beats
+        self._compute_spans()
         self._tempo_map = build_tempo_beat_map(project, midi_dir=midi_dir)
         if lead_beats:
             play_kwargs["start_offset_beats"] = lead_beats
         self.playback.play(project, on_audio_started=self._mark_audio_started, **play_kwargs)
         self._timer.start()
+
+    def _compute_spans(self):
+        patterns, midi_dir, default_octave, meter = self._span_args
+        text = self.editor.toPlainText()
+        try:
+            # Sul testo intero dell'editor, non su quello ripulito dagli spazi
+            # passato a project: gli offset devono corrispondere al documento.
+            self._spans = compute_token_spans(text, patterns, midi_dir=midi_dir, default_octave=default_octave,
+                                              meter=meter, origin_beat=self._lead_beats)
+        except Exception:
+            self._spans = None
+        self._text = text
+
+    def follow_editor(self, editor):
+        """Evidenzia d'ora in poi in 'editor' (con lo stesso tempo del testo
+        che suona, es. lo stesso box con i pattern espansi, vedi
+        gui.box_edit_dialog), anche a riproduzione in corso."""
+        self.editor.setExtraSelections([])
+        self.editor = editor
+        if self._text is not None:
+            self._compute_spans()
 
     def stop(self):
         self.playback.stop()

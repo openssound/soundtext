@@ -68,6 +68,63 @@ def test_box_edit_dialog_highlights_what_is_playing():
     _check(dlg.body_edit, dlg._play_highlight, dlg._playback, dlg._stop)
 
 
+def _project_with_riff():
+    from core.model import Pattern
+    p = Project(name="t", tempo_bpm=120)
+    p.patterns["Riff"] = Pattern(name="Riff", tokens=["d", "e"])
+    return p
+
+
+def test_box_edit_dialog_expand_patterns_checkbox_only_with_patterns():
+    dlg = BoxEditDialog(None, _project_with_riff(), "Piano", 120, clip_text="4: c d e f")
+    assert dlg.expand_check.isHidden()
+    dlg.body_edit.setPlainText("4: c %Riff f")
+    dlg._update_status()
+    assert not dlg.expand_check.isHidden()
+
+
+def test_box_edit_dialog_expand_patterns_is_read_only_and_reversible():
+    dlg = BoxEditDialog(None, _project_with_riff(), "Piano", 120, clip_name="A", clip_text="4: c %Riff f")
+    dlg.expand_check.setChecked(True)
+    assert dlg.body_edit.isHidden() and not dlg.expanded_edit.isHidden()
+    assert dlg.expanded_edit.isReadOnly()
+    assert dlg.expanded_edit.toPlainText() == "4: c d e f"
+    dlg.expand_check.setChecked(False)
+    assert not dlg.body_edit.isHidden() and dlg.expanded_edit.isHidden()
+    assert dlg.body_edit.toPlainText() == "4: c %Riff f"
+    dlg.accept()
+    assert dlg.result_text() == "4: c %Riff f"     # il box resta con i suoi pattern
+
+
+def test_box_edit_dialog_highlights_inside_expanded_patterns():
+    dlg = BoxEditDialog(None, _project_with_riff(), "Piano", 120, clip_text="4: c %Riff f")
+    dlg._playback = ClockPlayback()
+    dlg.expand_check.setChecked(True)
+    dlg._play()
+    assert dlg._playback.played[0].tracks[0].text == "4: c %Riff f"   # suona il box vero
+    _check(dlg.expanded_edit, dlg._play_highlight, dlg._playback, dlg._stop)
+
+
+def test_box_edit_dialog_expand_toggle_while_playing_moves_the_highlight():
+    dlg = BoxEditDialog(None, _project_with_riff(), "Piano", 120, clip_text="4: c %Riff f")
+    dlg._playback = ClockPlayback()
+    dlg._play()
+    assert _highlighted_at(dlg.body_edit, dlg._play_highlight, dlg._playback, 1.1) == "%Riff"
+    dlg.expand_check.setChecked(True)
+    assert dlg.body_edit.extraSelections() == []
+    assert _highlighted_at(dlg.expanded_edit, dlg._play_highlight, dlg._playback, 1.1) == "e"
+
+
+def test_expand_pattern_refs_text():
+    from core.arrangement import expand_pattern_refs_text
+    from core.model import Pattern
+    patterns = {"A": Pattern(name="A", tokens=["c", "d"]), "B": Pattern(name="B", tokens=["%A", "g"])}
+    assert expand_pattern_refs_text("2%A f // %A\n%B", patterns, 4) == "c d c d f // %A\nc d g"
+    assert expand_pattern_refs_text("2(%A e)", patterns, 4) == "2(c d e)"
+    assert expand_pattern_refs_text("%A+2", patterns, 4) != "c d"            # trasposto
+    assert expand_pattern_refs_text("%Nessuno c", patterns, 4) == "%Nessuno c"
+
+
 def test_keyboard_dialog_preview_highlights_what_is_playing():
     dlg = KeyboardPlayDialog(None, project=Project(name="t", tempo_bpm=120), instrument_name="Piano",
                              context_label="test")

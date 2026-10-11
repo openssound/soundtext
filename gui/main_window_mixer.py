@@ -16,6 +16,7 @@ from .arrangement_view import HEADER_WIDTH, ROW_HEIGHT
 from .track_header import TrackHeaderWidget
 from .add_track_dialog import AddTrackDialog
 from .voicing_picker import handle_chord_double_click
+from .pattern_editor_dialog import pattern_ref_at
 from .selection_actions import handle_selection_context_menu
 from .audio_import_dialog import AudioImportDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
@@ -196,6 +197,10 @@ class MixerMixin:
         track = self.project.get_track(self.current_track_name)
         if track.is_audio:
             return False
+        name = pattern_ref_at(self.editor.toPlainText(), char_offset, self.project.patterns)
+        if name:
+            self.manage_patterns(pattern_name=name, instrument_name=track.instrument_name)
+            return True
         return handle_chord_double_click(
             self.editor, self.editor.toPlainText(), char_offset, global_pos,
             self.project.patterns, track.instrument, track.instrument_name,

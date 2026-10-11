@@ -1634,5 +1634,7 @@
  "il plugin e' per {arch}, SoundText e' per {expected}": "the plugin is for {arch}, SoundText is for {expected}",
  "il plugin non ha la versione per questo Windows ({expected}); dentro ci sono: {present}": "the plugin has no version for this Windows ({expected}); it contains: {present}",
  "nessuna": "none",
- "{name} non e' un plugin VST3 (manca GetPluginFactory)": "{name} is not a VST3 plugin (GetPluginFactory is missing)"
+ "{name} non e' un plugin VST3 (manca GetPluginFactory)": "{name} is not a VST3 plugin (GetPluginFactory is missing)",
+ "Espandi i pattern": "Expand patterns",
+ "Mostra il contenuto dei pattern usati nel box (in sola lettura)": "Show the content of the patterns used in the box (read-only)"
 }

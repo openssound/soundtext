@@ -813,9 +813,14 @@ class ProjectMixin:
 
     # ------------------------------------------------------------ pattern
 
-    def manage_patterns(self):
-        dlg = PatternEditorDialog(self.project, self)
+    def manage_patterns(self, *_, pattern_name: str = "", instrument_name: str = ""):
+        """Libreria Pattern; con pattern_name/instrument_name (doppio click su
+        un %Nome) si apre gia' su quel pattern e con lo strumento della traccia."""
+        dlg = PatternEditorDialog(self.project, self, pattern_name=pattern_name, instrument_name=instrument_name)
         dlg.exec()
+        self._after_patterns_edited()
+
+    def _after_patterns_edited(self):
         # Puo' aver aperto al suo interno "Importa audio", che puo' aver
         # cambiato Tempo/Metrica del progetto (stesso oggetto condiviso).
         self._sync_tempo_metrica_fields()
