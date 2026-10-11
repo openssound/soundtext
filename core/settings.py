@@ -150,6 +150,20 @@ def set_theme(name: str):
     _save()
 
 
+def get_file_dialog_size():
+    """Larghezza e altezza dell'ultimo dialogo file di Qt (Linux), o None."""
+    size = _load().get("file_dialog_size")
+    if isinstance(size, list) and len(size) == 2 and all(isinstance(v, int) and v > 0 for v in size):
+        return tuple(size)
+    return None
+
+
+def set_file_dialog_size(width: int, height: int):
+    _load()
+    _cache["file_dialog_size"] = [int(width), int(height)]
+    _save()
+
+
 def get_metronome_sound() -> str:
     return _load().get("metronome_sound", "Click")
 

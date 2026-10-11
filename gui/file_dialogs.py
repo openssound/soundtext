@@ -9,6 +9,7 @@ di Qt, uniforme fra i desktop.
 """
 import sys
 
+from PySide6.QtCore import QEvent, QObject
 from PySide6.QtWidgets import QFileDialog
 
 
@@ -57,3 +58,49 @@ def repair_sidebar_shortcuts(extra_dirs=()):
                 kept.append(url)
     if kept != list(saved):
         store.setValue("FileDialog/shortcuts", kept)
+
+
+# Dimensione del dialogo di Qt la prima volta: con quella predefinita (circa
+# 600x430) si vedeva solo la colonna Nome, Tipo e Data restavano tagliate.
+DEFAULT_SIZE = (960, 600)
+
+
+class _FileDialogSizer(QObject):
+    """Da' a ogni dialogo file di Qt la dimensione dell'ultima volta (o
+    DEFAULT_SIZE), entro lo schermo, e lo centra sulla finestra da cui e' stato
+    aperto; alla chiusura ne ricorda la dimensione. Lavora sugli eventi, cosi'
+    vale anche per i dialoghi creati da QFileDialog.getOpenFileName & co."""
+
+    def eventFilter(self, obj, event):
+        if isinstance(obj, QFileDialog):
+            if event.type() == QEvent.Type.Show:
+                self._fit(obj)
+            elif event.type() == QEvent.Type.Hide:
+                from core import settings
+                settings.set_file_dialog_size(obj.width(), obj.height())
+        return False
+
+    @staticmethod
+    def _fit(dialog):
+        from core import settings
+        width, height = settings.get_file_dialog_size() or DEFAULT_SIZE
+        parent = dialog.parentWidget()
+        screen = (parent.screen() if parent is not None else None) or dialog.screen()
+        area = screen.availableGeometry()
+        width = min(width, int(area.width() * 0.9))
+        height = min(height, int(area.height() * 0.9))
+        dialog.resize(width, height)
+        center = parent.window().frameGeometry().center() if parent is not None else area.center()
+        frame = dialog.frameGeometry()
+        frame.moveCenter(center)
+        x = max(area.left(), min(frame.left(), area.right() - frame.width()))
+        y = max(area.top(), min(frame.top(), area.bottom() - frame.height()))
+        dialog.move(x, y)
+
+
+def install_file_dialog_sizing(app):
+    """Su Linux (dialogo di Qt) attiva _FileDialogSizer per tutta l'applicazione."""
+    if sys.platform in ("win32", "darwin"):
+        return
+    app._file_dialog_sizer = _FileDialogSizer(app)       # resta vivo quanto l'app
+    app.installEventFilter(app._file_dialog_sizer)
