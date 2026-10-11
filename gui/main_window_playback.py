@@ -32,6 +32,9 @@ class PlaybackMixin:
             self.pause()
             return
         resume_beat = self._playback_paused_beat if self._playback_paused_beat is not None else 0.0
+        loop = self._active_loop_beats()
+        if loop is not None and not (loop[0] <= resume_beat < loop[1]):
+            resume_beat = loop[0]  # con il loop attivo Play parte da A, non da capo
         self.play(_resume_offset_beats=resume_beat)
 
     def pause(self):
@@ -140,6 +143,11 @@ class PlaybackMixin:
         self._playback_paused_beat = None
         self._set_play_pause_button(playing=True)
         self.statusBar().showMessage(tr("Riproduzione in corso — {engine_desc}", engine_desc=engine_desc), 8000)
+        from core.playback import streaming_available
+        if self._active_loop_beats() is not None and not streaming_available():
+            self.statusBar().showMessage(
+                tr("Il loop richiede la libreria FluidSynth e sounddevice: con il motore di "
+                "riproduzione attuale il brano non verra' ripetuto."), 8000)
 
     def _mark_audio_started(self):
         """Richiamato dal thread di riproduzione (core.playback) nel momento
