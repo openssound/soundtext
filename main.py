@@ -26,8 +26,10 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 from gui.main_window import MainWindow
 from gui.theme import palette_for, stylesheet_for
+from gui.file_dialogs import repair_sidebar_shortcuts
 from core.version import get_app_root
 from core import settings
+from core.project_io import ensure_songs_dir
 from core.log import LOG_FILE, setup_logging
 
 # Nella build PyInstaller, FluidSynth (DLL + fluidsynth.exe opzionale) viene
@@ -123,6 +125,7 @@ def main():
     app.setApplicationName("SoundText")
     app.setPalette(palette_for(settings.get_theme()))
     app.setStyleSheet(stylesheet_for(settings.get_theme()))
+    repair_sidebar_shortcuts([ensure_songs_dir()])
     if os.path.exists(ICON_PATH):
         app.setWindowIcon(QIcon(ICON_PATH))
 
