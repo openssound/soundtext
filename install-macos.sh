@@ -17,9 +17,15 @@
 #     su macOS, senza bisogno di scaricarlo a parte;
 #   - crea un virtualenv Python dedicato e ci installa i pacchetti pip
 #     (PySide6, mido, sounddevice, numpy, pedalboard);
-#   - installa un comando "soundtext" in ~/.local/bin e un vero
+#   - installa un comando "soundtext" in ~/.local/bin (e, se manca,
+#     aggiunge ~/.local/bin al PATH in ~/.zshrc o ~/.bash_profile) e un vero
 #     SoundText.app in ~/Applications (con icona, visibile in Launchpad
-#     e Spotlight).
+#     e Spotlight); se l'app non si avvia mostra un avviso col log
+#     (~/Library/Logs/SoundText.log).
+#
+# Va lanciato dalla cartella del repository; se accanto allo script non ci
+# sono i sorgenti (per esempio e' stato scaricato da solo), li scarica da
+# GitHub.
 #
 # Uso:
 #   ./install-macos.sh              installa (o aggiorna un'installazione esistente)
@@ -43,7 +49,10 @@ BIN_DIR="$HOME/.local/bin"
 LAUNCHER="$BIN_DIR/soundtext"
 APPS_DIR="$HOME/Applications"
 APP_BUNDLE="$APPS_DIR/SoundText.app"
-SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Con "curl ... | bash" BASH_SOURCE e' vuoto: si parte dalla cartella corrente
+# (e, se li' non ci sono i sorgenti, li si scarica: vedi sotto).
+SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+SOURCE_URL="https://github.com/openssound/soundtext/archive/refs/heads/main.tar.gz"
 
 ASSUME_YES=0
 ACTION="install"
@@ -53,7 +62,7 @@ for arg in "$@"; do
         --uninstall) ACTION="uninstall" ;;
         --purge) ACTION="purge" ;;
         -h|--help)
-            sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,43p' "${BASH_SOURCE[0]:-$0}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
@@ -110,6 +119,36 @@ do_uninstall() {
 
 if [ "$ACTION" = "uninstall" ] || [ "$ACTION" = "purge" ]; then
     do_uninstall
+fi
+
+# ---------------------------------------------------------------------------
+# Sorgenti: dalla cartella dello script, altrimenti scaricati da GitHub
+# ---------------------------------------------------------------------------
+
+has_sources() {
+    [ -f "$1/main.py" ] && [ -f "$1/requirements.txt" ] && [ -d "$1/core" ] && [ -d "$1/gui" ]
+}
+
+if ! has_sources "$SRC_DIR"; then
+    warn "Accanto allo script ('$SRC_DIR') non ci sono i sorgenti di $APP_NAME"
+    warn "(main.py, requirements.txt, core/, gui/): li scarico da GitHub."
+    if ! command -v curl >/dev/null 2>&1; then
+        error "curl non trovato: scarica il repository completo (Code -> Download ZIP"
+        error "su https://github.com/openssound/soundtext), estrailo e lancia"
+        error "./install-macos.sh da quella cartella."
+        exit 1
+    fi
+    DOWNLOAD_DIR="$(mktemp -d)"
+    trap 'rm -rf "$DOWNLOAD_DIR"' EXIT
+    if ! curl -fsSL "$SOURCE_URL" | tar -xz -C "$DOWNLOAD_DIR" --strip-components=1 \
+        || ! has_sources "$DOWNLOAD_DIR"; then
+        error "Download dei sorgenti non riuscito ($SOURCE_URL)."
+        error "Scarica il repository completo (Code -> Download ZIP), estrailo e"
+        error "lancia ./install-macos.sh da quella cartella."
+        exit 1
+    fi
+    SRC_DIR="$DOWNLOAD_DIR"
+    info "Sorgenti scaricati."
 fi
 
 # ---------------------------------------------------------------------------
@@ -256,11 +295,34 @@ else
     warn "'$INSTALL_DIR/soundfonts/FluidR3_GM.sf2'."
 fi
 
+for needed in main.py requirements.txt; do
+    if [ ! -f "$INSTALL_DIR/$needed" ]; then
+        error "'$INSTALL_DIR/$needed' manca dopo la copia dei sorgenti: installazione interrotta."
+        exit 1
+    fi
+done
+
 info "Creo il virtualenv Python (puo' richiedere qualche minuto, PySide6 e' grande)..."
 "$PYTHON_CMD" -m venv "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install --upgrade pip wheel >/dev/null
 
-"$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
+if ! "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"; then
+    # python-rtmidi e' facoltativo (solo tastiere MIDI esterne) ed e' il
+    # pacchetto che piu' spesso va compilato (nessun wheel per la versione di
+    # Python in uso): senza, il resto dell'installazione non si blocca.
+    warn "pip non e' riuscito a installare tutti i pacchetti: riprovo senza"
+    warn "python-rtmidi (facoltativo, serve solo per suonare con una tastiera MIDI)."
+    REQ_NO_RTMIDI="$(mktemp)"
+    grep -v '^python-rtmidi' "$INSTALL_DIR/requirements.txt" > "$REQ_NO_RTMIDI"
+    "$INSTALL_DIR/venv/bin/pip" install -r "$REQ_NO_RTMIDI"
+    rm -f "$REQ_NO_RTMIDI"
+fi
+
+if ! "$INSTALL_DIR/venv/bin/python3" -c "import PySide6, st_language, mido" >/dev/null 2>&1; then
+    error "Il virtualenv non riesce a importare PySide6/st_language/mido: guarda"
+    error "gli errori di pip qui sopra e rilancia lo script."
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Comando "soundtext"
@@ -281,9 +343,21 @@ chmod +x "$LAUNCHER"
 info "Creo $APP_NAME.app in '$APPS_DIR'..."
 mkdir -p "$APPS_DIR" "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 
+# Il Finder avvia le app con un PATH minimo (senza Homebrew) e senza
+# terminale: si aggiungono le cartelle di Homebrew, l'output va in un log e,
+# se il programma si chiude con un errore, un avviso dice dove guardare
+# invece di non far comparire nulla.
 cat > "$APP_BUNDLE/Contents/MacOS/soundtext" <<EOF
 #!/bin/bash
-exec "$LAUNCHER" "\$@"
+export PATH="/opt/homebrew/bin:/usr/local/bin:\$PATH"
+LOG="\$HOME/Library/Logs/SoundText.log"
+mkdir -p "\$HOME/Library/Logs"
+"$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/main.py" "\$@" >"\$LOG" 2>&1
+status=\$?
+if [ "\$status" -ne 0 ]; then
+    /usr/bin/osascript -e "display alert \"SoundText non si e' avviato\" message \"Errore \$status. Dettagli in ~/Library/Logs/SoundText.log\" as critical" >/dev/null 2>&1
+fi
+exit "\$status"
 EOF
 chmod +x "$APP_BUNDLE/Contents/MacOS/soundtext"
 
@@ -333,15 +407,23 @@ LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Framewo
 echo
 info "Installazione completata."
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    warn "'$BIN_DIR' non e' nel tuo PATH, quindi 'soundtext' da terminale non"
-    warn "funzionera' finche' non lo aggiungi (SoundText.app funziona gia' comunque)."
-    if [ "${SHELL##*/}" = "zsh" ]; then
-        warn "Con zsh (shell predefinita su macOS): aggiungi 'export PATH=\"$BIN_DIR:\$PATH\"'"
-        warn "al tuo ~/.zshrc, poi riapri il terminale."
+    # zsh e' la shell predefinita su macOS; con bash Terminal.app apre shell
+    # di login, che leggono ~/.bash_profile e non ~/.bashrc.
+    if [ "${SHELL##*/}" = "bash" ]; then
+        RC_FILE="$HOME/.bash_profile"
     else
-        warn "Con bash su macOS: aggiungi 'export PATH=\"$BIN_DIR:\$PATH\"' al tuo"
-        warn "~/.bash_profile (non ~/.bashrc: Terminal.app apre shell di login), poi"
-        warn "riapri il terminale."
+        RC_FILE="$HOME/.zshrc"
+    fi
+    PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+    if [ -f "$RC_FILE" ] && grep -qF "$PATH_LINE" "$RC_FILE"; then
+        info "'$BIN_DIR' e' gia' aggiunto al PATH in $RC_FILE: apri un nuovo terminale."
+    elif confirm "Aggiungo '$BIN_DIR' al PATH in $RC_FILE, per usare 'soundtext' da terminale?"; then
+        printf '\n# SoundText (install-macos.sh)\n%s\n' "$PATH_LINE" >> "$RC_FILE"
+        info "Aggiunto a $RC_FILE: apri un nuovo terminale per usare 'soundtext'."
+    else
+        warn "'$BIN_DIR' non e' nel tuo PATH, quindi 'soundtext' da terminale non"
+        warn "funzionera' finche' non aggiungi '$PATH_LINE' a $RC_FILE"
+        warn "(SoundText.app funziona gia' comunque)."
     fi
 fi
 echo "Avvia $APP_NAME da Launchpad/Spotlight ('$APP_BUNDLE'), oppure da terminale con: soundtext"

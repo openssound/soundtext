@@ -93,3 +93,16 @@ def test_the_midi_library_is_shipped_empty_and_the_users_files_are_never_deleted
     assert 'New-Item -ItemType Directory -Force -Path "dist\\SoundText\\midi"' in workflow
     assert "mkdir -p AppDir/usr/bin/midi" in workflow
     assert 'test -z "$(find AppDir/usr/bin/midi -mindepth 1 -print -quit)"' in workflow
+
+
+def test_macos_installer_works_without_the_repository_and_reports_failures():
+    """Lanciato da solo (fuori dal repository) scarica i sorgenti invece di
+    fallire su requirements.txt; il comando finisce nel PATH e SoundText.app,
+    se il programma non parte, mostra un avviso col log invece di non fare nulla."""
+    text = _read("install-macos.sh")
+    assert "has_sources \"$SRC_DIR\"" in text and "archive/refs/heads/main.tar.gz" in text
+    assert '"$INSTALL_DIR/$needed"' in text                     # main.py e requirements.txt verificati
+    assert "grep -v '^python-rtmidi'" in text                    # rtmidi facoltativo non blocca pip
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".zshrc" in text
+    assert "Library/Logs/SoundText.log" in text and "osascript" in text
+    assert os.access(os.path.join(ROOT, "install-macos.sh"), os.X_OK)
