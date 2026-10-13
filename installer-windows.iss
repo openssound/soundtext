@@ -47,8 +47,25 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[CustomMessages]
+italian.CompleteSetup=Completa installazione
+english.CompleteSetup=Complete setup
+italian.DownloadInstruments=Scarica strumenti
+english.DownloadInstruments=Download instruments
+italian.Examples=Esempi
+english.Examples=Examples
+italian.License=Licenza
+english.License=License
+
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+; In Program Files i .bat, gli esempi e la licenza non si vedono: dal menu
+; Start si raggiungono senza cercare la cartella d'installazione.
+Name: "{group}\{cm:CompleteSetup}"; Filename: "{app}\setup-windows.bat"; WorkingDir: "{app}"
+Name: "{group}\{cm:DownloadInstruments}"; Filename: "{app}\scarica_strumenti.bat"; WorkingDir: "{app}"
+Name: "{group}\{cm:Examples}"; Filename: "{app}\examples"
+; LICENSE non ha estensione: Windows non saprebbe con cosa aprirlo
+Name: "{group}\{cm:License}"; Filename: "{win}\notepad.exe"; Parameters: """{app}\LICENSE"""
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
