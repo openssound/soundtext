@@ -1,7 +1,7 @@
 @echo off
 rem Scarica e installa strumenti virtuali gratuiti (SFZ) per SoundText: il lavoro
 rem lo fa scarica_strumenti.py (serve Python 3.8+), lo stesso su Linux, Windows e macOS.
-rem Uso: scarica_strumenti.bat [host ^| libreria ^| tutto ^| gruppi...]  (senza argomenti: elenco)
+rem Uso: scarica_strumenti.bat [host ^| libreria ^| tutto ^| gruppi...]  (senza argomenti: menu)
 setlocal
 set "QUI=%~dp0"
 where py >nul 2>nul && ( py -3 "%QUI%scarica_strumenti.py" %* & exit /b )

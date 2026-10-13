@@ -103,3 +103,21 @@ def test_list_and_unknown_group(capsys):
     assert "marimba" in out and "libreria" in out and "extra_batterie" in out
     assert ss.main(["nessun-gruppo"]) == 1
     assert "Gruppo sconosciuto" in capsys.readouterr().out
+
+
+def test_menu_by_number_or_name_and_empty_exits(monkeypatch, capsys):
+    nomi = [nome for nome, _desc in ss.voci_elenco()]
+    assert nomi[-3:] == ["host", "libreria", "tutto"] and len(nomi) == len(set(nomi))
+    risposte = iter(["1 libreria", "boh", f"{len(nomi)},piano", ""])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(risposte))
+    assert ss.menu() == [nomi[0], "libreria"]
+    assert ss.menu() == ["tutto", "piano"]                     # "boh" scartato, si richiede
+    assert "Scelta non valida: boh" in capsys.readouterr().out
+    assert ss.menu() == []
+
+
+def test_no_arguments_without_terminal_only_lists(monkeypatch, capsys):
+    monkeypatch.setattr(ss.sys.stdin, "isatty", lambda: False, raising=False)
+    monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("menu fuori da un terminale"))
+    assert ss.main([]) == 0
+    assert "Gruppi disponibili" in capsys.readouterr().out

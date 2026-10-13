@@ -62,8 +62,8 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 ; In Program Files i .bat, gli esempi e la licenza non si vedono: dal menu
 ; Start si raggiungono senza cercare la cartella d'installazione.
 ; Con cmd /k la finestra resta aperta: setup-windows.bat finisce con exit /b
-; e scarica_strumenti.bat senza argomenti stampa solo l'elenco dei gruppi,
-; dopo il quale si digita il comando (es. scarica_strumenti.bat tutto).
+; e si legge il riepilogo; scarica_strumenti.bat senza argomenti mostra il
+; menu dei gruppi, e a fine download si vede l'esito.
 Name: "{group}\{cm:CompleteSetup}"; Filename: "{cmd}"; Parameters: "/k setup-windows.bat"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
 Name: "{group}\{cm:DownloadInstruments}"; Filename: "{cmd}"; Parameters: "/k scarica_strumenti.bat"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
 Name: "{group}\{cm:Examples}"; Filename: "{app}\examples"

@@ -294,7 +294,7 @@ Choisissez la méthode adaptée à votre système. Pour les **plugins et les amp
 | **Windows, installateur** (`SoundText-setup-*.exe`) ou **portable** (`.zip`) | lancez l'installateur, ou extrayez le zip et lancez `setup-windows.bat` (vérifie le Visual C++ Redistributable et Python ; FluidSynth est déjà inclus), puis `SoundText.exe` | `scarica_strumenti.bat` |
 | **macOS** | depuis le dépôt : `./install-macos.sh` (installe FluidSynth, PortAudio et Python avec Homebrew, crée le virtualenv et télécharge le SoundFont GM) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
 
-`scarica_strumenti.sh`/`.bat` nécessitent Python 3.8+ (inutile pour utiliser l'application). `./scarica_strumenti.sh` sans argument liste les groupes ; `host` installe 7-Zip, sfizz et Surge XT ; `libreria` compile le moteur SFZ interne (environ 5 minutes).
+`scarica_strumenti.sh`/`.bat` nécessitent Python 3.8+ (inutile pour utiliser l'application). `./scarica_strumenti.sh` sans argument affiche un menu numéroté pour choisir les groupes ; `host` installe 7-Zip, sfizz et Surge XT ; `libreria` compile le moteur SFZ interne (environ 5 minutes).
 
 ### Installation manuelle depuis les sources
 

@@ -5,7 +5,8 @@ suonarli in SoundText, su Linux, Windows e macOS. Basta Python 3.8+, senza
 pacchetti in piu'.
 
 Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.sh):
-    python3 scarica_strumenti.py                  elenca i gruppi
+    python3 scarica_strumenti.py                  menu per scegliere i gruppi (elenco
+                                                  se non e' un terminale)
     python3 scarica_strumenti.py host             7-Zip, sfizz e Surge XT
     python3 scarica_strumenti.py libreria         compila il motore SFZ sfizioso per lo
                                                   strumento SFZ interno (~5 min)
@@ -149,18 +150,52 @@ def comando_script() -> str:
     return "python3 scarica_strumenti.py"
 
 
-def elenco():
-    print(f"Gruppi disponibili (destinazione: {DEST}):")
-    for nome, desc, _url, _sotto in GRUPPI + EXTRA:
-        print(f"  {nome:<14} {desc}")
-    for nome, spazio, membri in EXTRA_GRUPPI:
-        print(f"  {nome:<14} (extra, {spazio}) {membri}")
+def voci_elenco() -> list:
+    """(nome, descrizione) di tutto cio' che si puo' scaricare, nell'ordine
+    dell'elenco: lo stesso ordine numera le voci del menu interattivo."""
     host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, serve sudo)",
             "windows": "7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz",
             "macos": "7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz"}[SISTEMA]
-    print(f"  {'host':<14} {host}")
-    print(f"  {'libreria':<14} motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)")
-    print(f"  {'tutto':<14} tutti i gruppi SFZ (esclusi gli extra_*)")
+    return ([(nome, desc) for nome, desc, _url, _sotto in GRUPPI + EXTRA]
+            + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
+            + [("host", host),
+               ("libreria", "motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)"),
+               ("tutto", "tutti i gruppi SFZ (esclusi gli extra_*)")])
+
+
+def elenco():
+    print(f"Gruppi disponibili (destinazione: {DEST}):")
+    for nome, desc in voci_elenco():
+        print(f"  {nome:<14} {desc}")
+
+
+def menu() -> list:
+    """Menu interattivo (lanciato senza argomenti da un terminale, es. dal
+    menu Start di Windows): elenco numerato, si scelgono le voci per numero
+    o per nome. Ritorna gli argomenti da eseguire, [] per uscire."""
+    voci = voci_elenco()
+    print(f"Strumenti e plugin gratuiti per SoundText (destinazione: {DEST})")
+    print("Prima volta: scegli 'host' (7-Zip, sfizz, Surge XT) e 'libreria'.\n")
+    for i, (nome, desc) in enumerate(voci, 1):
+        print(f"  {i:>3}. {nome:<18} {desc}")
+    nomi = [nome for nome, _desc in voci]
+    while True:
+        try:
+            risposta = input("\nNumeri o nomi separati da spazi (Invio per uscire): ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return []
+        scelte = []
+        for parola in risposta.replace(",", " ").split():
+            if parola.isdigit() and 1 <= int(parola) <= len(voci):
+                scelte.append(nomi[int(parola) - 1])
+            elif parola in nomi:
+                scelte.append(parola)
+            else:
+                print(f"Scelta non valida: {parola}")
+                break
+        else:
+            return scelte
 
 
 def trova(nome: str):
@@ -564,8 +599,12 @@ def installa_libreria():
 
 def main(argv) -> int:
     if not argv:
-        elenco()
-        return 0
+        if not sys.stdin.isatty():
+            elenco()
+            return 0
+        argv = menu()
+        if not argv:
+            return 0
     if not programma_7z():
         try:
             import py7zr  # noqa: F401
