@@ -56,6 +56,8 @@ italian.Examples=Esempi
 english.Examples=Examples
 italian.License=Licenza
 english.License=License
+italian.RunCompleteSetup=Completa l'installazione (controlla Visual C++ Redistributable e Python)
+english.RunCompleteSetup=Complete the setup (checks Visual C++ Redistributable and Python)
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
@@ -73,6 +75,10 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
+; Casella spuntata nell'ultima pagina: setup-windows.bat in una finestra che
+; resta aperta (cmd /k). nowait, perche' la finestra si chiude solo a mano e
+; non deve bloccare la fine dell'installer ne' l'avvio di SoundText.
+Filename: "{cmd}"; Parameters: "/k setup-windows.bat"; WorkingDir: "{app}"; Description: "{cm:RunCompleteSetup}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
