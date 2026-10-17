@@ -1559,6 +1559,12 @@ effects, divided by family in the **+ Effect** menu:
     when it drops below the threshold, to remove hiss, hum and noises
     between phrases in recorded audio tracks. If it cuts the start or the end
     of the notes, lower the threshold or lengthen the release.
+  - **Volume** (gain, ±24 dB): just raises or lowers the level. For
+    example −6 dB (preset "Headroom for the master") at the start of the
+    master chain when the summed tracks go over 0 dB: compressor and
+    limiter work less and the drums are not squashed. Unlike the track
+    volume, which scales the note velocity, it does not change the
+    instrument's timbre.
 - **Tone:**
   - **3-band EQ** (bass, mids, treble, ±12 dB each);
   - **High-pass filter** (frequency 20 Hz–2 kHz, slope 6–24 dB/octave):

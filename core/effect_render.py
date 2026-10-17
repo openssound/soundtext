@@ -203,11 +203,14 @@ class StemRequest:
     synth: str = ""
     synth_params: dict = field(default_factory=dict)
     synth_state: str = ""
+    # Il pan della traccia si applica dopo la catena (vedi apply_pan): la
+    # traccia asciutta e' al centro, cosi' un ampli mono (NAM) non riporta
+    # al centro una chitarra spostata a sinistra.
     pan: int = 64
 
     @property
     def wet_key(self) -> str:
-        return self.dry_key + "|" + chain_signature(self.effects, self.bpm)
+        return self.dry_key + "|" + chain_signature(self.effects, self.bpm) + f"|pan{self.pan}"
 
     def cleanup(self):
         if self.midi_path and os.path.exists(self.midi_path):
@@ -226,29 +229,32 @@ def prepare_stem(project: Project, track: Track, tempo_map) -> StemRequest:
     from .settings import get_playback_gain
 
     effects = copy.deepcopy(track.effects)
+    pan = track.pan
+    centered = copy.copy(track)          # la traccia asciutta, al centro (vedi StemRequest.pan)
+    centered.pan = 64
     if track.is_audio:
-        layers = build_audio_layers(project, [track], tempo_map)
+        layers = build_audio_layers(project, [centered], tempo_map)
         key = hashlib.sha1(("audio" + layers_signature(layers)).encode()).hexdigest()
-        return StemRequest(track.name, key, effects, layers=layers, bpm=project.tempo_bpm)
+        return StemRequest(track.name, key, effects, layers=layers, bpm=project.tempo_bpm, pan=pan)
     handle = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
     handle.close()
-    export_project_to_midi(project, handle.name, tracks=[track])
+    export_project_to_midi(project, handle.name, tracks=[centered])
     if track.synth:
         from .plugins import signature as plugin_signature
         with open(handle.name, "rb") as f:
             digest = hashlib.sha1(f.read())
         digest.update(repr(plugin_signature(track.synth, track.synth_params, track.synth_state)).encode())
-        digest.update(repr(track.pan).encode())
         return StemRequest(track.name, "synth" + digest.hexdigest(), effects, midi_path=handle.name,
                            reverb_room=project.reverb_room, bpm=project.tempo_bpm, synth=track.synth, synth_params=dict(track.synth_params),
-                           synth_state=track.synth_state, pan=track.pan)
+                           synth_state=track.synth_state, pan=pan)
     overrides = _resolve_channel_soundfont_overrides(project, False, tracks=[track])
     with open(handle.name, "rb") as f:
         digest = hashlib.sha1(f.read())
     digest.update(repr((_find_soundfont(), sorted((overrides or {}).items()), get_playback_gain(),
                         project.reverb_room)).encode())
     return StemRequest(track.name, "midi" + digest.hexdigest(), effects, midi_path=handle.name,
-                       channel_overrides=overrides, reverb_room=project.reverb_room, bpm=project.tempo_bpm)
+                       channel_overrides=overrides, reverb_room=project.reverb_room, bpm=project.tempo_bpm,
+                       pan=pan)
 
 
 def render_dry(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
@@ -294,8 +300,9 @@ SYNTH_TAIL_SECONDS = 4.0
 
 
 def render_synth(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
-    """Le note della traccia suonate dal suo strumento plugin, a 48 kHz,
-    con il pan della traccia (il volume e' gia' nella velocity delle note).
+    """Le note della traccia suonate dal suo strumento plugin, a 48 kHz, al
+    centro (il pan arriva dopo la catena, vedi apply_pan; il volume e' gia'
+    nella velocity delle note).
     None se il plugin non si carica o non risponde (l'errore va nel log)."""
     from .audio_tracks import AUDIO_SAMPLE_RATE
     from .plugins import PluginError, midi_file_events, render_events
@@ -314,13 +321,29 @@ def render_synth(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
         logging.getLogger(__name__).warning("Strumento plugin %s non usato per «%s»: %s",
                                             request.synth, request.track_name, e)
         return None
-    loud = np.nonzero(np.abs(y).max(axis=1) > 1e-5)[0] if len(y) else []
-    keep = max(int(end * AUDIO_SAMPLE_RATE), int(loud[-1]) + 1 if len(loud) else 0)
-    y = y[:keep]
-    # pan a potenza costante, come il pan del synth (64 = centro)
-    angle = (max(0, min(127, request.pan)) / 127.0) * np.pi / 2
-    gains = np.array([np.cos(angle), np.sin(angle)], dtype=np.float32) * np.float32(np.sqrt(2.0))
-    return np.ascontiguousarray(y * gains, dtype=np.float32)
+    # la coda dopo l'ultima nota si tiene fin dove suona ancora: si cerca
+    # solo li' (su tutto il brano costava quasi un secondo a traccia)
+    notes_end = int(end * AUDIO_SAMPLE_RATE)
+    tail = y[notes_end:]
+    loud = np.flatnonzero((np.abs(tail) > 1e-5).any(axis=1)) if len(tail) else []
+    return np.ascontiguousarray(y[:notes_end + (int(loud[-1]) + 1 if len(loud) else 0)], dtype=np.float32)
+
+
+def apply_pan(samples: np.ndarray, request: StemRequest) -> np.ndarray:
+    """Il pan della traccia sulla traccia gia' elaborata dalla catena, come
+    in un mixer: gli effetti (ampli mono compresi) lavorano sul suono al
+    centro, poi lo si sposta. Tracce audio: bilanciamento, come nel mix
+    delle clip; tracce di note: potenza costante, come il pan del synth
+    (al centro il livello resta quello di prima)."""
+    if request.pan == 64:
+        return samples
+    if request.layers or request.midi_path is None:
+        from .audio_tracks import _pan_gains
+        left, right = _pan_gains(request.pan)
+    else:
+        angle = (max(0, min(127, request.pan)) / 127.0) * np.pi / 2
+        left, right = np.sqrt(2.0) * np.cos(angle), np.sqrt(2.0) * np.sin(angle)
+    return np.multiply(samples, np.array([left, right], dtype=np.float32), dtype=np.float32)
 
 
 def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
@@ -339,7 +362,7 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
         dry = render_dry(request, stop_check)
         if dry is None:
             return None
-        wet = apply_effect_chain(dry, AUDIO_SAMPLE_RATE, request.effects, bpm=request.bpm)
+        wet = apply_pan(apply_effect_chain(dry, AUDIO_SAMPLE_RATE, request.effects, bpm=request.bpm), request)
         _cache_put(request.wet_key, wet)
         return wet
 
@@ -375,7 +398,7 @@ def render_stem_window(request: StemRequest, start_seconds: float, end_seconds: 
     piece = dry[first:end]
     if len(piece) < end - first:
         piece = np.concatenate([piece, np.zeros((end - first - len(piece), 2), dtype=np.float32)])
-    wet = apply_effect_chain(piece, rate, request.effects, with_tail=False, bpm=request.bpm)
+    wet = apply_pan(apply_effect_chain(piece, rate, request.effects, with_tail=False, bpm=request.bpm), request)
     return np.ascontiguousarray(wet[begin - first:end - first])
 
 

@@ -1590,6 +1590,12 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     traccia quando scende sotto la soglia, per togliere fruscio, ronzio e
     rumori tra una frase e l'altra nelle tracce audio registrate. Se taglia
     l'inizio o la fine delle note, abbassa la soglia o allunga il rilascio.
+  - **Volume** (guadagno, ±24 dB): alza o abbassa il livello e basta. Per
+    esempio −6 dB (preset "Margine per il master") all'inizio della catena
+    del master quando le tracce sommate superano 0 dB: compressore e
+    limiter lavorano meno e la batteria non viene schiacciata. A differenza
+    del volume della traccia, che scala la velocity delle note, non cambia
+    il timbro dello strumento.
 - **Tono:**
   - **EQ a 3 bande** (bassi, medi, alti, ±12 dB ciascuno);
   - **Filtro passa-alto** (frequenza 20 Hz–2 kHz, pendenza 6–24 dB/ottava):

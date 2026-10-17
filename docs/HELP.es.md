@@ -1621,6 +1621,12 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     entre una frase y otra en las pistas de audio grabadas. Si corta el
     principio o el final de las notas, baja el umbral o alarga la
     liberación.
+  - **Volumen** (ganancia, ±24 dB): solo sube o baja el nivel. Por
+    ejemplo −6 dB (preajuste «Margen para el máster») al principio de la
+    cadena del máster cuando la suma de las pistas supera 0 dB: el
+    compresor y el limitador trabajan menos y la batería no se aplasta. A
+    diferencia del volumen de la pista, que escala la velocidad de las
+    notas, no cambia el timbre del instrumento.
 - **Tono:**
   - **EQ de 3 bandas** (bajos, medios, agudos, ±12 dB cada uno);
   - **Filtro de paso alto** (frecuencia 20 Hz–2 kHz, pendiente 6–24

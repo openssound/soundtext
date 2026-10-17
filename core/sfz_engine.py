@@ -23,7 +23,15 @@ from typing import List, Tuple
 import numpy as np
 from .i18n import tr
 
-BLOCK = 512
+# Frame per chiamata a sfizz_render_block: a blocchi grandi il costo fisso
+# di ogni chiamata (Python, ctypes, sfizz) pesa meno; gli eventi restano
+# precisi al campione. Dal vivo render() riceve i blocchi del dispositivo.
+BLOCK = 4096
+# Qualita' dell'interpolazione dei campioni nel rendering (freewheeling):
+# sfizz usa 10, tre volte piu' lento della qualita' 2 dell'ascolto dal vivo
+# per una differenza inudibile (circa -60 dB).
+OFFLINE_SAMPLE_QUALITY = 2
+_PROCESS_FREEWHEELING = 1
 # Nome del file e cartella dell'utente: gli stessi di scarica_strumenti.py
 LIB_NAME = {"win32": "sfizz.dll", "darwin": "libsfizz.dylib"}.get(sys.platform, "libsfizz.so")
 
@@ -95,6 +103,8 @@ def _load_library():
                 "sfizz_send_channel_aftertouch": ([vp, i, i], None),
                 "sfizz_render_block": ([vp, ctypes.POINTER(ctypes.POINTER(ctypes.c_float)), i, i], None),
             }
+            if hasattr(lib, "sfizz_set_sample_quality"):        # assente nelle sfizz molto vecchie
+                sigs["sfizz_set_sample_quality"] = ([vp, i, i], None)
             for name, (args, res) in sigs.items():
                 fn = getattr(lib, name)
                 fn.argtypes = args
@@ -164,6 +174,8 @@ class SfzInstance:
         lib.sfizz_set_samples_per_block(self._synth, BLOCK)
         # offline: i campioni si caricano tutti subito, niente streaming
         lib.sfizz_enable_freewheeling(self._synth)
+        if hasattr(lib, "sfizz_set_sample_quality"):
+            lib.sfizz_set_sample_quality(self._synth, _PROCESS_FREEWHEELING, OFFLINE_SAMPLE_QUALITY)
         if not lib.sfizz_load_file(self._synth, os.fsencode(path)):
             self.close()
             raise SfzError(tr("il file SFZ non si puo' caricare: {path}", path=path))

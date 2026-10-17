@@ -126,11 +126,15 @@ def windows_load_diagnosis(bundle: str) -> str:
 
 def parse_ref(ref: str):
     """'vst3:/percorso/X.vst3' o 'vst3:/percorso/X.vst3|Nome' (bundle con piu'
-    plugin), 'lv2:uri' -> (formato, percorso o uri, nome o None)."""
+    plugin), 'lv2:uri' -> (formato, percorso o uri, nome o None). Nei
+    percorsi "~" e' la cartella dell'utente (gli esempi scrivono
+    "sfz:~/Strumenti/...", che vale su ogni computer)."""
     fmt, _, rest = ref.partition(":")
     if fmt == "vst3":
         path, _, name = rest.partition("|")
-        return fmt, path, name or None
+        return fmt, os.path.expanduser(path), name or None
+    if fmt == "sfz":
+        return fmt, os.path.expanduser(rest), None
     return fmt, rest, None
 
 

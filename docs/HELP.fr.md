@@ -1655,6 +1655,12 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     ronflement et bruits entre les phrases dans les pistes audio
     enregistrées. S'il coupe le début ou la fin des notes, baissez le seuil
     ou allongez le relâchement.
+  - **Volume** (gain, ±24 dB) : monte ou baisse simplement le niveau. Par
+    exemple −6 dB (préréglage « Marge pour le master ») au début de la
+    chaîne du master quand la somme des pistes dépasse 0 dB : le
+    compresseur et le limiteur travaillent moins et la batterie n'est pas
+    écrasée. Contrairement au volume de la piste, qui agit sur la vélocité
+    des notes, il ne change pas le timbre de l'instrument.
 - **Tonalité :**
   - **EQ 3 bandes** (basses, médiums, aigus, ±12 dB chacun) ;
   - **Filtre passe-haut** (fréquence 20 Hz–2 kHz, pente 6–24 dB/octave) :

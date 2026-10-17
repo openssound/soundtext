@@ -87,6 +87,14 @@ def test_each_plugin_always_goes_to_the_same_render_host():
         assert channel in plugins._hosts
 
 
+def test_new_plugins_are_spread_over_the_render_hosts(monkeypatch):
+    monkeypatch.setattr(plugins, "_channels", {})
+    refs = [f"sfz:/banco/{i:03}.sfz" for i in range(2 * plugins.RENDER_HOSTS)]
+    channels = [plugins.render_channel(ref) for ref in refs]
+    assert sorted(channels) == sorted([f"render{i}" for i in range(plugins.RENDER_HOSTS)] * 2)
+    assert [plugins.render_channel(ref) for ref in refs] == channels
+
+
 def test_render_stems_runs_tracks_in_parallel_and_keeps_their_order(monkeypatch):
     running, peak, lock = [0], [0], threading.Lock()
 
@@ -116,6 +124,45 @@ def test_synth_track_is_not_loaded_twice(monkeypatch, tmp_path):
     request = StemRequest("T", "k", [], midi_path=str(tmp_path / "x.mid"), synth="lv2:urn:esempio:batteria")
     y = effect_render.render_synth(request)
     assert y is not None and len(y) == 48000 * 5
+
+
+@pytest.mark.parametrize("sounds_until, expected", [(2.5, 2.5), (0.5, 1.0)])
+def test_synth_track_keeps_the_tail_while_it_sounds(monkeypatch, tmp_path, sounds_until, expected):
+    """Dopo l'ultima nota (1 s) si tiene la coda finche' suona, mai meno
+    della fine delle note."""
+    y = np.zeros((48000 * 5, 2), dtype=np.float32)
+    y[:int(48000 * sounds_until), 1] = 0.1
+    monkeypatch.setattr(plugins, "midi_file_events", lambda path: ([(0.0, bytes([0x90, 60, 100]))], 1.0))
+    monkeypatch.setattr(plugins, "render_events", lambda *a, **k: y)
+    request = StemRequest("T", "k", [], midi_path=str(tmp_path / "x.mid"), synth="sfz:/x.sfz")
+    out = effect_render.render_synth(request)
+    assert len(out) == int(48000 * expected) and out.dtype == np.float32 and out.flags.c_contiguous
+    assert np.allclose(out[:10, 1], 0.1, rtol=0.01)            # pan al centro: guadagno circa 1
+
+
+@pytest.mark.parametrize("audio", [False, True])
+def test_pan_comes_after_a_mono_effect(monkeypatch, tmp_path, audio):
+    """Un ampli mono (NAM: media dei canali) non deve riportare al centro
+    una chitarra spostata a sinistra: il pan si applica dopo la catena."""
+    def mono_amp(x, rate, effects, **k):
+        return np.repeat(x.mean(axis=1, keepdims=True), 2, axis=1).astype(np.float32)
+
+    monkeypatch.setattr(effect_render, "apply_effect_chain", mono_amp)
+    monkeypatch.setattr(effect_render, "render_dry",
+                        lambda request, stop_check=None: np.full((100, 2), 0.5, dtype=np.float32))
+    request = StemRequest("T", f"pan-dopo-{audio}", [], pan=0,
+                          midi_path=None if audio else str(tmp_path / "x.mid"))
+    left, right = effect_render.render_stem(request)[0]
+    assert left > 0.4 and right < 1e-6
+    request.pan = 64
+    assert np.allclose(effect_render.render_stem(request), 0.5)        # al centro: livello invariato
+
+
+def test_plugin_paths_may_start_with_the_home_folder():
+    home = os.path.expanduser("~")
+    assert parse_ref("sfz:~/Strumenti/x.sfz") == ("sfz", os.path.join(home, "Strumenti", "x.sfz"), None)
+    assert parse_ref("vst3:~/.vst3/S.vst3|Nome") == ("vst3", os.path.join(home, ".vst3", "S.vst3"), "Nome")
+    assert parse_ref("lv2:urn:esempio:~x") == ("lv2", "urn:esempio:~x", None)
 
 
 def test_synth_that_fails_falls_back_to_none(monkeypatch, tmp_path):
