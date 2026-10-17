@@ -82,8 +82,8 @@ def test_warm_plugins_survives_a_plugin_that_does_not_load(monkeypatch):
 
 def test_each_plugin_always_goes_to_the_same_render_host():
     for ref in ("lv2:urn:a", "vst3:/x/Synth.vst3", "sfz:/y/piano.sfz"):
-        channel = plugins._render_channel(ref)
-        assert channel == plugins._render_channel(ref)
+        channel = plugins.render_channel(ref)
+        assert channel == plugins.render_channel(ref)
         assert channel in plugins._hosts
 
 
@@ -144,3 +144,101 @@ def test_warm_loads_the_plugin_in_its_render_host():
     x[0] = 0.5
     y = plugins.process_audio(A_DELAY, {}, "", x, 48000)
     assert y.shape == x.shape and np.isfinite(y).all()
+
+
+# ------------------------------------------------------------------ pre-rendering
+
+def test_same_track_requested_twice_is_rendered_once(monkeypatch):
+    calls = []
+
+    def slow_synth(request, stop_check=None):
+        calls.append(request.track_name)
+        time.sleep(0.3)
+        return np.zeros((100, 2), dtype=np.float32)
+
+    monkeypatch.setattr(effect_render, "render_synth", slow_synth)
+    effect_render.clear_stem_cache()
+    request = StemRequest("Synth", "chiave-unica-test", [], synth="lv2:urn:esempio:batteria")
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(effect_render.render_stem(request)))
+               for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(5)
+    assert calls == ["Synth"]
+    assert len(results) == 2 and all(r is not None for r in results)
+
+
+def _synth_project():
+    project = Project()
+    project.add_track("Synth", "Piano", "4: c d e f").synth = "lv2:urn:esempio:batteria"
+    project.add_track("Piano", "Piano", "4: c d e f")
+    return project
+
+
+def test_prerender_fills_the_cache_with_the_keys_play_uses(monkeypatch):
+    rendered = []
+
+    def fake_synth(request, stop_check=None):
+        rendered.append(request.dry_key)
+        return np.zeros((100, 2), dtype=np.float32)
+
+    monkeypatch.setattr(effect_render, "render_synth", fake_synth)
+    effect_render.clear_stem_cache()
+    project = _synth_project()
+    effect_render.prerender_stems(project).join(10)
+    assert len(rendered) == 1
+
+    from core.tempo_map import build_tempo_beat_map
+    tracks = project.audible_tracks()
+    request = effect_render.prepare_stem(project, tracks[0], build_tempo_beat_map(project, tracks=tracks))
+    try:
+        assert effect_render._cache_get(request.wet_key) is not None
+    finally:
+        request.cleanup()
+
+
+def test_prerender_is_cancelled_by_a_newer_one(monkeypatch):
+    started, release = threading.Event(), threading.Event()
+    stopped = []
+
+    def blocking_synth(request, stop_check=None):
+        started.set()
+        release.wait(5)
+        if stop_check and stop_check():
+            stopped.append(request.track_name)
+            raise RuntimeError("annullato")
+        return np.zeros((100, 2), dtype=np.float32)
+
+    monkeypatch.setattr(effect_render, "render_synth", blocking_synth)
+    effect_render.clear_stem_cache()
+    project = _synth_project()
+    first = effect_render.prerender_stems(project)
+    assert started.wait(5)
+    project.tracks[0].text = "4: g a b c"       # una modifica: il pre-rendering di prima non serve piu'
+    monkeypatch.setattr(effect_render, "render_synth", lambda request, stop_check=None: None)
+    second = effect_render.prerender_stems(project)
+    release.set()
+    first.join(5)
+    second.join(5)
+    assert stopped == ["Synth"]
+
+
+def test_prerender_does_nothing_without_plugins_or_effects(monkeypatch):
+    monkeypatch.setattr(effect_render, "render_stems", lambda *a, **k: pytest.fail("niente da renderizzare"))
+    project = Project()
+    project.add_track("Piano", "Piano", "4: c d e f")
+    effect_render.prerender_stems(project).join(5)
+
+
+def test_side_synth_follows_the_shared_one(monkeypatch):
+    """Il secondo synth (tracce con effetti, esportazione) si usa solo se si
+    usa la libreria FluidSynth: chi disattiva _shared_synth li spegne tutti e due."""
+    from core import playback
+    if playback._shared_synth is None:
+        assert playback._side_synth() is None
+        return
+    assert playback._side_synth() is playback._stem_synth is not playback._shared_synth
+    monkeypatch.setattr(playback, "_shared_synth", None)
+    assert playback._side_synth() is None

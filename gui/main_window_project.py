@@ -149,7 +149,7 @@ class ProjectMixin:
         nuovo/apri/importa MIDI, che condividono questa sequenza."""
         self.effects_panel.discard()      # il pannello Effetti era sul brano precedente
         self.project = project
-        self.schedule_plugin_warm()
+        self.schedule_playback_prepare()
         set_session_instruments(project.instruments)
         self.current_path = path
         self.current_track_name = None
@@ -170,14 +170,18 @@ class ProjectMixin:
         if status_msg:
             self.statusBar().showMessage(status_msg, status_timeout)
 
-    def schedule_plugin_warm(self):
-        """Precarica in sottofondo i plugin del brano (vedi _warm_plugins_now)
+    def schedule_playback_prepare(self):
+        """Prepara l'ascolto in sottofondo (vedi _prepare_playback_now)
         appena le modifiche si fermano."""
-        self._plugin_warm_timer.start()
+        self._playback_prepare_timer.start()
 
-    def _warm_plugins_now(self):
-        from core.effect_render import warm_plugins
+    def _prepare_playback_now(self):
+        """Carica i plugin del brano nei processi del rendering e
+        renderizza nella cache le tracce con plugin o effetti, cosi' il
+        Play le trova pronte (vedi core.effect_render)."""
+        from core.effect_render import prerender_stems, warm_plugins
         warm_plugins(self.project)
+        prerender_stems(self.project)
 
     def open_project(self):
         if not self._confirm_discard_unsaved():

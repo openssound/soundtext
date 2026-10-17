@@ -62,6 +62,24 @@ def clear_stem_cache():
         _cache.clear()
 
 
+# Un lock per chiave di cache: chi chiede una traccia che un altro thread
+# sta gia' renderizzando (il pre-rendering, vedi prerender_stems) aspetta
+# quel risultato invece di rifare lo stesso lavoro.
+_key_locks: dict = {}
+_key_locks_lock = threading.Lock()
+
+
+def _key_lock(key: str) -> threading.Lock:
+    with _key_locks_lock:
+        lock = _key_locks.get(key)
+        if lock is None:
+            if len(_key_locks) > 1024:      # chiavi vecchie: si tengono solo quelle in uso
+                for old in [k for k, v in _key_locks.items() if not v.locked()]:
+                    del _key_locks[old]
+            lock = _key_locks[key] = threading.Lock()
+        return lock
+
+
 def fx_tracks(tracks: List[Track]) -> List[Track]:
     """Le tracce che vanno renderizzate a parte: quelle con almeno un
     effetto acceso (se pedalboard e' installato) e quelle suonate da uno
@@ -101,19 +119,73 @@ def warm_plugins(project: Project) -> Optional[threading.Thread]:
     if not uses:
         return None
 
-    def work():
+    def warm_all(group):
         from .plugins import PluginError, warm
-        for ref, params, state in uses:
+        for ref, params, state in group:
             try:
                 warm(ref, params, state, AUDIO_SAMPLE_RATE)
             except (PluginError, OSError) as e:
                 import logging
                 logging.getLogger(__name__).info("Plugin %s non precaricato: %s", ref, e)
 
+    def work():
+        # Un gruppo per processo del rendering, in parallelo: ogni processo
+        # si avvia e carica i suoi plugin mentre gli altri fanno lo stesso.
+        from .plugins import render_channel
+        groups = {}
+        for use in uses:
+            groups.setdefault(render_channel(use[0]), []).append(use)
+        threads = [threading.Thread(target=warm_all, args=(g,), daemon=True) for g in groups.values()]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
     thread = threading.Thread(target=work, daemon=True)
     thread.start()
     return thread
 
+
+_prerender_generation = 0
+
+
+def prerender_stems(project: Project) -> Optional[threading.Thread]:
+    """Renderizza in sottofondo, nella cache, le tracce con effetti o
+    strumenti plugin che il Play userebbe ora (stesse tracce udibili, stesse
+    chiavi: vedi PlaybackEngine.play): al Play sono gia' pronte. Lavora su
+    una copia del progetto, quindi si puo' chiamare dal thread principale
+    senza bloccarlo; una chiamata successiva annulla quella in corso (il
+    plugin che sta suonando finisce comunque il suo pezzo). Se il Play
+    arriva prima che abbia finito, aspetta la traccia in corso invece di
+    rifarla (vedi _key_lock)."""
+    global _prerender_generation
+    _prerender_generation += 1
+    generation = _prerender_generation
+    snapshot = copy.deepcopy(project)
+
+    def work():
+        from .tempo_map import build_tempo_beat_map
+        requests = []
+        try:
+            tracks = snapshot.audible_tracks()
+            fx = fx_tracks([t for t in tracks if t.is_audio or t.text.strip()])
+            if not fx:
+                return
+            tempo_map = build_tempo_beat_map(snapshot, tracks=tracks)
+            requests = [prepare_stem(snapshot, t, tempo_map) for t in fx]
+            render_stems(requests, lambda: _prerender_generation != generation)
+        except RuntimeError:
+            pass                 # annullato da una modifica successiva
+        except Exception as e:   # per esempio una traccia con un errore di sintassi mentre si scrive
+            import logging
+            logging.getLogger(__name__).debug("Pre-rendering non riuscito: %s", e)
+        finally:
+            for request in requests:
+                request.cleanup()
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+    return thread
 
 @dataclass
 class StemRequest:
@@ -183,9 +255,17 @@ def render_dry(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
     """La traccia prima degli effetti (float32 (frame, 2) a 48 kHz), dalla
     cache o renderizzata ora. None se non si puo' (niente SoundFont...).
     Solleva RuntimeError se annullata."""
+    dry = _cache_get(request.dry_key)
+    if dry is not None:
+        return dry
+    with _key_lock(request.dry_key):
+        return _render_dry_locked(request, stop_check)
+
+
+def _render_dry_locked(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
     from .audio_tracks import AUDIO_SAMPLE_RATE, mix_layers, resample
 
-    dry = _cache_get(request.dry_key)
+    dry = _cache_get(request.dry_key)      # renderizzata intanto da chi teneva il lock
     if dry is not None:
         return dry
     if request.synth:
@@ -252,17 +332,21 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
     wet = _cache_get(request.wet_key)
     if wet is not None:
         return wet
-    dry = render_dry(request, stop_check)
-    if dry is None:
-        return None
-    wet = apply_effect_chain(dry, AUDIO_SAMPLE_RATE, request.effects, bpm=request.bpm)
-    _cache_put(request.wet_key, wet)
-    return wet
+    with _key_lock(request.wet_key):
+        wet = _cache_get(request.wet_key)
+        if wet is not None:
+            return wet
+        dry = render_dry(request, stop_check)
+        if dry is None:
+            return None
+        wet = apply_effect_chain(dry, AUDIO_SAMPLE_RATE, request.effects, bpm=request.bpm)
+        _cache_put(request.wet_key, wet)
+        return wet
 
 
 def render_stems(requests: List[StemRequest], stop_check=None) -> List[Optional[np.ndarray]]:
     """render_stem di ogni richiesta, in parallelo (un thread per traccia):
-    i plugin lavorano nei loro processi (vedi core.plugins._render_channel)
+    i plugin lavorano nei loro processi (vedi core.plugins.render_channel)
     e la sintesi col SoundFont ha il suo lock, quindi le tracce si
     sovrappongono invece di sommarsi. Solleva RuntimeError se annullata."""
     if len(requests) <= 1:

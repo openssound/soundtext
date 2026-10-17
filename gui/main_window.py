@@ -88,14 +88,15 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._mixer_restart_timer.timeout.connect(self._perform_pending_mixer_restart)
         self._mixer_restart_pending = False
 
-        # Precaricamento dei plugin del brano nel processo del rendering (vedi
-        # core.effect_render.warm_plugins), dopo l'apertura del progetto o un
-        # cambio di strumenti/effetti: uno solo quando le modifiche si
-        # fermano, non uno per ogni tick di una manopola.
-        self._plugin_warm_timer = QTimer(self)
-        self._plugin_warm_timer.setSingleShot(True)
-        self._plugin_warm_timer.setInterval(1000)
-        self._plugin_warm_timer.timeout.connect(self._warm_plugins_now)
+        # Preparazione dell'ascolto in sottofondo (precaricamento dei plugin
+        # e pre-rendering delle tracce con plugin/effetti, vedi
+        # _prepare_playback_now) dopo l'apertura del progetto o una modifica:
+        # una sola quando le modifiche si fermano, non una per ogni tasto
+        # premuto o tick di una manopola.
+        self._playback_prepare_timer = QTimer(self)
+        self._playback_prepare_timer.setSingleShot(True)
+        self._playback_prepare_timer.setInterval(1000)
+        self._playback_prepare_timer.timeout.connect(self._prepare_playback_now)
 
         # Mappa (beat -> bpm/metrica) del brano in riproduzione: calcolata da
         # play() (vedi core.tempo_map) e usata per tenere sincronizzati barra
@@ -918,6 +919,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         traccia, trascinamento di uno slider)."""
         self._dirty = True
         self._autosave_generation += 1
+        self.schedule_playback_prepare()
         if not self._restoring_history:
             self.history.record(self.project, self.current_track_name, merge_key)
             self._update_undo_actions()

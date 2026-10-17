@@ -181,14 +181,14 @@ class _Host:
 # e uno per lo strumento suonato dal vivo (live_start), che tiene aperta
 # l'uscita audio. I processi del rendering sono piu' d'uno perche' tracce
 # con plugin diversi si renderizzino in parallelo; ogni plugin va sempre
-# nello stesso (vedi _render_channel), dove resta caricato fra un ascolto e
+# nello stesso (vedi render_channel), dove resta caricato fra un ascolto e
 # l'altro. Partono solo quando servono.
 RENDER_HOSTS = max(1, min(3, (os.cpu_count() or 2) // 2))
 _hosts = {"ui": _Host("ui"), "live": _Host("live")}
 _hosts.update({f"render{i}": _Host(f"render{i}") for i in range(RENDER_HOSTS)})
 
 
-def _render_channel(ref: str) -> str:
+def render_channel(ref: str) -> str:
     """Il processo del rendering di 'ref': sempre lo stesso per lo stesso
     plugin (crc32, stabile fra un avvio e l'altro)."""
     import zlib
@@ -559,7 +559,7 @@ def process_audio(ref: str, params: dict, state: str, samples: np.ndarray, rate:
     """Effetto: samples float32 (frame, 2) -> (frame, 2)."""
     ref = resolve_ref(ref)
     x = np.ascontiguousarray(samples[:, :2], dtype=np.float32)
-    y = _call(_render_channel(ref), ref, ("process", ref, int(rate), dict(params or {}), state or "", x),
+    y = _call(render_channel(ref), ref, ("process", ref, int(rate), dict(params or {}), state or "", x),
               _timeout_for(len(x) / float(rate)))
     return np.ascontiguousarray(y, dtype=np.float32)
 
@@ -568,7 +568,7 @@ def render_events(ref: str, params: dict, state: str, events: List[Tuple[float, 
                   rate: int) -> np.ndarray:
     """Strumento: eventi MIDI (secondi, byte) -> float32 (frame, 2)."""
     ref = resolve_ref(ref)
-    y = _call(_render_channel(ref), ref, ("render", ref, int(rate), dict(params or {}), state or "",
+    y = _call(render_channel(ref), ref, ("render", ref, int(rate), dict(params or {}), state or "",
                               [(float(t), bytes(d)) for t, d in events], float(seconds)),
               _timeout_for(seconds))
     return np.ascontiguousarray(y, dtype=np.float32)
@@ -579,7 +579,7 @@ def warm(ref: str, params: dict, state: str, rate: int):
     (vedi core.effect_render.warm_plugins): il primo rendering lo trova gia'
     pronto invece di aspettarne il caricamento. Solleva PluginError."""
     ref = resolve_ref(ref)
-    _call(_render_channel(ref), ref, ("warm", ref, int(rate), dict(params or {}), state or ""), DESCRIBE_TIMEOUT)
+    _call(render_channel(ref), ref, ("warm", ref, int(rate), dict(params or {}), state or ""), DESCRIBE_TIMEOUT)
 
 
 _live_lock = threading.Lock()

@@ -527,6 +527,18 @@ class _PersistentSynth:
 
 
 _shared_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
+# Un secondo synth, con il suo SoundFont, per le sintesi "a parte" (tracce
+# con effetti, loop di calibrazione, esportazione: vedi
+# render_midi_file_to_samples): durante l'ascolto lavora in parallelo al
+# rendering del resto del brano sul synth condiviso, invece di aspettarlo.
+# Creato (e il SoundFont caricato) solo al primo uso.
+_stem_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
+
+
+def _side_synth():
+    """Il synth per le sintesi a parte; None se non si usa la libreria
+    FluidSynth (anche quando _shared_synth e' stato disattivato)."""
+    return _stem_synth if _shared_synth is not None else None
 
 
 def set_shared_synth_gain(value: float):
@@ -537,8 +549,9 @@ def set_shared_synth_gain(value: float):
     riavviare l'app. No-op se _shared_synth e' None (libreria FluidSynth
     non disponibile) o se non e' ancora stato creato nessun synth (il prossimo
     creato leggera' comunque il nuovo default da _new_synth)."""
-    if _shared_synth is not None:
-        _shared_synth.set_gain(value)
+    for synth in (_shared_synth, _stem_synth):
+        if synth is not None:
+            synth.set_gain(value)
 
 
 def _find_soundfont() -> Optional[str]:
@@ -609,9 +622,10 @@ def render_midi_file_to_samples(midi_path: str, channel_overrides=None, reverb_r
         soundfont = _find_soundfont()
         fluidsynth_bin = shutil.which("fluidsynth")
         rendered = False
-        if _shared_synth and soundfont:
-            rendered = _shared_synth.render_to_wav(midi_path, wav_path, soundfont, stop_check,
-                                                   channel_overrides=channel_overrides, reverb_room=reverb_room)
+        synth = _side_synth()
+        if synth and soundfont:
+            rendered = synth.render_to_wav(midi_path, wav_path, soundfont, stop_check,
+                                           channel_overrides=channel_overrides, reverb_room=reverb_room)
         if not rendered and fluidsynth_bin and soundfont and not stop_check():
             from .settings import get_playback_gain
             gain = get_playback_gain()
