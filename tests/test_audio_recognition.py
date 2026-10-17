@@ -261,3 +261,63 @@ def test_invalid_time_signatures_do_not_reach_the_project(dialog):
         assert dlg.project.time_sig == "4/4"
     dlg._on_metrica_changed("6/8")
     assert dlg.project.time_sig == "6/8"
+
+
+# ------------------------------------------------------------ voce cantata
+
+def _sung(midis, note_s=0.6, detune_cents=0.0, vibrato_cents=0.0, attack_s=0.03):
+    """Melodia 'cantata': note legate a una a una (con un breve stacco),
+    tutta l'esecuzione spostata di detune_cents, vibrato a 5.5 Hz e
+    attacco lineare di attack_s secondi."""
+    out = []
+    for m in midis:
+        n = int(note_s * R)
+        t = np.arange(n) / R
+        cents = 100 * (m - 69) + detune_cents + vibrato_cents * np.sin(2 * np.pi * 5.5 * t)
+        phase = 2 * np.pi * np.cumsum(440.0 * 2 ** (cents / 1200)) / R
+        env = np.minimum(1, t / attack_s) * np.minimum(1, (note_s * 0.9 - t) / 0.03).clip(0)
+        out.append(sum(0.4 / k * np.sin(k * phase) for k in range(1, 6)) * env)
+    return np.concatenate([np.zeros(R // 4)] + out + [np.zeros(R // 4)])
+
+
+def _notes(tmp_path, x):
+    from core.audio_pitch import detect_melodic_notes
+    return detect_melodic_notes(_write(tmp_path, "voce.wav", x))
+
+
+MELODY = [60, 62, 64, 65, 67, 65, 64, 62, 60]
+
+
+@pytest.mark.parametrize("detune", [-40, 40])
+def test_out_of_tune_singer_gets_the_right_notes(tmp_path, detune):
+    """Tutta l'esecuzione calante o crescente di 40 cent: senza togliere
+    l'accordatura, ogni nota sarebbe arrotondata al semitono sbagliato."""
+    events = _notes(tmp_path, _sung(MELODY, detune_cents=detune))
+    assert [e.midi_pitch for e in events] == MELODY
+
+
+def test_deep_vibrato_keeps_each_note_whole(tmp_path):
+    """Vibrato di +/-60 cent su una voce un po' calante: le stime attraversano
+    il confine fra due semitoni, ma ogni nota resta una nota sola."""
+    melody = [62, 66, 69, 67, 64, 62]
+    events = _notes(tmp_path, _sung(melody, note_s=1.5, detune_cents=-30, vibrato_cents=60))
+    assert [e.midi_pitch for e in events] == melody
+
+
+def test_slow_attack_starts_where_the_sound_starts(tmp_path):
+    """Attacco lento (120 ms, come una voce o un arco): la nota comincia
+    dove comincia il suono, non dove il suono e' gia' cresciuto."""
+    events = _notes(tmp_path, _sung([57, 60, 64, 62, 60, 57], attack_s=0.12))
+    starts = [e.start_sec for e in events]
+    expected = [0.25 + i * 0.6 for i in range(6)]
+    assert len(starts) == 6
+    assert max(abs(a - b) for a, b in zip(starts, expected)) < 0.04
+
+
+def test_tuning_needs_enough_notes_and_ignores_in_tune_playing():
+    from core.audio_pitch import estimate_tuning
+    hz = lambda m: 440.0 * 2 ** ((m - 69) / 12)
+    assert estimate_tuning([hz(m + 0.3) for m in MELODY]) == pytest.approx(0.3, abs=0.01)
+    assert estimate_tuning([hz(m - 0.3) for m in MELODY]) == pytest.approx(-0.3, abs=0.01)
+    assert estimate_tuning([hz(m + 0.3) for m in MELODY[:4]]) == 0.0      # troppo poche note
+    assert estimate_tuning([hz(m + 0.02) for m in MELODY]) == 0.0         # gia' accordato
