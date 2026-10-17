@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 
 from core import plugins
 from core.lv2_host import decode_state as decode_lv2_state, encode_state as encode_lv2_state
-from core.plugins import PluginError, PluginInfo
+from core.plugins import PluginError, PluginInfo, home_relative
 
 from . import theme
 from .file_dialogs import file_dialog_options
@@ -210,7 +210,7 @@ class PluginPickerDialog(QDialog):
         return item
 
     def _choose_sfz(self) -> bool:
-        current = self._sfz_ref[4:]
+        current = os.path.expanduser(self._sfz_ref[4:])
         start = os.path.dirname(current) if current else os.path.expanduser("~/Strumenti")
         if not os.path.isdir(start):
             start = os.path.expanduser("~")
@@ -219,7 +219,7 @@ class PluginPickerDialog(QDialog):
                                               options=file_dialog_options())
         if not path:
             return False
-        self._sfz_ref = "sfz:" + path
+        self._sfz_ref = "sfz:" + home_relative(path)
         return True
 
     def _update_ok(self):

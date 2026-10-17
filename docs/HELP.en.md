@@ -1666,9 +1666,22 @@ effects, divided by family in the **+ Effect** menu:
       cleaner.
     - **Cabinet**: *None / included* if the profile already contains the
       cabinet (type "amplifier with cabinet") or if it is a pedal to put in
-      front of an Amplifier; **IR file…** to add the response of a real
-      cabinet, as in the Amplifier (see above). A head-only profile without a
-      cabinet sounds harsh and "buzzy": give it an IR.
+      front of an Amplifier; one of the Amplifier's **built-in cabinets**
+      (Combo 1×12, 2×12, 4×12 closed, Vintage 1×10); **IR file…** for the
+      response of a real cabinet, as in the Amplifier (see above). A
+      head-only profile without a cabinet sounds harsh and fizzy: when you
+      choose a profile that the file declares as having no cabinet
+      (amplifier or preamp, not pedals and not bass profiles), SoundText
+      gives it a suitable built-in cabinet by itself (4×12 for Marshall,
+      Mesa, 5150 and the like, Combo 1×12 for Vox and the like, otherwise
+      2×12), if the Cabinet was set to *None*; choosing a profile with the
+      cabinet included sets it back to *None / included*.
+    - **The synth plays "dry":** a note track going into a NAM profile is
+      played by the synth without its reverb and chorus, like a guitar
+      plugged straight into the amplifier. A high-gain amplifier would raise
+      the reverb tail by 40-50 dB, making it fizz in the pauses; if you want
+      reverb, add the **Reverb** effect after the profile, as on a real
+      rig.
     - **Level** compensates the volume. As in the plugin, SoundText already
       brings every profile to the same reference loudness (−18 dB) using the
       value written in the file; older profiles, which do not write it, are
@@ -1696,10 +1709,13 @@ effects, divided by family in the **+ Effect** menu:
       are summed); "spatial" effects should go after it.
     - **Speed:** a neural network is heavier than the built-in Amplifier:
       about one second for each tweak in the calibration loop and about
-      twenty seconds, in the background, for a 3-minute track (A1 *standard*
-      and A2 profiles; *lite*, *feather* and *nano* are faster, LSTMs even
-      more so: a few seconds for 3 minutes). The result stays in memory as
-      for the other effects.
+      thirty seconds, in the background and on several cores, for a
+      3-minute track (A1 *standard* and A2 profiles; *lite*, *feather* and
+      *nano* are faster, LSTMs even more so: a few seconds for 3 minutes).
+      The result stays in memory: tweaking the **Level**, the **Cabinet** or
+      the effects that come after does not recompute the network, which
+      starts again only if what reaches it changes (the track's notes, the
+      **Input** or the effects before it).
     - **Sample rate:** profiles are usually at 48 kHz, like SoundText; if a
       profile has another rate the sound is converted before and after.
     - **Saving:** the path is saved in the `.st` file, relative to the
@@ -1721,8 +1737,8 @@ effects, divided by family in the **+ Effect** menu:
       The "Choose profile…" window already opens there. The profiles come
       from the NAM community collection on GitHub
       (github.com/pelennor2170/NAM_models, GNU GPL v3 licence):
-      - amplifiers (without cabinet: add a cabinet with **Cabinet → IR
-        file…**): *Fender Twin Reverb - clean* (funk, pop, arpeggios), *Vox
+      - amplifiers (without cabinet: SoundText gives them a built-in one,
+        or choose a real one with **Cabinet → IR file…**): *Fender Twin Reverb - clean* (funk, pop, arpeggios), *Vox
         AC15 - Top Boost* (the British "chime"), *Marshall JCM2000 - crunch*
         (classic rock), *Marshall JCM900 - lead* (hard rock and solos), *Mesa
         Boogie Mark IV - lead* and *Peavey 5150 - high gain* (metal);

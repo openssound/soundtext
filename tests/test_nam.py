@@ -376,3 +376,118 @@ def test_cabinet_download_command_in_the_menu(tmp_path, monkeypatch):
         if shown:
             break
     assert calls == [str(tmp_path)] and shown and "Scaricati: 1" in shown[0] and "File IR" in shown[0]
+
+
+# ------------------------------------------------------------ casse, synth asciutto, velocita'
+
+def _profile(tmp_path, name, gear_type=None, **meta):
+    data = json.loads(json.dumps(_reference()["models"]["tanh"]["nam"]))
+    metadata = dict(data.get("metadata") or {}, **meta)
+    if gear_type is not None:
+        metadata["gear_type"] = gear_type
+    data["metadata"] = metadata
+    return _write(tmp_path, name, data)
+
+
+def _cabinet(effect):
+    from core.effects import choice_key, effect_params
+    return choice_key(effect_params("nam")[1], clamp_params("nam", effect.params)["cassa"])
+
+
+def test_profile_without_cabinet_gets_one_and_with_cabinet_goes_back_to_none(tmp_path):
+    from core.effects import set_nam_profile
+    effect = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(effect, _profile(tmp_path, "Marshall JCM800.nam", "amp", gear_make="Marshall"))
+    assert _cabinet(effect) == "4x12"
+    set_nam_profile(effect, _profile(tmp_path, "Vox AC30.nam", "amp"))
+    assert _cabinet(effect) == "4x12"                     # una cassa c'e' gia': non la si cambia
+    set_nam_profile(effect, _profile(tmp_path, "Combo con cassa.nam", "amp_cab"))
+    assert _cabinet(effect) == "nessuna"
+    set_nam_profile(effect, _profile(tmp_path, "Vox AC30.nam", "amp"))
+    assert _cabinet(effect) == "combo_1x12"
+    fresh = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(fresh, _profile(tmp_path, "Plexi con booster.nam", "pedal_amp"))
+    assert _cabinet(fresh) == "4x12"                        # anche pedale+amplificatore senza cassa
+
+
+def test_pedal_profiles_get_no_cabinet(tmp_path):
+    """Un pedale va davanti a un amplificatore, che ha gia' la sua cassa."""
+    from core.effects import set_nam_profile
+    effect = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(effect, _profile(tmp_path, "Boss HM-2.nam", "pedal"))
+    assert _cabinet(effect) == "nessuna"
+
+
+def test_bass_and_unknown_profiles_keep_their_cabinet(tmp_path):
+    from core.effects import set_nam_profile
+    effect = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(effect, _profile(tmp_path, "SansAmp basso.nam", "preamp"))
+    assert _cabinet(effect) == "nessuna"                  # le casse interne sono da chitarra
+    set_nam_profile(effect, _profile(tmp_path, "Senza metadati.nam"))
+    assert _cabinet(effect) == "nessuna"
+
+
+@needs_pedalboard
+def test_internal_cabinet_tames_the_fizz(tmp_path):
+    from core.effects import set_nam_profile
+    path = _profile(tmp_path, "Peavey 5150.nam", "amp")
+    rng = np.random.default_rng(0)
+    x = np.repeat((0.3 * rng.standard_normal(RATE)).astype(np.float32)[:, None], 2, axis=1)
+    bare = Effect("nam", clamp_params("nam", {}), nam=path)
+    with_cab = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(with_cab, path)
+
+    def highs(y):
+        spectrum = np.abs(np.fft.rfft(y[:, 0]))
+        f = np.fft.rfftfreq(len(y), 1 / RATE)
+        return spectrum[f > 7000].sum() / spectrum.sum()
+
+    assert highs(apply_effect_chain(x, RATE, [with_cab], with_tail=False)) < 0.3 * highs(
+        apply_effect_chain(x, RATE, [bare], with_tail=False))
+
+
+def test_track_into_a_nam_profile_is_played_without_synth_effects(tmp_path):
+    from core.effect_render import prepare_stem
+    from core.effects import DRY_SYNTH_ROOM
+    from core.tempo_map import build_tempo_beat_map
+    project = Project()
+    track = project.add_track("Chitarra", "Guitar", "4: e g a b")
+    tempo_map = build_tempo_beat_map(project)
+    track.effects = [Effect("riverbero", clamp_params("riverbero", {}))]
+    plain = prepare_stem(project, track, tempo_map)
+    track.effects = [Effect("nam", clamp_params("nam", {}), nam=_profile(tmp_path, "amp.nam", "amp"))]
+    dry = prepare_stem(project, track, tempo_map)
+    try:
+        assert plain.reverb_room == project.reverb_room
+        assert dry.reverb_room == DRY_SYNTH_ROOM and dry.dry_key != plain.dry_key
+    finally:
+        plain.cleanup()
+        dry.cleanup()
+
+
+@needs_pedalboard
+def test_touching_what_comes_after_the_network_does_not_recompute_it(tmp_path, monkeypatch):
+    calls = []
+    real = nam.process
+    monkeypatch.setattr(nam, "process", lambda model, x: calls.append(1) or real(model, x))
+    path = _profile(tmp_path, "amp.nam", "amp")
+    x = np.repeat(np.array(_reference()["input"], dtype=np.float32)[:, None], 2, axis=1)
+    effect = Effect("nam", clamp_params("nam", {}), nam=path)
+    apply_effect_chain(x, RATE, [effect], with_tail=False)
+    effect.params["livello"] = -6
+    effect.params["cassa"] = 3
+    apply_effect_chain(x, RATE, [effect], with_tail=False)
+    assert len(calls) == 1
+    effect.params["ingresso"] = 6                                  # cambia quello che arriva alla rete
+    apply_effect_chain(x, RATE, [effect], with_tail=False)
+    assert len(calls) == 2
+
+
+def test_blocks_in_parallel_give_the_same_result(tmp_path, monkeypatch):
+    model = nam.load_nam(_profile(tmp_path, "amp.nam", "amp"))
+    x = (np.random.default_rng(1).standard_normal(5 * 4096 + 77) * 0.2).astype(np.float32)
+    monkeypatch.setattr(nam, "_BLOCK", 4096)
+    monkeypatch.setattr(nam, "_THREADS", 1)
+    sequential = nam.process(model, x)
+    monkeypatch.setattr(nam, "_THREADS", 4)
+    assert np.array_equal(nam.process(model, x), sequential)

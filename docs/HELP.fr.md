@@ -1773,10 +1773,24 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       le permet), plus bas = plus clair.
     - **Baffle** : *Aucun / inclus* si le profil contient déjà le baffle
       (type « amplificateur avec baffle ») ou s'il s'agit d'une pédale à
-      mettre devant un Amplificateur ; **Fichier IR…** pour ajouter la
-      réponse d'un vrai baffle, comme dans l'Amplificateur (voir plus haut).
-      Un profil de tête seule sans baffle sonne agressif et « bourdonnant » :
-      donnez-lui une IR.
+      mettre devant un Amplificateur ; un des **baffles intégrés** de
+      l'Amplificateur (Combo 1×12, 2×12, 4×12 fermé, Vintage 1×10) ;
+      **Fichier IR…** pour la réponse d'un vrai baffle, comme dans
+      l'Amplificateur (voir plus haut). Un profil de tête seule sans baffle
+      sonne agressif et grésillant : quand vous choisissez un profil que le
+      fichier déclare sans baffle (amplificateur ou préampli, pas les pédales
+      ni ceux pour basse), SoundText lui met de lui-même un baffle intégré
+      adapté (4×12 pour Marshall, Mesa, 5150 et semblables, Combo 1×12 pour
+      Vox et semblables, sinon 2×12), si le Baffle était sur *Aucun* ; en
+      choisissant un profil avec le baffle inclus, il revient sur *Aucun /
+      inclus*.
+    - **Le synthé joue « sec » :** une piste de notes qui va dans un profil
+      NAM est jouée par le synthé sans sa réverbération ni son chorus, comme
+      une guitare branchée directement dans l'amplificateur. Un ampli à fort
+      gain remonterait la queue de la réverbération de 40-50 dB, qui
+      grésillerait dans les silences ; si vous voulez de la réverbération,
+      ajoutez l'effet **Réverbération** après le profil, comme sur un vrai
+      matériel.
     - **Niveau** compense le volume. Comme le plugin, SoundText amène déjà
       chaque profil à la même sonie de référence (−18 dB) en utilisant la
       valeur écrite dans le fichier ; les profils plus anciens, qui ne
@@ -1806,10 +1820,14 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       canaux sont additionnés) ; les effets « spatiaux » se placent après.
     - **Vitesse :** un réseau de neurones est plus lourd que l'Amplificateur
       intégré : environ une seconde pour chaque retouche dans la boucle de
-      calibration et une vingtaine de secondes, en arrière-plan, pour une
-      piste de 3 minutes (profils A1 *standard* et A2 ; *lite*, *feather* et
-      *nano* sont plus rapides, les LSTM encore plus : quelques secondes pour
-      3 minutes). Le résultat reste en mémoire comme pour les autres effets.
+      calibration et une trentaine de secondes, en arrière-plan et sur
+      plusieurs cœurs, pour une piste de 3 minutes (profils A1 *standard* et
+      A2 ; *lite*, *feather* et *nano* sont plus rapides, les LSTM encore
+      plus : quelques secondes pour 3 minutes). Le résultat reste en
+      mémoire : retoucher le **Niveau**, le **Baffle** ou les effets qui
+      viennent après ne fait pas recalculer le réseau, qui ne repart que si
+      ce qui lui arrive change (les notes de la piste, l'**Entrée** ou les
+      effets avant).
     - **Fréquence :** les profils sont en général à 48 kHz, comme SoundText ;
       si un profil a une autre fréquence le son est converti avant et après.
     - **Enregistrement :** le chemin est enregistré dans le fichier `.st`,
@@ -1831,8 +1849,8 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       auteurs. La fenêtre « Choisir un profil… » s'ouvre déjà là. Les profils
       viennent de la collection de la communauté NAM sur GitHub
       (github.com/pelennor2170/NAM_models, licence GNU GPL v3) :
-      - amplificateurs (sans baffle : ajoutez un baffle avec **Baffle →
-        Fichier IR…**) : *Fender Twin Reverb - clair* (funk, pop, arpèges),
+      - amplificateurs (sans baffle : SoundText leur en met un intégré, ou
+        choisissez-en un vrai avec **Baffle → Fichier IR…**) : *Fender Twin Reverb - clair* (funk, pop, arpèges),
         *Vox AC15 - Top Boost* (le « chime » britannique), *Marshall JCM2000
         - crunch* (rock classique), *Marshall JCM900 - lead* (hard rock et
         solos), *Mesa Boogie Mark IV - lead* et *Peavey 5150 - high gain*

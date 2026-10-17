@@ -478,6 +478,21 @@ def _check_allowed(ref: str) -> None:
                              "la sua cartella in Suoni → Cartelle dei plugin VST3", path=path))
 
 
+def home_relative(path: str) -> str:
+    """Il percorso scritto come "~/..." se sta nella cartella dell'utente
+    (vedi parse_ref): il progetto funziona anche su un altro computer, dove
+    gli strumenti stanno nella stessa posizione sotto un'altra cartella
+    utente (/home/..., /Users/..., C:\\Users\\...)."""
+    home = os.path.expanduser("~")
+    try:
+        inside = os.path.commonpath([os.path.abspath(path), home]) == home
+    except ValueError:            # dischi diversi su Windows
+        inside = False
+    if not inside:
+        return path
+    return "~/" + os.path.relpath(os.path.abspath(path), home).replace(os.sep, "/")
+
+
 def resolve_ref(ref: str) -> str:
     """Il riferimento come va usato su questa macchina: un VST3 che non c'e'
     piu' nel percorso salvato (progetto aperto su un altro computer) si

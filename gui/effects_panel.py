@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 from core.effects import (
     DEFAULT_REVERB_ROOM, EFFECT_FAMILIES, EFFECT_KINDS, MASTERING_CHAIN, REVERB_ROOMS, active_effects,
     clamp_params, default_params, delay_seconds, effect_params, effects_available, format_value, inactive_params,
-    ir_file_problem, matching_preset, preset_params, uses_ir_file,
+    ir_file_problem, matching_preset, preset_params, set_nam_profile, uses_ir_file,
 )
 from core.model import Effect
 
@@ -356,8 +356,9 @@ class EffectCard(QFrame):
         path = self.panel.choose_nam_file(self.effect.nam)
         if not path:
             return False
-        self.effect.nam = path
-        self._refresh_nam_row()
+        set_nam_profile(self.effect, path)      # e la cassa adatta al profilo
+        self._sync_preset_combo()
+        self._refresh_enabled_look()
         self.panel.effects_changed()
         return True
 
@@ -925,9 +926,10 @@ class EffectsPanel(QFrame):
         effect = Effect(kind, params, True, matching_preset(kind, params))
         if kind == "nam":
             # senza un profilo l'effetto non fa nulla: lo si chiede subito
-            effect.nam = self.choose_nam_file()
-            if not effect.nam:
+            path = self.choose_nam_file()
+            if not path:
                 return
+            set_nam_profile(effect, path)       # e la cassa adatta al profilo
         if kind == "plugin":
             effect.plugin = self.choose_plugin()
             if not effect.plugin:

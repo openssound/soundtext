@@ -11,6 +11,8 @@ SoundFont mandano gia' da soli una parte dei loro strumenti al riverbero.
 
 import logging
 import os
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -25,6 +27,13 @@ REVERB_ROOMS = {
     "chiesa": ("Chiesa", 0.9, 0.45, 1.0, 0.9),
 }
 DEFAULT_REVERB_ROOM = "stanza"
+# "Ambiente" interno (non fra le scelte del brano) per le tracce che vanno in
+# un amplificatore simulato (vedi synth_dry_for): il synth le suona senza
+# riverbero ne' chorus, come una chitarra collegata direttamente. Un
+# amplificatore ad alto guadagno alzerebbe di 40-50 dB la coda del riverbero
+# (che i preset del SoundFont aggiungono anche senza invio), facendola
+# sfrigolare nelle pause; su un banco vero il riverbero va dopo l'amplificatore.
+DRY_SYNTH_ROOM = "secco"
 
 
 def reverb_params(room: str) -> Tuple[float, float, float, float]:
@@ -35,10 +44,63 @@ def reverb_params(room: str) -> Tuple[float, float, float, float]:
 
 
 def reverb_cli_options(room: str) -> List[str]:
-    """Opzioni '-o' della riga di comando di fluidsynth per l'ambiente."""
+    """Opzioni '-o' della riga di comando di fluidsynth per l'ambiente (da
+    mettere dopo le altre: per DRY_SYNTH_ROOM spengono riverbero e chorus)."""
     size, damping, width, level = reverb_params(room)
-    return ["-o", f"synth.reverb.room-size={size}", "-o", f"synth.reverb.damp={damping}",
-            "-o", f"synth.reverb.width={width}", "-o", f"synth.reverb.level={level}"]
+    options = ["-o", f"synth.reverb.room-size={size}", "-o", f"synth.reverb.damp={damping}",
+               "-o", f"synth.reverb.width={width}", "-o", f"synth.reverb.level={level}"]
+    if room == DRY_SYNTH_ROOM:
+        options += ["-o", "synth.reverb.active=0", "-o", "synth.chorus.active=0"]
+    return options
+
+
+def suggested_nam_cabinet(path: str) -> Optional[str]:
+    """La cassa interna da usare con il profilo: None se il profilo ha gia'
+    la cassa, se e' un pedale (va davanti a un amplificatore, che avra' la
+    sua cassa), se e' per basso o se il file non dice cosa contiene (allora
+    si lascia la scelta com'e')."""
+    from .nam import NamError, load_nam
+    try:
+        model = load_nam(path)
+    except NamError:
+        return None
+    meta = model.metadata or {}
+    if model.includes_cabinet is not False or meta.get("gear_type") == "pedal":
+        return None
+    words = " ".join(str(v) for v in (meta.get("gear_make"), meta.get("gear_model"), meta.get("name"),
+                                      os.path.basename(path)) if v).lower()
+    if any(h in words for h in _NAM_BASS_HINTS):
+        return None
+    for cabinet, hints in _NAM_CABINET_HINTS:
+        if any(h in words for h in hints):
+            return cabinet
+    return "2x12"
+
+
+def set_nam_profile(effect, path: str):
+    """Imposta il profilo dell'effetto NAM e adatta la cassa: una cassa
+    interna per un profilo che non la comprende (se non ce n'e' gia' una),
+    "Nessuna / inclusa" per uno che la comprende (salvo un file IR scelto)."""
+    from .nam import NamError, load_nam
+    effect.nam = path
+    param = next(p for p in effect_params("nam") if p.key == "cassa")
+    keys = [k for k, _label in param.choices]
+    current = choice_key(param, clamp_params("nam", effect.params)["cassa"])
+    try:
+        includes = load_nam(path).includes_cabinet
+    except NamError:
+        return
+    suggestion = suggested_nam_cabinet(path)
+    if includes is False and current == "nessuna" and suggestion:
+        effect.params["cassa"] = keys.index(suggestion)
+    elif includes is True and current != "file":
+        effect.params["cassa"] = keys.index("nessuna")
+
+
+def synth_dry_for(effects) -> bool:
+    """Se la traccia con questa catena va suonata dal synth senza riverbero
+    ne' chorus (vedi DRY_SYNTH_ROOM): c'e' un profilo NAM acceso."""
+    return any(e.kind == "nam" for e in active_effects(effects))
 
 
 def apply_reverb(synth, room: str):
@@ -89,12 +151,25 @@ _DELAY_CHOICES = [("libera", "Libera (ms)"), ("1/2", "1/2"), ("1/4", "1/4"), ("1
 AMP_MODELS = [("pulito", "Pulito"), ("crunch", "Crunch"), ("british", "British"), ("high_gain", "High gain")]
 # Cassa dopo un profilo NAM: molti profili la includono gia' (catturati dal
 # microfono davanti alla cassa); gli altri si completano con un file IR.
-NAM_CABINETS = [("nessuna", "Nessuna / inclusa"), ("file", "File IR…")]
-
 AMP_CABINETS = [("nessuna", "Nessuna"), ("combo_1x12", "Combo 1×12"), ("2x12", "2×12"),
                 ("4x12", "4×12 chiusa"), ("vintage_1x10", "Vintage 1×10"),
                 # la risposta all'impulso di una cassa vera, da un file WAV (Effect.ir)
                 ("file", "File IR…")]
+# Per i profili NAM le stesse casse interne: la gran parte dei profili e' di
+# sola testata (o di un pedale), e senza una cassa suona aspra e sfrigolante.
+NAM_CABINETS = [("nessuna", "Nessuna / inclusa")] + AMP_CABINETS[1:]
+
+# Cassa proposta per un profilo NAM senza cassa (vedi suggested_nam_cabinet),
+# dalle parole nel nome dell'amplificatore: le testate "da stack" con la
+# 4x12, i combo inglesi piccoli con la 1x12; per le altre la 2x12.
+_NAM_CABINET_HINTS = (
+    ("4x12", ("marshall", "jcm", "plexi", "mesa", "boogie", "rectifier", "5150", "6505", "peavey", "engl",
+              "orange", "bogner", "diezel", "friedman", "soldano", "evh", "laney", "krank", "hm-2", "hm2")),
+    ("combo_1x12", ("vox", "ac15", "ac30", "matchless", "dr z", "princeton", "deluxe", "champ")),
+)
+# Profili per basso: le casse interne sono da chitarra (tagliano sotto gli
+# 80 Hz circa), quindi per questi non se ne propone nessuna.
+_NAM_BASS_HINTS = ("bass", "basso", "sansamp", "darkglass", "b7k", "dug", "svt", "ampeg")
 
 
 # tipo -> (etichetta, famiglia, parametri, preset {nome: {parametro: valore}})
@@ -413,6 +488,9 @@ def tail_seconds(effects, bpm: float = 120.0) -> float:
             tail = max(tail, delay_seconds(e.params, bpm) * (repeats + 1))
         elif e.kind in ("amplificatore", "nam"):
             ir = load_ir_file(e.ir, 48000) if uses_ir_file(e) else None
+            if ir is None and e.kind == "nam":
+                cabinet = choice_key(effect_params("nam")[1], p["cassa"])
+                ir = cabinet_ir(cabinet, 48000) if cabinet in _CABINET_CURVES else None
             tail = max(tail, 0.1 if ir is None else len(ir) / 48000.0 + 0.1)   # rete e risposta della cassa
         elif e.kind == "riverbero":
             tail = max(tail, 0.5 + 5.5 * p["stanza"] / 100.0)
@@ -765,23 +843,48 @@ def _nam_normalization_db(path: str) -> float:
     return float(max(-24.0, min(24.0, NAM_TARGET_LOUDNESS_DB - loudness)))
 
 
+# Uscite gia' calcolate della rete NAM, per segnale d'ingresso e profilo: la
+# rete e' di gran lunga la parte piu' lenta della catena (decine di secondi
+# per qualche minuto di chitarra), e toccare il Livello, la cassa o un
+# effetto che viene dopo non cambia quello che le arriva.
+_NAM_CACHE_BYTES = 256 * 1024 * 1024
+_nam_out_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
+_nam_cache_lock = threading.Lock()
+
+
 def _nam_stage(x: np.ndarray, rate: int, path: str) -> np.ndarray:
     """Il segnale (mono: media dei canali) attraverso il profilo NAM, alla
     sua frequenza di campionamento; uscita uguale sui due canali. Senza un
     profilo valido il suono passa invariato."""
+    import hashlib
     from .nam import NamError, load_nam, process
     try:
         model = load_nam(path)
     except NamError as e:
         logging.getLogger(__name__).warning("Profilo NAM non usato (%s): %s", path, e)
         return x
-    mono = x.mean(axis=1)
-    if model.sample_rate != rate:
-        y = process(model, _fft_resample(mono, rate, model.sample_rate))
-        y = _fft_resample(y, model.sample_rate, rate)[:len(mono)]
-        y = np.concatenate([y, np.zeros(len(mono) - len(y))])
-    else:
-        y = process(model, mono)
+    mono = np.ascontiguousarray(x.mean(axis=1), dtype=np.float32)
+    stat = os.stat(path)
+    key = (os.path.abspath(path), stat.st_mtime, stat.st_size, rate,
+           hashlib.blake2b(mono.tobytes(), digest_size=16).hexdigest())
+    with _nam_cache_lock:
+        y = _nam_out_cache.pop(key, None)
+        if y is not None:
+            _nam_out_cache[key] = y                     # piu' recente in fondo
+    if y is None:
+        if model.sample_rate != rate:
+            y = process(model, _fft_resample(mono, rate, model.sample_rate))
+            y = _fft_resample(y, model.sample_rate, rate)[:len(mono)]
+            y = np.concatenate([y, np.zeros(len(mono) - len(y))])
+        else:
+            y = process(model, mono)
+        y = np.asarray(y, dtype=np.float32)
+        with _nam_cache_lock:
+            _nam_out_cache[key] = y
+            total = sum(v.nbytes for v in _nam_out_cache.values())
+            while total > _NAM_CACHE_BYTES and len(_nam_out_cache) > 1:
+                _key, old = _nam_out_cache.popitem(last=False)
+                total -= old.nbytes
     return np.repeat(y[:, None], x.shape[1], axis=1).astype(np.float32)
 
 
@@ -990,8 +1093,11 @@ def _plugins(effect, bpm: float = 120.0) -> list:
         return [cls(cutoff_frequency_hz=p["frequenza"]) for _ in range(int(round(p["pendenza"] / 6)))]
     if kind == "nam":
         stages = [pb.Gain(gain_db=p["ingresso"]), lambda x, rate, path=effect.nam: _nam_stage(x, rate, path)]
+        cabinet = choice_key(effect_params(kind)[1], p["cassa"])
         if uses_ir_file(effect) and load_ir_file(effect.ir, 48000) is not None:
             stages.append(lambda x, rate, path=effect.ir: _convolve(x, load_ir_file(path, rate)))
+        elif cabinet in _CABINET_CURVES:
+            stages.append(lambda x, rate, cabinet=cabinet: _convolve(x, cabinet_ir(cabinet, rate)))
         stages.append(pb.Gain(gain_db=p["livello"] + _nam_normalization_db(effect.nam)))
         return stages
     if kind == "plugin":

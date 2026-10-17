@@ -44,7 +44,7 @@ import wave
 from typing import Dict, List, Optional
 
 from . import audio_stream
-from .effects import DEFAULT_REVERB_ROOM, apply_reverb, reverb_cli_options
+from .effects import DEFAULT_REVERB_ROOM, DRY_SYNTH_ROOM, apply_reverb, reverb_cli_options
 from .model import Project, Track
 from .midi_export import export_project_to_midi
 from .i18n import tr
@@ -357,6 +357,7 @@ class _PersistentSynth:
         # render: il synth e' condiviso, e un brano con un'altra sala non
         # deve lasciarla a chi suona dopo (anteprima della libreria MIDI...).
         apply_reverb(synth, reverb_room or DEFAULT_REVERB_ROOM)
+        synth.set_effects_on(reverb_room != DRY_SYNTH_ROOM)
         try:
             player = _fluid.Player(synth)
         except RuntimeError:

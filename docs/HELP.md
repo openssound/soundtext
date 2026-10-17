@@ -1701,9 +1701,23 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       permette), più basso = più pulito.
     - **Cassa**: *Nessuna / inclusa* se il profilo contiene già la cassa
       (tipo "amplificatore con cassa") o se è un pedale da mettere davanti a
-      un Amplificatore; **File IR…** per aggiungere la risposta di una cassa
-      vera, come nell'Amplificatore (vedi sopra). Un profilo di sola testata
-      senza cassa suona aspro e "ronzante": dagli un IR.
+      un Amplificatore; una delle **casse interne** dell'Amplificatore
+      (Combo 1×12, 2×12, 4×12 chiusa, Vintage 1×10); **File IR…** per la
+      risposta di una cassa vera, come nell'Amplificatore (vedi sopra). Un
+      profilo di sola testata senza cassa suona aspro e sfrigolante: quando
+      scegli un profilo che il file dichiara senza cassa (amplificatore o
+      preamplificatore, non i pedali e non quelli per basso), SoundText gli
+      mette da solo una cassa interna adatta (4×12 per Marshall, Mesa, 5150
+      e simili, Combo 1×12 per Vox e simili, altrimenti 2×12), se la Cassa
+      era su *Nessuna*; scegliendo un profilo con la cassa inclusa torna su
+      *Nessuna / inclusa*.
+    - **Il synth suona "secco":** una traccia di note che va in un profilo
+      NAM viene suonata dal synth senza il suo riverbero e il suo chorus,
+      come una chitarra collegata direttamente all'amplificatore. Un
+      amplificatore ad alto guadagno alzerebbe la coda del riverbero di
+      40-50 dB, facendola sfrigolare nelle pause; se vuoi il riverbero,
+      aggiungi l'effetto **Riverbero** dopo il profilo, come su un banco
+      vero.
     - **Livello** compensa il volume. Come nel plugin, SoundText porta già
       ogni profilo alla stessa sonorità di riferimento (−18 dB) usando il
       valore scritto nel file; i profili più vecchi, che non lo scrivono,
@@ -1733,10 +1747,13 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       vengono sommati); gli effetti "spaziali" vanno messi dopo.
     - **Velocità:** una rete neurale è più pesante dell'Amplificatore
       interno: circa un secondo per ogni ritocco nel loop di calibrazione e
-      una ventina di secondi, in sottofondo, per una traccia di 3 minuti
-      (profili A1 *standard* e A2; *lite*, *feather* e *nano* sono più
-      rapidi, gli LSTM ancora di più: pochi secondi per 3 minuti). Il
-      risultato resta in memoria come per gli altri effetti.
+      una trentina di secondi, in sottofondo e su più core, per una traccia
+      di 3 minuti (profili A1 *standard* e A2; *lite*, *feather* e *nano*
+      sono più rapidi, gli LSTM ancora di più: pochi secondi per 3 minuti).
+      Il risultato resta in memoria: ritoccare il **Livello**, la **Cassa**
+      o gli effetti che vengono dopo non fa ricalcolare la rete, che riparte
+      solo se cambia quello che le arriva (le note della traccia,
+      l'**Ingresso** o gli effetti prima).
     - **Frequenza:** i profili sono di solito a 48 kHz, come SoundText; se
       un profilo ha un'altra frequenza il suono viene convertito prima e
       dopo.
@@ -1758,8 +1775,8 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       provenienza e autori. La finestra "Scegli profilo…" si apre già lì.
       I profili vengono dalla raccolta della comunità di NAM su GitHub
       (github.com/pelennor2170/NAM_models, licenza GNU GPL v3):
-      - amplificatori (senza cassa: aggiungi una cassa con **Cassa → File
-        IR…**): *Fender Twin Reverb - pulito* (funk, pop, arpeggi), *Vox
+      - amplificatori (senza cassa: SoundText gliene mette una interna,
+        oppure scegline una vera con **Cassa → File IR…**): *Fender Twin Reverb - pulito* (funk, pop, arpeggi), *Vox
         AC15 - Top Boost* (il "chime" britannico), *Marshall JCM2000 -
         crunch* (rock classico), *Marshall JCM900 - lead* (hard rock e
         assoli), *Mesa Boogie Mark IV - lead* e *Peavey 5150 - high gain*

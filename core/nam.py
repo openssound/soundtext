@@ -268,6 +268,16 @@ class NamModel:
         return text
 
     @property
+    def includes_cabinet(self) -> Optional[bool]:
+        """Se il profilo comprende la cassa (gear_type "amp_cab",
+        "amp_pedal_cab"...), se non la comprende (testata, pedale,
+        preamplificatore), o None se il file non lo dice."""
+        gear = (self.metadata or {}).get("gear_type")
+        if not gear:
+            return None
+        return "cab" in str(gear)
+
+    @property
     def loudness(self) -> Optional[float]:
         value = (self.metadata or {}).get("loudness")
         try:
@@ -622,15 +632,17 @@ def _run_layer(layer: _Layer, h: np.ndarray, cond: np.ndarray):
     if "conv_post_film" in films:
         z = films["conv_post_film"](z, c)
     mix = films["input_mixin_pre_film"](c, c) if "input_mixin_pre_film" in films else c
-    m = layer.mixin @ mix
     if "input_mixin_post_film" in films:
-        m = films["input_mixin_post_film"](m, c)
-    z = z + m
+        z = z + films["input_mixin_post_film"](layer.mixin @ mix, c)
+    elif mix.shape[0] == 1:
+        z += layer.mixin * mix          # un canale di condizionamento (il caso tipico): senza prodotto di matrici
+    else:
+        z += layer.mixin @ mix
     if "activation_pre_film" in films:
         z = films["activation_pre_film"](z, c)
     b = layer.bottleneck
     if layer.gating == "none":
-        a = layer.activation(z)
+        a = layer.activation(z, out=z) if layer.activation is np.tanh else layer.activation(z)
     elif layer.gating == "gated":
         a = layer.activation(z[:b]) * layer.secondary(z[b:])
     else:                                   # "blended": tra attivato e non attivato
@@ -639,10 +651,12 @@ def _run_layer(layer: _Layer, h: np.ndarray, cond: np.ndarray):
     if "activation_post_film" in films:
         a = films["activation_post_film"](a, c)
     if layer.layer1x1 is not None:
-        r = layer.layer1x1[0] @ a + layer.layer1x1[1]
+        r = layer.layer1x1[0] @ a
+        r += layer.layer1x1[1]
         if "layer1x1_post_film" in films:
             r = films["layer1x1_post_film"](r, c)
-        h = _tail(h, t) + r
+        r += _tail(h, t)
+        h = r
     else:
         h = _tail(h, t)
     if layer.head1x1 is not None:
@@ -796,6 +810,13 @@ def _process_lstm(net: _LSTM, x: np.ndarray, rate: int) -> np.ndarray:
     return out.T.reshape(-1)[:n]
 
 
+# I blocchi di una WaveNet sono indipendenti (ognuno porta con se' il suo
+# campo ricettivo): si calcolano in parallelo, numpy lascia libero il GIL
+# durante i calcoli. Piu' di 4 thread non servono (le moltiplicazioni di
+# matrici usano gia' piu' core da sole).
+_THREADS = max(1, min(4, os.cpu_count() or 1))
+
+
 def process(model: NamModel, x: np.ndarray) -> np.ndarray:
     """Il segnale mono x (float, alla frequenza del modello) attraverso il
     profilo, a blocchi: stessa lunghezza, partendo da silenzio."""
@@ -805,8 +826,18 @@ def process(model: NamModel, x: np.ndarray) -> np.ndarray:
     rf = model.receptive_field
     padded = np.concatenate([np.zeros(rf, dtype=np.float32), x])
     out = np.empty(len(x), dtype=np.float32)
-    for start in range(0, len(x), _BLOCK):
+
+    def block(start):
         end = min(len(x), start + _BLOCK)
         y = _run(model.net, padded[None, start:end + rf])[0]
         out[start:end] = y[len(y) - (end - start):]
+
+    starts = range(0, len(x), _BLOCK)
+    if _THREADS > 1 and len(starts) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(_THREADS, len(starts))) as pool:
+            list(pool.map(block, starts))
+    else:
+        for start in starts:
+            block(start)
     return out

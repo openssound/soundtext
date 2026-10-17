@@ -113,6 +113,12 @@ def _declare(lib):
             fn(f"fluid_synth_set_reverb_group_{name}", c_int, c_void_p, c_int, c_double)
     if hasattr(lib, "fluid_synth_set_reverb"):
         fn("fluid_synth_set_reverb", c_int, c_void_p, c_double, c_double, c_double, c_double)
+    # riverbero e chorus accesi/spenti: per gruppo da FluidSynth 2.2, prima per tutto il synth
+    for name in ("reverb", "chorus"):
+        if hasattr(lib, f"fluid_synth_{name}_on"):
+            fn(f"fluid_synth_{name}_on", c_int, c_void_p, c_int, c_int)
+        if hasattr(lib, f"fluid_synth_set_{name}_on"):
+            fn(f"fluid_synth_set_{name}_on", None, c_void_p, c_int)
 
 
 def _load():
@@ -276,6 +282,17 @@ class Synth:
         self.setting("synth.reverb.damp", damping)
         self.setting("synth.reverb.width", width)
         self.setting("synth.reverb.level", level)
+
+    def set_effects_on(self, on: bool):
+        """Accende o spegne riverbero e chorus del synth (anche quelli che i
+        preset del SoundFont mandano da soli, senza CC91/CC93)."""
+        lib = self._lib
+        for name in ("reverb", "chorus"):
+            if hasattr(lib, f"fluid_synth_{name}_on"):
+                getattr(lib, f"fluid_synth_{name}_on")(self.synth, -1, int(on))
+            elif hasattr(lib, f"fluid_synth_set_{name}_on"):
+                getattr(lib, f"fluid_synth_set_{name}_on")(self.synth, int(on))
+            self.setting(f"synth.{name}.active", int(on))
 
     def get_samples(self, frames: int) -> np.ndarray:
         """frames campioni stereo a 16 bit, alternati (sinistro, destro)."""

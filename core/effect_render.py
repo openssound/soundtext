@@ -28,7 +28,8 @@ from typing import List, Optional
 
 import numpy as np
 
-from .effects import active_effects, apply_effect_chain, chain_signature, effects_available
+from .effects import (DRY_SYNTH_ROOM, active_effects, apply_effect_chain, chain_signature, effects_available,
+                      synth_dry_for)
 from .model import Project, Track
 
 # Memoria massima delle due cache insieme (una traccia stereo di 3 minuti a
@@ -243,12 +244,14 @@ def prepare_stem(project: Project, track: Track, tempo_map) -> StemRequest:
                            reverb_room=project.reverb_room, bpm=project.tempo_bpm, synth=track.synth, synth_params=dict(track.synth_params),
                            synth_state=track.synth_state, pan=track.pan)
     overrides = _resolve_channel_soundfont_overrides(project, False, tracks=[track])
+    # verso un amplificatore simulato la traccia va senza riverbero e chorus del synth
+    room = DRY_SYNTH_ROOM if synth_dry_for(effects) else project.reverb_room
     with open(handle.name, "rb") as f:
         digest = hashlib.sha1(f.read())
     digest.update(repr((_find_soundfont(), sorted((overrides or {}).items()), get_playback_gain(),
-                        project.reverb_room)).encode())
+                        room)).encode())
     return StemRequest(track.name, "midi" + digest.hexdigest(), effects, midi_path=handle.name,
-                       channel_overrides=overrides, reverb_room=project.reverb_room, bpm=project.tempo_bpm)
+                       channel_overrides=overrides, reverb_room=room, bpm=project.tempo_bpm)
 
 
 def render_dry(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:

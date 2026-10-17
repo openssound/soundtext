@@ -174,3 +174,20 @@ def test_signature_follows_the_sfz_file(tmp_path, _plugins):
     before = _plugins.signature("sfz:" + path, {}, "")
     os.utime(path, (1, 1))
     assert _plugins.signature("sfz:" + path, {}, "") != before
+
+
+def test_instrument_in_the_home_folder_is_saved_portable(tmp_path, monkeypatch, _plugins):
+    """Uno strumento nella cartella dell'utente si scrive "sfz:~/...": lo
+    stesso progetto trova lo strumento su un altro computer (/home/...,
+    /Users/...) dove sta nella stessa posizione."""
+    from core.plugin_worker import parse_ref
+    from core.plugins import home_relative
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    (tmp_path / "Strumenti").mkdir()
+    path = _sfz(tmp_path / "Strumenti", "*sine")
+    assert home_relative(path) == "~/Strumenti/" + os.path.basename(path)
+    assert home_relative("/altrove/x.sfz") == "/altrove/x.sfz"
+    ref = "sfz:" + home_relative(path)
+    assert parse_ref(ref)[1] == path
+    assert _plugins.describe(ref).name
