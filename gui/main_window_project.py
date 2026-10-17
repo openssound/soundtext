@@ -711,7 +711,7 @@ class ProjectMixin:
         self._download_in_background(
             "_nam_download_worker", download_profiles, folder, len(PROFILES),
             title=tr("Profili NAM consigliati"),
-            question=tr("Scarico {0} profili NAM di amplificatori e pedali famosi (circa 3 MB) dalla raccolta della comunita' di Neural Amp Modeler su GitHub ({SOURCE_REPO}, licenza GNU GPL v3)?\n\nCartella: {folder}\n\nI profili gia' presenti non vengono riscaricati.", len(PROFILES), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
+            question=tr("Scarico {0} profili NAM di amplificatori e pedali famosi (circa 11 MB) dalla raccolta della comunita' di Neural Amp Modeler su GitHub ({SOURCE_REPO}, licenza GNU GPL v3)?\n\nCartella: {folder}\n\nI profili gia' presenti non vengono riscaricati.", len(PROFILES), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
             progress_label=tr("Download dei profili NAM..."),
             hint=tr("\nCartella: {0}\nNel pannello Effetti: + Effetto → Saturazione → Profilo NAM. Agli amplificatori senza cassa aggiungi una cassa (File IR…).", folder))
 

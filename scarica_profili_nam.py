@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Scarica i profili NAM consigliati (amplificatori e pedali famosi, circa
-5 MB) nella cartella profili_nam/ di SoundText, che non e' versionata.
+Scarica i profili NAM consigliati (una trentina di amplificatori e pedali
+famosi, circa 11 MB) nella cartella profili_nam/ di SoundText, che non e'
+versionata.
 Lo stesso comando c'e' nell'app: Strumenti → Scarica profili NAM
 consigliati...
 

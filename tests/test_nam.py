@@ -260,7 +260,7 @@ def test_recommended_profiles_download(tmp_path):
     steps = []
     result = nam_profiles.download_profiles(str(tmp_path), lambda i, n, name: steps.append(i), opener=opener)
     total = len(nam_profiles.PROFILES)
-    assert 10 <= total <= 12 and len(result["downloaded"]) == total - 1
+    assert 30 <= total <= 40 and len(result["downloaded"]) == total - 1
     assert result["failed"] == [("Ibanez TS9 Tube Screamer.nam", "rete assente")]
     assert all(u.startswith(nam_profiles.RAW_BASE) and " " not in u for u in urls)
     assert steps == list(range(total + 1))

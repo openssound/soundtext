@@ -1658,7 +1658,7 @@ effects, divided by family in the **+ Effect** menu:
     found, almost all free, on **Tone3000** (tone3000.com): famous
     amplifiers, overdrive and distortion pedals, preamplifiers, sometimes
     with the cabinet included. To get started, **Sounds → Download → Download
-    recommended NAM profiles...** downloads a dozen in one go (see "Where to
+    recommended NAM profiles...** downloads about thirty in one go (see "Where to
     find NAM profiles", below).
 
     When you add the effect (**+ Effect → Saturation → NAM profile**) the
@@ -1733,8 +1733,8 @@ effects, divided by family in the **+ Effect** menu:
     **Where to find NAM profiles.**
     - **Recommended profiles, in one go:** **Sounds → Download → Download
       recommended NAM profiles...** (or, from a terminal in the SoundText
-      folder, `python3 scarica_profili_nam.py`) downloads 11 profiles of
-      famous amplifiers and pedals, about 3 MB in all, into the
+      folder, `python3 scarica_profili_nam.py`) downloads 34 profiles of
+      famous amplifiers and pedals, about 11 MB in all, into the
       **`profili_nam`** folder next to SoundText (or into
       `~/SoundText/profili_nam` if that one cannot be written). The folder is
       not part of the repository: everyone downloads it on their own
@@ -1744,15 +1744,29 @@ effects, divided by family in the **+ Effect** menu:
       from the NAM community collection on GitHub
       (github.com/pelennor2170/NAM_models, GNU GPL v3 licence):
       - amplifiers (without cabinet: SoundText gives them a built-in one,
-        or choose a real one with **Cabinet → IR file…**): *Fender Twin Reverb - clean* (funk, pop, arpeggios), *Vox
-        AC15 - Top Boost* (the British "chime"), *Marshall JCM2000 - crunch*
-        (classic rock), *Marshall JCM900 - lead* (hard rock and solos), *Mesa
-        Boogie Mark IV - lead* and *Peavey 5150 - high gain* (metal);
-      - amplifier **with cabinet** (ready, no IR needed): *Bugera 333 -
-        crunch with cabinet*;
-      - pedals, to put **before** an amplifier (built-in or profile):
-        *Ibanez TS9 Tube Screamer*, *Klon Centaur (clone)*, *Boss HM-2 -
-        Swedish* (death metal), and for bass *Tech 21 dUg DP3X*.
+        or choose a real one with **Cabinet → IR file…**). Clean and
+        crunch: *Fender Twin Reverb* (clean and vibrato: funk, pop,
+        arpeggios), *Vox AC15 - Top Boost* (the British "chime"),
+        *Magnatone Super 59* (clean and pushed: blues and country),
+        *Marshall JCM2000* (clean and crunch: classic rock), *Friedman Dirty
+        Shirley Mini* (clean and crunch), *Orange Rockerverb* and *Sovtek
+        MIG50* (stoner and doom). Lead and high gain: *Marshall JCM900 -
+        lead* (hard rock and solos), *Splawn Pro Mod* (1980s hard rock and
+        metal), *Mesa Boogie Mark IV - lead*, *Peavey 5150* and *6505+*,
+        *Engl Savage* (metal) and *Meshuggah - djent* (modern metal).
+        *Orange Rockerverb* and *Engl Savage* are captures of an Axe-FX II
+        model, not of the real amplifier;
+      - amplifiers **with cabinet** (ready, no IR needed): *Bugera 333*
+        (clean and crunch) and *Marshall JVM* (clean and distorted);
+      - pedals, to put **before** an amplifier (built-in or profile): the
+        overdrives *Ibanez TS9 Tube Screamer*, *Maxon OD808* (the original
+        Tube Screamer), *Boss SD-1*, *Klon Centaur (clone)* and
+        *EarthQuaker Plumes (clone)*; *Boss OS-2* (overdrive and
+        distortion) and *Boss DS-1* (distortion); the metal boosts *MXR
+        M77*, *Horizon Precision Drive* and *Fortin Grind*; *Boss HM-2 -
+        Swedish* (death metal), and for bass *Tech 21 dUg DP3X*. *Maxon
+        OD808*, *Boss SD-1*, *MXR M77* and *Precision Drive* are "feather"
+        networks, the lightest: about half the processing time.
     - **Cabinets for amplifiers without a cabinet:** **Sounds → Download → Download IR cabinets for NAM amplifiers...** downloads 20 guitar
       cabinets (impulse responses, less than 1 MB) into the
       **`profili_nam/casse`** subfolder, with the licence text and a

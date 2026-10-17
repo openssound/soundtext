@@ -1765,7 +1765,7 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     **Tone3000** (tone3000.com) : amplificateurs célèbres, pédales
     d'overdrive et de distorsion, préamplificateurs, parfois avec le baffle
     inclus. Pour commencer, **Sons → Télécharger → Télécharger les profils NAM
-    recommandés...** en télécharge une douzaine d'un coup (voir « Où trouver
+    recommandés...** en télécharge une trentaine d'un coup (voir « Où trouver
     des profils NAM », plus bas).
 
     En ajoutant l'effet (**+ Effet → Saturation → Profil NAM**) la fenêtre
@@ -1845,8 +1845,8 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     **Où trouver des profils NAM.**
     - **Profils recommandés, d'un coup :** **Sons → Télécharger → Télécharger les
       profils NAM recommandés...** (ou, depuis un terminal dans le dossier
-      de SoundText, `python3 scarica_profili_nam.py`) télécharge 11 profils
-      d'amplificateurs et de pédales célèbres, environ 3 Mo au total, dans le
+      de SoundText, `python3 scarica_profili_nam.py`) télécharge 34 profils
+      d'amplificateurs et de pédales célèbres, environ 11 Mo au total, dans le
       dossier **`profili_nam`** à côté de SoundText (ou dans
       `~/SoundText/profili_nam` si on ne peut pas y écrire). Le dossier ne
       fait pas partie du dépôt : chacun le télécharge sur son propre
@@ -1856,16 +1856,29 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       viennent de la collection de la communauté NAM sur GitHub
       (github.com/pelennor2170/NAM_models, licence GNU GPL v3) :
       - amplificateurs (sans baffle : SoundText leur en met un intégré, ou
-        choisissez-en un vrai avec **Baffle → Fichier IR…**) : *Fender Twin Reverb - clair* (funk, pop, arpèges),
-        *Vox AC15 - Top Boost* (le « chime » britannique), *Marshall JCM2000
-        - crunch* (rock classique), *Marshall JCM900 - lead* (hard rock et
-        solos), *Mesa Boogie Mark IV - lead* et *Peavey 5150 - high gain*
-        (metal) ;
-      - amplificateur **avec baffle** (prêt, pas d'IR) : *Bugera 333 -
-        crunch avec baffle* ;
+        choisissez-en un vrai avec **Baffle → Fichier IR…**). Clairs et
+        crunch : *Fender Twin Reverb* (clair et vibrato : funk, pop,
+        arpèges), *Vox AC15 - Top Boost* (le « chime » britannique),
+        *Magnatone Super 59* (clair et poussé : blues et country), *Marshall
+        JCM2000* (clair et crunch : rock classique), *Friedman Dirty Shirley
+        Mini* (clair et crunch), *Orange Rockerverb* et *Sovtek MIG50*
+        (stoner et doom). Lead et high gain : *Marshall JCM900 - lead* (hard
+        rock et solos), *Splawn Pro Mod* (hard rock et metal des années 80),
+        *Mesa Boogie Mark IV - lead*, *Peavey 5150* et *6505+*, *Engl
+        Savage* (metal) et *Meshuggah - djent* (metal moderne). *Orange
+        Rockerverb* et *Engl Savage* sont des captures du modèle d'un Axe-FX
+        II, pas de l'amplificateur réel ;
+      - amplificateurs **avec baffle** (prêts, pas d'IR) : *Bugera 333*
+        (clair et crunch) et *Marshall JVM* (clair et saturé) ;
       - pédales, à mettre **avant** un amplificateur (intégré ou profil) :
-        *Ibanez TS9 Tube Screamer*, *Klon Centaur (clone)*, *Boss HM-2 -
-        suédois* (death metal), et pour la basse *Tech 21 dUg DP3X*.
+        les overdrives *Ibanez TS9 Tube Screamer*, *Maxon OD808*
+        (l'original du Tube Screamer), *Boss SD-1*, *Klon Centaur (clone)*
+        et *EarthQuaker Plumes (clone)* ; *Boss OS-2* (overdrive et
+        distorsion) et *Boss DS-1* (distorsion) ; les boosts pour le metal
+        *MXR M77*, *Horizon Precision Drive* et *Fortin Grind* ; *Boss HM-2 -
+        suédois* (death metal), et pour la basse *Tech 21 dUg DP3X*. *Maxon
+        OD808*, *Boss SD-1*, *MXR M77* et *Precision Drive* sont des réseaux
+        « feather », les plus légers : environ la moitié du temps de calcul.
     - **Baffles pour les amplis sans baffle :** **Sons → Télécharger → Télécharger des baffles IR pour les amplis NAM...** télécharge 20
       baffles de guitare (réponses impulsionnelles, moins de 1 Mo) dans le
       sous-dossier **`profili_nam/casse`**, avec le texte de la licence et

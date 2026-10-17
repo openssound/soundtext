@@ -164,8 +164,9 @@ NAM_CABINETS = [("nessuna", "Nessuna / inclusa")] + AMP_CABINETS[1:]
 # 4x12, i combo inglesi piccoli con la 1x12; per le altre la 2x12.
 _NAM_CABINET_HINTS = (
     ("4x12", ("marshall", "jcm", "plexi", "mesa", "boogie", "rectifier", "5150", "6505", "peavey", "engl",
-              "orange", "bogner", "diezel", "friedman", "soldano", "evh", "laney", "krank", "hm-2", "hm2")),
-    ("combo_1x12", ("vox", "ac15", "ac30", "matchless", "dr z", "princeton", "deluxe", "champ")),
+              "orange", "bogner", "diezel", "friedman", "soldano", "evh", "laney", "krank", "hm-2", "hm2",
+              "splawn", "sovtek", "meshuggah", "yerasov")),
+    ("combo_1x12", ("vox", "ac15", "ac30", "matchless", "dr z", "princeton", "deluxe", "champ", "magnatone")),
 )
 # Profili per basso: le casse interne sono da chitarra (tagliano sotto gli
 # 80 Hz circa), quindi per questi non se ne propone nessuna.

@@ -1728,7 +1728,7 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     amplificadores famosos, pedales de overdrive y distorsión,
     preamplificadores, a veces con la caja incluida. Para empezar,
     **Sonidos → Descargar → Descargar perfiles NAM recomendados...** descarga una
-    docena de golpe (ver «Dónde encontrar perfiles NAM», más abajo).
+    treintena de golpe (ver «Dónde encontrar perfiles NAM», más abajo).
 
     Al añadir el efecto (**+ Efecto → Saturación → Perfil NAM**) se abre la
     ventana para elegir el archivo; si cancelas, el efecto no se añade. En
@@ -1806,8 +1806,8 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     **Dónde encontrar perfiles NAM.**
     - **Perfiles recomendados, de golpe:** **Sonidos → Descargar → Descargar
       perfiles NAM recomendados...** (o, desde un terminal en la carpeta de
-      SoundText, `python3 scarica_profili_nam.py`) descarga 11 perfiles de
-      amplificadores y pedales famosos, unos 3 MB en total, en la carpeta
+      SoundText, `python3 scarica_profili_nam.py`) descarga 34 perfiles de
+      amplificadores y pedales famosos, unos 11 MB en total, en la carpeta
       **`profili_nam`** junto a SoundText (o en `~/SoundText/profili_nam` si
       allí no se puede escribir). La carpeta no forma parte del repositorio:
       cada uno la descarga en su propio ordenador. El comando solo vuelve a
@@ -1817,16 +1817,28 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
       comunidad de NAM en GitHub (github.com/pelennor2170/NAM_models,
       licencia GNU GPL v3):
       - amplificadores (sin caja: SoundText les pone una interna, o elige
-        una real con **Caja → Archivo IR…**): *Fender Twin Reverb - limpio* (funk, pop, arpegios), *Vox
-        AC15 - Top Boost* (el «chime» británico), *Marshall JCM2000 -
-        crunch* (rock clásico), *Marshall JCM900 - lead* (hard rock y
-        solos), *Mesa Boogie Mark IV - lead* y *Peavey 5150 - high gain*
-        (metal);
-      - amplificador **con caja** (listo, sin IR): *Bugera 333 - crunch con
-        caja*;
-      - pedales, para poner **antes** de un amplificador (interno o perfil):
-        *Ibanez TS9 Tube Screamer*, *Klon Centaur (clon)*, *Boss HM-2 -
-        sueco* (death metal), y para el bajo *Tech 21 dUg DP3X*.
+        una real con **Caja → Archivo IR…**). Limpios y crunch: *Fender Twin
+        Reverb* (limpio y vibrato: funk, pop, arpegios), *Vox AC15 - Top
+        Boost* (el «chime» británico), *Magnatone Super 59* (limpio y
+        empujado: blues y country), *Marshall JCM2000* (limpio y crunch:
+        rock clásico), *Friedman Dirty Shirley Mini* (limpio y crunch),
+        *Orange Rockerverb* y *Sovtek MIG50* (stoner y doom). Lead y high
+        gain: *Marshall JCM900 - lead* (hard rock y solos), *Splawn Pro Mod*
+        (hard rock y metal de los 80), *Mesa Boogie Mark IV - lead*, *Peavey
+        5150* y *6505+*, *Engl Savage* (metal) y *Meshuggah - djent* (metal
+        moderno). *Orange Rockerverb* y *Engl Savage* son capturas del
+        modelo de un Axe-FX II, no del amplificador real;
+      - amplificadores **con caja** (listos, sin IR): *Bugera 333* (limpio
+        y crunch) y *Marshall JVM* (limpio y distorsionado);
+      - pedales, para poner **antes** de un amplificador (interno o
+        perfil): los overdrive *Ibanez TS9 Tube Screamer*, *Maxon OD808* (el
+        original del Tube Screamer), *Boss SD-1*, *Klon Centaur (clon)* y
+        *EarthQuaker Plumes (clon)*; *Boss OS-2* (overdrive y distorsión) y
+        *Boss DS-1* (distorsión); los boost para metal *MXR M77*, *Horizon
+        Precision Drive* y *Fortin Grind*; *Boss HM-2 - sueco* (death
+        metal), y para el bajo *Tech 21 dUg DP3X*. *Maxon OD808*, *Boss
+        SD-1*, *MXR M77* y *Precision Drive* son redes «feather», las más
+        ligeras: más o menos la mitad del tiempo de cálculo.
     - **Cajas para los amplificadores sin caja:** **Sonidos → Descargar → Descargar cajas IR para los amplificadores NAM...** descarga 20 cajas
       de guitarra (respuestas al impulso, menos de 1 MB) en la subcarpeta
       **`profili_nam/casse`**, con el texto de la licencia y un

@@ -532,7 +532,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         download_menu = sounds_menu.addMenu(tr("Scarica"))
         download_menu.addAction(self._action(
             tr("Scarica profili NAM consigliati..."), self.download_nam_profiles,
-            tooltip=tr("Scarica nella cartella profili_nam una dozzina di profili NAM di amplificatori "
+            tooltip=tr("Scarica nella cartella profili_nam una trentina di profili NAM di amplificatori "
                     "e pedali famosi, da usare con l'effetto Profilo NAM.")))
         download_menu.addAction(self._action(
             tr("Scarica casse IR per gli amplificatori NAM..."), self.download_cab_irs,

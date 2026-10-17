@@ -1,5 +1,5 @@
 """
-Profili NAM consigliati: una dozzina di catture di amplificatori e pedali
+Profili NAM consigliati: una trentina di catture di amplificatori e pedali
 famosi da scaricare con un comando (Strumenti → Scarica profili NAM
 consigliati..., oppure python scarica_profili_nam.py).
 
@@ -90,6 +90,78 @@ PROFILES: List[Profile] = [
     Profile("Tech 21 dUg DP3X - basso.nam", "Jason Z Tech21 dUg DP3X bass preamp pedal all dimed no shift.nam",
             "Tech 21 dUg DP3X - basso", "Tech 21", "dUg Pinnick DP3X", "pedal", "Jason Z",
             "preamplificatore distorto per basso"),
+    # -- amplificatori puliti e crunch
+    Profile("Bugera 333 - pulito con cassa.nam", "Phillipe P Bug333-Clean-Cab-ESR0,007.nam",
+            "Bugera 333 - pulito con cassa", "Bugera", "333", "amp_cab", "Phillipe P",
+            "pulito gia' completo di cassa: si usa senza IR"),
+    Profile("Marshall JVM - pulito con cassa.nam", "Phillipe P JVM-CL-GR-NoDrive-Cab-ESR0,007.nam",
+            "Marshall JVM - pulito con cassa", "Marshall", "JVM (canale Clean)", "amp_cab", "Phillipe P",
+            "il pulito del Marshall JVM, gia' con la cassa"),
+    Profile("Marshall JVM - distorto con cassa.nam", "Phillipe P JVM-OD2-RD-NoDrive-Cab-ESR0,006.nam",
+            "Marshall JVM - distorto con cassa", "Marshall", "JVM (canale OD2)", "amp_cab", "Phillipe P",
+            "il canale distorto del Marshall JVM, gia' con la cassa"),
+    Profile("Marshall JCM2000 - pulito.nam", "Tim R JCM2000 Clean.nam",
+            "Marshall JCM2000 - pulito", "Marshall", "JCM2000 DSL", "amp", "Tim R",
+            "il pulito Marshall, che completa il crunch e il lead"),
+    Profile("Fender Twin Reverb - vibrato.nam", "Tim R Fender TwinVerb Vibrato Bright.nam",
+            "Fender Twin Reverb - vibrato", "Fender", "Twin Reverb (canale Vibrato)", "amp", "Tim R",
+            "l'altro canale del Twin, piu' caldo"),
+    Profile("Magnatone Super 59 - pulito.nam", "Tim R Magnatone Super 59 Mkii Ch1 Norm.nam",
+            "Magnatone Super 59 - pulito", "Magnatone", "Super 59 Mk II", "amp", "Tim R",
+            "pulito boutique, ottimo per blues e country"),
+    Profile("Magnatone Super 59 - spinto.nam", "Tim R Magnatone Super 59 Mkii Pushed.nam",
+            "Magnatone Super 59 - spinto", "Magnatone", "Super 59 Mk II", "amp", "Tim R",
+            "lo stesso Magnatone, spinto fino al crunch"),
+    Profile("Friedman Dirty Shirley Mini - pulito.nam", "Sascha S DirtyShirleyMini_Clean_B1_M6_T7_MV10_G4.nam",
+            "Friedman Dirty Shirley Mini - pulito", "Friedman", "Dirty Shirley Mini", "amp", "Sascha S",
+            "il pulito del Friedman Dirty Shirley"),
+    Profile("Friedman Dirty Shirley Mini - crunch.nam", "Sascha S DirtyShirleyMini_crunch_G6.nam",
+            "Friedman Dirty Shirley Mini - crunch", "Friedman", "Dirty Shirley Mini", "amp", "Sascha S",
+            "il crunch rock \"moderno-classico\""),
+    Profile("Orange Rockerverb (modello Axe-FX).nam", "Tom C Axe FX 2 Orange Rockerverb.nam",
+            "Orange Rockerverb (modello Axe-FX)", "Orange", "Rockerverb (modello Axe-FX II)", "amp", "Tom C",
+            "il suono Orange (cattura del modello Axe-FX, non dell'amplificatore vero)"),
+    Profile("Sovtek MIG50.nam", "Mikhail K Sovtek MIG50.nam",
+            "Sovtek MIG50", "Sovtek", "MIG-50", "amp", "Mikhail K",
+            "grezzo e pieno: stoner e doom"),
+    # -- high gain
+    Profile("Peavey 6505+ - high gain.nam", "Helga B 6505+ Red ch - NoBoost.nam",
+            "Peavey 6505+ - high gain", "Peavey", "6505+ (canale rosso)", "amp", "Helga B",
+            "il successore del 5150"),
+    Profile("Splawn Pro Mod - high gain.nam", "Tim R Splawn Pro Mod 2nd Gear - G12.nam",
+            "Splawn Pro Mod - high gain", "Splawn", "Pro Mod (seconda marcia)", "amp", "Tim R",
+            "hard rock e metal anni '80"),
+    Profile("Engl Savage (modello Axe-FX).nam", "Tom C Axe FX 2 Engl Savage.nam",
+            "Engl Savage (modello Axe-FX)", "Engl", "Savage (modello Axe-FX II)", "amp", "Tom C",
+            "metal europeo (cattura del modello Axe-FX)"),
+    Profile("Meshuggah - djent.nam", "Roman A YERASOV_MESHUGGAH.nam",
+            "Meshuggah - djent", "Yerasov", "Meshuggah", "amp", "Roman A",
+            "djent e metal moderno"),
+    # -- pedali ("Feather": i piu' leggeri da calcolare)
+    Profile("Maxon OD808.nam", "Phillipe P Maxon-OD808-Feather-ESR0,001.nam",
+            "Maxon OD808", "Maxon", "OD808 Overdrive", "pedal", "Phillipe P",
+            "l'originale del Tube Screamer"),
+    Profile("Boss SD-1.nam", "Phillipe P BOSS-SD1-Feather-ESR0,001.nam",
+            "Boss SD-1", "Boss", "SD-1 Super OverDrive", "pedal", "Phillipe P",
+            "l'overdrive Boss classico"),
+    Profile("MXR M77.nam", "Phillipe P MXR-M77-Feather-ESR0,001.nam",
+            "MXR M77", "MXR", "M77 Custom Badass Modified O.D.", "pedal", "Phillipe P",
+            "boost e overdrive davanti agli high gain"),
+    Profile("Horizon Precision Drive.nam", "Phillipe P Precision-Drive-Feather-ESR0,001.nam",
+            "Horizon Precision Drive", "Horizon Devices", "Precision Drive", "pedal", "Phillipe P",
+            "il boost \"stretto\" del metal moderno"),
+    Profile("Boss DS-1.nam", "Keith B DS1_g6_t5.nam",
+            "Boss DS-1", "Boss", "DS-1 Distortion", "pedal", "Keith B",
+            "la distorsione piu' diffusa"),
+    Profile("Boss OS-2.nam", "Helga B Boss OS-2.nam",
+            "Boss OS-2", "Boss", "OS-2 OverDrive/Distortion", "pedal", "Helga B",
+            "overdrive e distorsione insieme"),
+    Profile("Fortin Grind.nam", "Tudor N Fortin Grind Mini Knob @ 5 ESR_0.0012_lite.nam",
+            "Fortin Grind", "Fortin", "Grind", "pedal", "Tudor N",
+            "boost per il metal"),
+    Profile("EarthQuaker Plumes (clone).nam", "Keith B PlumesClone_maxG_t5_switch3.nam",
+            "EarthQuaker Plumes (clone)", "EarthQuaker Devices", "Plumes (clone)", "pedal", "Keith B",
+            "overdrive moderno, alternativa al Tube Screamer"),
 ]
 
 
@@ -109,8 +181,9 @@ def _readme(folder: str) -> None:
              "Ai file sono stati aggiunti nei metadati nome, marca, modello, tipo e autore.", ""]
     for p in PROFILES:
         lines.append(f"- {p.file}: {p.use} (cattura di {p.modeled_by}; originale: {p.source})")
-    lines += ["", "Gli amplificatori senza cassa vanno usati con una cassa: nella card del",
-              "Profilo NAM scegli Cassa -> File IR... Quelli \"con cassa\" e i pedali no."]
+    lines += ["", "Gli amplificatori senza cassa vanno usati con una cassa: SoundText gliene",
+              "mette una interna da solo, oppure nella card del Profilo NAM scegli",
+              "Cassa -> File IR... Quelli \"con cassa\" e i pedali no."]
     with open(os.path.join(folder, "LEGGIMI.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 

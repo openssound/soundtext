@@ -1694,7 +1694,7 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     (tone3000.com): amplificatori famosi, pedali di overdrive e distorsione,
     preamplificatori, a volte anche con la cassa inclusa. Per cominciare,
     **Suoni → Scarica → Scarica profili NAM consigliati...** ne scarica una
-    dozzina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
+    trentina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
 
     Aggiungendo l'effetto (**+ Effetto → Saturazione → Profilo NAM**) si
     apre la finestra per scegliere il file; annullando, l'effetto non viene
@@ -1772,8 +1772,8 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     **Dove trovare i profili NAM.**
     - **Profili consigliati, in un colpo:** **Suoni → Scarica → Scarica profili
       NAM consigliati...** (oppure, da terminale nella cartella di
-      SoundText, `python3 scarica_profili_nam.py`) scarica 11 profili di
-      amplificatori e pedali famosi, circa 3 MB in tutto, nella cartella
+      SoundText, `python3 scarica_profili_nam.py`) scarica 34 profili di
+      amplificatori e pedali famosi, circa 11 MB in tutto, nella cartella
       **`profili_nam`** accanto a SoundText (o in `~/SoundText/profili_nam`
       se lì non si può scrivere). La cartella non fa parte del repository:
       ognuno la scarica sul proprio computer. Il comando riscarica solo i
@@ -1782,16 +1782,28 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       I profili vengono dalla raccolta della comunità di NAM su GitHub
       (github.com/pelennor2170/NAM_models, licenza GNU GPL v3):
       - amplificatori (senza cassa: SoundText gliene mette una interna,
-        oppure scegline una vera con **Cassa → File IR…**): *Fender Twin Reverb - pulito* (funk, pop, arpeggi), *Vox
-        AC15 - Top Boost* (il "chime" britannico), *Marshall JCM2000 -
-        crunch* (rock classico), *Marshall JCM900 - lead* (hard rock e
-        assoli), *Mesa Boogie Mark IV - lead* e *Peavey 5150 - high gain*
-        (metal);
-      - amplificatore **con cassa** (pronto, niente IR): *Bugera 333 -
-        crunch con cassa*;
+        oppure scegline una vera con **Cassa → File IR…**). Puliti e
+        crunch: *Fender Twin Reverb* (pulito e vibrato: funk, pop, arpeggi),
+        *Vox AC15 - Top Boost* (il "chime" britannico), *Magnatone Super 59*
+        (pulito e spinto: blues e country), *Marshall JCM2000* (pulito e
+        crunch: rock classico), *Friedman Dirty Shirley Mini* (pulito e
+        crunch), *Orange Rockerverb* e *Sovtek MIG50* (stoner e doom). Lead
+        e high gain: *Marshall JCM900 - lead* (hard rock e assoli), *Splawn
+        Pro Mod* (hard rock e metal anni '80), *Mesa Boogie Mark IV - lead*,
+        *Peavey 5150* e *6505+*, *Engl Savage* (metal) e *Meshuggah - djent*
+        (metal moderno). *Orange Rockerverb* ed *Engl Savage* sono catture
+        del modello di un Axe-FX II, non dell'amplificatore vero;
+      - amplificatori **con cassa** (pronti, niente IR): *Bugera 333*
+        (pulito e crunch) e *Marshall JVM* (pulito e distorto);
       - pedali, da mettere **prima** di un amplificatore (interno o
-        profilo): *Ibanez TS9 Tube Screamer*, *Klon Centaur (clone)*, *Boss
-        HM-2 - svedese* (death metal), e per il basso *Tech 21 dUg DP3X*.
+        profilo): gli overdrive *Ibanez TS9 Tube Screamer*, *Maxon OD808*
+        (l'originale del Tube Screamer), *Boss SD-1*, *Klon Centaur (clone)*
+        ed *EarthQuaker Plumes (clone)*; *Boss OS-2* (overdrive e
+        distorsione) e *Boss DS-1* (distorsione); i boost per il metal *MXR
+        M77*, *Horizon Precision Drive* e *Fortin Grind*; *Boss HM-2 -
+        svedese* (death metal), e per il basso *Tech 21 dUg DP3X*. *Maxon
+        OD808*, *Boss SD-1*, *MXR M77* e *Precision Drive* sono reti
+        "feather", le più leggere: circa metà del tempo di calcolo.
     - **Casse per gli amplificatori senza cassa:** **Suoni → Scarica → Scarica
       casse IR per gli amplificatori NAM...** scarica 20 casse per chitarra
       (risposte all'impulso, meno di 1 MB) nella sottocartella
