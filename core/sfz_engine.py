@@ -15,6 +15,7 @@ al programma e fra le librerie del sistema. Senza, sfz_available() e' False.
 import ctypes
 import ctypes.util
 import os
+import re
 import sys
 import threading
 from typing import List, Tuple
@@ -112,6 +113,36 @@ def sfz_available() -> bool:
 def library_path() -> str:
     lib = _load_library()
     return lib.path if lib else ""
+
+
+_SAMPLE = re.compile(r"\bsample\s*=\s*(\S)")
+_INCLUDE = re.compile(r'#include\s+"([^"]+)"')
+
+
+def placeholder_only(path: str) -> bool:
+    """True se il file .sfz (con i suoi #include) usa solo i generatori
+    interni (sample=*sine, *saw, *noise...) e nessun campione: e' il caso
+    dei segnaposto "//dummy" del Discord SFZ GM Bank, che suonano come una
+    sinusoide. Un file senza alcun sample= o illeggibile da' False."""
+    base = os.path.dirname(os.path.abspath(path))
+    seen, pending, first = set(), [os.path.abspath(path)], []
+    while pending:
+        name = pending.pop()
+        if name in seen or len(seen) > 200:
+            continue
+        seen.add(name)
+        try:
+            with open(name, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except OSError:
+            continue
+        text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+        text = "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+        first += _SAMPLE.findall(text)
+        if any(c != "*" for c in first):
+            return False
+        pending += [os.path.join(base, inc) for inc in _INCLUDE.findall(text)]
+    return bool(first)
 
 
 class SfzInstance:

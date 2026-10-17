@@ -125,7 +125,12 @@ def test_picker_chooses_an_sfz_file(tmp_path, monkeypatch):
     dialog._accept_if_usable()                                   # scelta del file annullata: si resta qui
     assert dialog.result() == 0 and dialog.selected_ref() is None
     monkeypatch.setattr(QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (path, "")))
-    dialog._accept_if_usable()
+    from PySide6.QtWidgets import QMessageBox
+    answers, asked = [QMessageBox.No, QMessageBox.Yes], []
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a: asked.append(a[2]) or answers.pop(0)))
+    dialog._accept_if_usable()                                   # solo *sine: avviso, "No" non lo sceglie
+    assert dialog.result() == 0 and dialog.selected_ref() is None and "sample=*sine" in asked[0]
+    dialog._accept_if_usable()                                   # "Si'": lo usa lo stesso
     assert dialog.result() == 1 and dialog.selected_ref() == "sfz:" + path
 
 

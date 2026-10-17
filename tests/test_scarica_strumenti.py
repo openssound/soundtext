@@ -121,3 +121,28 @@ def test_no_arguments_without_terminal_only_lists(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("menu fuori da un terminale"))
     assert ss.main([]) == 0
     assert "Gruppi disponibili" in capsys.readouterr().out
+
+
+def test_gm_bank_description_says_it_is_incomplete():
+    desc = ss.trova("gm-bank")[1]
+    assert "INCOMPLETO" in desc and "segnaposto" in desc and "tutti i 128" not in desc
+
+
+def test_placeholder_sfz_is_recognised(tmp_path):
+    from core.sfz_engine import placeholder_only
+    finto = tmp_path / "023-Harmonica.sfz"
+    finto.write_text("//dummy\n<region> sample=*sine\n")
+    vero = tmp_path / "001-Piano.sfz"
+    vero.write_text("<region> sample=Piano/A0 v1.flac\n// sample=*sine\n")
+    misto = tmp_path / "misto.sfz"
+    misto.write_text("<region> sample=*saw\n<region> sample=x.wav\n")
+    banco = tmp_path / "banco.sfz"
+    banco.write_text('#include "023-Harmonica.sfz"\n#include "001-Piano.sfz"\n')
+    solo_finti = tmp_path / "solo_finti.sfz"
+    solo_finti.write_text('/* sample=a.wav */\n#include "023-Harmonica.sfz"\n')
+    vuoto = tmp_path / "vuoto.sfz"
+    vuoto.write_text("<control> default_path=x/\n")
+    assert placeholder_only(str(finto)) and placeholder_only(str(solo_finti))
+    assert not placeholder_only(str(vero)) and not placeholder_only(str(misto))
+    assert not placeholder_only(str(banco)) and not placeholder_only(str(vuoto))
+    assert not placeholder_only(str(tmp_path / "manca.sfz"))
