@@ -18,6 +18,7 @@ Richieste (tuple con il nome dell'operazione in testa):
     ("describe", ref)                           -> descrittore con i parametri
     ("process", ref, rate, params, state, audio) -> audio (effetto)
     ("render", ref, rate, params, state, events, seconds) -> audio (strumento)
+    ("warm", ref, rate, params, state)          -> None (carica e configura in anticipo)
     ("strings", ref, params, state)             -> {parametro: testo mostrato dal plugin}
     ("editor", ref, params, state)              -> {"params": ..., "state": ...}
     ("live_start", ref, rate, params, state, blocksize, pan) -> {"hostapi": ..., "latency_ms": ...}
@@ -489,6 +490,9 @@ class _Worker:
             return self.process(*request[1:])
         if op == "render":
             return self.render(*request[1:])
+        if op == "warm":
+            self.configure(*request[1:])
+            return None
         raise RuntimeError(tr("richiesta sconosciuta: {op}", op=op))
 
 

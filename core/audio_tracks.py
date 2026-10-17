@@ -643,19 +643,35 @@ def _to_stereo(samples: np.ndarray) -> np.ndarray:
     return samples[:, :2]
 
 
-def mix_layers_into_wav(wav_path: str, layers: List[AudioLayer], out_path: Optional[str] = None,
-                        bits: int = 16, stems=(), post=None) -> None:
-    """Mixa le clip nel WAV renderizzato wav_path (anche vuoto: un brano
-    di sole tracce audio produce un rendering MIDI senza campioni) e scrive
-    il risultato in out_path (default: sopra a wav_path) a 'bits' bit. Un
-    file mancante o illeggibile vale come silenzio. post(campioni, rate),
-    se data, elabora il mix prima di scriverlo (catena del master)."""
+def mix_layers_with_wav(wav_path: str, layers: List[AudioLayer], stems=()) -> Tuple[np.ndarray, int]:
+    """Il mix (float32 (frame, 2), frequenza) delle clip e degli stem sopra
+    al WAV renderizzato wav_path (anche vuoto: un brano di sole tracce audio
+    produce un rendering MIDI senza campioni). Un file mancante o
+    illeggibile vale come silenzio."""
     try:
         base, rate = read_wav(wav_path)
         base = _to_stereo(base)
     except (ValueError, OSError):
         base, rate = np.zeros((0, 2), dtype=np.float32), AUDIO_SAMPLE_RATE
-    mixed = mix_layers(base, rate, layers, stems=stems)
+    return mix_layers(base, rate, layers, stems=stems), rate
+
+
+def float_to_int16(samples: np.ndarray) -> np.ndarray:
+    """Campioni float in [-1, 1] (oltre vengono limitati) -> int16, come li
+    scrive write_wav a 16 bit, ma senza copie intermedie in piu'."""
+    out = np.multiply(samples, 32767.0, dtype=np.float32)
+    np.clip(out, -32767.0, 32767.0, out=out)
+    np.rint(out, out=out)
+    return out.astype(np.int16)
+
+
+def mix_layers_into_wav(wav_path: str, layers: List[AudioLayer], out_path: Optional[str] = None,
+                        bits: int = 16, stems=(), post=None) -> None:
+    """Mixa le clip nel WAV renderizzato wav_path (vedi mix_layers_with_wav)
+    e scrive il risultato in out_path (default: sopra a wav_path) a 'bits'
+    bit. post(campioni, rate), se data, elabora il mix prima di scriverlo
+    (catena del master)."""
+    mixed, rate = mix_layers_with_wav(wav_path, layers, stems=stems)
     if post is not None:
         mixed = post(mixed, rate)
     write_wav(out_path or wav_path, mixed, rate, bits=bits)

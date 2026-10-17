@@ -70,6 +70,51 @@ def fx_tracks(tracks: List[Track]) -> List[Track]:
     return [t for t in tracks if (with_fx and active_effects(t.effects)) or (t.synth and not t.is_audio)]
 
 
+def plugin_uses(project: Project) -> list:
+    """I plugin che l'ascolto del brano usera': (ref, parametri, stato) degli
+    strumenti plugin delle tracce di testo e degli effetti plugin accesi
+    (tracce e master), senza doppioni."""
+    uses = [(t.synth, t.synth_params, t.synth_state) for t in project.tracks
+            if t.synth and not t.is_audio and t.text.strip()]
+    if effects_available():
+        for chain in [t.effects for t in project.tracks] + [project.master_effects]:
+            uses += [(e.plugin, e.plugin_params, e.plugin_state) for e in active_effects(chain)
+                     if e.kind == "plugin" and e.plugin]
+    out, seen = [], set()
+    for ref, params, state in uses:
+        key = (ref, tuple(sorted((params or {}).items())), state or "")
+        if key not in seen:
+            seen.add(key)
+            out.append((ref, dict(params or {}), state or ""))
+    return out
+
+
+def warm_plugins(project: Project) -> Optional[threading.Thread]:
+    """Carica in sottofondo, nel processo del rendering, i plugin del brano
+    (vedi plugin_uses): il primo Play non aspetta l'avvio del processo e il
+    caricamento dei plugin (decine di secondi per un VST3 grande). Un plugin
+    che non si carica qui fallira' poi al rendering, che ripiega sul
+    SoundFont come sempre."""
+    from .audio_tracks import AUDIO_SAMPLE_RATE
+
+    uses = plugin_uses(project)
+    if not uses:
+        return None
+
+    def work():
+        from .plugins import PluginError, warm
+        for ref, params, state in uses:
+            try:
+                warm(ref, params, state, AUDIO_SAMPLE_RATE)
+            except (PluginError, OSError) as e:
+                import logging
+                logging.getLogger(__name__).info("Plugin %s non precaricato: %s", ref, e)
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+    return thread
+
+
 @dataclass
 class StemRequest:
     """Tutto cio' che serve a renderizzare una traccia con effetti, preso
@@ -173,15 +218,11 @@ def render_synth(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
     con il pan della traccia (il volume e' gia' nella velocity delle note).
     None se il plugin non si carica o non risponde (l'errore va nel log)."""
     from .audio_tracks import AUDIO_SAMPLE_RATE
-    from .plugins import PluginError, describe, midi_file_events, render_events
+    from .plugins import PluginError, midi_file_events, render_events
 
-    try:
-        describe(request.synth)     # un plugin che si blocca al caricamento si scopre qui, presto
-    except PluginError as e:
-        import logging
-        logging.getLogger(__name__).warning("Strumento plugin %s non usato per «%s»: %s",
-                                            request.synth, request.track_name, e)
-        return None
+    # Niente describe() preventivo: caricherebbe il plugin una seconda volta
+    # (nel processo dell'interfaccia, con l'elenco di tutti i parametri) solo
+    # per scoprirne un errore che render_events riporta comunque.
     events, end = midi_file_events(request.midi_path)
     if stop_check and stop_check():
         raise RuntimeError("annullato")
@@ -217,6 +258,19 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
     wet = apply_effect_chain(dry, AUDIO_SAMPLE_RATE, request.effects, bpm=request.bpm)
     _cache_put(request.wet_key, wet)
     return wet
+
+
+def render_stems(requests: List[StemRequest], stop_check=None) -> List[Optional[np.ndarray]]:
+    """render_stem di ogni richiesta, in parallelo (un thread per traccia):
+    i plugin lavorano nei loro processi (vedi core.plugins._render_channel)
+    e la sintesi col SoundFont ha il suo lock, quindi le tracce si
+    sovrappongono invece di sommarsi. Solleva RuntimeError se annullata."""
+    if len(requests) <= 1:
+        return [render_stem(r, stop_check) for r in requests]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=min(8, len(requests))) as pool:
+        futures = [pool.submit(render_stem, r, stop_check) for r in requests]
+        return [f.result() for f in futures]
 
 
 def render_stem_window(request: StemRequest, start_seconds: float, end_seconds: float,

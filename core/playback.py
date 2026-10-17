@@ -678,7 +678,7 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
     dry: tracce asciutte (vedi dry_track), senza master."""
     import numpy as np
     from .audio_tracks import AUDIO_SAMPLE_RATE, build_audio_layers, mix_layers
-    from .effect_render import fx_tracks, prepare_stem, render_stem
+    from .effect_render import fx_tracks, prepare_stem, render_stems
     from .tempo_map import build_tempo_beat_map
 
     stop_check = stop_check or (lambda: False)
@@ -713,15 +713,12 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
                     os.remove(midi_path)
                 except OSError:
                     pass
-    stems = []
-    for track in fx:
-        request = prepare_stem(project, track, tempo_map)
-        try:
-            samples = render_stem(request, stop_check)
-        finally:
+    requests = [prepare_stem(project, track, tempo_map) for track in fx]
+    try:
+        stems = [(samples, 0.0) for samples in render_stems(requests, stop_check) if samples is not None]
+    finally:
+        for request in requests:
             request.cleanup()
-        if samples is not None:
-            stems.append((samples, 0.0))
     mixed = mix_layers(base[:, :2], rate, layers, stems=stems)
     if master:
         from .effect_render import apply_master, master_chain
@@ -1445,28 +1442,65 @@ class PlaybackEngine:
             player.wait()
             return True
 
+        # Le tracce con effetti o strumenti plugin si renderizzano in un
+        # thread a parte, in parallelo alla sintesi del resto del brano
+        # (vedi _start_stems): i plugin lavorano nel loro processo, quindi
+        # le due cose si sovrappongono invece di sommarsi.
+        stem_job = {}
+
+        def _start_stems():
+            if not stems or stem_job:
+                return
+            stem_job["samples"] = []
+            stem_job["interrupted"] = False
+
+            def work():
+                from .effect_render import render_stems
+                try:
+                    for samples in render_stems(stems, lambda: self._play_token != my_token):
+                        if samples is not None:
+                            stem_job["samples"].append((samples, -stems_offset))
+                except RuntimeError:
+                    stem_job["interrupted"] = True
+                except Exception:
+                    log.warning("Rendering delle tracce con effetti non riuscito", exc_info=True)
+                finally:
+                    # i file temporanei servono fino a qui (vedi il finally di run)
+                    for stem in stems:
+                        stem.cleanup()
+
+            stem_job["thread"] = threading.Thread(target=work, daemon=True)
+            stem_job["thread"].start()
+
         def _add_audio_layers(wav_path):
             """Mixa le clip audio e le tracce con effetti (renderizzate ed
-            elaborate ora, o prese dalla cache: vedi core.effect_render) nel
-            WAV appena renderizzato (anche vuoto, per un brano di sole
-            tracce audio)."""
+            elaborate da _start_stems, o prese dalla cache: vedi
+            core.effect_render) sopra al WAV appena renderizzato (anche
+            vuoto, per un brano di sole tracce audio). In streaming torna il
+            mix in memoria (int16, frequenza), senza riscriverlo su disco
+            per poi rileggerlo; altrimenti lo scrive in wav_path e torna
+            None."""
             if not (audio_layers or stems) or not os.path.exists(wav_path):
-                return
+                return None
             try:
-                from .audio_tracks import mix_layers_into_wav
-                from .effect_render import render_stem
-                stem_samples = []
-                for stem in stems or []:
-                    samples = render_stem(stem, lambda: self._play_token != my_token)
-                    if samples is not None:
-                        stem_samples.append((samples, -stems_offset))
+                from .audio_tracks import float_to_int16, mix_layers_into_wav, mix_layers_with_wav
+                _start_stems()
+                if stem_job:
+                    stem_job["thread"].join()
+                    if stem_job["interrupted"]:
+                        return None
                 if self._play_token != my_token:
-                    return
+                    return None
+                stem_samples = stem_job.get("samples", [])
+                if audio_stream.is_available():
+                    mixed, rate = mix_layers_with_wav(wav_path, audio_layers or [], stems=stem_samples)
+                    return float_to_int16(mixed), rate
                 mix_layers_into_wav(wav_path, audio_layers or [], stems=stem_samples)
             except RuntimeError:
-                return   # interrotta
+                return None   # interrotta
             except Exception:
                 log.warning("Mix delle tracce audio non riuscito", exc_info=True)
+            return None
 
         def _with_master(entry):
             """Il mix (int16) con la catena del master; il mix di partenza
@@ -1481,16 +1515,22 @@ class PlaybackEngine:
                 log.warning("Catena del master non applicata", exc_info=True)
                 return entry
 
-        def _play_rendered(wav_path) -> bool:
-            """Riproduce un WAV appena renderizzato: in streaming se
-            possibile (memorizzandolo in cache), altrimenti col player
-            esterno. False se non c'e' modo di riprodurlo."""
+        def _play_rendered(wav_path, mixed=None) -> bool:
+            """Riproduce un WAV appena renderizzato, o il mix gia' in memoria
+            'mixed' (vedi _add_audio_layers): in streaming se possibile
+            (memorizzandolo in cache), altrimenti col player esterno. False
+            se non c'e' modo di riprodurlo."""
+            if mixed is not None and len(mixed[0]) == 0:
+                return False
+            if mixed is not None and not audio_stream.is_available():
+                mixed = None
             if audio_stream.is_available():
-                try:
-                    entry = audio_stream.load_wav_samples(wav_path)
-                except Exception:
-                    log.warning("WAV renderizzato non leggibile: %s", wav_path, exc_info=True)
-                    entry = None
+                entry = mixed
+                if entry is None:
+                    try:
+                        entry = audio_stream.load_wav_samples(wav_path)
+                    except Exception:
+                        log.warning("WAV renderizzato non leggibile: %s", wav_path, exc_info=True)
                 if entry is not None:
                     entry = _with_master(entry)
                     if self._play_token != my_token:
@@ -1499,6 +1539,11 @@ class PlaybackEngine:
                     if _stream_samples(entry):
                         return True
             player_cmd = _find_audio_player()
+            if player_cmd and mixed is not None:
+                # lo stream non si e' aperto: il player esterno vuole il mix su disco
+                import numpy as np
+                from .audio_tracks import write_wav
+                write_wav(wav_path, mixed[0].astype(np.float32) / 32767.0, mixed[1], bits=16)
             if player_cmd:
                 if master_effects:
                     try:
@@ -1561,6 +1606,8 @@ class PlaybackEngine:
                         _cache_put(cache_key, cached)
                 if cached is not None and _stream_samples(cached):
                     return
+                if soundfont and (_shared_synth or fluidsynth_bin):
+                    _start_stems()
                 if _shared_synth and soundfont:
                     wav_path = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
                     self._render_tmp = wav_path
@@ -1574,8 +1621,9 @@ class PlaybackEngine:
                         self._rendering = False
                     if self._play_token != my_token:
                         return
-                    if rendered:
-                        _add_audio_layers(wav_path)
+                    mixed = _add_audio_layers(wav_path) if rendered else None
+                    if mixed is not None and _play_rendered(wav_path, mixed):
+                        return
                     if rendered and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
                         if _play_rendered(wav_path):
                             return
@@ -1610,8 +1658,9 @@ class PlaybackEngine:
                     returncode = render_proc.wait()
                     if self._play_token != my_token:
                         return
-                    if returncode == 0:
-                        _add_audio_layers(wav_path)
+                    mixed = _add_audio_layers(wav_path) if returncode == 0 else None
+                    if mixed is not None and _play_rendered(wav_path, mixed):
+                        return
                     if returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
                         if _play_rendered(wav_path):
                             return
@@ -1665,8 +1714,9 @@ class PlaybackEngine:
                         os.remove(midi_path)
                     except OSError:
                         pass
-                for stem in stems or []:
-                    stem.cleanup()
+                if not stem_job:
+                    for stem in stems or []:
+                        stem.cleanup()
                 if on_finished:
                     on_finished(self.backend_available())
 

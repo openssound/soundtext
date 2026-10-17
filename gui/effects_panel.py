@@ -1065,6 +1065,9 @@ class EffectsPanel(QFrame):
     def effects_changed(self):
         """Un ritocco della catena (manopola, preset, accensione, ordine)."""
         self._notify_host()
+        warm = getattr(self.host, "schedule_plugin_warm", None)
+        if warm is not None:
+            warm()
         self._schedule_loop_update()
 
     def sends_changed(self):

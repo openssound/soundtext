@@ -88,6 +88,15 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._mixer_restart_timer.timeout.connect(self._perform_pending_mixer_restart)
         self._mixer_restart_pending = False
 
+        # Precaricamento dei plugin del brano nel processo del rendering (vedi
+        # core.effect_render.warm_plugins), dopo l'apertura del progetto o un
+        # cambio di strumenti/effetti: uno solo quando le modifiche si
+        # fermano, non uno per ogni tick di una manopola.
+        self._plugin_warm_timer = QTimer(self)
+        self._plugin_warm_timer.setSingleShot(True)
+        self._plugin_warm_timer.setInterval(1000)
+        self._plugin_warm_timer.timeout.connect(self._warm_plugins_now)
+
         # Mappa (beat -> bpm/metrica) del brano in riproduzione: calcolata da
         # play() (vedi core.tempo_map) e usata per tenere sincronizzati barra
         # di avanzamento, campi Tempo/Metrica e metronomo con eventuali cambi

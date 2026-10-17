@@ -640,6 +640,7 @@ class MixerMixin:
                            on_change=changed).exec()
 
     def _track_synth_changed(self, track_name):
+        self.schedule_plugin_warm()
         self.sync_mixer_widgets(track_name)
         self._on_mixer_changed(track_name)
 
