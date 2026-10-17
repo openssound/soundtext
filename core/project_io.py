@@ -98,6 +98,21 @@ def _format_beat(beat: float) -> str:
     return str(int(beat)) if beat == int(beat) else str(beat)
 
 
+def _find_nam_profile(path: str) -> str:
+    """Il profilo NAM indicato dal file; se li' non c'e', lo stesso file
+    nelle cartelle dei profili (core.nam_profiles): gli esempi scrivono
+    "../profili_nam/...", ma in un'app installata in una cartella non
+    scrivibile i profili scaricati finiscono in quella dell'utente."""
+    if not path or os.path.exists(path):
+        return path
+    from .nam_profiles import DEFAULT_NAM_DIR, USER_NAM_DIR
+    for folder in (DEFAULT_NAM_DIR, USER_NAM_DIR):
+        candidate = os.path.join(folder, os.path.basename(path))
+        if os.path.exists(candidate):
+            return candidate
+    return path
+
+
 def _parse_effects_body(body: str, base_dir: Optional[str] = None) -> List[Effect]:
     """Catena di effetti di un blocco 'Effetti Nome:'. Tipi sconosciuti
     (file di una versione piu' recente) si saltano; i parametri si
@@ -123,7 +138,7 @@ def _parse_effects_body(body: str, base_dir: Optional[str] = None) -> List[Effec
                 if key == "ir":
                     ir = path
                 else:
-                    nam = path
+                    nam = _find_nam_profile(path)
             else:
                 params[key] = value if re.fullmatch(r"[A-Za-z_][\w/]*", value) else value.replace(",", ".")
         enabled = re.search(r"(^|\s)(spento|off)(\s|$)", rest) is None

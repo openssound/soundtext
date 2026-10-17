@@ -41,6 +41,22 @@ SFZ_LIBRARY_COMMAND = {"win32": "py scarica_strumenti.py libreria",
                                                                              "./scarica_strumenti.sh libreria")
 
 
+def confirm_sfz_with_samples(parent, path: str) -> bool:
+    """Avvisa se il .sfz scelto e' solo un segnaposto senza campioni
+    (sample=*sine...: molti strumenti del Discord SFZ GM Bank) e chiede se
+    usarlo lo stesso. True = si usa."""
+    from core.sfz_engine import placeholder_only
+    if not placeholder_only(path):
+        return True
+    answer = QMessageBox.warning(
+        parent, tr("Strumento SFZ senza campioni"),
+        tr("«{name}» non contiene campioni: e' un segnaposto che suona un'onda sinusoidale "
+           "(sample=*sine). Nel Discord SFZ GM Bank solo pochi strumenti sono campionati.\n\n"
+           "Usarlo lo stesso?", name=os.path.basename(path)),
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    return answer == QMessageBox.Yes
+
+
 class _Background:
     """Una funzione in un thread; 'done' chiamata sul thread principale con
     (risultato, errore) quando finisce."""
@@ -217,7 +233,7 @@ class PluginPickerDialog(QDialog):
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli uno strumento SFZ"), start,
                                               tr("Strumenti SFZ (*.sfz)") + ";;" + tr("Tutti i file (*)"),
                                               options=file_dialog_options())
-        if not path:
+        if not path or not confirm_sfz_with_samples(self, path):
             return False
         self._sfz_ref = "sfz:" + home_relative(path)
         return True
@@ -295,7 +311,7 @@ class _FileRow:
         filters = [f for word, f in _FILE_FILTERS.items() if word in label] + [tr("Tutti i file (*)")]
         path, _ = QFileDialog.getOpenFileName(self.parent, self.param.label, start, ";;".join(filters),
                                               options=file_dialog_options())
-        if path:
+        if path and (not path.lower().endswith(".sfz") or confirm_sfz_with_samples(self.parent, path)):
             self._emit(path)
 
     def _emit(self, path: str):

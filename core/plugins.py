@@ -188,11 +188,23 @@ _hosts = {"ui": _Host("ui"), "live": _Host("live")}
 _hosts.update({f"render{i}": _Host(f"render{i}") for i in range(RENDER_HOSTS)})
 
 
+_channels: Dict[str, str] = {}   # ref -> processo del rendering
+_channels_lock = threading.Lock()
+
+
 def render_channel(ref: str) -> str:
     """Il processo del rendering di 'ref': sempre lo stesso per lo stesso
-    plugin (crc32, stabile fra un avvio e l'altro)."""
-    import zlib
-    return f"render{zlib.crc32(ref.encode()) % RENDER_HOSTS}"
+    plugin durante la sessione. Un plugin nuovo va nel processo con meno
+    plugin, cosi' le tracce si dividono fra i processi (con un hash del
+    percorso 12 tracce SFZ ne mettevano 6 in fila nello stesso)."""
+    with _channels_lock:
+        channel = _channels.get(ref)
+        if channel is None:
+            load = {f"render{i}": 0 for i in range(RENDER_HOSTS)}
+            for used in _channels.values():
+                load[used] += 1
+            channel = _channels[ref] = min(load, key=lambda name: (load[name], int(name[6:])))
+        return channel
 _broken: Dict[str, str] = {}     # ref -> motivo (plugin che si sono bloccati)
 
 

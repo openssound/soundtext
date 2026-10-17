@@ -88,7 +88,11 @@ GRUPPI = [
     ("batteria", "Batteria MuldjordKit in SFZ (per sfizz; crea anche la versione GM, ~165 MB)", "https://github.com/freepats/muldjordkit/releases/download/2020-10-18/MuldjordKit-SFZ+FLAC-20201018.7z", "sfz"),
     ("salamander-drums", "Batteria Salamander Drumkit (SFZ, ~485 MB, note GM)", "https://archive.org/download/SalamanderDrumkit/salamanderDrumkit.tar.bz2", "sfz"),
     ("drskit-sfz", "Batteria DRSKit in SFZ per sfizz (~1,5 GB, note GM; file: DrumGizmo/DRSKit/Stereo/)", "https://github.com/sfzinstruments/DrumGizmo.DRSKit.git", "sfz"),
-    ("gm-bank", "Banco General MIDI completo in SFZ, Discord SFZ GM Bank (~180 MB, tutti i 128 strumenti)", "https://github.com/sfzinstruments/Discord-SFZ-GM-Bank.git", "sfz"),
+    # Il banco upstream e' incompiuto: gli altri .sfz sono segnaposto "//dummy" con sample=*sine
+    ("gm-bank", "Discord SFZ GM Bank, INCOMPLETO (~245 MB): campionati solo i GM 1-3 e 5 (pianoforti), "
+                "26 chitarra acustica, 34 basso, 45-46 archi tremolo e pizzicato, 105 sitar, 112 shanai "
+                "e il kit Standard; gli altri strumenti sono segnaposto a onda sinusoidale",
+     "https://github.com/sfzinstruments/Discord-SFZ-GM-Bank.git", "sfz"),
     ("splendid-piano", "Piano a coda Splendid Grand Piano (Steinway, ~70 MB)", "https://github.com/sfzinstruments/SplendidGrandPiano.git", "sfz"),
     ("rhodes", "Piano Rhodes Mark I Stage 73, jRhodes3d (~165 MB)", "https://github.com/sfzinstruments/jlearman.jRhodes3d.git", "sfz"),
     ("epiano-vintage", "Piani elettrici Yamaha CP80, Hohner Pianet e Wurlitzer EP200 (~20 MB)", "https://github.com/sfzinstruments/GregSullivan.E-Pianos.git", "sfz"),

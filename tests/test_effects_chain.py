@@ -147,6 +147,17 @@ def test_filters_cut_below_or_above_the_frequency_and_slope_matters():
 
 
 @needs_pedalboard
+def test_volume_only_changes_the_level():
+    x = _tone()
+    down = apply_effect_chain(x, RATE, [Effect("volume", preset_params("volume", "Margine per il master"))],
+                              with_tail=False)
+    assert np.allclose(down, x * 10 ** (-6 / 20), atol=1e-5)
+    text = project_to_text(_project()) + "\nCatena master:\n  volume: guadagno=-6\n  limiter: guadagno=1\n"
+    master = parse_project_text(text).master_effects
+    assert [(e.kind, e.params.get("guadagno")) for e in master] == [("volume", -6.0), ("limiter", 1.0)]
+
+
+@needs_pedalboard
 def test_noise_gate_silences_the_quiet_part():
     x = _tone(freq=220) * 0.003                                     # circa -60 dB
     x[RATE // 2:] *= 100                                            # sussurro, poi suono pieno
@@ -953,3 +964,20 @@ def test_loud_notes_get_even_harmonics_and_power_chords_no_sub_rumble():
     total = spectrum[(f > 20) & (f < 2000) & harmonic].sum()
     sub = spectrum[(f > 20) & (f < 75) & ~harmonic].sum()
     assert 10 * np.log10(sub / total) < -18                             # niente brontolio sotto il power chord
+
+
+def test_nam_profile_is_found_in_the_user_folder(tmp_path, monkeypatch):
+    """Un esempio scrive nam="../profili_nam/X.nam"; in un'app installata
+    in una cartella non scrivibile i profili sono in quella dell'utente."""
+    from core import nam_profiles
+    user = tmp_path / "utente" / "profili_nam"
+    user.mkdir(parents=True)
+    (user / "Ampli.nam").write_text("{}")
+    monkeypatch.setattr(nam_profiles, "DEFAULT_NAM_DIR", str(tmp_path / "app" / "profili_nam"))
+    monkeypatch.setattr(nam_profiles, "USER_NAM_DIR", str(user))
+    text = project_to_text(_project()) + '\nEffetti Chitarra:\n  nam: livello=-3 nam="../profili_nam/Ampli.nam"\n'
+    nam = parse_project_text(text, base_dir=str(tmp_path / "app" / "examples")).get_track("Chitarra").effects[0].nam
+    assert nam == str(user / "Ampli.nam")
+    text = text.replace("Ampli.nam", "Altro.nam")                 # introvabile: resta il percorso del file
+    nam = parse_project_text(text, base_dir=str(tmp_path / "app" / "examples")).get_track("Chitarra").effects[0].nam
+    assert nam == os.path.normpath(str(tmp_path / "app" / "profili_nam" / "Altro.nam"))

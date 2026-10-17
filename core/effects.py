@@ -220,6 +220,15 @@ EFFECT_KINDS: Dict[str, dict] = {
                     "Chitarra": {"soglia": -45, "rapporto": 10, "attacco": 2, "rilascio": 80},
                     "Batteria": {"soglia": -35, "rapporto": 20, "attacco": 1, "rilascio": 60}},
     },
+    "volume": {
+        # solo guadagno: per lasciare margine prima del master o di un ampli
+        # (il volume della traccia invece scala la velocity delle note)
+        "label": "Volume", "family": "Dinamica",
+        "params": [EffectParam("guadagno", "Guadagno", -24, 24, 0, "dB", 0.5)],
+        "presets": {"Neutro": {"guadagno": 0},
+                    "Margine per il master": {"guadagno": -6},
+                    "Più forte": {"guadagno": 3}},
+    },
     "passa_alto": {
         "label": "Filtro passa-alto", "family": "Tono",
         "params": [EffectParam("frequenza", "Frequenza", 20, 2000, 80, "Hz", 5),
@@ -1084,6 +1093,8 @@ def _plugins(effect, bpm: float = 120.0) -> list:
         # soglia (massimizzatore) e taglia a 0 dB: 'tetto' riporta sotto.
         return [pb.Limiter(threshold_db=-p["guadagno"], release_ms=p["rilascio"]),
                 pb.Gain(gain_db=p["tetto"])]
+    if kind == "volume":
+        return [pb.Gain(gain_db=p["guadagno"])]
     if kind == "noise_gate":
         return [pb.NoiseGate(threshold_db=p["soglia"], ratio=p["rapporto"],
                              attack_ms=p["attacco"], release_ms=p["rilascio"])]

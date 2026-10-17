@@ -31,7 +31,7 @@ comunque l'autore nei crediti.
 | rhodes (jRhodes3d) | Campioni CC BY-NC 4.0; musica fatta con lo strumento CC0 | Si', se ridistribuisci i campioni | Campioni non ridistribuibili a scopo commerciale; la musica suonata e' libera |
 | banjo (extra) | GNU GPL v3 | Vedi note | Copyleft; evitare di inserirlo in pacchetti distribuiti |
 | marimba | Non dichiarata | Non noto | Convertita da GigaSampler (S. Christian Collins); nessun file di licenza nel repository |
-| gm-bank | Una per strumento, nell'intestazione di ogni `.sfz` | Dipende | Per lo piu' CC0, ma ad esempio il pianoforte (001) e' CC-BY (Alexander Holm) |
+| gm-bank | Una per strumento, nell'intestazione di ogni `.sfz` | Dipende | Per lo piu' CC0, ma ad esempio il pianoforte (001) e' CC-BY (Alexander Holm). Banco incompiuto: solo 10 strumenti melodici (001-003, 005, 026, 034, 045, 046, 105, 112) e il kit Standard hanno campioni, gli altri 118 melodici e 9 kit sono segnaposto `sample=*sine` |
 
 ## Rimosso
 
