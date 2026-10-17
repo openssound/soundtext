@@ -2041,6 +2041,26 @@ SoundFont.
   Debian/Ubuntu il pacchetto `liblilv-0-0`, gia' presente se sono
   installati Ardour, Carla o Guitarix). I plugin LV2 si trovano da soli.
   Per esempio, con `guitarix-lv2` si hanno decine di amplificatori e pedali.
+
+  **Plugin LV2 consigliati su Linux** (gratuiti, nei pacchetti della
+  distribuzione):
+  - `dragonfly-reverb-lv2`: riverberi di sala, stanza e piastra di ottima
+    qualità;
+  - `guitarix-lv2`: amplificatori, pedali (Tube Screamer, fuzz, wah,
+    tremolo), casse ed effetti per chitarra;
+  - `calf-plugins`: Leslie (Rotary Speaker), riverbero, delay, phaser,
+    chorus, compressori, equalizzatori, simulatore di nastro;
+  - `lsp-plugins-lv2`: compressori, equalizzatori, limiter e delay da
+    studio, più campionatori come strumenti;
+  - `x42-plugins`: strumenti di misura, equalizzatori e la batteria AVL
+    Drums (strumento plugin);
+  - `setbfree`: l'organo Hammond con il Leslie, come strumento plugin.
+
+  Su Debian, Ubuntu e derivate si installano tutti insieme con:
+
+  ```bash
+  sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
+  ```
 - I formati **CLAP** e **VST2** non sono supportati.
 
 **Un plugin come effetto**: nel pannello Effetti (8.4) **+ Effetto →

@@ -2087,6 +2087,26 @@ SoundFont.
   Ardour, Carla o Guitarix). Los plugins LV2 se encuentran solos. Por
   ejemplo, con `guitarix-lv2` se tienen decenas de amplificadores y
   pedales.
+
+  **Plugins LV2 recomendados en Linux** (gratuitos, en los paquetes de la
+  distribución):
+  - `dragonfly-reverb-lv2`: reverberaciones de sala, habitación y placa
+    de muy buena calidad;
+  - `guitarix-lv2`: amplificadores, pedales (Tube Screamer, fuzz, wah,
+    trémolo), cajas y efectos para guitarra;
+  - `calf-plugins`: Leslie (Rotary Speaker), reverberación, delay,
+    phaser, chorus, compresores, ecualizadores, simulador de cinta;
+  - `lsp-plugins-lv2`: compresores, ecualizadores, limitadores y delays
+    de estudio, y samplers para usar como instrumentos;
+  - `x42-plugins`: herramientas de medida, ecualizadores y la batería
+    AVL Drums (plugin instrumento);
+  - `setbfree`: el órgano Hammond con el Leslie, como plugin instrumento.
+
+  En Debian, Ubuntu y derivadas se instalan todos juntos con:
+
+  ```bash
+  sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
+  ```
 - Los formatos **CLAP** y **VST2** no son compatibles.
 
 **Un plugin como efecto**: en el panel Efectos (8.4) **+ Efecto → Plugin

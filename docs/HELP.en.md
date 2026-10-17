@@ -2002,6 +2002,26 @@ instruments** that play the notes of a track instead of the SoundFont.
   Debian/Ubuntu the `liblilv-0-0` package, already present if Ardour, Carla
   or Guitarix are installed). LV2 plugins are found automatically. For
   example, with `guitarix-lv2` you get dozens of amplifiers and pedals.
+
+  **Recommended LV2 plugins on Linux** (free, in the distribution's
+  packages):
+  - `dragonfly-reverb-lv2`: high-quality hall, room and plate reverbs;
+  - `guitarix-lv2`: guitar amplifiers, pedals (Tube Screamer, fuzz, wah,
+    tremolo), cabinets and effects;
+  - `calf-plugins`: Leslie (Rotary Speaker), reverb, delay, phaser,
+    chorus, compressors, equalizers, tape simulator;
+  - `lsp-plugins-lv2`: studio compressors, equalizers, limiters and
+    delays, plus samplers to use as instruments;
+  - `x42-plugins`: metering tools, equalizers and the AVL Drums kit (an
+    instrument plugin);
+  - `setbfree`: the Hammond organ with its Leslie, as an instrument
+    plugin.
+
+  On Debian, Ubuntu and derivatives install them all at once with:
+
+  ```bash
+  sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
+  ```
 - The **CLAP** and **VST2** formats are not supported.
 
 **A plugin as an effect**: in the Effects panel (8.4) **+ Effect → Plugin
