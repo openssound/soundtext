@@ -1652,5 +1652,11 @@
  "Tracce convertite in box: {0}.": "Tracks converted to boxes: {0}.",
  "Rimaste come testo libero (convertite non avrebbero suonato esattamente uguali):\n{names}": "Left as free text (converted they would not have sounded exactly the same):\n{names}",
  "Per tornare indietro: Modifica → Annulla (Ctrl+Z).": "To go back: Edit → Undo (Ctrl+Z).",
- "In un box solo (senza pause lunghe, o divise avrebbero perso dei comandi come vol= o una rampa):\n{names}": "In a single box (no long rests, or split they would have lost commands such as vol= or a ramp):\n{names}"
+ "In un box solo (senza pause lunghe, o divise avrebbero perso dei comandi come vol= o una rampa):\n{names}": "In a single box (no long rests, or split they would have lost commands such as vol= or a ramp):\n{names}",
+ "Apri esempio...": "Open example...",
+ "Apri esempio": "Open example",
+ "Apri uno dei brani d'esempio .st, per studiarlo o partire da li': l'originale non viene modificato, Salva chiede dove salvare la copia.": "Open one of the example .st songs, to study it or use it as a starting point: the original is not changed, Save asks where to save the copy.",
+ "Esempi non trovati": "Examples not found",
+ "La cartella degli esempi non c'e':\n{path}": "The examples folder is missing:\n{path}",
+ "{name} (esempio)": "{name} (example)"
 }

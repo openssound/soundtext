@@ -271,6 +271,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         file_menu = menubar.addMenu(tr("&Progetto"))
         file_menu.addAction(self._action(tr("Nuovo"), self.new_project, "Ctrl+N", tr("Crea un nuovo progetto vuoto.")))
         file_menu.addAction(self._action(tr("Apri..."), self.open_project, "Ctrl+O", tr("Apri un progetto .st esistente.")))
+        file_menu.addAction(self._action(tr("Apri esempio..."), self.open_example, None,
+                                          tr("Apri uno dei brani d'esempio .st, per studiarlo o partire da li': "
+                                             "l'originale non viene modificato, Salva chiede dove salvare la copia.")))
         file_menu.addAction(self._action(tr("Salva"), self.save_project, "Ctrl+S", tr("Salva il progetto corrente.")))
         file_menu.addAction(self._action(tr("Salva con nome..."), self.save_project_as, "Ctrl+Shift+S",
                                           tr("Salva il progetto corrente con un nuovo nome/percorso.")))

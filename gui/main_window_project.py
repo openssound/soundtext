@@ -12,7 +12,7 @@ from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
                            RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
-from core.project_io import load_project_file, save_project_file, ensure_songs_dir
+from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
 from core.autosave import AUTOSAVE_INTERVAL_S, RecoverySession, find_recoverable
 from core.midi_export import export_project_to_midi
 from core.musicxml_export import export_project_to_musicxml
@@ -182,17 +182,43 @@ class ProjectMixin:
         except Exception as e:
             QMessageBox.critical(self, tr("Errore apertura"), str(e))
 
-    def _load_and_apply_project(self, path):
+    def open_example(self):
+        """Apre un brano d'esempio (examples/*.st) a scopo didattico. Il
+        progetto si apre senza percorso, come uno nuovo: Salva chiede dove
+        salvarlo (nella cartella dei brani), cosi' l'esempio originale resta
+        intatto, e la cartella dell'app puo' anche non essere scrivibile."""
+        if not os.path.isdir(EXAMPLES_DIR):
+            QMessageBox.warning(self, tr("Esempi non trovati"),
+                                tr("La cartella degli esempi non c'e':\n{path}", path=EXAMPLES_DIR))
+            return
+        if not self._confirm_discard_unsaved():
+            return
+        path, _ = QFileDialog.getOpenFileName(self, tr("Apri esempio"), EXAMPLES_DIR,
+                                              tr("Progetti (*.st *.txt)"),
+                                              options=file_dialog_options())
+        if not path:
+            return
+        try:
+            self._load_and_apply_project(path, as_example=True)
+        except Exception as e:
+            QMessageBox.critical(self, tr("Errore apertura"), str(e))
+
+    def _load_and_apply_project(self, path, *, as_example=False):
         """Carica un progetto da percorso e aggiorna la UI, notificando
         l'utente se sono stati registrati automaticamente strumenti
-        personalizzati incorporati nel file (usato sia da 'Apri progetto'
-        sia dall'avvio da riga di comando)."""
+        personalizzati incorporati nel file (usato da 'Apri progetto', da
+        'Apri esempio' e dall'avvio da riga di comando). Con as_example il
+        progetto non resta legato al file: vedi open_example."""
         before = set(list_instrument_names())
         project = load_project_file(path)
         after = set(list_instrument_names())
         newly_loaded = sorted(after - before)
 
-        self._replace_project(project, path=path, title=os.path.basename(path))
+        if as_example:
+            title = tr("{name} (esempio)", name=os.path.basename(path))
+            self._replace_project(project, path=None, title=title)
+        else:
+            self._replace_project(project, path=path, title=os.path.basename(path))
 
         from st_language.stfile import LANGUAGE_VERSION
         if project.st_version and project.st_version > LANGUAGE_VERSION:

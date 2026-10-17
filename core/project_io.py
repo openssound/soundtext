@@ -44,6 +44,9 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
 
 # Cartella predefinita per il salvataggio dei progetti (analoga a midi/ per la libreria)
 DEFAULT_SONGS_DIR = os.path.join(get_app_root(), "songs")
+# Progetti d'esempio distribuiti con l'app (Progetto -> Apri esempio...):
+# solo da leggere, anche dove la cartella dell'app non e' scrivibile.
+EXAMPLES_DIR = os.path.join(get_app_root(), "examples")
 # Cartella predefinita in cui l'utente tiene i propri file SoundFont (.sf2):
 # punto di partenza dei dialoghi "Scegli SoundFont" (Playback e Gestione
 # strumenti), cosi' da non dover navigare da zero ogni volta.
