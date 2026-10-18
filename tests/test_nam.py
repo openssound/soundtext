@@ -491,3 +491,55 @@ def test_blocks_in_parallel_give_the_same_result(tmp_path, monkeypatch):
     sequential = nam.process(model, x)
     monkeypatch.setattr(nam, "_THREADS", 4)
     assert np.array_equal(nam.process(model, x), sequential)
+
+
+def test_profile_dialog_groups_profiles_by_type(tmp_path, monkeypatch):
+    """La finestra di scelta del profilo mostra i profili per tipologia, con
+    tipo, suono e uso, cerca anche per suono e permette un altro file."""
+    from PySide6.QtWidgets import QApplication, QDialogButtonBox, QFileDialog
+    QApplication.instance() or QApplication([])
+    from core import nam_profiles
+    from gui import nam_dialog
+    folder = tmp_path / "profili_nam"
+    folder.mkdir()
+    (folder / "casse").mkdir()
+    def named(where, file, gear_type):
+        data = json.loads(json.dumps(_reference()["models"]["tanh"]["nam"]))
+        data["metadata"] = {"name": file[:-4], **({"gear_type": gear_type} if gear_type else {})}
+        return _write(where, file, data)
+
+    twin = named(folder, "Fender Twin Reverb - pulito.nam", "amp")
+    named(folder, "Bugera 333 - crunch con cassa.nam", "amp_cab")
+    named(folder, "Ibanez TS9 Tube Screamer.nam", "pedal")
+    named(folder, "mio.nam", None)
+    named(folder / "casse", "non un profilo.nam", "amp")               # la cartella delle casse non conta
+    monkeypatch.setattr(nam_dialog, "existing_nam_dir", lambda: str(folder))
+
+    dialog = nam_dialog.NamProfileDialog(None, twin)
+    groups = {dialog.tree.topLevelItem(i).text(0): [dialog.tree.topLevelItem(i).child(j)
+                                                    for j in range(dialog.tree.topLevelItem(i).childCount())]
+              for i in range(dialog.tree.topLevelItemCount())}
+    assert list(groups) == [nam_dialog._group_title(g) for g in nam_profiles.GROUPS]
+    amp = groups[nam_dialog._group_title(nam_profiles.GROUP_AMP)][0]
+    assert [amp.text(c) for c in range(3)] == ["Fender Twin Reverb - pulito", "amplificatore", "pulito"]
+    assert amp.text(3).startswith("il pulito americano")
+    assert groups[nam_dialog._group_title(nam_profiles.GROUP_OTHER)][0].text(1) == "tipo non indicato"
+    assert dialog.tree.currentItem() is amp                             # il profilo attuale e' gia' scelto
+
+    dialog.search.setText("overdrive")                                  # cerca anche per suono
+    assert dialog.tree.topLevelItemCount() == 1
+    pedal = dialog.tree.topLevelItem(0).child(0)
+    dialog.tree.setCurrentItem(pedal)
+    dialog.buttons.button(QDialogButtonBox.Ok).click()
+    assert dialog.selected_path() == str(folder / "Ibanez TS9 Tube Screamer.nam")
+
+    other = str(tmp_path / "altro.nam")
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (other, "")))
+    dialog = nam_dialog.NamProfileDialog(None)
+    dialog._choose_file()
+    assert dialog.selected_path() == other
+
+    monkeypatch.setattr(nam_dialog, "existing_nam_dir", lambda: "")
+    empty = nam_dialog.NamProfileDialog(None)
+    assert empty.tree.topLevelItemCount() == 0
+    assert not empty.buttons.button(QDialogButtonBox.Ok).isEnabled()

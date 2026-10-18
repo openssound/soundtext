@@ -44,6 +44,12 @@ _LAYER_KEYS = {"input_size", "condition_size", "head_size", "head_bias", "head",
                "slimmable", *_FILM_KEYS}
 
 
+# Il tipo dichiarato nei metadati di un profilo ("gear_type"), in parole.
+GEAR_TYPE_LABELS = {"amp": "amplificatore", "pedal": "pedale", "amp_cab": "amplificatore con cassa",
+                    "pedal_amp": "pedale e amplificatore", "amp_pedal_cab": "pedale, amplificatore e cassa",
+                    "preamp": "preamplificatore", "studio": "catena da studio"}
+
+
 class NamError(Exception):
     """File .nam non leggibile o di un formato non supportato."""
 
@@ -257,9 +263,7 @@ class NamModel:
         """Descrizione per il pannello: marca, modello e tipo, se il file li dice."""
         meta = self.metadata or {}
         parts = [str(meta[k]) for k in ("gear_make", "gear_model") if meta.get(k)]
-        kind = {"amp": "amplificatore", "pedal": "pedale", "amp_cab": "amplificatore con cassa",
-                "pedal_amp": "pedale e amplificatore", "amp_pedal_cab": "pedale, amplificatore e cassa",
-                "preamp": "preamplificatore", "studio": "catena da studio"}.get(meta.get("gear_type"), "")
+        kind = GEAR_TYPE_LABELS.get(meta.get("gear_type"), "")
         text = " ".join(parts)
         if kind:
             text = f"{text} ({kind})" if text else kind

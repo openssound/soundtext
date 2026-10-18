@@ -1000,16 +1000,15 @@ class EffectsPanel(QFrame):
     def choose_nam_file(self, current: str = "") -> str:
         """Chiede il file .nam di un profilo: il percorso, o '' se annullato
         o non utilizzabile (con il motivo)."""
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        from PySide6.QtWidgets import QDialog, QMessageBox
         from core.nam import nam_problem
-        from core.nam_profiles import existing_nam_dir
-        start = os.path.dirname(current) if current else existing_nam_dir() or os.path.dirname(
-            getattr(self.host, "current_path", None) or "") or os.path.expanduser("~")
-        path, _filter = QFileDialog.getOpenFileName(
-            self, tr("Scegli un profilo NAM"), start, tr("Profili NAM (*.nam)"),
-            options=file_dialog_options())
-        if not path:
+        from .nam_dialog import NamProfileDialog
+        # la finestra elenca i profili per tipologia; "Altro file..." parte da qui
+        start = os.path.dirname(getattr(self.host, "current_path", None) or "") or os.path.expanduser("~")
+        dialog = NamProfileDialog(self, current, start)
+        if dialog.exec() != QDialog.Accepted or not dialog.selected_path():
             return ""
+        path = dialog.selected_path()
         problem = nam_problem(path)
         if problem:
             QMessageBox.warning(self, tr("Profilo NAM"), tr("Non posso usare questo profilo: {problem}.", problem=problem))

@@ -165,6 +165,112 @@ PROFILES: List[Profile] = [
 ]
 
 
+# Il suono dei profili consigliati, per scegliere (finestra di scelta del
+# profilo): parole fra pulito, crunch, lead, high gain, overdrive,
+# distorsione, boost, basso.
+SOUNDS = {
+    "Fender Twin Reverb - pulito.nam": ("pulito",),
+    "Vox AC15 - Top Boost.nam": ("pulito", "crunch"),
+    "Bugera 333 - crunch con cassa.nam": ("crunch",),
+    "Marshall JCM2000 - crunch.nam": ("crunch",),
+    "Marshall JCM900 - lead.nam": ("lead",),
+    "Mesa Boogie Mark IV - lead.nam": ("lead", "high gain"),
+    "Peavey 5150 - high gain.nam": ("high gain",),
+    "Ibanez TS9 Tube Screamer.nam": ("overdrive",),
+    "Klon Centaur (clone).nam": ("overdrive", "boost"),
+    "Boss HM-2 - svedese.nam": ("distorsione",),
+    "Tech 21 dUg DP3X - basso.nam": ("basso", "distorsione"),
+    "Bugera 333 - pulito con cassa.nam": ("pulito",),
+    "Marshall JVM - pulito con cassa.nam": ("pulito",),
+    "Marshall JVM - distorto con cassa.nam": ("lead", "high gain"),
+    "Marshall JCM2000 - pulito.nam": ("pulito",),
+    "Fender Twin Reverb - vibrato.nam": ("pulito",),
+    "Magnatone Super 59 - pulito.nam": ("pulito",),
+    "Magnatone Super 59 - spinto.nam": ("crunch",),
+    "Friedman Dirty Shirley Mini - pulito.nam": ("pulito",),
+    "Friedman Dirty Shirley Mini - crunch.nam": ("crunch",),
+    "Orange Rockerverb (modello Axe-FX).nam": ("crunch", "lead"),
+    "Sovtek MIG50.nam": ("crunch", "distorsione"),
+    "Peavey 6505+ - high gain.nam": ("high gain",),
+    "Splawn Pro Mod - high gain.nam": ("high gain",),
+    "Engl Savage (modello Axe-FX).nam": ("high gain",),
+    "Meshuggah - djent.nam": ("high gain",),
+    "Maxon OD808.nam": ("overdrive",),
+    "Boss SD-1.nam": ("overdrive",),
+    "MXR M77.nam": ("boost", "overdrive"),
+    "Horizon Precision Drive.nam": ("boost",),
+    "Boss DS-1.nam": ("distorsione",),
+    "Boss OS-2.nam": ("overdrive", "distorsione"),
+    "Fortin Grind.nam": ("boost",),
+    "EarthQuaker Plumes (clone).nam": ("overdrive",),
+}
+
+# Gruppi della finestra di scelta del profilo, nell'ordine in cui compaiono.
+GROUP_AMP = "amp"            # amplificatori senza cassa (SoundText ne aggiunge una interna)
+GROUP_AMP_CAB = "amp_cab"    # con la cassa gia' dentro
+GROUP_PEDAL = "pedal"        # da mettere prima di un amplificatore
+GROUP_OTHER = "other"        # tipo non dichiarato o catene da studio
+GROUPS = (GROUP_AMP, GROUP_AMP_CAB, GROUP_PEDAL, GROUP_OTHER)
+
+
+@dataclass(frozen=True)
+class ProfileEntry:
+    path: str
+    name: str
+    gear_type: str        # come nel file ('' se non lo dice)
+    group: str            # uno di GROUPS
+    use: str              # a che cosa serve (profili consigliati), oppure marca e modello
+    sound: tuple = ()     # vedi SOUNDS (solo i profili consigliati)
+
+
+def _group(gear_type: str) -> str:
+    if gear_type in ("amp_cab", "amp_pedal_cab"):
+        return GROUP_AMP_CAB
+    if gear_type in ("amp", "preamp", "pedal_amp"):
+        return GROUP_AMP
+    if gear_type == "pedal":
+        return GROUP_PEDAL
+    return GROUP_OTHER
+
+
+def _read_metadata(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return (data.get("metadata") or {}) if isinstance(data, dict) else {}
+
+
+def list_profiles(folders: List[str]) -> List[ProfileEntry]:
+    """I profili .nam delle cartelle (e delle loro sottocartelle, tranne
+    quella delle casse IR), con nome, tipo e uso letti dai metadati, senza
+    caricare la rete: per la finestra di scelta del profilo. I file
+    illeggibili si saltano; lo stesso file in due cartelle compare una volta."""
+    by_file = {p.file: p for p in PROFILES}
+    seen, out = set(), []
+    for folder in folders:
+        if not folder or not os.path.isdir(folder):
+            continue
+        for root, dirs, files in os.walk(folder):
+            dirs[:] = sorted(d for d in dirs if d != "casse" and not d.startswith("."))
+            for name in sorted(files):
+                if not name.lower().endswith(".nam"):
+                    continue
+                path = os.path.join(root, name)
+                key = os.path.normcase(os.path.realpath(path))
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    meta = _read_metadata(path)
+                except (OSError, ValueError):
+                    continue
+                gear_type = str(meta.get("gear_type") or "")
+                known = by_file.get(name)
+                use = known.use if known else " ".join(str(meta[k]) for k in ("gear_make", "gear_model") if meta.get(k))
+                out.append(ProfileEntry(path, str(meta.get("name") or os.path.splitext(name)[0]),
+                                        gear_type, _group(gear_type), use, SOUNDS.get(name, ())))
+    return out
+
+
 def _with_metadata(data: dict, profile: Profile) -> dict:
     meta = dict(data.get("metadata") or {})
     for key in ("name", "gear_make", "gear_model", "gear_type", "modeled_by"):

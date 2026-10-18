@@ -60,6 +60,11 @@ def data_strings():
     out |= set(SOUND_PRESETS)
     from core.notation import _NOTE_VALUES
     out |= {name for _beats, *names in _NOTE_VALUES for name in names}
+    # profili NAM: tipi, suoni e usi dei profili consigliati (finestra di scelta del profilo)
+    from core.nam import GEAR_TYPE_LABELS
+    from core.nam_profiles import PROFILES, SOUNDS
+    out |= set(GEAR_TYPE_LABELS.values()) | {w for words in SOUNDS.values() for w in words}
+    out |= {p.use for p in PROFILES}
     return out
 
 
