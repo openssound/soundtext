@@ -109,7 +109,30 @@ class _MissingQtStrings(QTranslator):
         return False
 
 
+def _disable_console_quick_edit():
+    """Windows: un clic nella finestra del prompt da cui e' partito SoundText
+    la mette in modalita' selezione ("Modifica rapida"), e Windows blocca
+    ogni programma che vi scrive finche' non si preme un tasto. Bastava un
+    avviso di fluidsynth (Analizza livelli, riproduzione) per fermare
+    SoundText. Si toglie la Modifica rapida solo a questa console; nessun
+    effetto se non c'e' una console (app impacchettata, pythonw)."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-10)          # STD_INPUT_HANDLE
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return                                    # nessuna console
+        ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS = 0x0040, 0x0080
+        kernel32.SetConsoleMode(handle, (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS)
+    except Exception:
+        pass                                          # solo una comodita'
+
+
 def main():
+    _disable_console_quick_edit()
     setup_logging()
     sys.excepthook = _excepthook
     # Fusion e' l'unico stile Qt che rispetta in modo affidabile un QSS
