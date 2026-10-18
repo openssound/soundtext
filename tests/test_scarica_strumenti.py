@@ -146,3 +146,53 @@ def test_placeholder_sfz_is_recognised(tmp_path):
     assert not placeholder_only(str(vero)) and not placeholder_only(str(misto))
     assert not placeholder_only(str(banco)) and not placeholder_only(str(vuoto))
     assert not placeholder_only(str(tmp_path / "manca.sfz"))
+
+
+@pytest.mark.parametrize("sistema, macchina, chiave", [
+    ("linux", "x86_64", "linux-x86_64"), ("linux", "aarch64", "linux-aarch64"),
+    ("windows", "AMD64", "windows"), ("macos", "arm64", "macos")])
+def test_vst3_plugins_for_every_system(monkeypatch, sistema, macchina, chiave):
+    monkeypatch.setattr(ss, "SISTEMA", sistema)
+    monkeypatch.setattr(ss.platform, "machine", lambda: macchina)
+    assert ss.chiave_sistema() == chiave
+    nomi = {nome for nome, _d, _r, _rel, modelli in ss.PLUGIN_VST3 if chiave in modelli}
+    # LSP Plugins esiste solo per Linux; su Linux ARM Dexed e Airwindows non pubblicano build
+    attesi = {"linux-x86_64": {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "LSP Plugins"},
+              "linux-aarch64": {"Dragonfly Reverb", "LSP Plugins"}}.get(
+                  chiave, {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb"})
+    assert nomi == attesi
+
+
+def test_vst3_install_goes_on_when_one_plugin_fails(monkeypatch, tmp_path):
+    """Un plugin che non si scarica non ferma gli altri, ed e' segnalato alla fine."""
+    monkeypatch.setattr(ss, "SISTEMA", "linux")
+    monkeypatch.setattr(ss.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(ss, "user_vst3_dir", lambda: tmp_path / "vst3")
+
+    def asset(repo, _release, _modello):
+        if "dexed" in repo:
+            raise ss.Errore("rete assente")
+        return f"https://example.invalid/{repo.split('/')[1]}.zip"
+
+    def scarica(_url, file):
+        with zipfile.ZipFile(file, "w") as f:
+            f.writestr(f"{file.stem}.vst3/Contents/x86_64-linux/{file.stem}.so", "x")
+
+    monkeypatch.setattr(ss, "asset_github", asset)
+    monkeypatch.setattr(ss, "scarica_file", scarica)
+    assert ss.installa_plugin_vst3() == ["Dexed"]
+    assert sorted(p.name for p in (tmp_path / "vst3").iterdir()) == \
+        ["airwin2rack.vst3", "dragonfly-reverb.vst3", "lsp-plugins.vst3"]
+    with pytest.raises(ss.Errore, match="Dexed"):
+        ss.installa_vst3()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="permessi Unix")
+def test_zip_keeps_executable_permissions(tmp_path):
+    z = tmp_path / "p.zip"
+    with zipfile.ZipFile(z, "w") as f:
+        info = zipfile.ZipInfo("p.vst3/Contents/MacOS/p")
+        info.external_attr = 0o755 << 16
+        f.writestr(info, "x")
+    ss.estrai(z, tmp_path / "out")
+    assert os.access(tmp_path / "out" / "p.vst3" / "Contents" / "MacOS" / "p", os.X_OK)

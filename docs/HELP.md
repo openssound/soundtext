@@ -1697,8 +1697,12 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     trentina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
 
     Aggiungendo l'effetto (**+ Effetto → Saturazione → Profilo NAM**) si
-    apre la finestra per scegliere il file; annullando, l'effetto non viene
-    aggiunto. Sulla card compaiono il nome del profilo e, se il file li
+    apre la finestra **Scegli un profilo NAM**: i profili della cartella
+    `profili_nam` divisi per tipologia (amplificatori senza cassa,
+    amplificatori con la cassa, pedali), ciascuno con il tipo, il suono
+    (pulito, crunch, lead, high gain, overdrive, distorsione, boost) e
+    l'uso, e una casella per cercarli; **Altro file…** apre un file `.nam`
+    qualsiasi. Annullando, l'effetto non viene aggiunto. Sulla card compaiono il nome del profilo e, se il file li
     dichiara, marca, modello, tipo (amplificatore, pedale, amplificatore con
     cassa…) e autore; il pulsante **Scegli profilo…** lo cambia.
     - **Ingresso** è la manopola "input" del plugin NAM: quanto forte arriva
@@ -2037,6 +2041,24 @@ SoundFont.
   `C:\Program Files\Common Files\VST3`, su macOS
   `/Library/Audio/Plug-Ins/VST3`); altre cartelle si aggiungono da
   **Suoni → Cartelle dei plugin VST3...**
+
+  **Plugin VST3 gratuiti consigliati**, per Linux, Windows e macOS: il
+  comando `vst3` di `scarica_strumenti` (compreso anche in `host`) li
+  scarica dalle pagine ufficiali e li copia nella cartella VST3
+  dell'utente, senza diritti di amministratore:
+  - **Dexed**: sintetizzatore FM che emula lo Yamaha DX7 (strumento);
+  - **Airwindows Consolidated**: oltre 400 effetti Airwindows in un solo
+    plugin;
+  - **Dragonfly Reverb**: riverberi di sala, stanza e piastra;
+  - **LSP Plugins**: compressori, equalizzatori, limiter e delay da studio
+    (solo su Linux: non esistono versioni per Windows e macOS).
+
+  ```bash
+  ./scarica_strumenti.sh vst3
+  ```
+
+  Su Windows `scarica_strumenti.bat vst3`, su macOS
+  `python3 scarica_strumenti.py vst3`.
 - **LV2**: solo su Linux, e serve la libreria di sistema `lilv` (su
   Debian/Ubuntu il pacchetto `liblilv-0-0`, gia' presente se sono
   installati Ardour, Carla o Guitarix). I plugin LV2 si trovano da soli.
@@ -2127,8 +2149,10 @@ seguente; per gli altri errori usa **Aggiorna elenco**.
 - l'export MIDI e MusicXML contiene le note, non il suono del plugin;
 - dei plugin LV2 si salvano i valori dei parametri e i file scelti, non
   il resto dello "stato" interno;
-- la prima ricerca dei plugin carica ogni VST3 una volta, e puo' volerci
-  un po'; poi l'elenco si ricorda finche' un plugin non cambia
+- alla prima ricerca SoundText deve sapere che cosa e' ogni VST3: lo legge
+  dal bundle quando il bundle lo dice (file `moduleinfo.json`, come in
+  Dexed, Airwindows e LSP), altrimenti carica il plugin una volta, e puo'
+  volerci un po'; intanto la finestra mostra gia' i plugin noti. Poi l'elenco si ricorda finche' un plugin non cambia
   (**Aggiorna elenco** rifa' la ricerca).
 
 ## 8bis. Struttura brano (vista a box)

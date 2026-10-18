@@ -7,7 +7,10 @@ pacchetti in piu'.
 Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.sh):
     python3 scarica_strumenti.py                  menu per scegliere i gruppi (elenco
                                                   se non e' un terminale)
-    python3 scarica_strumenti.py host             7-Zip, sfizz e Surge XT
+    python3 scarica_strumenti.py host             7-Zip, sfizz, Surge XT e i plugin VST3 gratuiti
+    python3 scarica_strumenti.py vst3             solo i plugin VST3 gratuiti: Dexed,
+                                                  Airwindows Consolidated, Dragonfly
+                                                  Reverb, LSP Plugins (solo Linux)
     python3 scarica_strumenti.py libreria         compila il motore SFZ sfizioso per lo
                                                   strumento SFZ interno (~5 min)
     python3 scarica_strumenti.py piano basso      scarica i gruppi indicati
@@ -23,6 +26,7 @@ presenti vengono saltati.
 import ctypes
 import json
 import os
+import platform
 import re
 import shutil
 import stat
@@ -157,12 +161,16 @@ def comando_script() -> str:
 def voci_elenco() -> list:
     """(nome, descrizione) di tutto cio' che si puo' scaricare, nell'ordine
     dell'elenco: lo stesso ordine numera le voci del menu interattivo."""
-    host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, serve sudo)",
-            "windows": "7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz",
-            "macos": "7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz"}[SISTEMA]
+    host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, serve sudo) + i plugin VST3 della voce vst3",
+            "windows": "7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz, "
+                       "i plugin VST3 della voce vst3",
+            "macos": "7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz, "
+                     "i plugin VST3 della voce vst3"}[SISTEMA]
+    vst3 = ", ".join(nome for nome, _desc, _repo, _rel, modelli in PLUGIN_VST3 if chiave_sistema() in modelli)
     return ([(nome, desc) for nome, desc, _url, _sotto in GRUPPI + EXTRA]
             + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
-            + [("host", host),
+            + [("vst3", f"plugin VST3 gratuiti nella cartella VST3 dell'utente: {vst3}"),
+               ("host", host),
                ("libreria", "motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)"),
                ("tutto", "tutti i gruppi SFZ (esclusi gli extra_*)")])
 
@@ -290,7 +298,16 @@ def estrai(file: Path, cartella: Path):
             for membro in z.namelist():
                 if not _dentro(cartella, membro):
                     raise Errore(f"percorso non valido nell'archivio: {membro}")
+            if SISTEMA == "macos" and shutil.which("ditto"):
+                # ditto conserva permessi, link simbolici e firme dei bundle
+                # (i plugin per macOS), che zipfile perderebbe
+                subprocess.run(["ditto", "-x", "-k", str(file), str(cartella)], check=True)
+                return
             z.extractall(cartella)
+            for info in z.infolist():
+                modo = (info.external_attr >> 16) & 0o777
+                if modo and not info.is_dir():    # i permessi salvati nell'archivio (eseguibili)
+                    os.chmod(cartella / info.filename, modo | stat.S_IRUSR)
     elif re.search(r"\.(tar\.(gz|xz|bz2)|tgz)$", nome):
         with tarfile.open(file) as t:
             if hasattr(tarfile, "data_filter"):
@@ -501,11 +518,103 @@ def host_windows_macos():
             _esegui(["open", "-W", pkg])
 
 
+# ---------------------------------------------------------------------------
+# plugin VST3 gratuiti e open source, dalle release ufficiali su GitHub, nella
+# cartella VST3 dell'utente (niente diritti di amministratore)
+# ---------------------------------------------------------------------------
+
+# nome, descrizione, repository, release ("latest" o un tag), file per sistema
+# (chiave_sistema(): "windows", "macos", "linux-x86_64", "linux-aarch64")
+PLUGIN_VST3 = [
+    ("Dexed", "sintetizzatore FM, emula lo Yamaha DX7", "asb2m10/dexed", "latest",
+     {"linux-x86_64": r"Dexed-[\d.]+-lnx\.zip", "windows": r"Dexed-[\d.]+-win\.zip",
+      "macos": r"Dexed-[\d.]+-macOS\.zip"}),
+    ("Airwindows Consolidated", "oltre 400 effetti Airwindows in un solo plugin", "baconpaul/airwin2rack",
+     "DAWPlugin",
+     {"linux-x86_64": r"AirwindowsConsolidated-[\d-]+-[0-9a-f]+-Linux\.zip",
+      "windows": r"AirwindowsConsolidated-[\d-]+-[0-9a-f]+-Windows\.zip",
+      "macos": r"airwindows-consolidated-macOS-[\d-]+-[0-9a-f]+\.dmg"}),
+    ("Dragonfly Reverb", "riverberi di sala, stanza e piastra", "michaelwillis/dragonfly-reverb", "latest",
+     {"linux-x86_64": r"dragonfly-reverb-[\d.]+-linux-x86_64\.tar\.xz",
+      "linux-aarch64": r"dragonfly-reverb-[\d.]+-linux-arm64\.tar\.xz",
+      "windows": r"dragonfly-reverb-[\d.]+-win64\.zip",
+      "macos": r"dragonfly-reverb-[\d.]+-macos-universal\.dmg"}),
+    # LSP pubblica solo build per Linux (e FreeBSD): niente Windows e macOS
+    ("LSP Plugins", "compressori, equalizzatori, limiter, riverberi e delay da studio", "lsp-plugins/lsp-plugins",
+     "latest",
+     {"linux-x86_64": r"lsp-plugins-[\d.]+-Linux-x86_64\.7z",
+      "linux-aarch64": r"lsp-plugins-[\d.]+-Linux-aarch64\.7z"}),
+]
+
+
+def chiave_sistema() -> str:
+    if SISTEMA != "linux":
+        return SISTEMA
+    macchina = platform.machine().lower()
+    return "linux-aarch64" if macchina in ("aarch64", "arm64") else "linux-x86_64"
+
+
+def vst3_da_dmg(dmg: Path, tmp: Path, dest: Path):
+    """macOS: monta l'immagine e copia i VST3 che contiene; se sono dentro un
+    installer .pkg lo si apre con pkgutil (senza eseguirlo, quindi senza
+    password di amministratore)."""
+    mnt = tmp / "volume"
+    mnt.mkdir()
+    _esegui(["hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", mnt, dmg])
+    try:
+        if any(mnt.rglob("*.vst3")):
+            copia_vst3(mnt, dest)
+            return
+        aperti = tmp / "pacchetti"
+        aperti.mkdir()
+        for i, pkg in enumerate(sorted(mnt.rglob("*.pkg"))):
+            _esegui(["pkgutil", "--expand-full", pkg, aperti / f"{i}-{pkg.stem}"])
+        copia_vst3(aperti, dest)
+    finally:
+        subprocess.run(["hdiutil", "detach", str(mnt), "-quiet"], check=False)
+
+
+def installa_plugin_vst3() -> list:
+    """Scarica e installa i plugin di PLUGIN_VST3 disponibili per questo
+    sistema; un plugin che non riesce non ferma gli altri. Restituisce i
+    nomi di quelli non riusciti."""
+    dest = user_vst3_dir()
+    falliti = []
+    for nome, desc, repo, release, modelli in PLUGIN_VST3:
+        modello = modelli.get(chiave_sistema())
+        if modello is None:
+            print(f"== {nome}: non c'e' una versione per questo sistema, salto")
+            continue
+        print(f"== {nome} ({desc}), nella cartella VST3 dell'utente")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp)
+                url = asset_github(repo, release, modello)
+                archivio = tmp / url.rsplit("/", 1)[-1]
+                scarica_file(url, archivio)
+                if archivio.suffix == ".dmg":
+                    vst3_da_dmg(archivio, tmp, dest)
+                else:
+                    estrai(archivio, tmp / "estratto")
+                    copia_vst3(tmp / "estratto", dest)
+        except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
+            print(f"   non riuscito: {e}")
+            falliti.append(nome)
+    return falliti
+
+
+def installa_vst3():
+    falliti = installa_plugin_vst3()
+    if falliti:
+        raise Errore("plugin VST3 non installati: " + ", ".join(falliti) + " (rilancia per riprovare)")
+
+
 def installa_host():
     if SISTEMA == "linux":
         host_linux()
     else:
         host_windows_macos()
+    installa_vst3()
 
 
 # ---------------------------------------------------------------------------
@@ -618,6 +727,8 @@ def main(argv) -> int:
         for arg in argv:
             if arg == "host":
                 installa_host()
+            elif arg == "vst3":
+                installa_vst3()
             elif arg == "libreria":
                 installa_libreria()
             elif arg == "tutto":

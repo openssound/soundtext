@@ -276,7 +276,7 @@ Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve
 | **Windows, installer** (`SoundText-setup-*.exe`) o **portable** (`.zip`) | esegui l'installer, oppure estrai lo zip e lancia `setup-windows.bat` (controlla il Visual C++ Redistributable e Python; FluidSynth è già incluso), poi `SoundText.exe` | `scarica_strumenti.bat` |
 | **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv e scarica il SoundFont GM) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
 
-`scarica_strumenti.sh`/`.bat` richiedono Python 3.8+ installato (non serve per usare l'app). `./scarica_strumenti.sh` senza argomenti mostra un menu numerato per scegliere i gruppi; `host` installa 7-Zip, sfizz e Surge XT; `libreria` compila il motore SFZ interno (circa 5 minuti).
+`scarica_strumenti.sh`/`.bat` richiedono Python 3.8+ installato (non serve per usare l'app). `./scarica_strumenti.sh` senza argomenti mostra un menu numerato per scegliere i gruppi; `host` installa 7-Zip, sfizz, Surge XT e i plugin VST3 gratuiti Dexed, Airwindows Consolidated, Dragonfly Reverb e LSP Plugins (LSP solo su Linux); `vst3` installa solo questi plugin; `libreria` compila il motore SFZ interno (circa 5 minuti).
 
 ### Installazione manuale dal sorgente
 

@@ -1769,8 +1769,12 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     des profils NAM », plus bas).
 
     En ajoutant l'effet (**+ Effet → Saturation → Profil NAM**) la fenêtre
-    s'ouvre pour choisir le fichier ; si vous annulez, l'effet n'est pas
-    ajouté. La carte affiche le nom du profil et, si le fichier les déclare,
+    **Choisir un profil NAM** s'ouvre : les profils du dossier
+    `profili_nam` classés par type (amplificateurs sans baffle,
+    amplificateurs avec baffle, pédales), chacun avec son type, son son
+    (clair, crunch, lead, high gain, overdrive, distorsion, boost) et son
+    usage, et une case de recherche ; **Autre fichier…** ouvre n'importe
+    quel fichier `.nam`. Si vous annulez, l'effet n'est pas ajouté. La carte affiche le nom du profil et, si le fichier les déclare,
     marque, modèle, type (amplificateur, pédale, amplificateur avec
     baffle…) et auteur ; le bouton **Choisir un profil…** le change.
     - **Entrée** est le bouton « input » du plugin NAM : avec quelle force
@@ -2126,6 +2130,25 @@ SoundFont.
   sous Windows `C:\Program Files\Common Files\VST3`, sous macOS
   `/Library/Audio/Plug-Ins/VST3`) ; d'autres dossiers s'ajoutent depuis
   **Sons → Dossiers des plugins VST3...**
+
+  **Plugins VST3 gratuits recommandés**, pour Linux, Windows et macOS : la
+  commande `vst3` de `scarica_strumenti` (comprise aussi dans `host`) les
+  télécharge depuis leurs pages officielles et les copie dans le dossier
+  VST3 de l'utilisateur, sans droits d'administrateur :
+  - **Dexed** : synthétiseur FM qui émule le Yamaha DX7 (instrument) ;
+  - **Airwindows Consolidated** : plus de 400 effets Airwindows dans un
+    seul plugin ;
+  - **Dragonfly Reverb** : réverbérations de salle, de pièce et à plaque ;
+  - **LSP Plugins** : compresseurs, égaliseurs, limiteurs et delays de
+    studio (seulement sous Linux : il n'existe pas de versions Windows et
+    macOS).
+
+  ```bash
+  ./scarica_strumenti.sh vst3
+  ```
+
+  Sous Windows `scarica_strumenti.bat vst3`, sous macOS
+  `python3 scarica_strumenti.py vst3`.
 - **LV2** : seulement sous Linux, et il faut la bibliothèque système `lilv`
   (sous Debian/Ubuntu le paquet `liblilv-0-0`, déjà présent si Ardour,
   Carla ou Guitarix sont installés). Les plugins LV2 sont trouvés
@@ -2221,8 +2244,11 @@ seul à la recherche suivante ; pour les autres erreurs utilisez
 - l'export MIDI et MusicXML contient les notes, pas le son du plugin ;
 - pour les plugins LV2 on enregistre les valeurs des paramètres et les
   fichiers choisis, pas le reste de l'« état » interne ;
-- la première recherche de plugins charge chaque VST3 une fois, et cela
-  peut prendre un moment ; ensuite la liste est mémorisée tant qu'aucun
+- à la première recherche SoundText doit savoir ce qu'est chaque VST3 :
+  il le lit dans le bundle quand le bundle l'indique (fichier
+  `moduleinfo.json`, comme dans Dexed, Airwindows et LSP), sinon il
+  charge le plugin une fois, et cela peut prendre un moment ; pendant ce
+  temps la fenêtre affiche déjà les plugins connus. Ensuite la liste est mémorisée tant qu'aucun
   plugin ne change (**Actualiser la liste** refait la recherche).
 
 ## 8bis. Structure du morceau (vue en box)

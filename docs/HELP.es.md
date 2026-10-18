@@ -1731,7 +1731,12 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     treintena de golpe (ver «Dónde encontrar perfiles NAM», más abajo).
 
     Al añadir el efecto (**+ Efecto → Saturación → Perfil NAM**) se abre la
-    ventana para elegir el archivo; si cancelas, el efecto no se añade. En
+    ventana **Elegir un perfil NAM**: los perfiles de la carpeta
+    `profili_nam` divididos por tipo (amplificadores sin caja,
+    amplificadores con caja, pedales), cada uno con su tipo, sonido (limpio,
+    crunch, lead, high gain, overdrive, distorsión, boost) y uso, y una
+    casilla para buscarlos; **Otro archivo…** abre cualquier archivo
+    `.nam`. Si cancelas, el efecto no se añade. En
     la tarjeta aparecen el nombre del perfil y, si el archivo los declara,
     marca, modelo, tipo (amplificador, pedal, amplificador con caja…) y
     autor; el botón **Elegir perfil…** lo cambia.
@@ -2082,6 +2087,24 @@ SoundFont.
   `C:\Program Files\Common Files\VST3`, en macOS
   `/Library/Audio/Plug-Ins/VST3`); otras carpetas se añaden desde
   **Sonidos → Carpetas de plugins VST3...**
+
+  **Plugins VST3 gratuitos recomendados**, para Linux, Windows y macOS: el
+  comando `vst3` de `scarica_strumenti` (incluido también en `host`) los
+  descarga de sus páginas oficiales y los copia en la carpeta VST3 del
+  usuario, sin derechos de administrador:
+  - **Dexed**: sintetizador FM que emula el Yamaha DX7 (instrumento);
+  - **Airwindows Consolidated**: más de 400 efectos Airwindows en un solo
+    plugin;
+  - **Dragonfly Reverb**: reverberaciones de sala, habitación y placa;
+  - **LSP Plugins**: compresores, ecualizadores, limitadores y delays de
+    estudio (solo en Linux: no existen versiones para Windows y macOS).
+
+  ```bash
+  ./scarica_strumenti.sh vst3
+  ```
+
+  En Windows `scarica_strumenti.bat vst3`, en macOS
+  `python3 scarica_strumenti.py vst3`.
 - **LV2**: solo en Linux, y hace falta la biblioteca del sistema `lilv` (en
   Debian/Ubuntu el paquete `liblilv-0-0`, ya presente si están instalados
   Ardour, Carla o Guitarix). Los plugins LV2 se encuentran solos. Por
@@ -2173,8 +2196,11 @@ la búsqueda siguiente; para los demás errores usa **Actualizar lista**.
   plugin;
 - de los plugins LV2 se guardan los valores de los parámetros y los
   archivos elegidos, no el resto del «estado» interno;
-- la primera búsqueda de plugins carga cada VST3 una vez, y puede tardar un
-  poco; después la lista se recuerda hasta que cambia un plugin
+- en la primera búsqueda SoundText tiene que saber qué es cada VST3: lo
+  lee del bundle cuando el bundle lo indica (archivo `moduleinfo.json`,
+  como en Dexed, Airwindows y LSP); si no, carga el plugin una vez, y
+  puede tardar un poco; mientras tanto la ventana ya muestra los plugins
+  conocidos. Después la lista se recuerda hasta que cambia un plugin
   (**Actualizar lista** rehace la búsqueda).
 
 ## 8bis. Estructura de la canción (vista en boxes)
