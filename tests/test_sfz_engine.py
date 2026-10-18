@@ -182,6 +182,7 @@ def test_signature_follows_the_sfz_file(tmp_path, _plugins):
     assert _plugins.signature("sfz:" + path, {}, "") != before
 
 
+@needs_lib
 def test_instrument_in_the_home_folder_is_saved_portable(tmp_path, monkeypatch, _plugins):
     """Uno strumento nella cartella dell'utente si scrive "sfz:~/...": lo
     stesso progetto trova lo strumento su un altro computer (/home/...,
