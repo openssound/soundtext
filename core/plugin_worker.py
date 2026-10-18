@@ -132,12 +132,23 @@ def parse_ref(ref: str):
     fmt, _, rest = ref.partition(":")
     if fmt == "vst3":
         path, _, name = rest.partition("|")
-        return fmt, os.path.expanduser(path), name or None
+        return fmt, _expand_home(path), name or None
     if fmt == "sfz":
         # "~/..." = nella cartella dell'utente: un brano che usa gli strumenti
         # scaricati in ~/Strumenti funziona su ogni computer
-        return fmt, os.path.expanduser(rest), None
+        return fmt, _expand_home(rest), None
     return fmt, rest, None
+
+
+def _expand_home(path: str) -> str:
+    """"~/..." nella cartella dell'utente di questo computer. Il riferimento
+    portabile e' scritto con "/" (vedi plugins.home_relative): su Windows
+    expanduser sostituisce solo la "~", e "C:\\Users\\x/Strumenti/y.sfz" non
+    coincideva con lo stesso file scritto con "\\" (stesso strumento visto
+    come due diversi). Un percorso senza "~" resta com'e'."""
+    if not path.startswith("~"):
+        return path
+    return os.path.normpath(os.path.expanduser(path))
 
 
 def _vst3_binary(path: str) -> str:

@@ -132,7 +132,11 @@ def test_picker_chooses_an_sfz_file(tmp_path, monkeypatch):
     dialog._accept_if_usable()                                   # solo *sine: avviso, "No" non lo sceglie
     assert dialog.result() == 0 and dialog.selected_ref() is None and "sample=*sine" in asked[0]
     dialog._accept_if_usable()                                   # "Si'": lo usa lo stesso
-    assert dialog.result() == 1 and dialog.selected_ref() == "sfz:" + path
+    # il riferimento puo' essere "sfz:~/..." (su Windows la cartella dei file
+    # temporanei sta in quella dell'utente): conta che porti allo stesso file
+    from core.plugin_worker import parse_ref
+    assert dialog.result() == 1 and dialog.selected_ref().startswith("sfz:")
+    assert parse_ref(dialog.selected_ref())[1] == path
 
 
 def test_picker_shows_the_current_sfz_and_a_missing_library(tmp_path, monkeypatch):

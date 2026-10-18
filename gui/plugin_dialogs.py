@@ -260,7 +260,8 @@ class PluginPickerDialog(QDialog):
         return item
 
     def _choose_sfz(self) -> bool:
-        current = os.path.expanduser(self._sfz_ref[4:])
+        from core.plugin_worker import parse_ref
+        current = parse_ref(self._sfz_ref)[1] if self._sfz_ref else ""
         start = os.path.dirname(current) if current else os.path.expanduser("~/Strumenti")
         if not os.path.isdir(start):
             start = os.path.expanduser("~")
