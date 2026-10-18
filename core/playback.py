@@ -1244,6 +1244,26 @@ class PlaybackEngine:
         self._using_winsound = False
         self._win_proc_handle = None
         self._pcm_player = None   # audio_stream.PcmPlayer in corso, se in streaming
+        # Livelli del mix che si sta ascoltando (core.levels.MixLevels), solo
+        # in streaming: il mix e' tutto in memoria prima di partire, quindi
+        # picco e clipping si misurano una volta sola per rendering.
+        self.master_levels = None
+        self._levels_for = None    # (id dei campioni, livelli): ripresa senza ricalcolo
+
+    def _levels_of(self, samples, rate):
+        """Livelli (core.levels) del mix int16 che sta per suonare; None se
+        non si riescono a misurare (non deve mai impedire l'ascolto)."""
+        cached = self._levels_for
+        if cached is not None and cached[0] == id(samples):
+            return cached[1]
+        try:
+            from .levels import analyze_int16
+            levels = analyze_int16(samples, rate)
+        except Exception:
+            log.warning("Livelli del mix non misurati", exc_info=True)
+            return None
+        self._levels_for = (id(samples), levels)
+        return levels
 
     def position_seconds(self) -> Optional[float]:
         """Secondi (dall'inizio del brano) di cio' che si sta ascoltando
@@ -1409,6 +1429,7 @@ class PlaybackEngine:
         with self._proc_lock:
             self._play_token += 1
             my_token = self._play_token
+            self.master_levels = None   # quelli del rendering prima non valgono piu'
 
         fluidsynth_bin = shutil.which("fluidsynth")
         soundfont = _find_soundfont() if (fluidsynth_bin or _shared_synth) else None
@@ -1440,6 +1461,7 @@ class PlaybackEngine:
             core.audio_stream. False se lo stream non si apre (si ripiega
             allora sul player esterno)."""
             samples, rate = entry
+            self.master_levels = self._levels_of(samples, rate)
             player = audio_stream.PcmPlayer(samples, rate)
             player.set_loop(None if loop_seconds is None else
                             (loop_seconds[0] * rate, loop_seconds[1] * rate))

@@ -1726,5 +1726,22 @@
  "pulito gia' completo di cassa: si usa senza IR": "clean with the cabinet already included: use it without an IR",
  "tipo non indicato": "type not specified",
  "Cerco i plugin installati…": "Searching for installed plugins…",
- "Esamino ancora {pending} plugin VST3 nuovi (vanno caricati una volta): intanto si possono scegliere quelli elencati.": "Still examining {pending} new VST3 plugins (they need to be loaded once): meanwhile you can choose the ones listed."
+ "Esamino ancora {pending} plugin VST3 nuovi (vanno caricati una volta): intanto si possono scegliere quelli elencati.": "Still examining {pending} new VST3 plugins (they need to be loaded once): meanwhile you can choose the ones listed.",
+ "Analisi dei livelli non riuscita:\n{message}": "Level analysis failed:\n{message}",
+ "Analisi dei livelli: ogni traccia viene sintetizzata da sola...": "Level analysis: each track is synthesized on its own...",
+ "Analizza livelli": "Analyze levels",
+ "Analizza livelli...": "Analyze levels...",
+ "Attenzione: il master clippa (il suono si rompe). Abbassa il volume del master o delle tracce piu' forti.": "Warning: the master clips (the sound distorts). Lower the master volume or the loudest tracks.",
+ "Clippano anche da sole:": "Clipping even on their own:",
+ "Il master clippa alle battute: {bars}": "The master clips at bars: {bars}",
+ "Il master clippa per {seconds} s, alle battute {bars}.": "The master clips for {seconds} s, at bars {bars}.",
+ "Il master non clippa (picco {db} dBFS).": "The master does not clip (peak {db} dBFS).",
+ "Le tracce piu' forti (picco suonate da sole):": "The loudest tracks (peak when played on their own):",
+ "Livello del master (picco, dBFS). La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Master level (peak, dBFS). The CLIP light turns on when the master goes over full scale and the sound distorts; click the light to turn it off.",
+ "Livello del master: non disponibile con questo modo di riproduzione.": "Master level: not available with this playback mode.",
+ "Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.": "Measures the peak of each track played on its own and of the mix, and where they clip.",
+ "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "To fix it, lower the volume of the clipping or loudest tracks, the master volume, or Sounds -> Synthesis volume (gain).",
+ "Picco {db} dBFS suonata da sola (Analizza livelli).": "Peak {db} dBFS when played on its own (Analyze levels).",
+ "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Peak {db} dBFS: clips even on its own, at bars {bars}. Lower its volume.",
+ "battute {bars}": "bars {bars}"
 }

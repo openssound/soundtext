@@ -480,6 +480,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.play_pause_action = self._action(tr("Play ensemble"), self.toggle_play_pause, "F5")
         playback_menu.addAction(self.play_pause_action)
         playback_menu.addAction(self._action(tr("Stop"), self.stop, "F6"))
+        playback_menu.addAction(self._action(
+            tr("Analizza livelli..."), self.analyze_levels,
+            tooltip=tr("Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.")))
         # Shift+Spazio vale nella vista Struttura (vedi ArrangementView.preview_action).
         playback_menu.addAction(self.arrangement_view.preview_action)
         playback_menu.addSeparator()
@@ -795,6 +798,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.playback_progress.setToolTip(tr("Avanzamento della riproduzione: clicca per saltare in quel punto."))
         self.playback_progress.installEventFilter(self)
         progress_bar.addWidget(self.playback_progress)
+        # Livello del master e spia di clipping (vedi gui.level_meter)
+        from .level_meter import LevelMeter
+        self.level_meter = LevelMeter()
+        self._clip_detail_for = None    # (id dei livelli, testo con le battute)
+        self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
+        progress_bar.addWidget(self.level_meter)
 
         self._refresh_toolbar_icons()
 
@@ -919,6 +928,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         traccia, trascinamento di uno slider)."""
         self._dirty = True
         self._autosave_generation += 1
+        self._forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:
             self.history.record(self.project, self.current_track_name, merge_key)

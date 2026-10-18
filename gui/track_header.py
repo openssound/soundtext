@@ -115,6 +115,12 @@ class TrackHeaderWidget(QFrame):
         self.fx_btn.clicked.connect(self._open_fx)
         row.addWidget(self.fx_btn)
 
+        # Picco misurato da Riproduzione -> Analizza livelli (vedi set_peak)
+        self.peak_label = QLabel()
+        self.peak_label.setFont(QFont(self.font().family(), 7))
+        self.peak_label.hide()
+        row.addWidget(self.peak_label)
+
         row.addStretch(1)
 
         self.menu_btn = QToolButton()
@@ -137,6 +143,7 @@ class TrackHeaderWidget(QFrame):
         outer.addWidget(self.pan_knob, 0, Qt.AlignVCenter)
 
         self.sync_from_track()
+        self.set_peak(getattr(host, "_track_peaks", {}).get(track.name))
 
     def _small_button(self, text: str, tooltip: str) -> QToolButton:
         b = QToolButton()
@@ -184,6 +191,26 @@ class TrackHeaderWidget(QFrame):
         t = self.track
         self.vol_knob.setToolTip(tr("Volume: {volume}%\nTrascina su/giu' o usa la rotellina; doppio clic: 100%", volume=t.volume))
         self.pan_knob.setToolTip(tr("Pan: {0} (sinistra L - centro C - destra R)\nTrascina su/giu' o usa la rotellina; doppio clic: centro", _pan_label(t.pan)))
+
+    def set_peak(self, peak):
+        """Picco della traccia suonata da sola (core.levels.TrackPeak), o
+        None per toglierlo (la traccia e' cambiata dopo l'analisi)."""
+        if peak is None:
+            self.peak_label.hide()
+            return
+        from core.levels import format_bars
+        if peak.clip_bars:
+            color = theme.BAD
+            tip = tr("Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.",
+                     db=f"{peak.peak_db:.1f}", bars=format_bars(peak.clip_bars))
+        else:
+            color = theme.WARN if peak.peak_db > -3 else theme.track_card_colors()["text_dim"]
+            tip = tr("Picco {db} dBFS suonata da sola (Analizza livelli).", db=f"{peak.peak_db:.1f}")
+        self.peak_label.setText("CLIP" if peak.clip_bars else f"{peak.peak_db:.0f} dB")
+        self.peak_label.setStyleSheet(f"color: {color}; font-weight: bold;" if peak.clip_bars
+                                      else f"color: {color};")
+        self.peak_label.setToolTip(tip)
+        self.peak_label.show()
 
     def set_active(self, active: bool):
         self._active = active

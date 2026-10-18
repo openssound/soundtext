@@ -1726,5 +1726,22 @@
  "pulito gia' completo di cassa: si usa senza IR": "clair avec le baffle déjà inclus : s'utilise sans IR",
  "tipo non indicato": "type non indiqué",
  "Cerco i plugin installati…": "Je cherche les plugins installés…",
- "Esamino ancora {pending} plugin VST3 nuovi (vanno caricati una volta): intanto si possono scegliere quelli elencati.": "J'examine encore {pending} nouveaux plugins VST3 (ils doivent être chargés une fois) : en attendant, on peut choisir ceux de la liste."
+ "Esamino ancora {pending} plugin VST3 nuovi (vanno caricati una volta): intanto si possono scegliere quelli elencati.": "J'examine encore {pending} nouveaux plugins VST3 (ils doivent être chargés une fois) : en attendant, on peut choisir ceux de la liste.",
+ "Analisi dei livelli non riuscita:\n{message}": "L'analyse des niveaux a échoué :\n{message}",
+ "Analisi dei livelli: ogni traccia viene sintetizzata da sola...": "Analyse des niveaux : chaque piste est synthétisée seule...",
+ "Analizza livelli": "Analyser les niveaux",
+ "Analizza livelli...": "Analyser les niveaux...",
+ "Attenzione: il master clippa (il suono si rompe). Abbassa il volume del master o delle tracce piu' forti.": "Attention : le master sature (le son se déforme). Baissez le volume du master ou des pistes les plus fortes.",
+ "Clippano anche da sole:": "Saturent même seules :",
+ "Il master clippa alle battute: {bars}": "Le master sature aux mesures : {bars}",
+ "Il master clippa per {seconds} s, alle battute {bars}.": "Le master sature pendant {seconds} s, aux mesures {bars}.",
+ "Il master non clippa (picco {db} dBFS).": "Le master ne sature pas (crête {db} dBFS).",
+ "Le tracce piu' forti (picco suonate da sole):": "Les pistes les plus fortes (crête jouées seules) :",
+ "Livello del master (picco, dBFS). La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Niveau du master (crête, dBFS). Le voyant CLIP s'allume quand le master dépasse la pleine échelle et que le son se déforme ; cliquez sur le voyant pour l'éteindre.",
+ "Livello del master: non disponibile con questo modo di riproduzione.": "Niveau du master : non disponible avec ce mode de lecture.",
+ "Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.": "Mesure la crête de chaque piste jouée seule et du mix, et où elles saturent.",
+ "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "Pour y remédier, baissez le volume des pistes qui saturent ou des plus fortes, le volume du master, ou Sons -> Volume de synthèse (gain).",
+ "Picco {db} dBFS suonata da sola (Analizza livelli).": "Crête {db} dBFS jouée seule (Analyser les niveaux).",
+ "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Crête {db} dBFS : sature même seule, aux mesures {bars}. Baissez son volume.",
+ "battute {bars}": "mesures {bars}"
 }
