@@ -106,6 +106,7 @@ def _picker(monkeypatch, found=True, current_ref=""):
     from core import plugins, sfz_engine
     from gui.plugin_dialogs import SFZ_CHOICE, PluginPickerDialog
     monkeypatch.setattr(plugins, "scan_plugins", lambda refresh=False, progress=None: [])
+    monkeypatch.setattr(plugins, "quick_scan", lambda: ([], 0))
     monkeypatch.setattr(sfz_engine, "library_found", lambda: "/x/libsfizz.so" if found else "")
     dialog = PluginPickerDialog(None, instrument=True, current_ref=current_ref)
     item = next(dialog.tree.topLevelItem(i) for i in range(dialog.tree.topLevelItemCount())

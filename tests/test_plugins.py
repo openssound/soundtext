@@ -500,3 +500,87 @@ def test_editor_window_is_moved_where_its_title_bar_is_visible():
     assert editor_position((-8, -31, 792, 569), work) == (560, 220)   # titolo sopra lo schermo: centrata
     assert editor_position((0, -20, 2400, 1300), work) == (0, 0)      # piu' grande dello schermo: in alto a sinistra
     assert editor_position((1500, 900, 2300, 1500), (1920, 0, 3840, 1080)) == (2480, 240)   # secondo monitor
+
+
+# ------------------------------------------------------------------ ricerca dei VST3 senza caricarli
+
+def _fake_bundle(folder, name, moduleinfo_text=None):
+    bundle = folder / name
+    (bundle / "Contents" / "Resources").mkdir(parents=True)
+    if moduleinfo_text is not None:
+        (bundle / "Contents" / "Resources" / "moduleinfo.json").write_text(moduleinfo_text, encoding="utf-8")
+    return str(bundle)
+
+
+MODULEINFO = """{
+  "Name": "Pacchetto",
+  "Factory Info": {"Vendor": "Ditta", "Flags": {"Unicode": true,},},
+  "Classes": [
+    {"Category": "Audio Module Class", "Name": "Eco", "Sub Categories": ["Fx", "Delay",],},
+    {"Category": "Component Controller Class", "Name": "Eco"},
+    {"Category": "Audio Module Class", "Name": "Organo", "Vendor": "Altra", "Sub Categories": ["Instrument", "Synth"]},
+  ],
+}"""
+
+
+def test_moduleinfo_describes_bundles_without_loading_them(tmp_path):
+    """moduleinfo.json (JSON5, con le virgole finali) da' nome, produttore,
+    categoria e tipo di ogni plugin del bundle: LSP Plugins ne ha quasi 200,
+    da caricare uno per uno ci vorrebbero ore."""
+    many = _fake_bundle(tmp_path, "Pacchetto.vst3", MODULEINFO)
+    infos = plugins._moduleinfo_infos(many)
+    assert [(i["ref"], i["name"], i["vendor"], i["instrument"]) for i in infos] == [
+        ("vst3:" + many + "|Eco", "Eco", "Ditta", False),
+        ("vst3:" + many + "|Organo", "Organo", "Altra", True)]
+    assert infos[0]["category"] == "Fx|Delay"
+    single = _fake_bundle(tmp_path, "Solo.vst3", MODULEINFO.replace(
+        '{"Category": "Audio Module Class", "Name": "Organo", "Vendor": "Altra", "Sub Categories": ["Instrument", "Synth"]},', ""))
+    assert [i["ref"] for i in plugins._moduleinfo_infos(single)] == ["vst3:" + single]
+    assert plugins._moduleinfo_infos(_fake_bundle(tmp_path, "Senza.vst3")) is None
+    assert plugins._moduleinfo_infos(_fake_bundle(tmp_path, "Rotto.vst3", "{non e' json")) is None
+
+
+def test_plugin_that_hangs_is_retried_once_not_at_every_scan():
+    entry = {"mtime": 1.0, "infos": [{"name": "Lento", "problem": plugins.tr("il plugin non risponde")}]}
+    assert plugins._should_retry(entry, refresh=False)                  # puo' essere stato un caso
+    entry["retried"] = True
+    assert not plugins._should_retry(entry, refresh=False)              # bloccato di nuovo: basta
+    assert plugins._should_retry(entry, refresh=True)                   # «Aggiorna elenco» riprova
+
+
+def test_quick_scan_shows_what_is_known_and_counts_the_rest(tmp_path, monkeypatch):
+    folder = tmp_path / "vst3"
+    folder.mkdir()
+    listed = _fake_bundle(folder, "Pacchetto.vst3", MODULEINFO)
+    unknown = _fake_bundle(folder, "Nuovo.vst3")
+    known = _fake_bundle(folder, "Noto.vst3")
+    cache = {known: {"mtime": plugins._bundle_stamp(known),
+                     "infos": [{"ref": "vst3:" + known, "format": "vst3", "name": "Noto"}]}}
+    monkeypatch.setattr(plugins, "vst3_dirs", lambda: [str(folder)])
+    monkeypatch.setattr(plugins, "_load_scan_cache", lambda: dict(cache))
+    monkeypatch.setattr(plugins, "_save_scan_cache", lambda c: pytest.fail("la ricerca rapida non scrive la cache"))
+    monkeypatch.setattr(plugins, "_describe_bundle", lambda b: pytest.fail("la ricerca rapida non carica plugin"))
+    monkeypatch.setattr(plugins, "_call", lambda *a, **k: [])               # nessun LV2
+    monkeypatch.setattr(plugins, "_scan_result", None)
+    found, pending = plugins.quick_scan()
+    assert sorted(i.name for i in found) == ["Eco", "Noto", "Organo"] and pending == 1
+    assert not any(unknown in i.ref for i in found) and any(listed in i.ref for i in found)
+
+
+def test_picker_puts_unusable_plugins_last_and_disabled(monkeypatch):
+    from PySide6.QtCore import Qt
+    from gui.plugin_dialogs import PluginPickerDialog
+    _app()
+    infos = [plugins.PluginInfo(ref="vst3:/a.vst3", format="vst3", name="Alfa", problem="si e' bloccato"),
+             plugins.PluginInfo(ref="lv2:urn:b", format="lv2", name="Beta"),
+             plugins.PluginInfo(ref="lv2:urn:c", format="lv2", name="Gamma")]
+    monkeypatch.setattr(plugins, "quick_scan", lambda: (list(infos), 0))
+    monkeypatch.setattr(plugins, "scan_plugins", lambda refresh=False, progress=None: list(infos))
+    dialog = PluginPickerDialog(None)
+    deadline = time.time() + 5
+    while dialog.tree.topLevelItemCount() < 3 and time.time() < deadline:
+        _app().processEvents()
+    items = [dialog.tree.topLevelItem(i) for i in range(dialog.tree.topLevelItemCount())]
+    assert [i.data(0, Qt.UserRole) for i in items] == ["lv2:urn:b", "lv2:urn:c", "vst3:/a.vst3"]
+    assert [bool(i.flags() & Qt.ItemIsEnabled) for i in items] == [True, True, False]
+    assert "bloccato" in items[2].toolTip(1)

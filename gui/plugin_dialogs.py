@@ -20,6 +20,7 @@ import threading
 from typing import Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox, QPushButton, QScrollArea, QSlider,
@@ -151,10 +152,32 @@ class PluginPickerDialog(QDialog):
     def _scan(self, refresh: bool):
         if self._job is not None and self._job.running:
             return
+        self.rescan_btn.setEnabled(False)
+        if refresh:
+            self._full_scan(refresh=True)
+            return
+        # prima subito quello che si sa senza caricare plugin, poi il resto
+        self.status.setText(tr("Cerco i plugin installati…"))
+        self._job = _Background(self, plugins.quick_scan, self._quick_scanned)
+
+    def _full_scan(self, refresh: bool):
         self.status.setText(tr("Cerco i plugin installati… (la prima volta ogni VST3 va caricato: "
                             "puo' volerci un po')"))
-        self.rescan_btn.setEnabled(False)
         self._job = _Background(self, lambda: plugins.scan_plugins(refresh=refresh), self._scanned)
+
+    def _quick_scanned(self, result, error):
+        if error is not None:
+            self._full_scan(refresh=False)
+            return
+        found, pending = result
+        if not pending:
+            self._scanned(found, None)
+            return
+        self.infos = [i for i in found if i.instrument == self.instrument]
+        self._fill()
+        self._full_scan(refresh=False)
+        self.status.setText(tr("Esamino ancora {pending} plugin VST3 nuovi (vanno caricati una volta): "
+                               "intanto si possono scegliere quelli elencati.", pending=pending))
 
     def _scanned(self, result, error):
         self.rescan_btn.setEnabled(True)
@@ -178,6 +201,8 @@ class PluginPickerDialog(QDialog):
 
     def _fill(self):
         query = self.search.text().strip().lower()
+        # la scelta fatta resta quando l'elenco si aggiorna (fine della ricerca completa)
+        chosen = self.tree.currentItem().data(0, Qt.UserRole) if self.tree.currentItem() else None
         self.tree.clear()
         if self.instrument:
             none = QTreeWidgetItem([tr("Nessuno: usa il SoundFont"), "", "", ""])
@@ -189,7 +214,9 @@ class PluginPickerDialog(QDialog):
             self.tree.addTopLevelItem(sfz)
             if self._sfz_ref and sfz.flags() & Qt.ItemIsEnabled:
                 self.tree.setCurrentItem(sfz)
-        for info in self.infos:
+        # quelli che non si possono usare in fondo, disattivati (in grigio)
+        grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
+        for info in sorted(self.infos, key=lambda i: not i.usable):
             text = f"{info.name} {info.vendor} {info.category}".lower()
             if query and query not in text:
                 continue
@@ -197,13 +224,20 @@ class PluginPickerDialog(QDialog):
             item.setData(0, Qt.UserRole, info.ref)
             if not info.usable:
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
-                item.setToolTip(0, tr("Non utilizzabile: {problem}", problem=info.problem))
+                for col in range(4):
+                    item.setForeground(col, grey)
+                    item.setToolTip(col, tr("Non utilizzabile: {problem}", problem=info.problem))
                 item.setText(0, tr("{name}  (non utilizzabile)", name=info.name))
             else:
                 item.setToolTip(0, info.ref)
             self.tree.addTopLevelItem(item)
-            if info.ref == self.current_ref:
+            if info.ref == self.current_ref and chosen is None:
                 self.tree.setCurrentItem(item)
+        if chosen is not None:
+            for i in range(self.tree.topLevelItemCount()):
+                if self.tree.topLevelItem(i).data(0, Qt.UserRole) == chosen:
+                    self.tree.setCurrentItem(self.tree.topLevelItem(i))
+                    break
         for col in range(4):
             self.tree.resizeColumnToContents(col)
         self._update_ok()

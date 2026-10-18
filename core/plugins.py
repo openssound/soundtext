@@ -402,18 +402,64 @@ def _describe_bundle(bundle: str) -> List[dict]:
     return out
 
 
+# Sottocategorie VST3 che fanno di un plugin uno strumento (le altre: effetti).
+_INSTRUMENT_SUBCATEGORIES = {"Instrument", "Synth", "Sampler", "Drum"}
+
+
+def _read_moduleinfo(bundle: str) -> Optional[dict]:
+    """Il moduleinfo.json del bundle VST3 (SDK 3.7 e successivi), se c'e':
+    il formato e' JSON5, con le virgole finali, che json non accetta."""
+    for rel in (("Contents", "Resources", "moduleinfo.json"), ("Contents", "moduleinfo.json")):
+        path = os.path.join(bundle, *rel)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+            return json.loads(re.sub(r",(\s*[}\]])", r"\1", text))
+        except (OSError, ValueError):
+            return None
+    return None
+
+
+def _moduleinfo_infos(bundle: str) -> Optional[List[dict]]:
+    """Descrizione dei plugin di un bundle VST3 dal suo moduleinfo.json, senza
+    caricarli: nome, produttore, categoria e se e' uno strumento. Un bundle
+    con molti plugin (LSP Plugins: quasi 200) altrimenti andrebbe caricato
+    una volta per ciascuno, anche decine di secondi l'uno. None se il
+    bundle non ha moduleinfo.json (si carica come prima)."""
+    info = _read_moduleinfo(bundle)
+    if not isinstance(info, dict):
+        return None
+    classes = [c for c in info.get("Classes") or []
+               if isinstance(c, dict) and c.get("Category") == "Audio Module Class" and c.get("Name")]
+    if not classes:
+        return None
+    vendor = str((info.get("Factory Info") or {}).get("Vendor") or "")
+    ref = "vst3:" + bundle
+    out = []
+    for c in classes:
+        subs = [str(s) for s in c.get("Sub Categories") or []]
+        out.append({"ref": f"{ref}|{c['Name']}" if len(classes) > 1 else ref, "format": "vst3",
+                    "name": str(c["Name"]), "vendor": str(c.get("Vendor") or vendor),
+                    "category": "|".join(subs),
+                    "instrument": any(s in _INSTRUMENT_SUBCATEGORIES for s in subs), "problem": ""})
+    return out
+
+
 def _should_retry(entry: dict, refresh: bool) -> bool:
     """Un bundle gia' descritto si ricarica comunque se non si era potuto
-    usare: sempre se si era bloccato o chiuso (un caso, per esempio un
-    primo caricamento lento), e a ogni «Cerca di nuovo» per gli altri
-    errori, che magari nel frattempo l'utente ha risolto."""
+    usare: a ogni «Cerca di nuovo» (refresh), e una volta sola da se' se si
+    era bloccato o chiuso (puo' essere stato un caso, per esempio un primo
+    caricamento lento). Non a ogni ricerca: un plugin che si blocca fa
+    aspettare ogni volta il tempo massimo (DESCRIBE_TIMEOUT)."""
     problems = [d.get("problem") for d in (entry.get("infos") or [entry.get("info") or {}])
                 if d.get("problem") and d.get("name") not in MULTI_OUTPUT_ALTERNATIVES]
     if not problems:
         return False
     transient = (tr("il plugin non risponde"), tr("il plugin si e' chiuso in modo anomalo"),
                  tr("il processo dei plugin si e' chiuso"))
-    return refresh or any(p in transient for p in problems)
+    return refresh or (not entry.get("retried") and any(p in transient for p in problems))
 
 
 def scan_plugins(refresh: bool = False, progress: Optional[Callable[[str], None]] = None) -> List[PluginInfo]:
@@ -427,32 +473,65 @@ def scan_plugins(refresh: bool = False, progress: Optional[Callable[[str], None]
     with _scan_lock:
         if _scan_result is not None and not refresh:
             return list(_scan_result)
-        out: List[PluginInfo] = []
-        try:
-            out += [_info_from_dict(d) for d in _call("ui", None, ("list_lv2",), DESCRIBE_TIMEOUT)]
-        except PluginError as e:
-            log.warning("Elenco dei plugin LV2 non disponibile: %s", e)
-        cache = _load_scan_cache()
-        new_cache = {}
-        for bundle in find_vst3_bundles():
-            stamp = _bundle_stamp(bundle)
-            entry = cache.get(bundle)
-            if not entry or entry.get("mtime") != stamp or _should_retry(entry, refresh):
-                if progress:
-                    progress(os.path.basename(bundle))
-                entry = {"mtime": stamp, "infos": _describe_bundle(bundle)}
-            new_cache[bundle] = entry
-            for d in entry.get("infos") or [entry["info"]]:
-                info = _info_from_dict(d)
-                if info.problem and info.name in MULTI_OUTPUT_ALTERNATIVES:
-                    info.problem = tr("plugin a uscite multiple, il motore VST3 di SoundText non lo supporta: "
-                                      "usa {alt}", alt=MULTI_OUTPUT_ALTERNATIVES[info.name])
-                out.append(info)
-        if new_cache != cache:
-            _save_scan_cache(new_cache)
-        out.sort(key=lambda i: (i.name.lower(), i.format))
+        out, _pending = _scan(refresh, progress, quick=False)
         _scan_result = out
         return list(out)
+
+
+def quick_scan() -> Tuple[List[PluginInfo], int]:
+    """Subito, senza caricare nessun plugin: gli LV2, i VST3 gia' noti
+    (plugins_cache.json) e quelli che si descrivono dal loro moduleinfo.json;
+    con il numero di bundle VST3 che restano da caricare (li trova
+    scan_plugins). Per mostrare qualcosa mentre la ricerca completa lavora."""
+    if _scan_result is not None:
+        return list(_scan_result), 0
+    return _scan(False, None, quick=True)
+
+
+def _scan(refresh: bool, progress, quick: bool) -> Tuple[List[PluginInfo], int]:
+    """Il lavoro di scan_plugins; con quick i bundle da caricare si saltano
+    (o si mostrano come li ricordava la cache) e la cache non si scrive."""
+    pending = 0
+    out: List[PluginInfo] = []
+    try:
+        out += [_info_from_dict(d) for d in _call("ui", None, ("list_lv2",), DESCRIBE_TIMEOUT)]
+    except PluginError as e:
+        log.warning("Elenco dei plugin LV2 non disponibile: %s", e)
+    cache = _load_scan_cache()
+    new_cache = {}
+    for bundle in find_vst3_bundles():
+        stamp = _bundle_stamp(bundle)
+        entry = cache.get(bundle)
+        if not entry or entry.get("mtime") != stamp or _should_retry(entry, refresh):
+            listed = _moduleinfo_infos(bundle)
+            if quick and listed is None:
+                pending += 1
+                if not entry:
+                    continue        # lo dira' la ricerca completa
+                new_cache[bundle] = entry
+                for d in entry.get("infos") or [entry["info"]]:
+                    out.append(_info_from_dict(d))
+                continue
+            if progress:
+                progress(os.path.basename(bundle))
+            retried = bool(entry) and entry.get("mtime") == stamp and not refresh
+            entry = {"mtime": stamp, "infos": listed or _describe_bundle(bundle)}
+            if retried:
+                entry["retried"] = True       # bloccato di nuovo: non si riprova piu' da solo
+            if listed is None:
+                # caricare i plugin puo' essere lento: quello che e' fatto non si perde
+                _save_scan_cache(dict(cache, **new_cache, **{bundle: entry}))
+        new_cache[bundle] = entry
+        for d in entry.get("infos") or [entry["info"]]:
+            info = _info_from_dict(d)
+            if info.problem and info.name in MULTI_OUTPUT_ALTERNATIVES:
+                info.problem = tr("plugin a uscite multiple, il motore VST3 di SoundText non lo supporta: "
+                                  "usa {alt}", alt=MULTI_OUTPUT_ALTERNATIVES[info.name])
+            out.append(info)
+    if new_cache != cache and not quick:
+        _save_scan_cache(new_cache)
+    out.sort(key=lambda i: (i.name.lower(), i.format))
+    return out, pending
 
 
 def forget_scan():
