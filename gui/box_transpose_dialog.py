@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.notation import PitchRewriter, rewrite_tokens, validate_track_text
+from . import text_zoom
 from .highlighter import NotationHighlighter
 from core.i18n import tr
 
@@ -42,6 +43,7 @@ class BoxTransposeDialog(QDialog):
         self.preview_edit = QPlainTextEdit()
         self.preview_edit.setFont(QFont("Monospace", 10))
         self.preview_edit.setReadOnly(True)
+        text_zoom.enable(self.preview_edit)
         self._highlighter = NotationHighlighter(self.preview_edit.document())
         layout.addWidget(self.preview_edit)
 

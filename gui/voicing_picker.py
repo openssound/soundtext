@@ -30,6 +30,7 @@ from core.notation import (
 )
 from core.playback import PlaybackEngine
 
+from . import text_zoom
 from .weak_callback import WeakCallback
 from core.i18n import tr
 
@@ -107,6 +108,8 @@ class NotationEditor(QPlainTextEdit):
         self._text_at_cursor_move = None
         self.textChanged.connect(self._update_completer)
         self.cursorPositionChanged.connect(self._on_cursor_moved)
+        # Ctrl+ / Ctrl- / Ctrl+0 e Ctrl+rotella: dimensione del testo (vedi gui.text_zoom)
+        self.text_zoom_actions = text_zoom.enable(self)
 
     def use_window_undo(self):
         self._window_undo = True

@@ -1784,5 +1784,8 @@
  "oppure trascina qui un file .wav/.mp3/.m4a": "ou faites glisser ici un fichier .wav/.mp3/.m4a",
  "registrazione dal microfono": "enregistrement du micro",
  "📂 Scegli file...": "📂 Choisir un fichier...",
- "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "L'audio est presque silencieux : il n'y a rien à reconnaître. Vérifiez le micro ou le volume de l'enregistrement."
+ "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "L'audio est presque silencieux : il n'y a rien à reconnaître. Vérifiez le micro ou le volume de l'enregistrement.",
+ "Testo piu' grande": "Texte plus grand",
+ "Testo piu' piccolo": "Texte plus petit",
+ "Testo di dimensione normale": "Taille de texte normale"
 }

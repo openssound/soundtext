@@ -184,6 +184,17 @@ def set_metronome_volume(volume: int):
     _save()
 
 
+def get_editor_text_size() -> int:
+    """Dimensione in pixel del testo dell'editor della traccia (Ctrl+ / Ctrl-)."""
+    return _load().get("editor_text_size", 13)
+
+
+def set_editor_text_size(size: int):
+    _load()
+    _cache["editor_text_size"] = max(8, min(48, int(size)))
+    _save()
+
+
 def get_humanize_enabled() -> bool:
     return _load().get("humanize_enabled", False)
 

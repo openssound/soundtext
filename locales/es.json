@@ -1784,5 +1784,8 @@
  "oppure trascina qui un file .wav/.mp3/.m4a": "o arrastra aquí un archivo .wav/.mp3/.m4a",
  "registrazione dal microfono": "grabación del micrófono",
  "📂 Scegli file...": "📂 Elegir archivo...",
- "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "El audio está casi en silencio: no hay nada que reconocer. Revisa el micrófono o el volumen de la grabación."
+ "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "El audio está casi en silencio: no hay nada que reconocer. Revisa el micrófono o el volumen de la grabación.",
+ "Testo piu' grande": "Texto más grande",
+ "Testo piu' piccolo": "Texto más pequeño",
+ "Testo di dimensione normale": "Tamaño de texto normal"
 }

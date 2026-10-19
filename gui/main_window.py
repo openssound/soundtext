@@ -362,6 +362,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                               ["Ctrl+=", "Ctrl++"]))
         view_menu.addAction(self._view_action(tr("Riduci (zoom)"), self.arrangement_view.zoom_out, ["Ctrl+-"]))
         view_menu.addAction(self._view_action(tr("Zoom normale"), self.arrangement_view.zoom_reset, ["Ctrl+0"]))
+        view_menu.addSeparator()
+        # dimensione del testo: scorciatoie valide col fuoco nell'editor (vedi gui.text_zoom)
+        view_menu.addActions(self.editor.text_zoom_actions)
         # Spazio e R: tasti singoli, solo nella vista Struttura (nell'editor
         # di testo servono a scrivere); nei menu restano F5 e Ctrl+R.
         self._view_action("Play/Pausa", self.toggle_play_pause, ["Space"])

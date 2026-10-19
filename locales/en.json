@@ -1784,5 +1784,8 @@
  "oppure trascina qui un file .wav/.mp3/.m4a": "or drag a .wav/.mp3/.m4a file here",
  "registrazione dal microfono": "microphone recording",
  "📂 Scegli file...": "📂 Choose file...",
- "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "The audio is almost silent: there is nothing to recognize. Check the microphone or the recording volume."
+ "L'audio e' quasi silenzioso: non c'e' niente da riconoscere. Controlla il microfono o il volume della registrazione.": "The audio is almost silent: there is nothing to recognize. Check the microphone or the recording volume.",
+ "Testo piu' grande": "Larger text",
+ "Testo piu' piccolo": "Smaller text",
+ "Testo di dimensione normale": "Normal text size"
 }
