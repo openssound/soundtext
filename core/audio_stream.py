@@ -169,3 +169,87 @@ def load_wav_samples(path: str) -> Tuple[np.ndarray, int]:
         channels, rate = w.getnchannels(), w.getframerate()
         raw = w.readframes(w.getnframes())
     return np.frombuffer(raw, dtype=np.int16).reshape(-1, channels).copy(), rate
+
+
+class ClickPlayer:
+    """Suoni brevi (i click del metronomo) con sounddevice: un flusso di
+    uscita in cui ogni suono viene mixato appena arriva. Si apre al primo
+    suono e si chiude dopo IDLE_SECONDS di silenzio; il suono successivo ne
+    apre uno nuovo, sul dispositivo audio di quel momento. Prima i click
+    passavano da QSoundEffect, che su Windows poteva restare muto fino al
+    riavvio (l'uscita audio di Qt bloccata, per esempio dopo un cambio o una
+    sospensione del dispositivo), pur dicendo di suonare."""
+
+    IDLE_SECONDS = 4.0
+
+    def __init__(self, samplerate: int = 48000):
+        self.samplerate = samplerate
+        self._lock = threading.Lock()
+        self._voices = []          # [array float32 mono, posizione]
+        self._stream = None
+        self._last_sound = 0.0
+
+    def play(self, samples: np.ndarray, volume: float = 1.0) -> bool:
+        """Suona 'samples' (float, mono, a self.samplerate). False se il
+        flusso non si apre (chi chiama ripiega su altro). Aprire e chiudere
+        il flusso avviene fuori dal lock: stop() aspetta la fine del
+        callback, che a sua volta prende il lock."""
+        import time
+        if _sd is None:
+            return False
+        now = time.monotonic()
+        with self._lock:
+            old = None
+            if self._stream is not None and (not self._stream.active
+                                             or now - self._last_sound > self.IDLE_SECONDS):
+                old, self._stream, self._voices = self._stream, None, []
+            need_stream = self._stream is None
+        if old is not None:
+            _stop_quietly(old)
+        if need_stream:
+            try:
+                stream = _sd.OutputStream(samplerate=self.samplerate, channels=2, dtype="float32",
+                                          latency="low", callback=self._callback)
+                stream.start()
+            except Exception:
+                logging.getLogger(__name__).warning("Flusso audio dei click non apribile", exc_info=True)
+                return False
+            with self._lock:
+                if self._stream is None:
+                    self._stream = stream
+                    stream = None
+            if stream is not None:                 # un altro thread l'ha gia' aperto
+                _stop_quietly(stream)
+        with self._lock:
+            self._voices.append([np.asarray(samples, dtype=np.float32) * float(volume), 0])
+            self._last_sound = now
+        return True
+
+    def _callback(self, outdata, frames, _time_info, _status):
+        outdata.fill(0)
+        with self._lock:
+            alive = []
+            for voice in self._voices:
+                samples, pos = voice
+                part = samples[pos:pos + frames]
+                outdata[:len(part), 0] += part
+                outdata[:len(part), 1] += part
+                voice[1] = pos + len(part)
+                if voice[1] < len(samples):
+                    alive.append(voice)
+            self._voices = alive
+        np.clip(outdata, -1.0, 1.0, out=outdata)
+
+    def close(self):
+        with self._lock:
+            stream, self._stream, self._voices = self._stream, None, []
+        if stream is not None:
+            _stop_quietly(stream)
+
+
+def _stop_quietly(stream):
+    try:
+        stream.stop()
+        stream.close()
+    except Exception:
+        pass

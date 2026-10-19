@@ -1,6 +1,7 @@
 """
 Motore del click del metronomo: schedulazione dei colpi e riproduzione dei
-suoni (QSoundEffect), condiviso tra la finestra principale (durante la
+suoni (con sounddevice, vedi core.audio_stream.ClickPlayer; QSoundEffect
+solo se sounddevice manca), condiviso tra la finestra principale (durante la
 riproduzione dell'ensemble, con eventuali cambi di tempo/metrica) e il
 dialogo di importazione audio (un click a tempo/metrica costante, utile per
 registrare a tempo dal microfono).
@@ -13,6 +14,35 @@ from PySide6.QtMultimedia import QSoundEffect
 
 from core import settings as app_settings
 from core.tempo_map import beat_at_elapsed_seconds, seconds_for_beats, click_grid_position
+
+_click_player = None
+
+
+def _shared_click_player(samplerate: int):
+    """Un solo flusso per i click di tutti i metronomi (finestra principale,
+    import audio...), o None se sounddevice non c'e'."""
+    global _click_player
+    from core import audio_stream
+    if not audio_stream.is_available():
+        return None
+    if _click_player is None or _click_player.samplerate != samplerate:
+        if _click_player is not None:
+            _click_player.close()
+        _click_player = audio_stream.ClickPlayer(samplerate)
+    return _click_player
+
+
+def _read_click(path: str):
+    """(campioni float mono, frequenza) di un WAV di click."""
+    import wave
+    import numpy as np
+    with wave.open(path, "rb") as w:
+        rate, width, channels = w.getframerate(), w.getsampwidth(), w.getnchannels()
+        data = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2" if width == 2 else np.uint8)
+    x = data.astype(np.float32) / 32768.0 if width == 2 else (data.astype(np.float32) - 128) / 128.0
+    if channels > 1:
+        x = x.reshape(-1, channels).mean(axis=1)
+    return x, rate
 
 
 class MetronomeEngine(QObject):
@@ -44,16 +74,32 @@ class MetronomeEngine(QObject):
         from core.metronome_sounds import ensure_click_sound_files
         accent_path, normal_path = ensure_click_sound_files(app_settings.get_metronome_sound())
         volume = app_settings.get_metronome_volume() / 100.0
+        self._volume = volume
+        try:
+            (self._accent_samples, rate), (self._normal_samples, _r) = _read_click(accent_path), _read_click(normal_path)
+            self._click_rate = rate
+        except Exception:
+            self._accent_samples = self._normal_samples = None
         self._effect_accent.setSource(QUrl.fromLocalFile(accent_path))
         self._effect_normal.setSource(QUrl.fromLocalFile(normal_path))
         self._effect_accent.setVolume(volume)
         self._effect_normal.setVolume(volume)
 
+    def _play_click(self, accent: bool):
+        """Un click: col flusso di sounddevice se c'e' (vedi ClickPlayer),
+        altrimenti con QSoundEffect."""
+        samples = self._accent_samples if accent else self._normal_samples
+        if samples is not None:
+            player = _shared_click_player(self._click_rate)
+            if player is not None and player.play(samples, self._volume):
+                return
+        (self._effect_accent if accent else self._effect_normal).play()
+
     def preview(self):
         """Fa sentire un click di accento seguito da uno normale, con le
         impostazioni correnti (pulsante 'Prova' del dialogo Metronomo)."""
-        self._effect_accent.play()
-        QTimer.singleShot(350, self._effect_normal.play)
+        self._play_click(True)
+        QTimer.singleShot(350, lambda: self._play_click(False))
 
     def is_running(self) -> bool:
         return self._running
@@ -157,6 +203,6 @@ class MetronomeEngine(QObject):
             # si riprogramma sulla posizione reale invece di suonare fuori tempo.
             self._schedule(click_beat, accent)
             return
-        (self._effect_accent if accent else self._effect_normal).play()
+        self._play_click(accent)
         next_beat, next_accent = click_grid_position(self._metrica_map, click_beat + 1e-6)
         self._schedule(next_beat, next_accent)
