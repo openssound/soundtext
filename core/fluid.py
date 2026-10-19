@@ -176,6 +176,15 @@ def version() -> tuple:
     return _version
 
 
+def supports_channel_groups() -> bool:
+    """Se si puo' creare un synth con un'uscita stereo per canale MIDI
+    (synth.audio-groups=16, letta con Synth.render_groups). FluidSynth 2.6
+    chiude il programma (0xc0000409) appena un synth con piu' di 5 gruppi
+    produce audio, anche con fluid_synth_write_s16: li' resta un'uscita sola."""
+    lib = _load()
+    return lib is not None and hasattr(lib, "fluid_synth_process") and _version < (2, 6)
+
+
 class Synth:
     """Un sintetizzatore FluidSynth con le sue impostazioni. Le chiavi
     extra (es. {"synth.reverb.active": 1}) sono impostazioni di FluidSynth

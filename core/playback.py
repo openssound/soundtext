@@ -286,7 +286,7 @@ class _PersistentSynth:
     def _new_synth(self):
         from .settings import get_playback_gain
         settings = {"synth.reverb.active": 1, "synth.chorus.active": 1}
-        if hasattr(_fluid._load(), "fluid_synth_process"):
+        if _fluid.supports_channel_groups():
             # Un'uscita stereo per canale MIDI: il livello di ogni traccia nello
             # stesso passaggio di sintesi (vedi _render_group), senza cambiare il
             # suono (il mix e' la somma delle uscite).

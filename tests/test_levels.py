@@ -169,7 +169,7 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
 def _fluid_ready():
     from core import fluid
     from core.playback import _find_soundfont
-    return fluid.available() and hasattr(fluid._load(), "fluid_synth_process") and _find_soundfont()
+    return fluid.supports_channel_groups() and _find_soundfont()
 
 
 def test_per_channel_synthesis_sounds_like_the_plain_mix(tmp_path):

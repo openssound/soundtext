@@ -78,15 +78,18 @@ jobs:
       # una sottocartella (li' non verrebbero trovate). Richiesta autenticata:
       # quella anonima ha un limite per indirizzo IP, condiviso fra tutti i
       # runner che escono dallo stesso indirizzo, e la build v1.5.2 e' fallita
-      # per "API rate limit exceeded".
+      # per "API rate limit exceeded". Versione fissa, non l'ultima: la 2.6.1
+      # chiude SoundText con piu' di 5 gruppi audio (vedi
+      # core.fluid.supports_channel_groups) e senza i gruppi le tracce MIDI
+      # non hanno il vu-meter.
       - name: Aggiungi FluidSynth
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
-          $release = Invoke-RestMethod -Headers $headers "https://api.github.com/repos/FluidSynth/fluidsynth/releases/latest"
+          $release = Invoke-RestMethod -Headers $headers "https://api.github.com/repos/FluidSynth/fluidsynth/releases/tags/v2.4.7"
           $asset = $release.assets | Where-Object { $_.name -match "win10-x64.*\.zip$" } | Select-Object -First 1
-          if (-not $asset) { throw "Nessun asset win10-x64 trovato nell'ultima release di FluidSynth." }
+          if (-not $asset) { throw "Nessun asset win10-x64 trovato nella release 2.4.7 di FluidSynth." }
           $zipPath = Join-Path $env:TEMP $asset.name
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
           $extractDir = Join-Path $env:TEMP "fluidsynth-extract"

@@ -157,9 +157,9 @@ if (Test-Path $FluidCache) {
 }
 if (-not $fluidDll) {
     if (Confirm-Action "Scarico FluidSynth (motore audio) dai release ufficiali GitHub per includerlo nella build?") {
-        Write-Info "Cerco l'ultima release di FluidSynth su GitHub..."
+        Write-Info "Cerco la release 2.4.7 di FluidSynth su GitHub..."
         try {
-            $release = Invoke-RestMethod "https://api.github.com/repos/FluidSynth/fluidsynth/releases/latest"
+            $release = Invoke-RestMethod "https://api.github.com/repos/FluidSynth/fluidsynth/releases/tags/v2.4.7"
             $asset = $release.assets | Where-Object { $_.name -match "win10-x64.*\.zip$" } | Select-Object -First 1
         } catch {
             Write-Warn "Impossibile contattare GitHub ($($_.Exception.Message))."
@@ -174,7 +174,7 @@ if (-not $fluidDll) {
             Remove-Item $zipPath
             $fluidDll = Get-ChildItem $FluidCache -Recurse -Filter "libfluidsynth*.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
         } else {
-            Write-Warn "Nessun asset win10-x64 trovato nell'ultima release di FluidSynth."
+            Write-Warn "Nessun asset win10-x64 trovato nella release 2.4.7 di FluidSynth."
         }
     }
 } else {
