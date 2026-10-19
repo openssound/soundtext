@@ -154,6 +154,34 @@ def test_an_underflow_reopens_the_stream_where_it_was_playing(monkeypatch):
     assert not player.is_active()
 
 
+@pytest.mark.skipif(audio_stream._sd is None, reason="sounddevice non installato")
+def test_a_stalled_driver_reopens_the_stream_from_the_first_unwritten_frame(monkeypatch):
+    """Il driver smette di chiamare il callback senza nessun avviso, mentre
+    il suo orologio (e la barra) va avanti: il player riapre lo stream da
+    dove aveva smesso di scrivere."""
+    import time
+    monkeypatch.setattr(audio_stream._sd, "OutputStream", _FakeOutputStream)
+    monkeypatch.setattr(audio_stream.PcmPlayer, "MIN_RECOVERY_INTERVAL", 0.0)
+    monkeypatch.setattr(audio_stream.PcmPlayer, "STALL_SECONDS", 0.2)
+    monkeypatch.setattr(audio_stream.PcmPlayer, "WATCH_INTERVAL", 0.02)
+    _FakeOutputStream.opened = []
+    player = audio_stream.PcmPlayer(np.arange(5000, dtype=np.int16).reshape(-1, 1), 1000)
+    player.start(100)
+    first = _FakeOutputStream.opened[0]
+    first.latency = 0.0
+    out = np.zeros((50, 1), dtype=np.int16)
+    first.callback(out, 50, _FakeTime(), None)           # scritti i frame 100-149, poi piu' niente
+    first.time = 5.0                                     # l'orologio va avanti: "in ascolto" il 4100
+    deadline = time.time() + 3
+    while len(_FakeOutputStream.opened) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(_FakeOutputStream.opened) == 2 and first.aborted and player.is_active()
+    second = _FakeOutputStream.opened[1]
+    second.callback(out, 50, _FakeTime(), None)
+    assert out[0, 0] == 150
+    player.stop()
+
+
 class _FakePlayer:
     started = []
 

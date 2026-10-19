@@ -42,6 +42,12 @@ def is_available() -> bool:
     return True
 
 
+# Latenza dello stream di PcmPlayer: ritarda di tanto solo la partenza,
+# perche' barra e metronomo seguono comunque cio' che si sta ascoltando
+# (vedi position_frames).
+OUTPUT_LATENCY_SECONDS = 0.25
+
+
 class PcmPlayer:
     """Riproduce 'samples' (array int16 di forma (frame, canali)) a
     'samplerate'. Una istanza = una riproduzione: start() una sola volta,
@@ -71,14 +77,17 @@ class PcmPlayer:
         self._stopping = False
         self._reached_end = False
         self._driver_status = None
-        # Dopo un underflow (il driver e' rimasto un attimo senza dati) lo
-        # stream ALSA/PipeWire di PortAudio puo' restare muto pur andando
-        # avanti: il thread di guardia (vedi _watch) lo riapre dal punto che
-        # si sta ascoltando. _generation scarta la fine dello stream vecchio.
+        # Lo stream ALSA/PipeWire di PortAudio puo' restare muto pur andando
+        # avanti: dopo un underflow (il driver e' rimasto un attimo senza
+        # dati), o perche' il driver smette di chiamare il callback mentre
+        # il suo orologio (e quindi la barra, vedi position_frames) prosegue.
+        # Il thread di guardia (vedi _watch) allora lo riapre.
+        # _generation scarta la fine dello stream vecchio.
         self._wake = threading.Event()
         self._underflow = False
         self._generation = 0
         self._recoveries = 0
+        self._last_callback = 0.0
 
     @property
     def samplerate(self) -> int:
@@ -113,36 +122,56 @@ class PcmPlayer:
 
     def _open_stream(self):
         generation = self._generation
+        self._last_callback = time.monotonic()
         self._stream = _sd.OutputStream(
             samplerate=self._samplerate, channels=self._samples.shape[1], dtype="int16",
-            # 'high': buffer ampio, nessuna fretta di riempirlo (i campioni
-            # sono gia' pronti): massima robustezza contro i crepitii.
-            latency="high", callback=self._callback,
+            # Buffer ampio, nessuna fretta di riempirlo (i campioni sono gia'
+            # pronti): massima robustezza contro i crepitii. 'high' su ALSA/
+            # PipeWire da' appena ~35 ms, che un ridisegno dell'interfaccia
+            # (il callback e' Python, e aspetta il GIL) basta a mancare.
+            latency=OUTPUT_LATENCY_SECONDS, callback=self._callback,
             finished_callback=lambda: self._on_finished(generation),
         )
         self._stream.start()
 
     MAX_RECOVERIES = 20
     MIN_RECOVERY_INTERVAL = 0.5
+    STALL_SECONDS = 1.0
+    WATCH_INTERVAL = 0.25
+
+    def _stalled(self) -> bool:
+        """Il driver non chiede campioni da troppo tempo (piu' di
+        STALL_SECONDS, o di tre volte la latenza dello stream)."""
+        try:
+            limit = max(self.STALL_SECONDS, 3.0 * float(self._stream.latency))
+        except Exception:
+            limit = self.STALL_SECONDS
+        return time.monotonic() - self._last_callback > limit
 
     def _watch(self):
-        """Riapre lo stream dopo un underflow (vedi __init__), al massimo
-        una volta ogni MIN_RECOVERY_INTERVAL secondi."""
+        """Riapre lo stream dopo un underflow o se il driver smette di
+        chiamare il callback (vedi __init__), al massimo una volta ogni
+        MIN_RECOVERY_INTERVAL secondi."""
         last = 0.0
         while True:
-            self._wake.wait()
+            self._wake.wait(self.WATCH_INTERVAL)
             self._wake.clear()
             if self._done.is_set() or self._stopping:
                 return
-            if not self._underflow or self._recoveries >= self.MAX_RECOVERIES:
+            if self._recoveries >= self.MAX_RECOVERIES:
+                continue
+            stalled = not self._underflow and self._stalled()
+            if not (self._underflow or stalled):
                 continue
             time.sleep(max(0.0, last + self.MIN_RECOVERY_INTERVAL - time.monotonic()))
             last = time.monotonic()
             self._underflow = False
-            self._recover()
+            self._recover("callback fermo" if stalled else "underflow", stalled)
 
-    def _recover(self):
-        frame = self.position_frames()
+    def _recover(self, reason: str = "underflow", stalled: bool = False):
+        # Fermo il callback, si riparte dal primo frame non ancora scritto
+        # (la posizione "in ascolto" sarebbe andata avanti sul silenzio).
+        frame = self._pos if stalled else self.position_frames()
         old = self._stream
         self._generation += 1
         try:
@@ -156,8 +185,8 @@ class PcmPlayer:
             self._pos = frame
             self._last_block = None
         self._recoveries += 1
-        logging.getLogger(__name__).info("Stream audio riaperto dopo un underflow a %.1f s",
-                                         frame / float(self._samplerate))
+        logging.getLogger(__name__).info("Stream audio riaperto (%s) a %.1f s",
+                                         reason, frame / float(self._samplerate))
         try:
             self._open_stream()
         except Exception:
@@ -182,6 +211,7 @@ class PcmPlayer:
         self._wake.set()
 
     def _callback(self, outdata, frames, time_info, status):
+        self._last_callback = time.monotonic()
         if status and self._driver_status is None:
             self._driver_status = f"{status} a {self._pos / float(self._samplerate):.1f} s"
             logging.getLogger(__name__).info("Avviso del driver audio: %s", self._driver_status)
