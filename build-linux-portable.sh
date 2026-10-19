@@ -89,7 +89,9 @@ VENV_PIP="$BUILD_VENV/bin/pip"
 
 info "Installo le dipendenze dell'app e PyInstaller..."
 "$VENV_PYTHON" -m pip install --upgrade pip wheel >/dev/null
-"$VENV_PIP" install -r "$ROOT/requirements.txt"
+# pedalboard >= 0.9.17 richiede AVX: il portable deve partire anche sui PC
+# senza (vedi run.sh), quindi si resta sulla 0.9.16
+"$VENV_PIP" install -r "$ROOT/requirements.txt" "pedalboard<0.9.17"
 "$VENV_PIP" install pyinstaller pyinstaller-hooks-contrib
 
 info "Eseguo PyInstaller (prima volta: puo' richiedere diversi minuti)..."

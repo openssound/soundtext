@@ -11,7 +11,9 @@ sounddevice>=0.4
 numpy>=1.24,<2; python_version < "3.13"
 numpy>=2.1; python_version >= "3.13"
 # su CPU senza AVX install.sh e run.sh aggiungono "pedalboard<0.9.17"
-# (dalla 0.9.17 i wheel richiedono AVX e l'import va in SIGILL)
+# (dalla 0.9.17 i wheel richiedono AVX e l'import va in SIGILL); gli
+# eseguibili delle release (build-release.yml, build-*-portable) lo
+# aggiungono sempre, perche' devono partire su qualunque PC
 pedalboard>=0.9
 # impaginazione della partitura (Vista -> Partitura, esportazione PDF): facoltativo
 verovio>=4.0

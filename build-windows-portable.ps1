@@ -83,7 +83,9 @@ $venvPip = Join-Path $BuildVenv "Scripts\pip.exe"
 
 Write-Info "Installo le dipendenze dell'app e PyInstaller..."
 & $venvPython -m pip install --upgrade pip wheel | Out-Null
-& $venvPip install -r (Join-Path $Root "requirements.txt")
+# pedalboard >= 0.9.17 richiede AVX: il portable deve partire anche sui PC
+# senza (vedi run.sh), quindi si resta sulla 0.9.16
+& $venvPip install -r (Join-Path $Root "requirements.txt") "pedalboard<0.9.17"
 if ($LASTEXITCODE -ne 0) { throw "Installazione dei pacchetti dell'app fallita." }
 & $venvPip install pyinstaller pyinstaller-hooks-contrib
 if ($LASTEXITCODE -ne 0) { throw "Installazione di PyInstaller fallita." }
