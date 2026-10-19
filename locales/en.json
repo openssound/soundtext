@@ -1744,5 +1744,10 @@
  "Picco {db} dBFS suonata da sola (Analizza livelli).": "Peak {db} dBFS when played on its own (Analyze levels).",
  "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Peak {db} dBFS: clips even on its own, at bars {bars}. Lower its volume.",
  "battute {bars}": "bars {bars}",
- "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Track level while playing (peak, dBFS); the top turns red if it goes over full scale."
+ "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Track level while playing (peak, dBFS); the top turns red if it goes over full scale.",
+ "{plugin} (non disponibile qui: suona {effect} «{preset}»)": "{plugin} (not available here: {effect} «{preset}» plays instead)",
+ "Accordi (armonia)": "Chords (harmony)",
+ "Le settime si confondono con gli armonici delle altre note: di base si scrivono solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche le settime; capita di perderne qualcuna.": "Sevenths get confused with the harmonics of the other notes: by default only triads are written (major, minor, diminished, sus4). With this option sevenths are looked for too; a few may be missed.",
+ "Riconosce gli accordi (chitarra, pianoforte o un brano intero) e li scrive come sigle, un accordo per quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".": "Recognizes the chords (guitar, piano or a whole song) and writes them as chord symbols, one chord per quarter note at the song tempo: \"4: 4C | 2Am 2G | ...\".",
+ "Riconosci le settime (7, maj7, m7)": "Recognize sevenths (7, maj7, m7)"
 }

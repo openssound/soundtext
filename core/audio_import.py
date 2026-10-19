@@ -1,7 +1,7 @@
 """
 Pipeline completa di importazione audio -> notazione testuale: decodifica
-(se necessario) -> analisi (melodica o percussiva) -> quantizzazione sulla
-griglia scelta -> validazione sintattica. Analogo di midi_import.py per il
+(se necessario) -> analisi (melodica, percussiva o degli accordi) ->
+quantizzazione sulla griglia scelta -> validazione sintattica. Analogo di midi_import.py per il
 percorso audio.
 """
 
@@ -61,7 +61,9 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
                                  pitch_confidence_threshold: Optional[float] = None,
                                  min_note_duration_sec: Optional[float] = None,
                                  progress_callback: Optional[Callable[[float], None]] = None,
-                                 align_to_first_note: bool = False) -> str:
+                                 align_to_first_note: bool = False,
+                                 chords: bool = False, sevenths: bool = False,
+                                 beats_per_bar: float = 4.0) -> str:
     """Converte un file audio (o un WAV gia' registrato dal microfono, se
     already_wav=True) nel testo di notazione da inserire nella traccia
     corrente. Solleva RuntimeError se il file non si puo' leggere (vedi
@@ -90,7 +92,12 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
 
     align_to_first_note=True fa partire il testo dalla prima nota (vedi
     align_to_first_event). Per interrompere la conversione, il
-    progress_callback puo' sollevare ConversionCancelled."""
+    progress_callback puo' sollevare ConversionCancelled.
+
+    chords=True riconosce gli accordi invece delle note (vedi
+    core.audio_chords): un accordo per quarto al tempo del brano, scritto a
+    battute di beats_per_bar quarti; sevenths=True cerca anche le settime.
+    is_percussion, griglia e parametri del pitch tracking non contano."""
     from .audio_pitch import detect_melodic_notes
     from .audio_percussion import detect_percussive_hits
 
@@ -105,6 +112,19 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
             wav_path = decode_audio_file_to_wav(source_path)
             cleanup = True
         _report(1.0, 0.0, 0.2)
+
+        if chords:
+            from .audio_chords import chords_to_text, detect_chords
+            found, step_q, _start = detect_chords(
+                wav_path, tempo_bpm, beats_per_bar, align_to_first=align_to_first_note, sevenths=sevenths,
+                progress_callback=lambda f: _report(f, 0.2, 0.95))
+            text = chords_to_text(found, step_q, beats_per_bar)
+            from .notation import validate_track_text
+            ok, msg = validate_track_text(text, patterns, default_octave=default_octave, midi_dir=midi_dir)
+            if not ok:
+                raise ValueError(msg)
+            _report(1.0, 0.95, 1.0)
+            return text
 
         if is_percussion:
             slot_s = grid_slot_beats(grid_denominator, ternary) * 60.0 / tempo_bpm

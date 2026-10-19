@@ -1744,5 +1744,10 @@
  "Picco {db} dBFS suonata da sola (Analizza livelli).": "Pico {db} dBFS tocada sola (Analizar niveles).",
  "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Pico {db} dBFS: satura incluso sola, en los compases {bars}. Baja su volumen.",
  "battute {bars}": "compases {bars}",
- "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Nivel de la pista durante la reproducción (pico, dBFS); la parte superior se vuelve roja si supera el fondo de escala."
+ "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Nivel de la pista durante la reproducción (pico, dBFS); la parte superior se vuelve roja si supera el fondo de escala.",
+ "{plugin} (non disponibile qui: suona {effect} «{preset}»)": "{plugin} (no disponible aquí: suena {effect} «{preset}»)",
+ "Accordi (armonia)": "Acordes (armonía)",
+ "Le settime si confondono con gli armonici delle altre note: di base si scrivono solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche le settime; capita di perderne qualcuna.": "Las séptimas se confunden con los armónicos de las otras notas: por defecto solo se escriben tríadas (mayores, menores, disminuidas, sus4). Con esta opción también se buscan las séptimas; puede que se pierda alguna.",
+ "Riconosce gli accordi (chitarra, pianoforte o un brano intero) e li scrive come sigle, un accordo per quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".": "Reconoce los acordes (guitarra, piano o una canción entera) y los escribe como cifrados, un acorde por negra al tempo de la canción: \"4: 4C | 2Am 2G | ...\".",
+ "Riconosci le settime (7, maj7, m7)": "Reconocer las séptimas (7, maj7, m7)"
 }

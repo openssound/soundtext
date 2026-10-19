@@ -1744,5 +1744,10 @@
  "Picco {db} dBFS suonata da sola (Analizza livelli).": "Crête {db} dBFS jouée seule (Analyser les niveaux).",
  "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Crête {db} dBFS : sature même seule, aux mesures {bars}. Baissez son volume.",
  "battute {bars}": "mesures {bars}",
- "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Niveau de la piste pendant l'écoute (crête, dBFS) ; le haut devient rouge s'il dépasse la pleine échelle."
+ "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Niveau de la piste pendant l'écoute (crête, dBFS) ; le haut devient rouge s'il dépasse la pleine échelle.",
+ "{plugin} (non disponibile qui: suona {effect} «{preset}»)": "{plugin} (non disponible ici : {effect} « {preset} » joue à sa place)",
+ "Accordi (armonia)": "Accords (harmonie)",
+ "Le settime si confondono con gli armonici delle altre note: di base si scrivono solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche le settime; capita di perderne qualcuna.": "Les septièmes se confondent avec les harmoniques des autres notes : par défaut seules les triades sont écrites (majeures, mineures, diminuées, sus4). Avec cette option on cherche aussi les septièmes ; il arrive d'en manquer quelques-unes.",
+ "Riconosce gli accordi (chitarra, pianoforte o un brano intero) e li scrive come sigle, un accordo per quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".": "Reconnaît les accords (guitare, piano ou un morceau entier) et les écrit en grilles, un accord par noire au tempo du morceau : \"4: 4C | 2Am 2G | ...\".",
+ "Riconosci le settime (7, maj7, m7)": "Reconnaître les septièmes (7, maj7, m7)"
 }

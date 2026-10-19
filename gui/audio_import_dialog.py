@@ -77,6 +77,15 @@ HOP_SIZE_CHOICES = [
 MIN_NOTE_DURATION_MS_DEFAULT = int(round(MIN_NOTE_DURATION_SEC * 1000))
 
 
+def _beats_per_bar(time_sig: str) -> float:
+    """Quarti per battuta della metrica del brano ("6/8" -> 3); 4 se non si legge."""
+    try:
+        num, den = (int(x) for x in str(time_sig).split("/"))
+        return 4.0 * num / den
+    except (ValueError, ZeroDivisionError):
+        return 4.0
+
+
 class AudioImportDialog(QDialog):
     """Registra/carica audio, lo converte in notazione con il motore di
     quantizzazione (core.audio_quantize) e restituisce il testo tramite
@@ -225,18 +234,36 @@ class AudioImportDialog(QDialog):
         mode_row.addWidget(QLabel(tr("Modalita' di analisi:")))
         self.melodic_radio = QRadioButton(tr("Melodica (pitch detection)"))
         self.perc_radio = QRadioButton(tr("Percussiva (batteria/beatbox)"))
+        self.chords_radio = QRadioButton(tr("Accordi (armonia)"))
+        self.chords_radio.setToolTip(
+            tr("Riconosce gli accordi (chitarra, pianoforte o un brano intero) e li scrive come "
+               "sigle, un accordo per quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\"."))
         mode_group = QButtonGroup(self)
         mode_group.addButton(self.melodic_radio)
         mode_group.addButton(self.perc_radio)
+        mode_group.addButton(self.chords_radio)
         if instr.is_percussion:
             self.perc_radio.setChecked(True)
         else:
             self.melodic_radio.setChecked(True)
         self.melodic_radio.toggled.connect(self._on_mode_changed)
+        self.chords_radio.toggled.connect(self._on_mode_changed)
         mode_row.addWidget(self.melodic_radio)
         mode_row.addWidget(self.perc_radio)
+        mode_row.addWidget(self.chords_radio)
         mode_row.addStretch(1)
         layout.addLayout(mode_row)
+
+        # --- accordi: anche le settime (meno affidabili)
+        sevenths_row = QHBoxLayout()
+        self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
+        self.sevenths_check.setToolTip(
+            tr("Le settime si confondono con gli armonici delle altre note: di base si scrivono "
+               "solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche "
+               "le settime; capita di perderne qualcuna."))
+        sevenths_row.addWidget(self.sevenths_check)
+        sevenths_row.addStretch(1)
+        layout.addLayout(sevenths_row)
 
         # --- parametri avanzati di pitch tracking (solo modalita' melodica)
         self.pitch_advanced_group = QGroupBox(tr("Parametri avanzati di pitch tracking"))
@@ -503,6 +530,11 @@ class AudioImportDialog(QDialog):
     def _on_mode_changed(self):
         is_melodic = self.melodic_radio.isChecked()
         self.pitch_advanced_group.setEnabled(is_melodic)
+        is_chords = self.chords_radio.isChecked()
+        if hasattr(self, "sevenths_check"):
+            self.sevenths_check.setEnabled(is_chords)
+        if hasattr(self, "voice_source_check"):
+            self.voice_source_check.setEnabled(not is_chords)
 
     def _on_min_freq_auto_toggled(self, checked: bool):
         self.min_freq_spin.setEnabled(not checked)
@@ -548,6 +580,7 @@ class AudioImportDialog(QDialog):
             return
         grid_denom, ternary = self._selected_grid()
         is_percussion = self.perc_radio.isChecked()
+        is_chords = self.chords_radio.isChecked()
         instr = get_instrument(self.instrument_name)
 
         if (not self._from_mic and os.path.splitext(self.source_path)[1].lower() != ".wav"
@@ -566,9 +599,9 @@ class AudioImportDialog(QDialog):
         self.preview_edit.setReadOnly(True)  # eventuali modifiche manuali precedenti verrebbero comunque sovrascritte dal nuovo risultato
         self.preview_edit.setPlainText(tr("Analisi audio in corso..."))
 
-        voice_source = self.voice_source_check.isChecked()
+        voice_source = self.voice_source_check.isChecked() and not is_chords
         min_freq_hz, buf_size, hop_size, confidence_threshold, min_note_duration_sec = (
-            self._selected_pitch_advanced_params(instr, is_percussion, voice_source)
+            self._selected_pitch_advanced_params(instr, is_percussion or is_chords, voice_source)
         )
         self._cancelled = False
 
@@ -589,6 +622,8 @@ class AudioImportDialog(QDialog):
             pitch_confidence_threshold=confidence_threshold,
             min_note_duration_sec=min_note_duration_sec,
             align_to_first_note=self._from_mic and not self._recorded_with_metronome,
+            chords=is_chords, sevenths=is_chords and self.sevenths_check.isChecked(),
+            beats_per_bar=_beats_per_bar(self.project.time_sig),
             progress_callback=progress, pass_progress=False,
         )
         self._worker = worker
