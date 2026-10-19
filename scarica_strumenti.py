@@ -302,12 +302,17 @@ def estrai(file: Path, cartella: Path):
                 # ditto conserva permessi, link simbolici e firme dei bundle
                 # (i plugin per macOS), che zipfile perderebbe
                 subprocess.run(["ditto", "-x", "-k", str(file), str(cartella)], check=True)
-                return
-            z.extractall(cartella)
+            else:
+                z.extractall(cartella)
+            # i permessi salvati nell'archivio (eseguibili): anche dopo ditto,
+            # che non sempre li ripristina; i link simbolici restano com'erano
             for info in z.infolist():
-                modo = (info.external_attr >> 16) & 0o777
-                if modo and not info.is_dir():    # i permessi salvati nell'archivio (eseguibili)
-                    os.chmod(cartella / info.filename, modo | stat.S_IRUSR)
+                attributi = info.external_attr >> 16
+                modo = attributi & 0o777
+                destinazione = cartella / info.filename
+                if (modo and not info.is_dir() and not stat.S_ISLNK(attributi)
+                        and not destinazione.is_symlink() and destinazione.is_file()):
+                    os.chmod(destinazione, modo | stat.S_IRUSR)
     elif re.search(r"\.(tar\.(gz|xz|bz2)|tgz)$", nome):
         with tarfile.open(file) as t:
             if hasattr(tarfile, "data_filter"):
