@@ -18,6 +18,7 @@ lo stesso motivo per cui il rendering resta offline, vedi core.playback).
 
 import logging
 import threading
+import time
 from typing import Optional, Tuple
 
 import numpy as np
@@ -64,6 +65,20 @@ class PcmPlayer:
         # Nuovo contenuto per la sezione in loop, applicato al prossimo giro
         # (vedi queue_loop_update): cosi' il cambio non arriva a meta' giro.
         self._pending_loop = None
+        # Per il log di un flusso che si chiude da solo prima della fine
+        # (vedi _on_finished): fermato da stop(), arrivato in fondo, o il
+        # primo avviso del driver (underrun...) visto nel callback.
+        self._stopping = False
+        self._reached_end = False
+        self._driver_status = None
+        # Dopo un underflow (il driver e' rimasto un attimo senza dati) lo
+        # stream ALSA/PipeWire di PortAudio puo' restare muto pur andando
+        # avanti: il thread di guardia (vedi _watch) lo riapre dal punto che
+        # si sta ascoltando. _generation scarta la fine dello stream vecchio.
+        self._wake = threading.Event()
+        self._underflow = False
+        self._generation = 0
+        self._recoveries = 0
 
     @property
     def samplerate(self) -> int:
@@ -93,15 +108,86 @@ class PcmPlayer:
 
     def start(self, start_frame: int = 0):
         self._pos = max(0, min(self.total_frames, int(start_frame)))
+        self._open_stream()
+        threading.Thread(target=self._watch, daemon=True).start()
+
+    def _open_stream(self):
+        generation = self._generation
         self._stream = _sd.OutputStream(
             samplerate=self._samplerate, channels=self._samples.shape[1], dtype="int16",
             # 'high': buffer ampio, nessuna fretta di riempirlo (i campioni
             # sono gia' pronti): massima robustezza contro i crepitii.
-            latency="high", callback=self._callback, finished_callback=self._done.set,
+            latency="high", callback=self._callback,
+            finished_callback=lambda: self._on_finished(generation),
         )
         self._stream.start()
 
-    def _callback(self, outdata, frames, time_info, _status):
+    MAX_RECOVERIES = 20
+    MIN_RECOVERY_INTERVAL = 0.5
+
+    def _watch(self):
+        """Riapre lo stream dopo un underflow (vedi __init__), al massimo
+        una volta ogni MIN_RECOVERY_INTERVAL secondi."""
+        last = 0.0
+        while True:
+            self._wake.wait()
+            self._wake.clear()
+            if self._done.is_set() or self._stopping:
+                return
+            if not self._underflow or self._recoveries >= self.MAX_RECOVERIES:
+                continue
+            time.sleep(max(0.0, last + self.MIN_RECOVERY_INTERVAL - time.monotonic()))
+            last = time.monotonic()
+            self._underflow = False
+            self._recover()
+
+    def _recover(self):
+        frame = self.position_frames()
+        old = self._stream
+        self._generation += 1
+        try:
+            old.abort()
+            old.close()
+        except Exception:
+            pass
+        if self._stopping or self._done.is_set():
+            return
+        with self._lock:
+            self._pos = frame
+            self._last_block = None
+        self._recoveries += 1
+        logging.getLogger(__name__).info("Stream audio riaperto dopo un underflow a %.1f s",
+                                         frame / float(self._samplerate))
+        try:
+            self._open_stream()
+        except Exception:
+            logging.getLogger(__name__).warning("Stream audio non riapribile", exc_info=True)
+            self._done.set()
+            return
+        if self._stopping:
+            self.stop()
+
+    def _on_finished(self, generation: int = 0):
+        """Fine del flusso: se non l'ha chiesta stop() e non si era arrivati
+        in fondo, il driver l'ha chiuso a meta' (la barra di avanzamento
+        prosegue allora col cronometro, ma non si sente piu' niente)."""
+        if generation != self._generation:
+            return                     # lo stream sostituito da _recover
+        if not self._stopping and not self._reached_end:
+            logging.getLogger(__name__).warning(
+                "Flusso audio chiuso a meta' riproduzione: frame %d di %d (%.1f s), "
+                "ultimo avviso del driver: %s", self._pos, self.total_frames,
+                self._pos / float(self._samplerate), self._driver_status or "nessuno")
+        self._done.set()
+        self._wake.set()
+
+    def _callback(self, outdata, frames, time_info, status):
+        if status and self._driver_status is None:
+            self._driver_status = f"{status} a {self._pos / float(self._samplerate):.1f} s"
+            logging.getLogger(__name__).info("Avviso del driver audio: %s", self._driver_status)
+        if getattr(status, "output_underflow", False):
+            self._underflow = True
+            self._wake.set()
         with self._lock:
             dac_time = time_info.outputBufferDacTime or (time_info.currentTime + self._stream.latency)
             self._last_block = (dac_time, self._pos)
@@ -123,6 +209,7 @@ class PcmPlayer:
                             self._pending_loop = None
                         continue
                     outdata[written:] = 0
+                    self._reached_end = True
                     raise _sd.CallbackStop
 
     def position_frames(self) -> int:
@@ -147,6 +234,7 @@ class PcmPlayer:
         self._done.wait()
 
     def stop(self):
+        self._stopping = True
         stream = self._stream
         if stream is not None:
             try:
@@ -155,6 +243,7 @@ class PcmPlayer:
             except Exception:
                 pass
         self._done.set()
+        self._wake.set()
 
     def is_active(self) -> bool:
         return self._stream is not None and not self._done.is_set()

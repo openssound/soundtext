@@ -101,6 +101,59 @@ class _FakeSynth:
         return True
 
 
+class _FakeOutputStream:
+    """OutputStream finto: registra le aperture, non suona niente."""
+    opened = []
+
+    def __init__(self, samplerate, channels, dtype, latency, callback, finished_callback):
+        self.callback, self.finished_callback = callback, finished_callback
+        self.latency, self.time, self.aborted = 0.1, 1.0, False
+        _FakeOutputStream.opened.append(self)
+
+    def start(self):
+        pass
+
+    def abort(self):
+        self.aborted = True
+        self.finished_callback()     # come PortAudio: la fine arriva anche dopo abort()
+
+    def close(self):
+        pass
+
+
+class _Underflow:
+    output_underflow = True
+
+    def __bool__(self):
+        return True
+
+
+@pytest.mark.skipif(audio_stream._sd is None, reason="sounddevice non installato")
+def test_an_underflow_reopens_the_stream_where_it_was_playing(monkeypatch):
+    """Dopo un underflow lo stream ALSA/PipeWire puo' restare muto mentre la
+    barra prosegue: il player lo riapre da solo dal punto in ascolto."""
+    import time
+    monkeypatch.setattr(audio_stream._sd, "OutputStream", _FakeOutputStream)
+    monkeypatch.setattr(audio_stream.PcmPlayer, "MIN_RECOVERY_INTERVAL", 0.0)
+    _FakeOutputStream.opened = []
+    player = audio_stream.PcmPlayer(np.arange(5000, dtype=np.int16).reshape(-1, 1), 1000)
+    player.start(100)
+    first = _FakeOutputStream.opened[0]
+    out = np.zeros((50, 1), dtype=np.int16)
+    first.callback(out, 50, _FakeTime(), _Underflow())   # blocco che suona da t=1.0, frame 100
+    first.time = 1.02                                    # in ascolto: frame 120
+    deadline = time.time() + 2
+    while len(_FakeOutputStream.opened) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(_FakeOutputStream.opened) == 2 and first.aborted
+    assert player.is_active()                            # la fine dello stream vecchio non conta
+    second = _FakeOutputStream.opened[1]
+    second.callback(out, 50, _FakeTime(), None)
+    assert out[0, 0] == 120
+    player.stop()
+    assert not player.is_active()
+
+
 class _FakePlayer:
     started = []
 
