@@ -130,11 +130,11 @@ def test_level_report_marks_track_headers_until_the_song_changes():
     finally:
         QMessageBox.information = original
     headers = {h.track_name: h for h in w.findChildren(TrackHeaderWidget)}
-    assert headers["Piano"].peak_label.text() == "CLIP" and "3-4" in headers["Piano"].peak_label.toolTip()
-    assert headers["Basso"].peak_label.text() == "-9 dB"
+    assert headers["Piano"].meter._static == (0.0, True) and "3-4" in headers["Piano"].meter.toolTip()
+    assert headers["Basso"].meter._static == (-9.0, False)
     assert "Piano" in shown[0] and "3-4" in shown[0]
     w._mark_dirty()
-    assert all(not h.peak_label.isVisibleTo(h) for h in w.findChildren(TrackHeaderWidget))
+    assert all(h.meter._static is None for h in w.findChildren(TrackHeaderWidget))
     w._dirty = False      # niente domanda "salvare le modifiche?" alla chiusura
     w.close()
 
@@ -163,4 +163,91 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
     assert shown and "-6.0" in shown[0]
     assert w._track_peaks["Piano"].peak_db == -6.0
     w._dirty = False
+    w.close()
+
+
+def _fluid_ready():
+    from core import fluid
+    from core.playback import _find_soundfont
+    return fluid.available() and hasattr(fluid._load(), "fluid_synth_process") and _find_soundfont()
+
+
+def test_per_channel_synthesis_sounds_like_the_plain_mix(tmp_path):
+    """Le uscite per canale sommate danno lo stesso audio di write_s16 (a
+    parte il dither: al massimo pochi passi su 32767)."""
+    import os
+    import pytest
+    if not _fluid_ready():
+        pytest.skip("serve la libreria FluidSynth con fluid_synth_process e un SoundFont")
+    from core import fluid
+    from core.midi_export import export_project_to_midi
+    from core.playback import _find_soundfont, apply_reverb, DEFAULT_REVERB_ROOM
+    project = Project(name="p")
+    project.add_track("A", "Piano", "4: c e g c*5 | 2[c e g] 2r")
+    project.add_track("B", "Piano", "4: c*3 g*2 c*3 g*2 | 4c*3")
+    midi = str(tmp_path / "x.mid")
+    export_project_to_midi(project, midi)
+
+    def render(grouped):
+        extra = {"synth.audio-channels": 16, "synth.audio-groups": 16} if grouped else {}
+        s = fluid.Synth(gain=0.9, samplerate=48000, **{"synth.reverb.active": 1, "synth.chorus.active": 1}, **extra)
+        s.sfload(_find_soundfont()); s.system_reset(); apply_reverb(s, DEFAULT_REVERB_ROOM); s.set_effects_on(True)
+        player = fluid.Player(s); player.add(midi); player.play()
+        out = []
+        while player.playing():
+            if grouped:
+                mix, _dry = s.render_groups(4800)
+                out.append(np.clip(np.rint(mix * 32767), -32768, 32767))
+            else:
+                out.append(s.get_samples(4800).reshape(-1, 2))
+        player.delete()
+        return np.concatenate(out).astype(np.int32)
+
+    a, b = render(False), render(True)
+    n = min(len(a), len(b))
+    assert np.abs(a).max() > 1000 and np.abs(a[:n] - b[:n]).max() <= 4
+
+
+def test_render_measures_each_track_in_the_same_pass(tmp_path):
+    import pytest
+    if not _fluid_ready():
+        pytest.skip("serve la libreria FluidSynth con fluid_synth_process e un SoundFont")
+    from core.midi_export import _assign_channels, export_project_to_midi
+    from core.playback import _PersistentSynth, _assemble_track_levels, _find_soundfont
+    project = Project(name="p")
+    project.add_track("Forte", "Piano", "4: [c e g] [c e g] [c e g] [c e g]")
+    project.add_track("Piano piano", "Piano", "4: c*5 d*5 e*5 f*5")
+    project.add_track("Muta", "Piano", "4r")
+    project.tracks[1].volume = 20
+    midi = str(tmp_path / "x.mid")
+    export_project_to_midi(project, midi)
+    levels = {}
+    assert _PersistentSynth().render_to_wav(midi, str(tmp_path / "x.wav"), _find_soundfont(), lambda: False,
+                                            channel_levels=levels)
+    track_levels = _assemble_track_levels(levels, _assign_channels(project.tracks), [], {})
+    loud = track_levels.level("Forte", 0, 4)
+    soft = track_levels.level("Piano piano", 0, 4)
+    assert loud > soft > 0
+    assert track_levels.level("Muta", 0, 4) is None
+
+
+def test_track_meters_follow_playback():
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.levels import TrackLevels
+    from gui.main_window import MainWindow
+    from gui.track_header import TrackHeaderWidget
+    w = MainWindow()
+    w.project.add_track("Piano", "Piano", "c d e f")
+    w.project.add_track("Basso", "Piano", "c d e f")
+    w.refresh_mixer()
+    block = 0.02
+    w.playback.track_levels = TrackLevels(block, {"Piano": np.full(200, 0.5, np.float32),
+                                                  "Basso": np.full(200, 1.2, np.float32)})
+    w._update_track_meters(1.0)
+    meters = {h.track_name: h.meter for h in w.findChildren(TrackHeaderWidget)}
+    assert -6.5 < meters["Piano"]._db < -5.5 and not meters["Piano"].over
+    assert meters["Basso"].over                      # oltre il fondo scala: cima rossa
+    w._update_track_meters(None)                     # fermo: barre a zero, la spia resta
+    assert meters["Piano"]._db < -40 and meters["Basso"].over
     w.close()

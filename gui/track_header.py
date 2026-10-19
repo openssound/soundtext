@@ -66,7 +66,7 @@ class TrackHeaderWidget(QFrame):
         # A sinistra nome/strumento sopra e pulsanti sotto; a destra le due
         # manopole, alte quanto tutta la riga.
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 6, 4, 6)
+        outer.setContentsMargins(7, 6, 2, 6)     # stretti: a destra c'e' il vu-meter
         outer.setSpacing(4)
         left = QVBoxLayout()
         left.setSpacing(4)
@@ -115,12 +115,6 @@ class TrackHeaderWidget(QFrame):
         self.fx_btn.clicked.connect(self._open_fx)
         row.addWidget(self.fx_btn)
 
-        # Picco misurato da Riproduzione -> Analizza livelli (vedi set_peak)
-        self.peak_label = QLabel()
-        self.peak_label.setFont(QFont(self.font().family(), 7))
-        self.peak_label.hide()
-        row.addWidget(self.peak_label)
-
         row.addStretch(1)
 
         self.menu_btn = QToolButton()
@@ -141,6 +135,11 @@ class TrackHeaderWidget(QFrame):
         self.pan_knob.valueChanged.connect(self._on_pan)
         outer.addWidget(self.vol_knob, 0, Qt.AlignVCenter)
         outer.addWidget(self.pan_knob, 0, Qt.AlignVCenter)
+        # Vu-meter della traccia, sottile sul bordo destro: non toglie
+        # altezza alla riga (vedi gui.level_meter.TrackMeter)
+        from .level_meter import TrackMeter
+        self.meter = TrackMeter()
+        outer.addWidget(self.meter)
 
         self.sync_from_track()
         self.set_peak(getattr(host, "_track_peaks", {}).get(track.name))
@@ -183,7 +182,7 @@ class TrackHeaderWidget(QFrame):
     def _set_elided(self, label: QLabel, text: str):
         """Testo accorciato con "…" alla larghezza che la colonna di sinistra
         lascia (la testata ha dimensione fissa); il testo intero nel tooltip."""
-        width = self.width() - 10 - 4 - 4 - 2 * self.vol_knob.width() - 4 - 4
+        width = self.width() - 7 - 2 - 4 - 2 * self.vol_knob.width() - 4 - 4 - 4 - 5   # 5: il vu-meter
         label.setText(label.fontMetrics().elidedText(text, Qt.ElideRight, max(20, width)))
         label.setToolTip(text)
 
@@ -196,21 +195,18 @@ class TrackHeaderWidget(QFrame):
         """Picco della traccia suonata da sola (core.levels.TrackPeak), o
         None per toglierlo (la traccia e' cambiata dopo l'analisi)."""
         if peak is None:
-            self.peak_label.hide()
+            self.meter.set_static(None)
+            self.meter.setToolTip(tr("Livello della traccia durante l'ascolto (picco, dBFS); "
+                                     "la cima diventa rossa se supera il fondo scala."))
             return
         from core.levels import format_bars
         if peak.clip_bars:
-            color = theme.BAD
             tip = tr("Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.",
                      db=f"{peak.peak_db:.1f}", bars=format_bars(peak.clip_bars))
         else:
-            color = theme.WARN if peak.peak_db > -3 else theme.track_card_colors()["text_dim"]
             tip = tr("Picco {db} dBFS suonata da sola (Analizza livelli).", db=f"{peak.peak_db:.1f}")
-        self.peak_label.setText("CLIP" if peak.clip_bars else f"{peak.peak_db:.0f} dB")
-        self.peak_label.setStyleSheet(f"color: {color}; font-weight: bold;" if peak.clip_bars
-                                      else f"color: {color};")
-        self.peak_label.setToolTip(tip)
-        self.peak_label.show()
+        self.meter.set_static(peak.peak_db, bool(peak.clip_bars))
+        self.meter.setToolTip(tip)
 
     def set_active(self, active: bool):
         self._active = active

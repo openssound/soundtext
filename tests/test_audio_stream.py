@@ -89,7 +89,7 @@ class _FakeSynth:
         self.seconds, self.rate = seconds, rate
 
     def render_to_wav(self, midi_path, wav_path, soundfont, stop_check, channel_overrides=None,
-                      reverb_room=None):
+                      reverb_room=None, channel_levels=None):
         self.renders += 1
         self.reverb_room = reverb_room
         frames = (np.arange(self.seconds * self.rate) % 30000).astype(np.int16)

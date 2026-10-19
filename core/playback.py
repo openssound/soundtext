@@ -73,6 +73,16 @@ _WINSOUND_MARKER = ["__winsound__"]
 # (_PersistentSynth._render_group): 100ms a 48kHz, vedi il commento li' per
 # il perche'.
 _RENDER_CHUNK_FRAMES = 4800
+
+# Uscite stereo del synth condiviso: una per canale MIDI (vedi _new_synth).
+_CHANNEL_GROUPS = 16
+
+
+def _float_to_pcm16(mix):
+    """Mix float (frame, 2) del synth in int16 alternati, tagliato al fondo
+    scala come fa fluid_synth_write_s16."""
+    import numpy as np
+    return np.clip(np.rint(mix * 32767.0), -32768, 32767).astype(np.int16)
 # Escursione della leva del pitch bend del synth dal vivo (default di
 # FluidSynth, mai cambiato via RPN): vedi LiveSynth.pitch_bend.
 LIVE_BEND_RANGE_SEMITONES = 2.0
@@ -275,11 +285,14 @@ class _PersistentSynth:
 
     def _new_synth(self):
         from .settings import get_playback_gain
+        settings = {"synth.reverb.active": 1, "synth.chorus.active": 1}
+        if hasattr(_fluid._load(), "fluid_synth_process"):
+            # Un'uscita stereo per canale MIDI: il livello di ogni traccia nello
+            # stesso passaggio di sintesi (vedi _render_group), senza cambiare il
+            # suono (il mix e' la somma delle uscite).
+            settings.update({"synth.audio-channels": _CHANNEL_GROUPS, "synth.audio-groups": _CHANNEL_GROUPS})
         with _suppress_native_stderr():
-            return _fluid.Synth(
-                gain=get_playback_gain(), samplerate=48000,
-                **{"synth.reverb.active": 1, "synth.chorus.active": 1},
-            )
+            return _fluid.Synth(gain=get_playback_gain(), samplerate=48000, **settings)
 
     def set_gain(self, value: float):
         """Aggiorna il gain di tutti i synth gia' creati (condiviso +
@@ -335,10 +348,14 @@ class _PersistentSynth:
         return synth
 
     @staticmethod
-    def _render_group(synth, midi_path: str, wav_path: str, stop_check, reverb_room: Optional[str] = None) -> bool:
+    def _render_group(synth, midi_path: str, wav_path: str, stop_check, reverb_room: Optional[str] = None,
+                      channel_levels: Optional[dict] = None) -> bool:
         """Renderizza midi_path su wav_path con synth (un solo SoundFont
         caricato): funzione di basso livello condivisa dal rendering
-        semplice e da ciascuna passata del rendering multi-SoundFont."""
+        semplice e da ciascuna passata del rendering multi-SoundFont.
+        channel_levels, se dato, riceve il picco nel tempo di ogni canale
+        MIDI che suona (canale -> picchi per blocco, vedi core.levels), se il
+        synth ha un'uscita per canale (Synth.groups)."""
         # synth e' persistente e riusato per OGNI rendering (mai ricreato, vedi
         # la docstring di _PersistentSynth): se il rendering precedente su
         # questa stessa istanza era stato interrotto a meta' (stop_check(), es.
@@ -379,6 +396,15 @@ class _PersistentSynth:
         # piccolo da non introdurre un ritardo percepibile nel rispondere a
         # stop_check() (interruzione di un render in corso).
         ok = True
+        # Con piu' uscite (vedi _new_synth) write_s16 scrive solo la prima:
+        # si somma sempre tutto con render_groups, anche senza livelli.
+        grouped = synth.groups > 1
+        metered = channel_levels is not None and grouped
+        peaks_chunks: list = []
+        if grouped:
+            import numpy as np
+            from .levels import BLOCK_SECONDS
+            block = max(1, int(round(48000 * BLOCK_SECONDS)))
         try:
             with contextlib.closing(wave.open(wav_path, "wb")) as w:
                 w.setnchannels(2)
@@ -388,14 +414,32 @@ class _PersistentSynth:
                     if stop_check():
                         ok = False
                         break
-                    w.writeframes(synth.get_samples(_RENDER_CHUNK_FRAMES).tobytes())
+                    if not grouped:
+                        w.writeframes(synth.get_samples(_RENDER_CHUNK_FRAMES).tobytes())
+                        continue
+                    mix, dry = synth.render_groups(_RENDER_CHUNK_FRAMES)
+                    w.writeframes(_float_to_pcm16(mix).tobytes())
+                    if metered:
+                        # tutti i canali insieme: picco di L/R, poi per blocco
+                        mag = np.abs(dry).max(axis=1)                      # (canali, frame)
+                        whole = (mag.shape[1] // block) * block
+                        chunk_peaks = mag[:, :whole].reshape(mag.shape[0], -1, block).max(axis=2)
+                        if whole < mag.shape[1]:
+                            chunk_peaks = np.concatenate([chunk_peaks, mag[:, whole:].max(axis=1, keepdims=True)], axis=1)
+                        peaks_chunks.append(chunk_peaks)
         finally:
             player.delete()
+        if metered and ok and peaks_chunks:
+            from .levels import merge_peaks
+            all_peaks = np.concatenate(peaks_chunks, axis=1).astype(np.float32)
+            for channel in range(all_peaks.shape[0]):
+                if all_peaks[channel].max() > 0:
+                    merge_peaks(channel_levels, channel, all_peaks[channel])
         return ok
 
     def _render_multi(self, midi_path: str, wav_path: str, soundfont: str,
                        stop_check, channel_overrides: Dict[int, str],
-                       reverb_room: Optional[str] = None) -> bool:
+                       reverb_room: Optional[str] = None, channel_levels: Optional[dict] = None) -> bool:
         """Rendering in passate separate (una per SoundFont coinvolto, vedi
         la docstring della classe), poi mixate in wav_path. Ritorna False
         (fallback CLI, come render_to_wav) se una passata fallisce o
@@ -432,7 +476,7 @@ class _PersistentSynth:
                 tmp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
                 try:
                     filter_midi_file_by_channels(midi_path, tmp_midi, chans)
-                    ok = self._render_group(synth, tmp_midi, tmp_wav, stop_check, reverb_room)
+                    ok = self._render_group(synth, tmp_midi, tmp_wav, stop_check, reverb_room, channel_levels)
                 finally:
                     os.remove(tmp_midi)
                 if not ok:
@@ -454,16 +498,18 @@ class _PersistentSynth:
                     os.remove(w)
 
     def _render_port(self, midi_path: str, wav_path: str, soundfont: str, stop_check,
-                     channel_overrides: Optional[Dict[int, str]], reverb_room: Optional[str]) -> bool:
+                     channel_overrides: Optional[Dict[int, str]], reverb_room: Optional[str],
+                     channel_levels: Optional[dict] = None) -> bool:
         """Rendering di un file con una sola porta MIDI (16 canali)."""
         if not channel_overrides:
             self._ensure_font_loaded(soundfont)
-            return self._render_group(self._synth, midi_path, wav_path, stop_check, reverb_room)
-        return self._render_multi(midi_path, wav_path, soundfont, stop_check, channel_overrides, reverb_room)
+            return self._render_group(self._synth, midi_path, wav_path, stop_check, reverb_room, channel_levels)
+        return self._render_multi(midi_path, wav_path, soundfont, stop_check, channel_overrides, reverb_room,
+                                  channel_levels)
 
     def _render_ports(self, midi_path: str, wav_path: str, soundfont: str, stop_check,
                       channel_overrides: Optional[Dict[int, str]], reverb_room: Optional[str],
-                      ports: List[int]) -> bool:
+                      ports: List[int], channel_levels: Optional[dict] = None) -> bool:
         """Piu' di 15 tracce melodiche: il file usa piu' porte MIDI (vedi
         st_language.midi._assign_channels), ma il player di FluidSynth le
         ignora e suonerebbe la porta 1 sugli stessi canali della porta 0.
@@ -479,12 +525,15 @@ class _PersistentSynth:
                 tmp_midi = tempfile.NamedTemporaryFile(suffix=".mid", delete=False).name
                 tmp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
                 tmp_wavs.append(tmp_wav)
+                port_levels = {} if channel_levels is not None else None
                 try:
                     filter_midi_file_by_port(midi_path, tmp_midi, port)
                     ok = self._render_port(tmp_midi, tmp_wav, soundfont, stop_check, overrides or None,
-                                           reverb_room)
+                                           reverb_room, port_levels)
                 finally:
                     os.remove(tmp_midi)
+                for channel, peaks in (port_levels or {}).items():
+                    channel_levels[port * 16 + channel] = peaks      # slot, come in _assign_channels
                 if not ok:
                     return False
             _mix_wav_files(tmp_wavs, wav_path)
@@ -496,7 +545,7 @@ class _PersistentSynth:
 
     def render_to_wav(self, midi_path: str, wav_path: str, soundfont: str,
                        stop_check, channel_overrides: Optional[Dict[int, str]] = None,
-                       reverb_room: Optional[str] = None) -> bool:
+                       reverb_room: Optional[str] = None, channel_levels: Optional[dict] = None) -> bool:
         """Renderizza midi_path su wav_path. Ritorna False se interrotto
         (stop_check() torna True) o se il rendering fallisce per qualunque
         motivo: in entrambi i casi il chiamante ripiega sul percorso
@@ -508,16 +557,19 @@ class _PersistentSynth:
         e core.midi_export.channel_instrument_map): se vuoto/None, rendering
         singolo come per un SoundFont unico; altrimenti rendering in passate
         multiple poi mixate (vedi _render_multi e la docstring della classe
-        per il perche')."""
+        per il perche').
+
+        channel_levels, se dato (un dict), riceve il picco nel tempo di ogni
+        slot MIDI (porta * 16 + canale) che suona: vedi _render_group."""
         with self._lock:
             try:
                 from .midi_export import midi_file_ports
                 ports = midi_file_ports(midi_path)
                 if len(ports) > 1:
                     return self._render_ports(midi_path, wav_path, soundfont, stop_check, channel_overrides,
-                                              reverb_room, sorted(ports))
+                                              reverb_room, sorted(ports), channel_levels)
                 return self._render_port(midi_path, wav_path, soundfont, stop_check, channel_overrides,
-                                         reverb_room)
+                                         reverb_room, channel_levels)
             except Exception:
                 # Qualunque errore col binding persistente (SoundFont
                 # incompatibile, sintomi di libreria, ecc.) non deve far
@@ -1094,6 +1146,49 @@ _RENDER_CACHE_MAX = 3
 _render_cache_lock = threading.Lock()
 
 
+# Livelli per traccia (core.levels.TrackLevels) di ogni mix in cache, con la
+# sua chiave senza master (il master non cambia il livello delle tracce).
+_TRACK_LEVELS_CACHE: "Dict[str, object]" = {}
+
+
+def _track_levels_put(key: Optional[str], levels):
+    if key is None or levels is None:
+        return
+    with _render_cache_lock:
+        _TRACK_LEVELS_CACHE.pop(key, None)
+        _TRACK_LEVELS_CACHE[key] = levels
+        while len(_TRACK_LEVELS_CACHE) > 2 * _RENDER_CACHE_MAX:
+            _TRACK_LEVELS_CACHE.pop(next(iter(_TRACK_LEVELS_CACHE)))
+
+
+def _track_levels_get(key: Optional[str]):
+    if key is None:
+        return None
+    with _render_cache_lock:
+        return _TRACK_LEVELS_CACHE.get(key)
+
+
+def _assemble_track_levels(channel_levels: dict, track_slots: Optional[dict], named_stems, audio_track_layers):
+    """TrackLevels dai picchi dei canali MIDI (slot -> picchi, vedi
+    _render_group), dalle tracce con effetti [(nome, campioni)] e dalle clip
+    delle tracce audio senza effetti ({nome: layers})."""
+    import numpy as np
+    from .audio_tracks import AUDIO_SAMPLE_RATE, mix_layers
+    from .levels import BLOCK_SECONDS, TrackLevels, block_peaks, merge_peaks
+    peaks: dict = {}
+    for name, slot in (track_slots or {}).items():
+        if slot in channel_levels:
+            merge_peaks(peaks, name, channel_levels[slot])
+    for name, samples in named_stems or []:
+        if samples is not None and len(samples):
+            merge_peaks(peaks, name, block_peaks(np.asarray(samples).T, AUDIO_SAMPLE_RATE))
+    for name, layers in (audio_track_layers or {}).items():
+        if layers:
+            mixed = mix_layers(np.zeros((0, 2), np.float32), AUDIO_SAMPLE_RATE, layers)
+            merge_peaks(peaks, name, block_peaks(mixed.T, AUDIO_SAMPLE_RATE))
+    return TrackLevels(BLOCK_SECONDS, peaks) if peaks else None
+
+
 def _cache_get(key: Optional[str]):
     if key is None:
         return None
@@ -1249,6 +1344,10 @@ class PlaybackEngine:
         # picco e clipping si misurano una volta sola per rendering.
         self.master_levels = None
         self._levels_for = None    # (id dei campioni, livelli): ripresa senza ricalcolo
+        # Livelli di ogni traccia (core.levels.TrackLevels), solo in streaming:
+        # i canali MIDI dal synth (un'uscita per canale), le tracce con effetti
+        # e le tracce audio dai loro campioni.
+        self.track_levels = None
 
     def _levels_of(self, samples, rate):
         """Livelli (core.levels) del mix int16 che sta per suonare; None se
@@ -1364,6 +1463,14 @@ class PlaybackEngine:
             export_project_to_midi(project, midi_tmp.name, only_audible=only_audible, tracks=midi_subset,
                                     humanize=True, humanize_amount=humanize_amount)
 
+        # Per i vu-meter delle tracce (vedi PlaybackEngine.track_levels): lo
+        # slot MIDI di ogni traccia, come lo assegna l'esportazione, e le clip
+        # delle tracce audio senza effetti, misurate a parte.
+        from .midi_export import _assign_channels
+        exported = [t for t in (midi_subset if midi_subset is not None else tracks) if not t.is_audio]
+        track_slots = _assign_channels(exported)
+        audio_track_layers = {t.name: build_audio_layers(project, [t], tempo_map) for t in plain if t.is_audio}
+
         start_seconds = seconds_for_beats(tempo_map, start_offset_beats)
         loop_seconds = None
         if loop_beats is not None:
@@ -1381,14 +1488,16 @@ class PlaybackEngine:
                                cache_key=cache_key, audio_layers=audio_layers,
                                reverb_room=project.reverb_room, stems=stems,
                                master_effects=master, master_bpm=project.tempo_bpm,
-                               pre_master_key=pre_master_key if master else None)
+                               pre_master_key=pre_master_key if master else None,
+                               track_slots=track_slots, audio_track_layers=audio_track_layers)
 
     def play_file(self, midi_path: str, on_finished=None, delete_after: bool = False,
                   on_audio_started=None, channel_overrides: Optional[Dict[int, str]] = None,
                   start_seconds: float = 0.0, loop_seconds: Optional[tuple] = None,
                   cache_key: Optional[str] = None, audio_layers=None,
                   reverb_room: Optional[str] = None, stems=None, stems_offset: float = 0.0,
-                  master_effects=None, master_bpm: float = 120.0, pre_master_key: Optional[str] = None):
+                  master_effects=None, master_bpm: float = 120.0, pre_master_key: Optional[str] = None,
+                  track_slots: Optional[dict] = None, audio_track_layers: Optional[dict] = None):
         """Riproduce direttamente un file MIDI gia' pronto su disco (usato
         anche per l'anteprima di pattern e file della libreria MIDI).
 
@@ -1430,6 +1539,7 @@ class PlaybackEngine:
             self._play_token += 1
             my_token = self._play_token
             self.master_levels = None   # quelli del rendering prima non valgono piu'
+            self.track_levels = None
 
         fluidsynth_bin = shutil.which("fluidsynth")
         soundfont = _find_soundfont() if (fluidsynth_bin or _shared_synth) else None
@@ -1489,14 +1599,16 @@ class PlaybackEngine:
             if not stems or stem_job:
                 return
             stem_job["samples"] = []
+            stem_job["named"] = []
             stem_job["interrupted"] = False
 
             def work():
                 from .effect_render import render_stems
                 try:
-                    for samples in render_stems(stems, lambda: self._play_token != my_token):
+                    for stem, samples in zip(stems, render_stems(stems, lambda: self._play_token != my_token)):
                         if samples is not None:
                             stem_job["samples"].append((samples, -stems_offset))
+                            stem_job["named"].append((stem.track_name, samples))
                 except RuntimeError:
                     stem_job["interrupted"] = True
                 except Exception:
@@ -1631,6 +1743,8 @@ class PlaybackEngine:
                 return
             _run(player_cmd + [wav_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+        levels_key = pre_master_key or cache_key
+
         def run():
             wav_path = None
             try:
@@ -1641,6 +1755,8 @@ class PlaybackEngine:
                     if before is not None:
                         cached = _with_master(before)
                         _cache_put(cache_key, cached)
+                if cached is not None:
+                    self.track_levels = _track_levels_get(levels_key)
                 if cached is not None and _stream_samples(cached):
                     return
                 if soundfont and (_shared_synth or fluidsynth_bin):
@@ -1649,16 +1765,25 @@ class PlaybackEngine:
                     wav_path = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
                     self._render_tmp = wav_path
                     self._rendering = True
+                    channel_levels = {}
                     try:
                         rendered = _shared_synth.render_to_wav(
                             midi_path, wav_path, soundfont,
                             lambda: self._play_token != my_token,
-                            channel_overrides=channel_overrides, reverb_room=reverb_room)
+                            channel_overrides=channel_overrides, reverb_room=reverb_room,
+                            channel_levels=channel_levels)
                     finally:
                         self._rendering = False
                     if self._play_token != my_token:
                         return
                     mixed = _add_audio_layers(wav_path) if rendered else None
+                    if rendered and cache_key is not None:
+                        try:
+                            self.track_levels = _assemble_track_levels(
+                                channel_levels, track_slots, stem_job.get("named"), audio_track_layers)
+                            _track_levels_put(levels_key, self.track_levels)
+                        except Exception:
+                            log.warning("Livelli delle tracce non misurati", exc_info=True)
                     if mixed is not None and _play_rendered(wav_path, mixed):
                         return
                     if rendered and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:

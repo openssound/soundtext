@@ -187,3 +187,53 @@ def analyze_project_levels(project, stop_check=None, progress_callback=None) -> 
         progress_callback(1.0)
     return LevelReport(results, peak_dbfs(mixed), bars_for_seconds(project, tempo_map, starts),
                        float(levels.clipped.sum() * levels.block_seconds))
+
+
+def block_peaks(channels_first: np.ndarray, rate: int) -> np.ndarray:
+    """Picco (float, puo' superare 1) di ogni blocco da BLOCK_SECONDS di un
+    segnale (canali, frame)."""
+    block = max(1, int(round(rate * BLOCK_SECONDS)))
+    mag = np.abs(channels_first).max(axis=0) if channels_first.ndim == 2 else np.abs(channels_first)
+    n = len(mag)
+    whole = (n // block) * block
+    peaks = mag[:whole].reshape(-1, block).max(axis=1) if whole else np.zeros(0, np.float32)
+    if whole < n:
+        peaks = np.append(peaks, mag[whole:].max())
+    return peaks.astype(np.float32)
+
+
+def merge_peaks(target: dict, key, peaks: np.ndarray, offset_blocks: int = 0):
+    """target[key] = massimo blocco per blocco fra quello che c'era e peaks
+    (spostati di offset_blocks), allungando dove serve."""
+    if offset_blocks > 0:
+        peaks = np.concatenate([np.zeros(offset_blocks, np.float32), peaks])
+    elif offset_blocks < 0:
+        peaks = peaks[-offset_blocks:]
+    old = target.get(key)
+    if old is None:
+        target[key] = peaks
+        return
+    if len(old) < len(peaks):
+        old = np.concatenate([old, np.zeros(len(peaks) - len(old), np.float32)])
+    old[:len(peaks)] = np.maximum(old[:len(peaks)], peaks)
+    target[key] = old
+
+
+@dataclass
+class TrackLevels:
+    """Picco nel tempo di ogni traccia del rendering che si sta ascoltando
+    (vedi core.playback): float per blocchi da BLOCK_SECONDS, oltre 1 se la
+    traccia da sola supera il fondo scala. Le tracce MIDI sono misurate
+    asciutte (riverbero e chorus del synth sono in comune); piu' tracce di
+    batteria condividono il canale 10, e quindi il livello."""
+    block_seconds: float
+    peaks: dict              # nome traccia -> np.ndarray
+
+    def level(self, track_name: str, start_seconds: float, end_seconds: float) -> Optional[float]:
+        arr = self.peaks.get(track_name)
+        if arr is None:
+            return None
+        a = max(0, int(start_seconds / self.block_seconds))
+        b = max(a + 1, int(math.ceil(end_seconds / self.block_seconds)))
+        chunk = arr[a:b]
+        return float(chunk.max()) if len(chunk) else 0.0

@@ -127,6 +127,8 @@ class PlaybackMixin:
         # esatto in cui il processo audio viene avviato.
         self._playback_start_wall = None
 
+        for header in self._track_meter_headers():
+            header.meter.start()
         self.playback.play(self.project, start_offset_beats=_resume_offset_beats,
                             on_audio_started=self._mark_audio_started,
                             humanize=self.humanize_checkbox.isChecked(),
@@ -258,6 +260,7 @@ class PlaybackMixin:
         """Livello del master nel punto che si sta ascoltando e spia di
         clipping (vedi core.levels, misurati dal motore prima di suonare)."""
         seconds = self.playback.position_seconds()
+        self._update_track_meters(seconds)
         levels = self.playback.master_levels
         if seconds is None or levels is None:
             # audio partito ma senza streaming: niente livelli da mostrare
@@ -267,6 +270,23 @@ class PlaybackMixin:
         self.level_meter.set_level(levels.peak_between(seconds - 0.06, seconds))
         if levels.clipped_between(seconds - 0.1, seconds):
             self.level_meter.set_clipped(True, self._clip_detail(levels))
+
+    def _track_meter_headers(self):
+        from .track_header import TrackHeaderWidget
+        return self.findChildren(TrackHeaderWidget)
+
+    def _update_track_meters(self, seconds):
+        """Vu-meter delle tracce nel punto che si sta ascoltando (vedi
+        PlaybackEngine.track_levels)."""
+        levels = self.playback.track_levels
+        for header in self._track_meter_headers():
+            level = None
+            if levels is not None and seconds is not None:
+                level = levels.level(header.track_name, seconds - 0.06, seconds)
+            if level is None:
+                header.meter.silence()
+            else:
+                header.meter.set_level(level)
 
     def _clip_detail(self, levels) -> str:
         """'Il master clippa alle battute ...' per i livelli dati (una volta
@@ -284,6 +304,8 @@ class PlaybackMixin:
         """Stop o fine del brano: la barra torna a zero, la spia resta; se il
         master ha clippato, lo dice anche nella barra di stato."""
         self.level_meter.silence()
+        for header in self._track_meter_headers():
+            header.meter.silence()
         if self.level_meter.clipped:
             levels = self.playback.master_levels
             detail = self._clip_detail(levels) if levels is not None else ""

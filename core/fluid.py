@@ -98,6 +98,10 @@ def _declare(lib):
     fn("fluid_synth_set_gain", None, c_void_p, c_float)
     fn("fluid_synth_get_gain", c_float, c_void_p)
     fn("fluid_synth_write_s16", c_int, c_void_p, c_int, c_void_p, c_int, c_int, c_void_p, c_int, c_int)
+    # un'uscita per canale MIDI (vedi Synth.render_groups): da FluidSynth 2.0
+    if hasattr(lib, "fluid_synth_process"):
+        fn("fluid_synth_process", c_int, c_void_p, c_int, c_int, POINTER(POINTER(c_float)),
+           c_int, POINTER(POINTER(c_float)))
     fn("new_fluid_audio_driver", c_void_p, c_void_p, c_void_p)
     fn("delete_fluid_audio_driver", None, c_void_p)
     fn("new_fluid_player", c_void_p, c_void_p)
@@ -300,6 +304,42 @@ class Synth:
         ptr = c_void_p(buf.ctypes.data)
         self._lib.fluid_synth_write_s16(self.synth, frames, ptr, 0, 2, ptr, 1, 2)
         return buf
+
+    @property
+    def groups(self) -> int:
+        """Quante uscite stereo separate ha il synth (vedi render_groups): 1
+        se non e' stato creato con synth.audio-groups o se la libreria non ha
+        fluid_synth_process."""
+        if getattr(self, "_groups", None) is None:      # fissato alla creazione
+            self._groups = 1 if not hasattr(self._lib, "fluid_synth_process") else max(1, min(
+                int(self.get_setting("synth.audio-channels") or 1),
+                int(self.get_setting("synth.audio-groups") or 1)))
+        return self._groups
+
+    def render_groups(self, frames: int):
+        """Come get_samples, ma con un'uscita per gruppo (canale MIDI c nel
+        gruppo c % groups): (mix float32 (frames, 2), uscite asciutte
+        float32 (groups, 2, frames), valide fino alla chiamata successiva).
+        Il mix e' la somma delle uscite e di
+        riverbero e chorus, cioe' lo stesso suono di get_samples (che
+        aggiunge solo il dither della conversione a 16 bit)."""
+        groups = self.groups
+        key = (frames, groups)
+        if getattr(self, "_group_buffers", (None,))[0] != key:
+            dry = np.zeros((2 * groups, frames), np.float32)
+            fx = np.zeros((4, frames), np.float32)         # riverbero L, R, chorus L, R
+            ptr = POINTER(c_float)
+            self._group_buffers = (key, dry, fx,
+                                   (ptr * (2 * groups))(*[dry[i].ctypes.data_as(ptr) for i in range(2 * groups)]),
+                                   (ptr * 4)(*[fx[i].ctypes.data_as(ptr) for i in range(4)]))
+        _key, dry, fx, dry_ptrs, fx_ptrs = self._group_buffers
+        dry[:] = 0                  # fluid_synth_process somma nei buffer
+        fx[:] = 0
+        self._lib.fluid_synth_process(self.synth, frames, 4, fx_ptrs, 2 * groups, dry_ptrs)
+        mix = np.empty((frames, 2), np.float32)
+        mix[:, 0] = dry[0::2].sum(axis=0) + fx[0::2].sum(axis=0)
+        mix[:, 1] = dry[1::2].sum(axis=0) + fx[1::2].sum(axis=0)
+        return mix, dry.reshape(groups, 2, frames)
 
     # ------------------------------------------------------------ uscita audio
 

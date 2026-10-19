@@ -1743,5 +1743,6 @@
  "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "To fix it, lower the volume of the clipping or loudest tracks, the master volume, or Sounds -> Synthesis volume (gain).",
  "Picco {db} dBFS suonata da sola (Analizza livelli).": "Peak {db} dBFS when played on its own (Analyze levels).",
  "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Peak {db} dBFS: clips even on its own, at bars {bars}. Lower its volume.",
- "battute {bars}": "bars {bars}"
+ "battute {bars}": "bars {bars}",
+ "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Track level while playing (peak, dBFS); the top turns red if it goes over full scale."
 }

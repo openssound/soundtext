@@ -1743,5 +1743,6 @@
  "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "Para corregirlo, baja el volumen de las pistas que saturan o de las más fuertes, el volumen del máster, o Sonidos -> Volumen de síntesis (ganancia).",
  "Picco {db} dBFS suonata da sola (Analizza livelli).": "Pico {db} dBFS tocada sola (Analizar niveles).",
  "Picco {db} dBFS: clippa anche da sola, alle battute {bars}. Abbassane il volume.": "Pico {db} dBFS: satura incluso sola, en los compases {bars}. Baja su volumen.",
- "battute {bars}": "compases {bars}"
+ "battute {bars}": "compases {bars}",
+ "Livello della traccia durante l'ascolto (picco, dBFS); la cima diventa rossa se supera il fondo scala.": "Nivel de la pista durante la reproducción (pico, dBFS); la parte superior se vuelve roja si supera el fondo de escala."
 }

@@ -133,3 +133,77 @@ class LevelMeter(QWidget):
         p.setFont(font)
         p.drawText(led, Qt.AlignCenter, "CLIP")
         p.end()
+
+
+class TrackMeter(QWidget):
+    """Vu-meter verticale sottile di una traccia (nella sua testata):
+    durante l'ascolto il livello (vedi core.levels.TrackLevels), con un
+    segno di picco; la cima diventa rossa e resta rossa (fino al prossimo
+    ascolto) se la traccia supera il fondo scala. Fuori dall'ascolto puo'
+    mostrare il picco misurato da Analizza livelli (set_static)."""
+
+    WIDTH = 5
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedWidth(self.WIDTH)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self._db = METER_FLOOR_DB
+        self._peak_db = METER_FLOOR_DB
+        self._peak_time = 0.0
+        self._over = False
+        self._static = None          # (picco dB, clippa) da Analizza livelli
+
+    def set_level(self, level: float):
+        self._db = to_dbfs(level)
+        if level >= 1.0:
+            self._over = True
+        now = time.monotonic()
+        if self._db >= self._peak_db:
+            self._peak_db, self._peak_time = self._db, now
+        elif now - self._peak_time > PEAK_HOLD_SECONDS:
+            fall = (now - self._peak_time - PEAK_HOLD_SECONDS) * PEAK_FALL_DB_PER_SECOND
+            self._peak_db = max(self._db, self._peak_db - fall)
+        self.update()
+
+    def start(self):
+        """Nuovo ascolto: la spia rossa riparte spenta."""
+        self._over = False
+        self.silence()
+
+    def silence(self):
+        self._db = self._peak_db = METER_FLOOR_DB
+        self.update()
+
+    def set_static(self, peak_db, clipped: bool = False):
+        """Picco da mostrare fuori dall'ascolto (None per toglierlo)."""
+        self._static = None if peak_db is None else (peak_db, clipped)
+        self.update()
+
+    @property
+    def over(self) -> bool:
+        return self._over
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        pal = self.palette()
+        rect = QRectF(0, 0, self.width(), self.height())
+        p.fillRect(rect, pal.base())
+        h = rect.height()
+        db = self._db
+        peak_db = self._peak_db
+        if db <= METER_FLOOR_DB and self._static is not None:
+            peak_db = self._static[0]
+        # dal basso verso l'alto: verde, giallo, rosso
+        for lo, hi, color in ((METER_FLOOR_DB, -12.0, GOOD), (-12.0, -3.0, WARN), (-3.0, 0.0, BAD)):
+            y_top = h * (1 - min(_fraction(db), _fraction(hi)))
+            y_bottom = h * (1 - _fraction(lo))
+            if y_bottom > y_top and _fraction(db) > _fraction(lo):
+                p.fillRect(QRectF(0, y_top, rect.width(), y_bottom - y_top), QColor(color))
+        if peak_db > METER_FLOOR_DB:
+            y = h * (1 - _fraction(peak_db))
+            p.fillRect(QRectF(0, min(max(0.0, y), h - 2), rect.width(), 2),
+                       QColor(BAD if peak_db > -3 else pal.text().color()))
+        if self._over or (self._static is not None and self._static[1] and db <= METER_FLOOR_DB):
+            p.fillRect(QRectF(0, 0, rect.width(), 4), QColor(BAD))
+        p.end()
