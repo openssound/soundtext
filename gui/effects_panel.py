@@ -58,12 +58,24 @@ def fx_button_text(track) -> str:
     return f"FX {count}" if count else "FX"
 
 
+def _effect_summary(effect) -> str:
+    """Il nome di un effetto nel riepilogo; per un plugin LV2 che qui non si
+    puo' usare, anche l'effetto interno che suona al suo posto."""
+    from core.effects import plugin_substitute
+    label = tr(EFFECT_KINDS[effect.kind]["label"])
+    substitute = plugin_substitute(effect)
+    if substitute is None:
+        return label
+    return tr("{plugin} (non disponibile qui: suona {effect} «{preset}»)", plugin=label,
+              effect=tr(EFFECT_KINDS[substitute.kind]["label"]), preset=tr(substitute.preset))
+
+
 def fx_summary(track) -> str:
     """Testo per il tooltip del pulsante FX."""
     parts = []
     effects = active_effects(track.effects)
     if effects:
-        parts.append(" → ".join(tr(EFFECT_KINDS[e.kind]["label"]) for e in effects))
+        parts.append(" → ".join(_effect_summary(e) for e in effects))
     if not track.is_audio and (track.reverb or track.chorus):
         parts.append(tr("Riverbero {reverb}% · Chorus {chorus}%", reverb=track.reverb, chorus=track.chorus))
     if not parts:

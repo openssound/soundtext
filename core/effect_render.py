@@ -29,7 +29,7 @@ from typing import List, Optional
 import numpy as np
 
 from .effects import (DRY_SYNTH_ROOM, active_effects, apply_effect_chain, chain_signature, effects_available,
-                      synth_dry_for)
+                      lv2_instrument_missing, plugin_substitute, synth_dry_for)
 from .model import Project, Track
 
 # Memoria massima delle due cache insieme (una traccia stereo di 3 minuti a
@@ -94,11 +94,11 @@ def plugin_uses(project: Project) -> list:
     strumenti plugin delle tracce di testo e degli effetti plugin accesi
     (tracce e master), senza doppioni."""
     uses = [(t.synth, t.synth_params, t.synth_state) for t in project.tracks
-            if t.synth and not t.is_audio and t.text.strip()]
+            if t.synth and not t.is_audio and t.text.strip() and not lv2_instrument_missing(t.synth)]
     if effects_available():
         for chain in [t.effects for t in project.tracks] + [project.master_effects]:
             uses += [(e.plugin, e.plugin_params, e.plugin_state) for e in active_effects(chain)
-                     if e.kind == "plugin" and e.plugin]
+                     if e.kind == "plugin" and e.plugin and plugin_substitute(e) is None]
     out, seen = [], set()
     for ref, params, state in uses:
         key = (ref, tuple(sorted((params or {}).items())), state or "")
@@ -240,7 +240,7 @@ def prepare_stem(project: Project, track: Track, tempo_map) -> StemRequest:
     handle = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
     handle.close()
     export_project_to_midi(project, handle.name, tracks=[centered])
-    if track.synth:
+    if track.synth and not lv2_instrument_missing(track.synth):
         from .plugins import signature as plugin_signature
         with open(handle.name, "rb") as f:
             digest = hashlib.sha1(f.read())

@@ -39,6 +39,16 @@ def _stop_hosts():
     plugins.shutdown()
 
 
+@pytest.fixture(autouse=True)
+def _fake_lv2_plugins_are_installed(monkeypatch):
+    """I plugin LV2 di questi test sono finti (urn:esempio:...): senza
+    questo, dove non sono installati (o senza lilv, su Windows) verrebbero
+    sostituiti dagli effetti interni o dal SoundFont (vedi
+    core.effects.LV2_SUBSTITUTES), e i test non proverebbero i plugin."""
+    from core import effects
+    monkeypatch.setattr(effects, "_lv2_usable", lambda uri: True)
+
+
 def _project():
     project = Project()
     drums = project.add_track("Batteria", "Piano", "4: c d e f")

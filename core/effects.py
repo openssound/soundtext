@@ -474,6 +474,9 @@ def _ir_signature(effect) -> tuple:
     if effect.kind == "plugin":
         from .plugins import signature as plugin_signature
         signature += plugin_signature(effect.plugin, effect.plugin_params, effect.plugin_state)
+        substitute = plugin_substitute(effect)
+        if substitute is not None:      # suona l'effetto interno: un'altra chiave
+            signature += ("sostituito", substitute.kind, substitute.preset)
     return signature
 
 
@@ -491,6 +494,7 @@ def tail_seconds(effects, bpm: float = 120.0) -> float:
     riverbero (al massimo 8 secondi)."""
     tail = 0.0
     for e in active_effects(effects):
+        e = plugin_substitute(e) or e          # un LV2 che qui suona come effetto interno
         p = clamp_params(e.kind, e.params)
         if e.kind == "delay":
             fb = p["ripetizioni"] / 100.0
@@ -1056,6 +1060,59 @@ _AMP_STAGE_EQ = {
 }
 
 
+# Plugin LV2 usati nei brani (anche negli esempi) che esistono solo su Linux
+# (Guitarix, Calf) o solo dentro Ardour: dove non si possono caricare (su
+# Windows non c'e' lilv, o il plugin non e' installato) suona al loro posto
+# l'effetto interno piu' vicino, invece di niente. URI -> (tipo, preset).
+LV2_SUBSTITUTES = {
+    "http://guitarix.sourceforge.net/plugins/gxts9#ts9sim": ("distorsione", "Overdrive"),
+    "http://guitarix.sourceforge.net/plugins/gxautowah#autowah": ("phaser", "Medio"),
+    "http://calf.sourceforge.net/plugins/RotarySpeaker": ("chorus", "Ampio"),
+    "http://calf.sourceforge.net/plugins/TapeSimulator": ("passa_basso", "Morbido"),
+    "http://calf.sourceforge.net/plugins/Reverb": ("riverbero", "Sala"),
+    "http://calf.sourceforge.net/plugins/Phaser": ("phaser", "Medio"),
+    "urn:ardour:a-reverb": ("riverbero", "Sala"),
+    "urn:ardour:a-comp": ("compressore", "Morbido"),
+    "urn:ardour:a-comp#stereo": ("compressore", "Morbido"),
+}
+
+_lv2_usable_cache: Dict[str, bool] = {}
+
+
+def _lv2_usable(uri: str) -> bool:
+    """Il plugin LV2 si puo' caricare su questo computer (lilv presente e
+    plugin installato e supportato). Ricordato per tutta la sessione."""
+    if uri not in _lv2_usable_cache:
+        try:
+            from .lv2_host import lv2_available, lv2_plugin_info
+            info = lv2_plugin_info(uri) if lv2_available() else None
+            _lv2_usable_cache[uri] = bool(info is not None and getattr(info, "supported", True))
+        except Exception:
+            _lv2_usable_cache[uri] = False
+    return _lv2_usable_cache[uri]
+
+
+def lv2_instrument_missing(ref: str) -> bool:
+    """Lo strumento plugin di una traccia e' un LV2 che qui non si puo'
+    caricare (AVL Drums su Windows...): la traccia suona allora col
+    SoundFont, con il suo strumento General MIDI, invece di restare muta."""
+    return bool(ref) and ref.startswith("lv2:") and not _lv2_usable(ref[len("lv2:"):])
+
+
+def plugin_substitute(effect):
+    """L'effetto interno che suona al posto di un plugin LV2 che qui non si
+    puo' usare (vedi LV2_SUBSTITUTES), o None: plugin utilizzabile, non
+    LV2, o senza un equivalente (passa allora il suono invariato)."""
+    if effect.kind != "plugin" or not (effect.plugin or "").startswith("lv2:"):
+        return None
+    uri = effect.plugin[len("lv2:"):]
+    if uri not in LV2_SUBSTITUTES or _lv2_usable(uri):
+        return None
+    from .model import Effect
+    kind, preset = LV2_SUBSTITUTES[uri]
+    return Effect(kind=kind, params=preset_params(kind, preset), preset=preset)
+
+
 def _plugin_stage(effect, mix: float):
     """Stadio di un plugin esterno (elaborato nel processo dei plugin, vedi
     core.plugins). Se il plugin non si carica o non risponde il suono passa
@@ -1078,6 +1135,9 @@ def _plugin_stage(effect, mix: float):
 def _plugins(effect, bpm: float = 120.0) -> list:
     """Gli stadi di un effetto: plugin di pedalboard o funzioni numpy
     (array (frame, 2) -> array), vedi apply_effect_chain."""
+    substitute = plugin_substitute(effect)
+    if substitute is not None:
+        return _plugins(substitute, bpm)
     pb = _pedalboard
     p = clamp_params(effect.kind, effect.params)
     kind = effect.kind
