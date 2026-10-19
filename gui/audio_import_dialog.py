@@ -13,16 +13,15 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
     QCheckBox, QFrame, QDialogButtonBox, QFileDialog,
-    QMessageBox, QProgressDialog, QRadioButton, QButtonGroup,
-    QGroupBox, QSpinBox, QDoubleSpinBox
+    QMessageBox, QButtonGroup,
+    QSpinBox, QGroupBox, QProgressBar, QWidget
 )
 
 from core import settings as app_settings
 from core.model import Project, copy_synth
 from core.instruments import get_instrument
-from core.audio_import import ConversionCancelled, convert_audio_to_track_text
+from core.audio_import import ConversionCancelled, SilentAudio, convert_audio_to_track_text
 from core.audio_decode import can_decode_compressed_audio
-from core.audio_pitch import PITCH_CONFIDENCE_THRESHOLD, MIN_NOTE_DURATION_SEC
 from core.audio_recorder import MicRecorder, is_sounddevice_available
 from core.notation import validate_track_text
 from core.playback import PlaybackEngine
@@ -54,27 +53,28 @@ GRID_CHOICES = [
 ]
 TERNARY_ENABLED_GRIDS = (8, 16)
 
-# Scelte per la finestra di analisi (buf_size) e l'hop size del pitch
-# tracker: None = automatico (vedi core.audio_pitch, adattato al registro
-# dello strumento), le altre sono potenze di due esplicite passate
-# direttamente all'analisi (core.audio_dsp).
-BUF_SIZE_CHOICES = [
-    (tr("Automatica (in base al registro)"), None),
-    (tr("1024 (piu' risoluzione temporale)"), 1024),
-    (tr("2048 (predefinito)"), 2048),
-    (tr("4096 (bassi/note gravi)"), 4096),
-    (tr("8192 (bassi molto gravi)"), 8192),
-    ("16384", 16384),
-]
-HOP_SIZE_CHOICES = [
-    (tr("Automatico (finestra / 4)"), None),
-    ("128", 128),
-    ("256", 256),
-    (tr("512 (predefinito)"), 512),
-    ("1024", 1024),
-    ("2048", 2048),
-]
-MIN_NOTE_DURATION_MS_DEFAULT = int(round(MIN_NOTE_DURATION_SEC * 1000))
+class _Silence(str):
+    """Risultato di una conversione di un audio quasi silenzioso: il
+    messaggio da mostrare (vedi core.audio_import.SilentAudio)."""
+
+
+def _convert_or_silence(*args, **kwargs):
+    """convert_audio_to_track_text, ma un audio silenzioso non e' un errore
+    da finestra a comparsa: torna il messaggio da mostrare nel passo 3."""
+    try:
+        return convert_audio_to_track_text(*args, **kwargs)
+    except SilentAudio as e:
+        return _Silence(str(e))
+
+
+def _audio_seconds(path: str):
+    """Durata di un WAV in secondi, o None (altri formati, file illeggibile)."""
+    try:
+        from core.audio_tracks import read_wav_info
+        info = read_wav_info(path)
+        return info.frames / float(info.samplerate)
+    except Exception:
+        return None
 
 
 def _beats_per_bar(time_sig: str) -> float:
@@ -119,7 +119,17 @@ class AudioImportDialog(QDialog):
         self._generated_text = None
         self._worker = None
         self._cancelled = False
-        self._progress_dlg = None
+        # Conversione automatica: parte poco dopo l'ultima scelta (audio,
+        # modalita', opzioni). Se ne serve una nuova mentre un'altra e' in
+        # corso, quella viene annullata e si riparte. Un'anteprima modificata a
+        # mano non si sovrascrive da sola (resta "Converti di nuovo").
+        self._auto_timer = QTimer(self)
+        self._auto_timer.setSingleShot(True)
+        self._auto_timer.setInterval(350)
+        self._auto_timer.timeout.connect(self._auto_convert)
+        self._restart_after_cancel = False
+        self._preview_edited = False
+        self._setting_preview = False
         self.recorder = MicRecorder() if is_sounddevice_available() else None
         self._rec_timer = None
         self._preview_playback = PlaybackEngine()
@@ -141,42 +151,15 @@ class AudioImportDialog(QDialog):
             tr("Destinazione: <b>{context_label}</b> (strumento: {instrument_name})", context_label=self.context_label, instrument_name=self.instrument_name)
         ))
 
-        # --- tempo / metrica / metronomo (utili per registrare a tempo dal
-        # microfono; il tempo e' anche usato per quantizzare la conversione)
-        tempo_row = QHBoxLayout()
-        tempo_row.addWidget(QLabel(tr("Tempo (BPM):")))
-        self.tempo_spin = QSpinBox()
-        self.tempo_spin.setRange(20, 300)
-        self.tempo_spin.setValue(self.project.tempo_bpm)
-        self.tempo_spin.setToolTip(tr("Tempo del progetto: usato anche per quantizzare la registrazione."))
-        self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
-        tempo_row.addWidget(self.tempo_spin)
-
-        tempo_row.addSpacing(12)
-        tempo_row.addWidget(QLabel(tr("Metrica:")))
-        self.metrica_combo = QComboBox()
-        self.metrica_combo.setEditable(True)
-        self.metrica_combo.addItems(["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"])
-        self.metrica_combo.setCurrentText(self.project.time_sig)
-        self.metrica_combo.setFixedWidth(70)
-        self.metrica_combo.setToolTip(tr("Metrica del progetto, es. 4/4, 3/4, 6/8."))
-        self.metrica_combo.currentTextChanged.connect(self._on_metrica_changed)
-        tempo_row.addWidget(self.metrica_combo)
-
-        tempo_row.addSpacing(12)
-        self.metronome_checkbox = QCheckBox(tr("Metronomo"))
-        self.metronome_checkbox.setChecked(False)
-        self.metronome_checkbox.setToolTip(
-            tr("Fa sentire un click a tempo, utile per registrare a tempo dal microfono.\n"
-            "Suono e volume si impostano in Opzioni → Metronomo, nella finestra principale.")
-        )
-        self.metronome_checkbox.toggled.connect(self._on_metronome_toggled)
-        tempo_row.addWidget(self.metronome_checkbox)
-        tempo_row.addStretch(1)
-        layout.addLayout(tempo_row)
-
-        # --- microfono
-        mic_row = QHBoxLayout()
+        # ================= 2. Audio: registrazione o file, tempo del brano
+        # (costruito prima, mostrato dopo "Cosa riconoscere": prima si sceglie
+        # cosa riconoscere, poi si registra o si sceglie il file)
+        audio_box = QGroupBox(tr("2. Audio"))
+        audio_layout = QVBoxLayout(audio_box)
+        self.drop_frame = QFrame()                  # tutta la finestra accetta il trascinamento
+        self.drop_frame.setFrameShape(QFrame.StyledPanel)
+        self.drop_frame.setObjectName("panelBox")
+        source_row = QHBoxLayout(self.drop_frame)
         self.record_btn = QPushButton(tr("🎙 Registra dal microfono"))
         self.record_btn.clicked.connect(self._toggle_recording)
         if self.recorder is None:
@@ -189,32 +172,87 @@ class AudioImportDialog(QDialog):
                 tr("Con il Metronomo acceso il click riparte insieme alla registrazione e la "
                 "trascrizione segue i suoi battiti; senza, parte dalla prima nota.")
             )
-        mic_row.addWidget(self.record_btn)
-        self.timer_label = QLabel("")
-        mic_row.addWidget(self.timer_label)
-        mic_row.addStretch(1)
-        layout.addLayout(mic_row)
-
-        # --- file / drag-and-drop
-        self.drop_frame = QFrame()
-        self.drop_frame.setFrameShape(QFrame.StyledPanel)
-        self.drop_frame.setObjectName("panelBox")
-        self.drop_frame.setMinimumHeight(70)
-        drop_layout = QVBoxLayout(self.drop_frame)
-        self.source_label = QLabel(tr("Trascina qui un file .wav/.mp3/.m4a, oppure:"))
-        self.source_label.setAlignment(Qt.AlignCenter)
-        drop_layout.addWidget(self.source_label)
-        browse_btn = QPushButton(tr("Sfoglia file..."))
+        source_row.addWidget(self.record_btn)
+        browse_btn = QPushButton(tr("📂 Scegli file..."))
         browse_btn.clicked.connect(self._browse_file)
-        browse_row = QHBoxLayout()
-        browse_row.addStretch(1)
-        browse_row.addWidget(browse_btn)
-        browse_row.addStretch(1)
-        drop_layout.addLayout(browse_row)
-        layout.addWidget(self.drop_frame)
+        source_row.addWidget(browse_btn)
+        drop_hint = QLabel(tr("oppure trascina qui un file .wav/.mp3/.m4a"))
+        drop_hint.setEnabled(False)
+        source_row.addWidget(drop_hint)
+        source_row.addStretch(1)
+        self.timer_label = QLabel("")
+        source_row.addWidget(self.timer_label)
+        audio_layout.addWidget(self.drop_frame)
+        self.source_label = QLabel(tr("Nessun audio scelto."))
+        audio_layout.addWidget(self.source_label)
 
-        # --- quantizzazione
-        quant_row = QHBoxLayout()
+        # tempo / metrica / metronomo (per registrare a tempo; il tempo serve
+        # anche alla conversione)
+        tempo_row = QHBoxLayout()
+        tempo_row.addWidget(QLabel(tr("Tempo (BPM):")))
+        self.tempo_spin = QSpinBox()
+        self.tempo_spin.setRange(20, 300)
+        self.tempo_spin.setValue(self.project.tempo_bpm)
+        self.tempo_spin.setToolTip(tr("Tempo del progetto: usato anche per quantizzare la registrazione."))
+        self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
+        tempo_row.addWidget(self.tempo_spin)
+        tempo_row.addSpacing(12)
+        tempo_row.addWidget(QLabel(tr("Metrica:")))
+        self.metrica_combo = QComboBox()
+        self.metrica_combo.setEditable(True)
+        self.metrica_combo.addItems(["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"])
+        self.metrica_combo.setCurrentText(self.project.time_sig)
+        self.metrica_combo.setFixedWidth(70)
+        self.metrica_combo.setToolTip(tr("Metrica del progetto, es. 4/4, 3/4, 6/8."))
+        self.metrica_combo.currentTextChanged.connect(self._on_metrica_changed)
+        tempo_row.addWidget(self.metrica_combo)
+        tempo_row.addSpacing(12)
+        self.metronome_checkbox = QCheckBox(tr("Metronomo durante la registrazione"))
+        self.metronome_checkbox.setChecked(False)
+        self.metronome_checkbox.setToolTip(
+            tr("Fa sentire un click a tempo, utile per registrare a tempo dal microfono.\n"
+            "Suono e volume si impostano in Opzioni → Metronomo, nella finestra principale.")
+        )
+        self.metronome_checkbox.toggled.connect(self._on_metronome_toggled)
+        tempo_row.addWidget(self.metronome_checkbox)
+        tempo_row.addStretch(1)
+        audio_layout.addLayout(tempo_row)
+        layout.addWidget(audio_box)
+
+        # ================= 1. Cosa riconoscere: modalita' e solo le sue opzioni
+        mode_box = QGroupBox(tr("1. Cosa riconoscere"))
+        mode_layout = QVBoxLayout(mode_box)
+        mode_row = QHBoxLayout()
+        mode_row.setSpacing(0)
+        self.melodic_radio = QPushButton(tr("Melodia"))
+        self.perc_radio = QPushButton(tr("Percussioni"))
+        self.chords_radio = QPushButton(tr("Accordi"))
+        mode_group = QButtonGroup(self)
+        mode_group.setExclusive(True)
+        for button in (self.melodic_radio, self.perc_radio, self.chords_radio):
+            button.setCheckable(True)
+            button.setMinimumWidth(110)
+            button.setObjectName("modeTab")
+            mode_group.addButton(button)
+            mode_row.addWidget(button)
+        # la scheda scelta col colore di evidenziazione del tema (chiaro o scuro)
+        mode_box.setStyleSheet("QPushButton#modeTab:checked { background: palette(highlight); "
+                               "color: palette(highlighted-text); font-weight: bold; }")
+        mode_row.addStretch(1)
+        if instr.is_percussion:
+            self.perc_radio.setChecked(True)
+        else:
+            self.melodic_radio.setChecked(True)
+        mode_layout.addLayout(mode_row)
+        self.mode_description = QLabel()
+        self.mode_description.setWordWrap(True)
+        mode_layout.addWidget(self.mode_description)
+
+        options_row = QHBoxLayout()
+        # quantizzazione: melodia e percussioni (gli accordi vanno a quarti)
+        self.quant_widget = QWidget()
+        quant_row = QHBoxLayout(self.quant_widget)
+        quant_row.setContentsMargins(0, 0, 0, 0)
         quant_row.addWidget(QLabel(tr("Quantizzazione:")))
         self.grid_combo = QComboBox()
         for label, denom in GRID_CHOICES:
@@ -224,170 +262,90 @@ class AudioImportDialog(QDialog):
         self.ternary_check = QCheckBox(tr("Ternario (terzine, 8T/16T)"))
         self.ternary_check.toggled.connect(self._on_grid_changed)
         quant_row.addWidget(self.ternary_check)
-        quant_row.addStretch(1)
-        layout.addLayout(quant_row)
-
-        self._load_last_quantization()
-
-        # --- modalita' melodica/percussiva
-        mode_row = QHBoxLayout()
-        mode_row.addWidget(QLabel(tr("Modalita' di analisi:")))
-        self.melodic_radio = QRadioButton(tr("Melodica (pitch detection)"))
-        self.perc_radio = QRadioButton(tr("Percussiva (batteria/beatbox)"))
-        self.chords_radio = QRadioButton(tr("Accordi (armonia)"))
-        self.chords_radio.setToolTip(
-            tr("Riconosce gli accordi (chitarra, pianoforte o un brano intero) e li scrive come "
-               "sigle, un accordo per quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\"."))
-        mode_group = QButtonGroup(self)
-        mode_group.addButton(self.melodic_radio)
-        mode_group.addButton(self.perc_radio)
-        mode_group.addButton(self.chords_radio)
-        if instr.is_percussion:
-            self.perc_radio.setChecked(True)
-        else:
-            self.melodic_radio.setChecked(True)
-        self.melodic_radio.toggled.connect(self._on_mode_changed)
-        self.chords_radio.toggled.connect(self._on_mode_changed)
-        mode_row.addWidget(self.melodic_radio)
-        mode_row.addWidget(self.perc_radio)
-        mode_row.addWidget(self.chords_radio)
-        mode_row.addStretch(1)
-        layout.addLayout(mode_row)
-
-        # --- accordi: anche le settime (meno affidabili)
-        sevenths_row = QHBoxLayout()
-        self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
-        self.sevenths_check.setToolTip(
-            tr("Le settime si confondono con gli armonici delle altre note: di base si scrivono "
-               "solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche "
-               "le settime; capita di perderne qualcuna."))
-        sevenths_row.addWidget(self.sevenths_check)
-        sevenths_row.addStretch(1)
-        layout.addLayout(sevenths_row)
-
-        # --- parametri avanzati di pitch tracking (solo modalita' melodica)
-        self.pitch_advanced_group = QGroupBox(tr("Parametri avanzati di pitch tracking"))
-        advanced_layout = QVBoxLayout(self.pitch_advanced_group)
-
-        freq_row = QHBoxLayout()
-        freq_row.addWidget(QLabel(tr("Frequenza minima:")))
-        self.min_freq_auto_check = QCheckBox(tr("Automatica (in base allo strumento)"))
-        self.min_freq_auto_check.setChecked(True)
-        self.min_freq_auto_check.toggled.connect(self._on_min_freq_auto_toggled)
-        freq_row.addWidget(self.min_freq_auto_check)
-        self.min_freq_spin = QDoubleSpinBox()
-        self.min_freq_spin.setRange(20.0, 2000.0)
-        self.min_freq_spin.setDecimals(1)
-        self.min_freq_spin.setSuffix(" Hz")
-        self.min_freq_spin.setValue(_min_freq_hz_for_instrument(instr))
-        self.min_freq_spin.setEnabled(False)
-        self.min_freq_spin.setToolTip(
-            tr("Dimensiona la finestra di analisi sulle note piu' gravi attese: troppo bassa "
-            "puo' rendere la stima del pitch meno precisa sui bassi, troppo alta peggiora "
-            "la risoluzione temporale.")
-        )
-        freq_row.addWidget(self.min_freq_spin)
-        freq_row.addStretch(1)
-        advanced_layout.addLayout(freq_row)
-
-        window_row = QHBoxLayout()
-        window_row.addWidget(QLabel(tr("Finestra di analisi:")))
-        self.buf_size_combo = QComboBox()
-        for label, value in BUF_SIZE_CHOICES:
-            self.buf_size_combo.addItem(label, value)
-        self.buf_size_combo.setToolTip(
-            tr("Numero di campioni analizzati per ogni stima di pitch. Finestre piu' ampie "
-            "aiutano sulle note gravi (piu' periodi coperti) ma peggiorano la risoluzione "
-            "temporale (attacchi/note brevi meno precisi).")
-        )
-        window_row.addWidget(self.buf_size_combo)
-        window_row.addStretch(1)
-        advanced_layout.addLayout(window_row)
-
-        hop_row = QHBoxLayout()
-        hop_row.addWidget(QLabel(tr("Passo di analisi (hop size):")))
-        self.hop_size_combo = QComboBox()
-        for label, value in HOP_SIZE_CHOICES:
-            self.hop_size_combo.addItem(label, value)
-        self.hop_size_combo.setToolTip(
-            tr("Distanza in campioni tra una stima e la successiva. Piu' piccolo = piu' "
-            "risoluzione temporale ma analisi piu' lenta.")
-        )
-        hop_row.addWidget(self.hop_size_combo)
-        hop_row.addStretch(1)
-        advanced_layout.addLayout(hop_row)
-
-        confidence_row = QHBoxLayout()
-        self.confidence_label = QLabel(tr("Soglia di confidenza:"))
-        confidence_row.addWidget(self.confidence_label)
-        self.confidence_spin = QDoubleSpinBox()
-        self.confidence_spin.setRange(0.0, 1.0)
-        self.confidence_spin.setSingleStep(0.01)
-        self.confidence_spin.setDecimals(2)
-        confidence_row.addWidget(self.confidence_spin)
-        confidence_row.addStretch(1)
-        advanced_layout.addLayout(confidence_row)
-
-        duration_row = QHBoxLayout()
-        duration_row.addWidget(QLabel(tr("Durata minima nota:")))
-        self.min_note_duration_spin = QSpinBox()
-        self.min_note_duration_spin.setRange(0, 1000)
-        self.min_note_duration_spin.setSingleStep(5)
-        self.min_note_duration_spin.setSuffix(" ms")
-        self.min_note_duration_spin.setValue(MIN_NOTE_DURATION_MS_DEFAULT)
-        self.min_note_duration_spin.setToolTip(
-            tr("Note piu' brevi di questa soglia vengono scartate come probabili artefatti "
-            "(onset spuri ravvicinati, es. per vibrato marcato).")
-        )
-        duration_row.addWidget(self.min_note_duration_spin)
-        duration_row.addStretch(1)
-        advanced_layout.addLayout(duration_row)
-
-        reset_row = QHBoxLayout()
-        reset_row.addStretch(1)
-        self.pitch_reset_btn = QPushButton(tr("Ripristina valori standard"))
-        self.pitch_reset_btn.clicked.connect(self._reset_pitch_advanced_params)
-        reset_row.addWidget(self.pitch_reset_btn)
-        advanced_layout.addLayout(reset_row)
-
-        layout.addWidget(self.pitch_advanced_group)
-        self._reset_pitch_advanced_params()
-        self._on_mode_changed()
-
-        # --- sorgente voce/beatbox (invece dello strumento reale)
+        options_row.addWidget(self.quant_widget)
+        # voce invece dello strumento: melodia e percussioni (riga sua: con la
+        # quantizzazione accanto non ci stava)
         voice_row = QHBoxLayout()
-        self.voice_source_check = QCheckBox(tr("Sorgente: voce/beatbox (non lo strumento reale)"))
+        self.voice_source_check = QCheckBox()
         self.voice_source_check.setToolTip(
             tr("Attiva se stai cantando/canticchiando la parte (basso, melodia...) o imitando la "
             "batteria con la bocca, invece di registrare lo strumento vero: la voce umana ha "
             "caratteristiche acustiche diverse (intonazione meno stabile, nessuna vera risonanza "
             "grave come quella di una cassa) e l'analisi viene ricalibrata di conseguenza.")
         )
+        self.voice_source_check.toggled.connect(self._schedule_conversion)
         voice_row.addWidget(self.voice_source_check)
         voice_row.addStretch(1)
-        layout.addLayout(voice_row)
+        # settime: solo accordi
+        self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
+        self.sevenths_check.setToolTip(
+            tr("Le settime si confondono con gli armonici delle altre note: di base si scrivono "
+               "solo triadi (maggiori, minori, diminuite, sus4). Con questa opzione si cercano anche "
+               "le settime; capita di perderne qualcuna."))
+        self.sevenths_check.toggled.connect(self._schedule_conversion)
+        options_row.addWidget(self.sevenths_check)
+        options_row.addStretch(1)
+        mode_layout.addLayout(options_row)
+        mode_layout.addLayout(voice_row)
 
-        # --- conversione
-        self.convert_btn = QPushButton(tr("Converti in SoundText"))
+        # parametri avanzati del pitch tracking: solo melodia (Opzioni -> Import audio)
+        self.pitch_widget = QWidget()
+        pitch_row = QHBoxLayout(self.pitch_widget)
+        pitch_row.setContentsMargins(0, 0, 0, 0)
+        self.pitch_params_btn = QPushButton(tr("Parametri avanzati..."))
+        self.pitch_params_btn.setToolTip(tr("Gli stessi di Opzioni → Import audio: valgono per tutti gli import."))
+        self.pitch_params_btn.clicked.connect(self._edit_pitch_params)
+        pitch_row.addWidget(self.pitch_params_btn)
+        self.pitch_hint_label = QLabel()
+        pitch_row.addWidget(self.pitch_hint_label)
+        pitch_row.addStretch(1)
+        mode_layout.addWidget(self.pitch_widget)
+        self._refresh_pitch_hint()
+        layout.insertWidget(layout.indexOf(audio_box), mode_box)
+
+        self._load_last_quantization()
+        mode_group.buttonToggled.connect(lambda _button, checked: checked and self._on_mode_changed())
+        self._on_mode_changed()
+
+        # ================= 3. Risultato: conversione (automatica) e anteprima
+        result_box = QGroupBox(tr("3. Risultato"))
+        result_layout = QVBoxLayout(result_box)
+        convert_row = QHBoxLayout()
+        self.convert_btn = QPushButton(tr("Converti di nuovo"))
         self.convert_btn.setEnabled(False)
+        self.convert_btn.setToolTip(
+            tr("La conversione parte da sola quando scegli l'audio o cambi le opzioni; questo "
+               "pulsante la rifa' (anche dopo aver modificato a mano l'anteprima)."))
         self.convert_btn.clicked.connect(self._on_convert_clicked)
-        layout.addWidget(self.convert_btn)
+        convert_row.addWidget(self.convert_btn)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setMaximumHeight(10)
+        self.progress_bar.hide()
+        convert_row.addWidget(self.progress_bar, 1)
+        self.cancel_btn = QPushButton(tr("Annulla"))
+        self.cancel_btn.clicked.connect(self._cancel_conversion)
+        self.cancel_btn.hide()
+        convert_row.addWidget(self.cancel_btn)
+        convert_row.addStretch(0)
+        result_layout.addLayout(convert_row)
+        self.result_status = QLabel(tr("Scegli o registra un audio: la conversione parte da sola."))
+        self.result_status.setEnabled(False)
+        result_layout.addWidget(self.result_status)
 
-        layout.addWidget(QLabel(
-            tr("Anteprima (modificabile a conversione completata; verra' inserita in ")
-            + self.context_label + "):"
-        ))
         self.preview_edit = NotationEditor()
         self.preview_edit.setFont(QFont("Monospace", 10))
         self.preview_edit.setReadOnly(True)
         self.preview_edit.on_selection_context_menu = self._on_preview_selection_context_menu
+        self.preview_edit.textChanged.connect(self._on_preview_edited)
         self._highlighter = NotationHighlighter(self.preview_edit.document())
         # Evidenziazione, nell'anteprima, di cio' che sta suonando.
         self._preview_highlight = PlayHighlighter(self.preview_edit, self, "_preview_playback")
-        layout.addWidget(self.preview_edit)
+        result_layout.addWidget(self.preview_edit)
 
         preview_play_row = QHBoxLayout()
-        self.preview_play_btn = QPushButton(tr("▶ Ascolta anteprima"))
+        self.preview_play_btn = QPushButton(tr("▶ Ascolta"))
         self.preview_play_btn.setEnabled(False)
         self.preview_play_btn.setToolTip(
             tr("Riproduce il contenuto attuale dell'anteprima, comprese le eventuali "
@@ -399,10 +357,13 @@ class AudioImportDialog(QDialog):
         self.preview_stop_btn.clicked.connect(self._stop_preview_playback)
         preview_play_row.addWidget(self.preview_stop_btn)
         preview_play_row.addStretch(1)
-        layout.addLayout(preview_play_row)
+        result_layout.addLayout(preview_play_row)
+        layout.addWidget(result_box, 1)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.button_box.button(QDialogButtonBox.Ok).setEnabled(False)
+        ok = self.button_box.button(QDialogButtonBox.Ok)
+        ok.setText(tr("Inserisci nella traccia"))
+        ok.setEnabled(False)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
@@ -431,8 +392,13 @@ class AudioImportDialog(QDialog):
     def _set_source(self, path, from_mic=False):
         self.source_path = path
         self._from_mic = from_mic
-        self.source_label.setText(tr("Sorgente: {0}", os.path.basename(path)))
+        name = tr("registrazione dal microfono") if from_mic else os.path.basename(path)
+        seconds = _audio_seconds(path)
+        self.source_label.setText("✓ " + name + (f" — {int(seconds // 60)}:{int(seconds % 60):02d}"
+                                                  if seconds is not None else ""))
         self.convert_btn.setEnabled(True)
+        self._preview_edited = False            # audio nuovo: risultato nuovo
+        self._schedule_conversion()
 
     def _toggle_recording(self):
         if self.recorder is None:
@@ -480,6 +446,7 @@ class AudioImportDialog(QDialog):
         self.project.tempo_bpm = value
         if self.metronome_checkbox.isChecked():
             self._restart_metronome()
+        self._schedule_conversion()
 
     def _on_metrica_changed(self, text):
         text = text.strip()
@@ -490,6 +457,7 @@ class AudioImportDialog(QDialog):
             self.project.time_sig = text
             if self.metronome_checkbox.isChecked():
                 self._restart_metronome()
+            self._schedule_conversion()
 
     def _on_metronome_toggled(self, checked):
         if checked:
@@ -524,33 +492,35 @@ class AudioImportDialog(QDialog):
         self.ternary_check.setEnabled(enable)
         if not enable:
             self.ternary_check.setChecked(False)
+        self._schedule_conversion()
 
     # ------------------------------------------------------------ algoritmo pitch
 
     def _on_mode_changed(self):
-        is_melodic = self.melodic_radio.isChecked()
-        self.pitch_advanced_group.setEnabled(is_melodic)
-        is_chords = self.chords_radio.isChecked()
-        if hasattr(self, "sevenths_check"):
-            self.sevenths_check.setEnabled(is_chords)
-        if hasattr(self, "voice_source_check"):
-            self.voice_source_check.setEnabled(not is_chords)
+        """Si vedono solo le opzioni della modalita' scelta."""
+        melodic, chords = self.melodic_radio.isChecked(), self.chords_radio.isChecked()
+        self.mode_description.setText(
+            tr("Una nota alla volta: voce, basso, chitarra solista, fiati...") if melodic else
+            tr("Gli accordi di una chitarra, di un pianoforte o di un brano intero, un accordo per "
+               "quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".") if chords else
+            tr("Colpi di batteria o beatbox, riconosciuti come kick, snare e hihat."))
+        self.quant_widget.setVisible(not chords)
+        self.voice_source_check.setVisible(not chords)
+        self.voice_source_check.setText(
+            tr("Sto cantando (non lo strumento)") if melodic else tr("Sto facendo beatbox (non la batteria)"))
+        self.sevenths_check.setVisible(chords)
+        self.pitch_widget.setVisible(melodic)
+        self._schedule_conversion()
 
-    def _on_min_freq_auto_toggled(self, checked: bool):
-        self.min_freq_spin.setEnabled(not checked)
-        if checked:
-            instr = get_instrument(self.instrument_name)
-            self.min_freq_spin.setValue(_min_freq_hz_for_instrument(instr))
+    def _refresh_pitch_hint(self):
+        from .audio_pitch_dialog import is_customized
+        self.pitch_hint_label.setText(tr("In uso: valori personalizzati.") if is_customized() else "")
 
-    def _reset_pitch_advanced_params(self):
-        """Riporta i parametri di pitch tracking ai valori standard. Usato
-        sia dal pulsante "Ripristina valori standard" sia per inizializzare
-        i controlli all'apertura del dialogo."""
-        self.min_freq_auto_check.setChecked(True)
-        self.buf_size_combo.setCurrentIndex(0)   # Automatica
-        self.hop_size_combo.setCurrentIndex(0)   # Automatico
-        self.min_note_duration_spin.setValue(MIN_NOTE_DURATION_MS_DEFAULT)
-        self.confidence_spin.setValue(PITCH_CONFIDENCE_THRESHOLD)
+    def _edit_pitch_params(self):
+        from .audio_pitch_dialog import AudioPitchDialog
+        if AudioPitchDialog(self).exec():
+            self._refresh_pitch_hint()
+            self._schedule_conversion()
 
     def _selected_pitch_advanced_params(self, instr, is_percussion: bool, voice_source: bool):
         """Ritorna (min_freq_hz, buf_size, hop_size, confidence_threshold,
@@ -558,7 +528,9 @@ class AudioImportDialog(QDialog):
         ignorati per la batteria (is_percussion=True)."""
         if is_percussion:
             return None, None, None, None, None
-        if self.min_freq_auto_check.isChecked():
+        from .audio_pitch_dialog import current_pitch_params
+        params = current_pitch_params()
+        if params["min_freq_auto"]:
             # Se la sorgente e' voce (non lo strumento reale), non ha senso
             # allargare la finestra di analisi sull'estensione grave dello
             # strumento di destinazione: chi canta/canticchia difficilmente
@@ -566,17 +538,51 @@ class AudioImportDialog(QDialog):
             # peggiorerebbe solo la risoluzione temporale (vedi core.audio_pitch).
             min_freq_hz = None if voice_source else _min_freq_hz_for_instrument(instr)
         else:
-            min_freq_hz = self.min_freq_spin.value()
-        buf_size = self.buf_size_combo.currentData()
-        hop_size = self.hop_size_combo.currentData()
-        confidence_threshold = self.confidence_spin.value()
-        min_note_duration_sec = self.min_note_duration_spin.value() / 1000.0
+            min_freq_hz = params["min_freq_hz"]
+        buf_size = params["buf_size"]
+        hop_size = params["hop_size"]
+        confidence_threshold = params["confidence"]
+        min_note_duration_sec = params["min_note_ms"] / 1000.0
         return min_freq_hz, buf_size, hop_size, confidence_threshold, min_note_duration_sec
 
     # ------------------------------------------------------------ conversione
 
+    def _schedule_conversion(self, *_args):
+        """Conversione automatica poco dopo l'ultima scelta (vedi __init__)."""
+        if getattr(self, "source_path", None) and hasattr(self, "preview_edit") and not self._preview_edited:
+            self._auto_timer.start()
+
+    def _auto_convert(self):
+        if self._preview_edited:
+            return
+        self._start_conversion()
+
     def _on_convert_clicked(self):
+        """Converti di nuovo: anche sopra le modifiche fatte a mano."""
+        self._preview_edited = False
+        self._start_conversion()
+
+    def _on_preview_edited(self):
+        if not self._setting_preview and not self.preview_edit.isReadOnly():
+            self._preview_edited = True
+            self.result_status.setText(tr("Anteprima modificata a mano: le nuove scelte non la "
+                                          "sovrascrivono, premi \"Converti di nuovo\" per rifarla."))
+
+    def _set_preview_text(self, text):
+        self._setting_preview = True
+        try:
+            self.preview_edit.setPlainText(text)
+        finally:
+            self._setting_preview = False
+
+    def _start_conversion(self):
+        self._auto_timer.stop()              # questa conversione vale anche per quella in attesa
         if not self.source_path:
+            return
+        if self._worker is not None:
+            # se ne vuole una nuova: si annulla quella in corso e si riparte
+            self._restart_after_cancel = True
+            self._cancelled = True
             return
         grid_denom, ternary = self._selected_grid()
         is_percussion = self.perc_radio.isChecked()
@@ -593,11 +599,10 @@ class AudioImportDialog(QDialog):
             return
 
         self._stop_preview_playback()
-        self.convert_btn.setEnabled(False)
         self.preview_play_btn.setEnabled(False)
         self.button_box.button(QDialogButtonBox.Ok).setEnabled(False)
         self.preview_edit.setReadOnly(True)  # eventuali modifiche manuali precedenti verrebbero comunque sovrascritte dal nuovo risultato
-        self.preview_edit.setPlainText(tr("Analisi audio in corso..."))
+        self.result_status.setText(tr("Analisi audio in corso..."))
 
         voice_source = self.voice_source_check.isChecked() and not is_chords
         min_freq_hz, buf_size, hop_size, confidence_threshold, min_note_duration_sec = (
@@ -614,7 +619,7 @@ class AudioImportDialog(QDialog):
             worker.progress.emit(frac)
 
         worker = Worker(
-            convert_audio_to_track_text,
+            _convert_or_silence,
             self.source_path, is_percussion, self.project.tempo_bpm,
             grid_denom, ternary, self.project.patterns, instr.default_octave,
             self.midi_dir, self._from_mic, min_freq_hz=min_freq_hz, voice_source=voice_source,
@@ -628,41 +633,57 @@ class AudioImportDialog(QDialog):
         )
         self._worker = worker
 
-        progress_dlg = QProgressDialog(tr("Analisi audio in corso..."), tr("Annulla"), 0, 100, self)
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.setAutoClose(False)
-        progress_dlg.setValue(0)
-        self._progress_dlg = progress_dlg
-
-        worker.progress.connect(lambda frac: progress_dlg.setValue(min(100, int(frac * 100))))
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        self.cancel_btn.show()
+        worker.progress.connect(lambda frac: self.progress_bar.setValue(min(100, int(frac * 100))))
         worker.finished_ok.connect(self._on_convert_ok)
         worker.finished_error.connect(self._on_convert_error)
-        progress_dlg.canceled.connect(self._cancel_conversion)
         worker.start()
 
     def _cancel_conversion(self):
+        """Annulla dell'avanzamento: ferma la conversione in corso."""
+        self._restart_after_cancel = False
         self._cancelled = True
 
-    def _on_convert_ok(self, text):
+    def _conversion_finished(self) -> bool:
+        """Pulizia comune; True se va rifatta subito (le scelte sono
+        cambiate mentre girava)."""
         self._worker.wait()
-        self._progress_dlg.close()
+        self._worker = None
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
+        if self._restart_after_cancel:
+            self._restart_after_cancel = False
+            self._start_conversion()
+            return True
+        return False
+
+    def _on_convert_ok(self, text):
+        if self._conversion_finished():
+            return
+        if isinstance(text, _Silence):
+            self._generated_text = None
+            self._set_preview_text("")
+            self.result_status.setText(str(text))
+            self.convert_btn.setEnabled(True)
+            return
         self._generated_text = text
-        self.preview_edit.setPlainText(text)
+        self._set_preview_text(text)
         self.preview_edit.setReadOnly(False)
+        self.result_status.setText(tr("Fatto: puoi ascoltarlo, modificarlo e inserirlo nella traccia."))
         self.button_box.button(QDialogButtonBox.Ok).setEnabled(True)
         self.convert_btn.setEnabled(True)
         self.preview_play_btn.setEnabled(True)
-        self._worker = None
 
     def _on_convert_error(self, msg):
-        self._worker.wait()
-        self._progress_dlg.close()
-        if not self._cancelled:
+        cancelled = self._cancelled
+        if self._conversion_finished():
+            return
+        if not cancelled:
             QMessageBox.critical(self, tr("Errore nella conversione"), msg)
-        self.preview_edit.setPlainText("")
+        self.result_status.setText(tr("Conversione annullata.") if cancelled else tr("Conversione non riuscita."))
         self.convert_btn.setEnabled(True)
-        self._worker = None
 
     # ------------------------------------------------------------ anteprima audio
 

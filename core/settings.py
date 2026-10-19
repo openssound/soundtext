@@ -382,3 +382,19 @@ def set_language(code: str):
     _load()
     _cache["language"] = code
     _save()
+
+
+def get_audio_pitch_params() -> dict:
+    """Parametri avanzati del pitch tracking dell'import audio scelti in
+    Opzioni -> Import audio (vedi gui.audio_pitch_dialog): solo quelli
+    cambiati; vuoto = valori standard."""
+    return dict(_load().get("audio_pitch_params", {}))
+
+
+def set_audio_pitch_params(params: dict):
+    _load()
+    if params:
+        _cache["audio_pitch_params"] = dict(params)
+    else:
+        _cache.pop("audio_pitch_params", None)
+    _save()

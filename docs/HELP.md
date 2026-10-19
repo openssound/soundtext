@@ -3153,9 +3153,13 @@ catturata via microfono o file audio (`.wav`/`.mp3`/`.m4a`) direttamente
 in notazione testuale, inserita nella traccia (o nel corpo del pattern)
 dopo un'anteprima testuale e un ascolto opzionale.
 
+La finestra procede in tre passi: **1. Cosa riconoscere** (Melodia,
+Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
+**2. Audio** (registrazione o file, tempo e metrica) e **3. Risultato**.
+
 - **Sorgente**: pulsante di registrazione (Start/Stop) dal microfono,
   oppure trascina un file nell'area dedicata (drag-and-drop) o usa
-  "Sfoglia file...". Registrando con il **Metronomo** acceso, il click
+  "Scegli file...". Registrando con il **Metronomo** acceso, il click
   riparte insieme alla registrazione: il primo battito coincide con
   l'inizio del file e la trascrizione segue il metronomo (una pausa prima
   della prima nota resta una pausa). Senza metronomo la trascrizione parte
@@ -3173,8 +3177,8 @@ dopo un'anteprima testuale e un ascolto opzionale.
   sintassi `N:`. L'ultima combinazione usata viene ricordata alla
   riapertura del dialogo.
 - **Modalita' di analisi**: Melodica (pitch detection, per voce o
-  strumenti che suonano una nota alla volta: gli accordi non vengono
-  riconosciuti) oppure Percussiva (rilevamento transienti per
+  strumenti che suonano una nota alla volta; per gli accordi c'e' la
+  modalita' Accordi, qui sotto) oppure Percussiva (rilevamento transienti per
   batteria/beatbox, classificati automaticamente in `kick`/`snare`/
   `hihat`). Precompilata in base allo strumento della traccia corrente,
   ma sempre modificabile manualmente. In modalità Percussiva la
@@ -3183,14 +3187,23 @@ dopo un'anteprima testuale e un ascolto opzionale.
   solo (con 1/16 a 120 BPM, 75 ms), quindi scegli una griglia fine almeno
   quanto le note più veloci che hai suonato (1/8 per hihat in crome, 1/16
   per i sedicesimi).
+- **Accordi (armonia)**: riconosce gli accordi di una chitarra, di un
+  pianoforte o di un brano intero e li scrive come sigle, un accordo per
+  quarto al tempo del brano (impostalo prima), a battute con le
+  legature: `4: 4G | 2C 2D | 4G~ | 4G`. Riconosce triadi maggiori,
+  minori, diminuite e sus4, i rivolti (`C/E`, dal basso) e scrive le
+  alterazioni secondo la tonalita' (D#dim in Mi, Bb in Fa). Le settime
+  (7, maj7, m7) si cercano solo con **Riconosci le settime**: si
+  confondono con gli armonici delle altre note, e qualcuna si perde.
 - **Algoritmi**: gli attacchi si trovano con SuperFlux (flusso spettrale
   che non scambia il vibrato per una nota nuova), l'altezza con YIN;
   sono scritti dentro SoundText (in numpy), senza librerie da installare.
-- **Parametri avanzati di pitch tracking** (solo modalita' Melodica):
-  permettono di adattare il riconoscimento a un audio specifico invece di
-  accontentarsi del risultato predefinito — regola i valori, premi di
-  nuovo "Converti in SoundText" per riprovare sullo stesso file, ripeti
-  finche' il risultato non convince:
+- **Parametri avanzati del pitch tracking** (solo modalita' Melodica), in
+  **Opzioni → Import audio**: valgono per tutti gli import e di solito non
+  servono. Permettono di adattare il riconoscimento a un audio specifico —
+  cambia i valori e la conversione riparte da sola per riprovare
+  sullo stesso file, ripeti finche' il risultato non convince. La finestra
+  di import dice se sono in uso valori personalizzati:
   - **Frequenza minima**: automatica (dedotta dall'estensione grave dello
     strumento di destinazione) oppure un valore in Hz scelto a mano.
   - **Finestra di analisi**: numero di campioni per stima — piu' ampia
@@ -3203,7 +3216,7 @@ dopo un'anteprima testuale e un ascolto opzionale.
   - **Durata minima nota**: scarta le note piu' brevi di questa soglia,
     quasi sempre artefatti (onset spuri ravvicinati, tipici del vibrato
     marcato).
-  - **Ripristina valori standard**: riporta l'intero pannello ai default.
+  - **Ripristina valori standard**: riporta tutti i valori ai default.
 - **Sorgente: voce/beatbox**: casella da attivare quando si sta cantando/
   canticchiando la parte (basso, melodia...) o imitando la batteria con la
   bocca, invece di registrare lo strumento vero. La voce umana ha
@@ -3217,25 +3230,27 @@ dopo un'anteprima testuale e un ascolto opzionale.
   estensione vocale, e dannosa per la risoluzione temporale); per la
   batteria le soglie kick/snare/hihat vengono ricalibrate su un "boom" di
   bocca invece che su una cassa vera.
-- **Conversione**: il pulsante "Converti in SoundText" analizza l'audio in
-  background (con barra di avanzamento, "Annulla" la interrompe e puoi
-  subito riprovare con altri parametri) e mostra il risultato in
-  un'anteprima con evidenziazione sintattica, prima di un eventuale
-  inserimento; il testo generato viene sempre validato e non viene mai
-  inserito se risultasse sintatticamente non valido.
+- **Conversione**: parte da sola appena scegli o registri l'audio, e si
+  rifa' da sola quando cambi modalita', opzioni, tempo o metrica. Gira in
+  background, con la barra di avanzamento e "Annulla" accanto, e mostra il
+  risultato in un'anteprima con evidenziazione sintattica, prima di un
+  eventuale inserimento; il testo generato viene sempre validato e non
+  viene mai inserito se risultasse sintatticamente non valido. "Converti
+  di nuovo" la rifa' a comando.
 - **Anteprima modificabile**: una volta completata la conversione,
   l'anteprima non e' piu' di sola lettura: si puo' correggere a mano una
   nota sbagliata o provare un'alternativa direttamente nel testo, prima di
-  confermare. "Ascolta anteprima" riproduce sempre il contenuto ATTUALE
+  confermare. "Ascolta" riproduce sempre il contenuto ATTUALE
   dell'editor (comprese le modifiche fatte a mano, non il testo originale
   generato dall'analisi); se le modifiche rompono la sintassi, sia
-  "Ascolta anteprima" sia Ok segnalano l'errore invece di procedere. Una
-  nuova conversione (nuovo file, altro algoritmo di pitch, ecc.) sovrascrive
-  qualunque modifica manuale non ancora confermata.
-- **Ascolta anteprima**: il pulsante "▶ Ascolta anteprima" (con "■ Stop"
+  "Ascolta" sia "Inserisci nella traccia" segnalano l'errore invece di
+  procedere. Un'anteprima modificata a mano non viene sovrascritta dalla
+  conversione automatica: per rifarla si preme "Converti di nuovo" (lo
+  stesso succede scegliendo un altro audio).
+- **Ascolta**: il pulsante "▶ Ascolta" (con "■ Stop"
   accanto), abilitato dopo una conversione riuscita, riproduce il
   contenuto attuale dell'anteprima con lo strumento di destinazione prima
-  di confermare con Ok — utile per verificare a orecchio la conversione
+  di confermare con "Inserisci nella traccia" — utile per verificare a orecchio la conversione
   (o una propria variante) prima di sostituire il contenuto della
   traccia/pattern.
 

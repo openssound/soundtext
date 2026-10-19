@@ -12,6 +12,7 @@ from typing import Callable, Dict, List, Optional
 from .audio_decode import decode_audio_file_to_wav
 from .audio_quantize import AudioEvent, audio_events_to_validated_text, grid_slot_beats
 from .notation import Pattern
+from .i18n import tr
 
 # Dinamica: i rilevatori misurano il picco assoluto (una registrazione
 # debole darebbe velocity 10, quasi muta). Si porta il colpo/la nota piu'
@@ -23,9 +24,48 @@ VELOCITY_PER_DB = 1.5
 VELOCITY_STEP = 10
 VELOCITY_FLOOR = 30
 
+# Silenzio: una registrazione i cui tratti piu' forti (il 95° percentile del
+# livello medio su finestre da LEVEL_FRAME_SECONDS) restano sotto
+# SILENCE_LEVEL_DBFS non ha note: il fruscio del microfono veniva
+# riconosciuto come note deboli, e normalize_velocities le portava a velocity
+# alta. Il percentile non si fa ingannare da un clic isolato (quello su
+# "Ferma registrazione"). In una registrazione vera, gli eventi piu' deboli di
+# NOISE_BELOW_LOUDEST_DB rispetto al piu' forte sono rumore di fondo.
+SILENCE_LEVEL_DBFS = -42.0
+LEVEL_FRAME_SECONDS = 0.05
+NOISE_BELOW_LOUDEST_DB = 30.0
+
 
 class ConversionCancelled(Exception):
     """Sollevata dal progress_callback per interrompere la conversione."""
+
+
+class SilentAudio(ValueError):
+    """L'audio e' (quasi) silenzioso: niente da riconoscere."""
+
+
+def audio_level_dbfs(wav_path: str) -> float:
+    """Livello dei tratti piu' forti (vedi SILENCE_LEVEL_DBFS), in dBFS."""
+    import numpy as np
+    from .audio_tracks import read_wav
+    x, rate = read_wav(wav_path)
+    if x.ndim == 2:
+        x = x.mean(axis=1)
+    frame = max(1, int(rate * LEVEL_FRAME_SECONDS))
+    n = len(x) // frame
+    if n == 0:
+        rms = float(np.sqrt(np.mean(x ** 2))) if len(x) else 0.0
+    else:
+        rms = float(np.percentile(np.sqrt((x[:n * frame].reshape(n, frame) ** 2).mean(axis=1)), 95))
+    return 20.0 * math.log10(rms) if rms > 1e-9 else -120.0
+
+
+def drop_background_noise(events: List[AudioEvent]) -> List[AudioEvent]:
+    """Toglie gli eventi piu' deboli di NOISE_BELOW_LOUDEST_DB rispetto al
+    piu' forte (velocity = picco dell'evento, vedi i rilevatori)."""
+    loudest = max((ev.velocity for ev in events), default=0)
+    floor = loudest * 10 ** (-NOISE_BELOW_LOUDEST_DB / 20.0)
+    return [ev for ev in events if ev.velocity >= floor]
 
 
 def normalize_velocities(events: List[AudioEvent]) -> List[AudioEvent]:
@@ -113,6 +153,10 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
             cleanup = True
         _report(1.0, 0.0, 0.2)
 
+        if audio_level_dbfs(wav_path) < SILENCE_LEVEL_DBFS:
+            raise SilentAudio(tr("L'audio e' quasi silenzioso: non c'e' niente da riconoscere. "
+                                 "Controlla il microfono o il volume della registrazione."))
+
         if chords:
             from .audio_chords import chords_to_text, detect_chords
             found, step_q, _start = detect_chords(
@@ -137,6 +181,7 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
                                            min_note_duration_sec=min_note_duration_sec,
                                            progress_callback=lambda f: _report(f, 0.2, 0.85))
 
+        events = drop_background_noise(events)
         normalize_velocities(events)
         if align_to_first_note:
             align_to_first_event(events)

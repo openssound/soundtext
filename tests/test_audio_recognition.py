@@ -198,7 +198,7 @@ def test_cancel_stops_the_conversion_and_keeps_the_dialog_usable(dialog, monkeyp
     dlg._set_source("/tmp/qualunque.wav")
     dlg._on_convert_clicked()
     assert started.wait(5)
-    dlg._progress_dlg.canceled.emit()                          # pulsante Annulla (o Esc)
+    dlg.cancel_btn.click()                                     # Annulla accanto all'avanzamento
     assert _wait(dlg, lambda: dlg._worker is None)
     assert dlg.convert_btn.isEnabled() and dlg.errors == []                   # nessun errore mostrato
 
@@ -321,3 +321,53 @@ def test_tuning_needs_enough_notes_and_ignores_in_tune_playing():
     assert estimate_tuning([hz(m - 0.3) for m in MELODY]) == pytest.approx(-0.3, abs=0.01)
     assert estimate_tuning([hz(m + 0.3) for m in MELODY[:4]]) == 0.0      # troppo poche note
     assert estimate_tuning([hz(m + 0.02) for m in MELODY]) == 0.0         # gia' accordato
+
+
+def _wait_seconds(until, seconds=5.0):
+    """Attesa a tempo vero: la conversione automatica parte 350 ms dopo
+    l'ultima scelta (vedi AudioImportDialog._auto_timer)."""
+    import time
+    from PySide6.QtWidgets import QApplication
+    end = time.time() + seconds
+    while time.time() < end:
+        QApplication.processEvents()
+        if until():
+            return True
+        time.sleep(0.01)
+    return until()
+
+
+def test_conversion_starts_by_itself_and_follows_the_options(dialog, monkeypatch):
+    """Scelto l'audio la conversione parte da sola; cambiando modalita' si
+    rifa' (con le opzioni nuove), ma un'anteprima modificata a mano non si
+    sovrascrive finche' non si preme "Converti di nuovo"."""
+    dlg, mod = dialog
+    calls = []
+    monkeypatch.setattr(mod, "convert_audio_to_track_text",
+                        lambda *a, **k: calls.append(k) or ("4: 4C" if k.get("chords") else "16: c d"))
+    dlg._set_source("/tmp/qualunque.wav")
+    assert _wait_seconds(lambda: dlg.preview_edit.toPlainText() == "16: c d")
+    assert dlg.button_box.button(mod.QDialogButtonBox.Ok).isEnabled()
+    dlg.chords_radio.setChecked(True)
+    assert _wait_seconds(lambda: dlg.preview_edit.toPlainText() == "4: 4C")
+    assert calls[-1]["chords"] is True
+    dlg.preview_edit.setPlainText("4: 4G")                     # modifica a mano
+    dlg.melodic_radio.setChecked(True)
+    _wait_seconds(lambda: False, 0.8)                          # nessuna conversione automatica
+    assert dlg.preview_edit.toPlainText() == "4: 4G" and len(calls) == 2
+    dlg._on_convert_clicked()                                  # Converti di nuovo
+    assert _wait_seconds(lambda: dlg.preview_edit.toPlainText() == "16: c d")
+
+
+def test_only_the_options_of_the_chosen_mode_are_shown(dialog):
+    dlg, _ = dialog
+    dlg.show()
+    dlg.melodic_radio.setChecked(True)
+    assert dlg.quant_widget.isVisible() and dlg.pitch_widget.isVisible() and not dlg.sevenths_check.isVisible()
+    assert "cantando" in dlg.voice_source_check.text()
+    dlg.perc_radio.setChecked(True)
+    assert dlg.quant_widget.isVisible() and not dlg.pitch_widget.isVisible()
+    assert "beatbox" in dlg.voice_source_check.text()
+    dlg.chords_radio.setChecked(True)
+    assert dlg.sevenths_check.isVisible() and not dlg.quant_widget.isVisible()
+    assert not dlg.voice_source_check.isVisible() and not dlg.pitch_widget.isVisible()

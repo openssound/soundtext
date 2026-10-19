@@ -91,8 +91,10 @@ def test_dialog_has_the_chord_mode():
     project = Project(name="p")
     project.add_track("Piano", "Piano", "")
     dialog = AudioImportDialog(None, project, "Piano", "Piano")
-    assert not dialog.sevenths_check.isEnabled()
+    dialog.show()
+    assert not dialog.sevenths_check.isVisible()
     dialog.chords_radio.setChecked(True)
-    assert dialog.sevenths_check.isEnabled() and not dialog.pitch_advanced_group.isEnabled()
-    assert not dialog.voice_source_check.isEnabled()
+    assert dialog.sevenths_check.isVisible()
+    assert not dialog.voice_source_check.isVisible()
+    dialog.close()
     assert _beats_per_bar("6/8") == 3.0 and _beats_per_bar("??") == 4.0

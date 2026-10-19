@@ -309,6 +309,10 @@ class ProjectMixin:
         start_dir = os.path.dirname(self.current_path) if self.current_path else ensure_songs_dir()
         return os.path.join(start_dir, base + ext)
 
+    def show_audio_pitch_settings(self):
+        from .audio_pitch_dialog import AudioPitchDialog
+        AudioPitchDialog(self).exec()
+
     def show_midi_import_slide_settings(self):
         from .midi_import_slide_dialog import MidiImportSlideDialog
         MidiImportSlideDialog(self).exec()

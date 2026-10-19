@@ -570,6 +570,13 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                     "(slide guitar) e regolare la soglia.")
         ))
 
+        audio_import_menu = options_menu.addMenu(tr("Import audio"))
+        audio_import_menu.addAction(self._action(
+            tr("Parametri avanzati del pitch tracking..."), self.show_audio_pitch_settings,
+            tooltip=tr("Frequenza minima, finestra e passo di analisi, soglie dell'import audio in "
+                       "modalita' melodica. Di solito non servono.")
+        ))
+
         theme_menu = options_menu.addMenu(tr("Tema"))
         theme_group = QActionGroup(self)
         theme_group.setExclusive(True)

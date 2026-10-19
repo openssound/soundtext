@@ -3082,7 +3082,7 @@ track): converts a musical idea captured via microphone or audio file
 (or into the pattern body) after a text preview and optional listening.
 
 - **Source**: record button (Start/Stop) from the microphone, or drag a
-  file onto the dedicated area (drag-and-drop) or use "Browse files...".
+  file onto the dedicated area (drag-and-drop) or use "Choose file...".
   When recording with the **Metronome** on, the click restarts together
   with the recording: the first beat coincides with the start of the file
   and the transcription follows the metronome (a rest before the first note
@@ -3100,7 +3100,7 @@ track): converts a musical idea captured via microphone or audio file
   still staying within the normal `N:` syntax. The last combination used is
   remembered when the dialog is reopened.
 - **Analysis mode**: Melodic (pitch detection, for voice or instruments
-  playing one note at a time: chords are not recognised) or Percussive
+  playing one note at a time; for chords there is the Chords mode, below) or Percussive
   (transient detection for drums/beatbox, automatically classified as
   `kick`/`snare`/`hihat`). Pre-filled according to the current track's
   instrument, but always changeable by hand. In Percussive mode the chosen
@@ -3108,13 +3108,23 @@ track): converts a musical idea captured via microphone or audio file
   a grid slot are considered a single hit (with 1/16 at 120 BPM, 75 ms), so
   choose a grid at least as fine as the fastest notes you played (1/8 for
   hihat in eighth notes, 1/16 for sixteenths).
+- **Chords (harmony)**: recognises the chords of a guitar, a piano or a
+  whole song and writes them as chord symbols, one chord per quarter note
+  at the song tempo (set it first), in bars with ties:
+  `4: 4G | 2C 2D | 4G~ | 4G`. It recognises major, minor, diminished and
+  sus4 triads, inversions (`C/E`, from the bass) and spells accidentals
+  by key (D#dim in E, Bb in F). Sevenths (7, maj7, m7) are looked for
+  only with **Recognize sevenths**: they get confused with the
+  harmonics of the other notes, and a few may be missed.
 - **Algorithms**: onsets are found with SuperFlux (spectral flux that
   does not mistake vibrato for a new note), pitch with YIN; both are
   written inside SoundText (in numpy), with no libraries to install.
-- **Advanced pitch tracking parameters** (Melodic mode only): they let you
-  adapt recognition to a specific audio instead of settling for the default
-  result — adjust the values, press "Convert to SoundText" again to retry on
-  the same file, repeat until the result convinces you:
+- **Advanced pitch-tracking parameters** (Melodic mode only), in
+  **Options → Audio import**: they apply to every import and are usually
+  not needed. They let you adapt recognition to a specific audio — change
+  the values and the conversion starts again by itself to retry on the
+  same file, repeat until the result convinces you. The import dialog says
+  when custom values are in use:
   - **Minimum frequency**: automatic (deduced from the low range of the
     target instrument) or a value in Hz chosen by hand.
   - **Analysis window**: number of samples per estimate — wider helps on
@@ -3127,7 +3137,7 @@ track): converts a musical idea captured via microphone or audio file
   - **Minimum note length**: discards notes shorter than this threshold,
     almost always artefacts (spurious close onsets, typical of strong
     vibrato).
-  - **Restore standard values**: brings the whole panel back to the
+  - **Restore standard values**: brings all the values back to the
     defaults.
 - **Source: voice/beatbox**: checkbox to turn on when you are singing/
   humming the part (bass, melody...) or imitating the drums with your mouth,
@@ -3140,24 +3150,30 @@ track): converts a musical idea captured via microphone or audio file
   (useless if you are singing in your own vocal range anyway, and harmful to
   time resolution); for drums the kick/snare/hihat thresholds are
   recalibrated for a mouth "boom" instead of a real kick drum.
-- **Conversion**: the "Convert to SoundText" button analyses the audio in
-  the background (with a progress bar; "Cancel" stops it and you can retry
-  right away with other parameters) and shows the result in a preview with
-  syntax highlighting, before any insertion; the generated text is always
+The dialog goes in three steps: **1. What to recognize** (Melody, Drums
+or Chords, with only the options of that mode below), **2. Audio**
+(recording or file, tempo and meter) and **3. Result**.
+
+- **Conversion**: it starts by itself as soon as you choose or record the
+  audio, and runs again by itself when you change mode, options, tempo
+  or meter. It runs in the background, with the progress bar and
+  "Cancel" next to it, and shows the result in a preview with syntax
+  highlighting, before any insertion; the generated text is always
   validated and is never inserted if it turns out to be syntactically
-  invalid.
+  invalid. "Convert again" redoes it on demand.
 - **Editable preview**: once the conversion is complete, the preview is no
   longer read-only: you can fix a wrong note by hand or try an alternative
-  directly in the text, before confirming. "Listen to preview" always plays
+  directly in the text, before confirming. "Listen" always plays
   the CURRENT content of the editor (including manual changes, not the
   original text generated by the analysis); if the changes break the
-  syntax, both "Listen to preview" and Ok report the error instead of
-  proceeding. A new conversion (new file, other pitch algorithm, etc.)
-  overwrites any manual change not yet confirmed.
-- **Listen to preview**: the "▶ Listen to preview" button (with "■ Stop"
+  syntax, both "Listen" and "Insert into the track" report the error
+  instead of proceeding. A preview edited by hand is not overwritten by
+  the automatic conversion: to redo it press "Convert again" (the same
+  happens when you choose another audio).
+- **Listen**: the "▶ Listen" button (with "■ Stop"
   next to it), enabled after a successful conversion, plays the current
   content of the preview with the target instrument before confirming with
-  Ok — useful to check the conversion (or your own variant) by ear before
+  "Insert into the track" — useful to check the conversion (or your own variant) by ear before
   replacing the content of the track/pattern.
 
 Note on recognition quality: melodic note detection segments the audio with

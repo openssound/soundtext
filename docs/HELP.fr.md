@@ -3303,7 +3303,7 @@ facultative.
 
 - **Source** : bouton d'enregistrement (Start/Stop) depuis le micro, ou
   faites glisser un fichier dans la zone prévue (glisser-déposer) ou
-  utilisez « Parcourir les fichiers... ». En enregistrant avec le
+  utilisez « Choisir un fichier... ». En enregistrant avec le
   **Métronome** activé, le clic redémarre avec l'enregistrement : le
   premier temps coïncide avec le début du fichier et la transcription suit
   le métronome (un silence avant la première note reste un silence). Sans
@@ -3323,8 +3323,8 @@ facultative.
   `N:`. La dernière combinaison utilisée est mémorisée à la réouverture de
   la fenêtre.
 - **Mode d'analyse** : Mélodique (détection de hauteur, pour la voix ou les
-  instruments qui jouent une note à la fois : les accords ne sont pas
-  reconnus) ou Percussive (détection des transitoires pour batterie/
+  instruments qui jouent une note à la fois ; pour les accords il y a le
+  mode Accords, ci-dessous) ou Percussive (détection des transitoires pour batterie/
   beatbox, classés automatiquement en `kick`/`snare`/`hihat`). Pré-rempli
   selon l'instrument de la piste courante, mais toujours modifiable à la
   main. En mode Percussive la quantification choisie compte aussi pour la
@@ -3333,15 +3333,26 @@ facultative.
   donc choisissez une grille au moins aussi fine que les notes les plus
   rapides que vous avez jouées (1/8 pour un charleston en croches, 1/16 pour
   les doubles croches).
+- **Accords (harmonie)** : reconnaît les accords d'une guitare, d'un piano
+  ou d'un morceau entier et les écrit en grilles, un accord par noire au
+  tempo du morceau (réglez-le avant), en mesures avec des liaisons :
+  `4: 4G | 2C 2D | 4G~ | 4G`. Il reconnaît les triades majeures,
+  mineures, diminuées et sus4, les renversements (`C/E`, par la basse) et
+  écrit les altérations selon la tonalité (D#dim en Mi, Bb en Fa). Les
+  septièmes (7, maj7, m7) ne sont cherchées qu'avec **Reconnaître les
+  septièmes** : elles se confondent avec les harmoniques des autres
+  notes, et il arrive d'en manquer quelques-unes.
 - **Algorithmes** : les attaques sont trouvées avec SuperFlux (flux
   spectral qui ne prend pas le vibrato pour une nouvelle note), la hauteur
   avec YIN ; ils sont écrits dans SoundText (en numpy), sans bibliothèque
   à installer.
-- **Paramètres avancés de suivi de hauteur** (mode Mélodique seulement) :
-  ils permettent d'adapter la reconnaissance à un audio précis au lieu de
-  se contenter du résultat par défaut — réglez les valeurs, appuyez de
-  nouveau sur « Convertir en SoundText » pour réessayer sur le même
-  fichier, répétez jusqu'à ce que le résultat vous convainque :
+- **Paramètres avancés du suivi de hauteur** (mode Mélodique seulement),
+  dans **Options → Import audio** : ils valent pour tous les imports et en
+  général ne servent pas. Ils permettent d'adapter la reconnaissance à un
+  audio précis — changez les valeurs et la conversion repart toute seule
+  pour réessayer sur le même fichier, répétez jusqu'à ce
+  que le résultat vous convainque. La fenêtre d'import indique si des
+  valeurs personnalisées sont en cours :
   - **Fréquence minimale** : automatique (déduite de la tessiture grave de
     l'instrument de destination) ou une valeur en Hz choisie à la main.
   - **Fenêtre d'analyse** : nombre d'échantillons par estimation — plus
@@ -3355,8 +3366,8 @@ facultative.
   - **Durée minimale de note** : écarte les notes plus brèves que ce seuil,
     presque toujours des artefacts (onsets parasites rapprochés, typiques
     d'un vibrato marqué).
-  - **Rétablir les valeurs standard** : ramène tout le panneau aux valeurs
-    par défaut.
+  - **Rétablir les valeurs standard** : ramène toutes les valeurs à leurs
+    valeurs par défaut.
 - **Source : voix/beatbox** : case à cocher quand vous chantez/fredonnez la
   partie (basse, mélodie...) ou imitez la batterie avec la bouche, au lieu
   d'enregistrer le vrai instrument. La voix humaine a des caractéristiques
@@ -3370,24 +3381,33 @@ facultative.
   nuisible à la résolution temporelle) ; pour la batterie, les seuils
   kick/snare/hihat sont recalibrés sur un « boum » de bouche plutôt que sur
   une vraie grosse caisse.
-- **Conversion** : le bouton « Convertir en SoundText » analyse l'audio en
-  arrière-plan (avec une barre de progression ; « Annuler » l'interrompt et
-  vous pouvez réessayer tout de suite avec d'autres paramètres) et affiche
-  le résultat dans un aperçu avec coloration syntaxique, avant une
-  éventuelle insertion ; le texte généré est toujours validé et n'est
-  jamais inséré s'il se révélait syntaxiquement invalide.
+La fenêtre procède en trois étapes : **1. Quoi reconnaître** (Mélodie,
+Percussions ou Accords, avec en dessous seulement les options de ce
+mode), **2. Audio** (enregistrement ou fichier, tempo et mesure) et
+**3. Résultat**.
+
+- **Conversion** : elle démarre toute seule dès que vous choisissez ou
+  enregistrez l'audio, et se refait toute seule quand vous changez de
+  mode, d'options, de tempo ou de mesure. Elle tourne en arrière-plan,
+  avec la barre de progression et « Annuler » à côté, et affiche le
+  résultat dans un aperçu avec coloration syntaxique, avant une éventuelle
+  insertion ; le texte généré est toujours validé et n'est jamais inséré
+  s'il se révélait syntaxiquement invalide. « Convertir à nouveau » la
+  refait sur demande.
 - **Aperçu modifiable** : une fois la conversion terminée, l'aperçu n'est
   plus en lecture seule : vous pouvez corriger à la main une note fausse ou
   essayer une variante directement dans le texte, avant de confirmer.
-  « Écouter l'aperçu » joue toujours le contenu ACTUEL de l'éditeur (y
+  « Écouter » joue toujours le contenu ACTUEL de l'éditeur (y
   compris les modifications faites à la main, pas le texte d'origine généré
-  par l'analyse) ; si les modifications cassent la syntaxe, « Écouter
-  l'aperçu » comme Ok signalent l'erreur au lieu de continuer. Une nouvelle
-  conversion (nouveau fichier, autre algorithme de hauteur, etc.) écrase
-  toute modification manuelle pas encore confirmée.
-- **Écouter l'aperçu** : le bouton « ▶ Écouter l'aperçu » (avec « ■ Stop »
+  par l'analyse) ; si les modifications cassent la syntaxe, « Écouter »
+  comme « Insérer dans la piste » signalent l'erreur au lieu de continuer.
+  Un aperçu modifié à la main n'est pas écrasé par la conversion
+  automatique : pour le refaire on appuie sur « Convertir à nouveau » (de
+  même en choisissant un autre audio).
+- **Écouter** : le bouton « ▶ Écouter » (avec « ■ Stop »
   à côté), activé après une conversion réussie, joue le contenu actuel de
-  l'aperçu avec l'instrument de destination avant de confirmer par Ok —
+  l'aperçu avec l'instrument de destination avant de confirmer par
+  « Insérer dans la piste » —
   utile pour vérifier à l'oreille la conversion (ou votre propre variante)
   avant de remplacer le contenu de la piste/du pattern.
 
