@@ -1503,6 +1503,7 @@ class ArrangementView(QWidget):
             comp_action = takes_menu.addAction(tr("Comping..."))
             keep_one_action = takes_menu.addAction(tr("Tieni solo la ripresa attiva"))
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
+        tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
         relink_action = menu.addAction(tr("Ritrova file...")) if missing else None
         menu.addSeparator()
         cut_action = menu.addAction(tr("Taglia"))
@@ -1542,6 +1543,8 @@ class ArrangementView(QWidget):
             self._keep_only_active_take(track_name, clip)
         elif convert_action is not None and chosen is convert_action:
             self._convert_clip_to_notation(track_name, clip)
+        elif tempo_action is not None and chosen is tempo_action:
+            self._tempo_from_clip(track_name, clip)
         elif relink_action is not None and chosen is relink_action:
             self._relink_clip(track_name, clip)
         elif chosen is cut_action:
@@ -2099,6 +2102,39 @@ class ArrangementView(QWidget):
             return
         clip.gain_db = value
         self.on_clip_changed(track_name)
+
+    def _tempo_from_clip(self, track_name: str, clip: AudioClip):
+        """Il brano prende il tempo della ripresa, battuta per battuta (vedi
+        core.performance_tempo e gui.tempo_from_take_dialog)."""
+        from PySide6.QtWidgets import QDialog
+        from core import performance_tempo
+        from .tempo_from_take_dialog import TempoFromTakeDialog
+        project = self.host.project
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            analysis = performance_tempo.analyze_clip(project, clip)
+        except (ValueError, OSError) as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, tr("Tempo dalla ripresa"), str(e))
+            return
+        QApplication.restoreOverrideCursor()
+        if analysis.bars < 2:
+            QMessageBox.information(self, tr("Tempo dalla ripresa"), tr(
+                "Nella clip '{name}' non trovo un battito regolare per almeno due battute: serve una parte "
+                "ritmica (chitarra, batteria, pianoforte) suonata per qualche battuta.", name=clip.name))
+            return
+        dlg = TempoFromTakeDialog(self, clip.name, analysis,
+                                  performance_tempo.suggested_first_bar(project, clip, analysis))
+        self._tempo_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted:
+            return
+        bars = performance_tempo.apply_performance_tempo(project, clip, analysis, dlg.first_bar())
+        if hasattr(self.host, "_sync_tempo_metrica_fields"):
+            self.host._sync_tempo_metrica_fields()
+        self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("Il brano segue il tempo di '{name}' dalla battuta {bar} per {n} battute.",
+               name=clip.name, bar=dlg.first_bar(), n=bars), 6000)
 
     def _set_active_take(self, track_name: str, clip: AudioClip, index: int):
         if index == clip.active_take:

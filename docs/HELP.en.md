@@ -3514,6 +3514,16 @@ SoundText while the rest of the song plays (see "Recording" below), or by
 - **Tempo**: audio is not stretched. A clip stays anchored to the beat on
   which it starts but always lasts the same number of seconds: if you change
   the BPM after placing it, the status bar reminds you.
+- **Get the tempo from the take...** (right-click on a clip): for those who
+  play freely, without a click. SoundText finds the beat of the take and
+  shows its tempo bar by bar (average, minimum, maximum and the curve);
+  choose the bar the first beat falls on and **Apply the tempo**: the song
+  gets one tempo change per bar (the `Tempo:` line of the file) and the
+  clip moves so that the beats fall on the song's beats. After the take
+  the previous tempo comes back. The written notes, the metronome, the
+  generators and the conversion of the take into notation follow that
+  tempo. The first beat played is taken as the start of a bar; in compound
+  meters (6/8, 12/8) the beat is the dotted quarter.
 
 ### Recording
 

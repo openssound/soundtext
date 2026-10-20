@@ -57,6 +57,19 @@ def audible_clips(track: Track) -> List[AudioClip]:
                   key=lambda c: c.start_beat)
 
 
+def _clip_beat_mapper(project: Project, clip: AudioClip):
+    """Con un tempo che cambia nel brano (cambi di tempo per battuta, per
+    esempio ricavati dalla ripresa, vedi core.performance_tempo): il beat,
+    contato dall'inizio della clip, di un istante della clip. None a tempo
+    fisso (basta il BPM)."""
+    if not project.tempo_changes:
+        return None
+    from .tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map, seconds_for_beats
+    tempo_map = build_tempo_beat_map(project)
+    start = seconds_for_beats(tempo_map, clip.start_beat)
+    return lambda t: beat_at_elapsed_seconds(tempo_map, 0.0, start + t) - clip.start_beat
+
+
 def _convert_clip(project: Project, clip: AudioClip, options: ConversionOptions, default_octave: int,
                   progress: Optional[Callable[[float], None]] = None) -> Optional[str]:
     """Il testo di notazione della parte udibile della clip; None se e' muta."""
@@ -75,7 +88,7 @@ def _convert_clip(project: Project, clip: AudioClip, options: ConversionOptions,
                 min_note_duration_sec=options.min_note_duration_sec,
                 chords=options.mode == "chords", sevenths=options.mode == "chords" and options.sevenths,
                 beats_per_bar=_beats_per_bar(project.time_sig), progress_callback=progress,
-                quantize=options.quantize,
+                quantize=options.quantize, beats_of_seconds=_clip_beat_mapper(project, clip),
             )
         except SilentAudio:
             return None

@@ -104,7 +104,8 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
                                  align_to_first_note: bool = False,
                                  chords: bool = False, sevenths: bool = False,
                                  beats_per_bar: float = 4.0,
-                                 quantize: Optional[QuantizeSettings] = None) -> str:
+                                 quantize: Optional[QuantizeSettings] = None,
+                                 beats_of_seconds: Optional[Callable[[float], float]] = None) -> str:
     """Converte un file audio (o un WAV gia' registrato dal microfono, se
     already_wav=True) nel testo di notazione da inserire nella traccia
     corrente. Solleva RuntimeError se il file non si puo' leggere (vedi
@@ -138,6 +139,11 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
     quantize: la quantizzazione regolabile (forza, finestra, swing,
     pulizia: vedi core.audio_quantize.QuantizeSettings); None = quella di
     sempre.
+
+    beats_of_seconds: con un tempo che cambia (mappa del tempo del brano,
+    vedi core.performance_tempo), il beat di ogni istante dell'audio: la
+    griglia segue quella mappa invece di un tempo fisso (non per gli
+    accordi).
 
     chords=True riconosce gli accordi invece delle note (vedi
     core.audio_chords): un accordo per quarto al tempo del brano, scritto a
@@ -190,6 +196,11 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
         normalize_velocities(events)
         if align_to_first_note:
             align_to_first_event(events)
+        if beats_of_seconds is not None:
+            # i "secondi" diventano beat: a 60 BPM un beat dura un secondo
+            for ev in events:
+                ev.start_sec, ev.end_sec = beats_of_seconds(ev.start_sec), beats_of_seconds(ev.end_sec)
+            tempo_bpm = 60.0
         text = audio_events_to_validated_text(
             events, tempo_bpm, grid_denominator, ternary, patterns,
             default_octave=default_octave, midi_dir=midi_dir, monophonic=not is_percussion,

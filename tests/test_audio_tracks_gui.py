@@ -602,3 +602,34 @@ def test_comping_replaces_the_clip_with_its_stretches(tmp_path):
     assert parts[0].fade_out == pytest.approx(0.01) and parts[1].fade_in == pytest.approx(0.01)
     w.undo()
     assert len(w.project.get_track("Voce").audio_clips) == 1
+
+
+# --------------------------------------------------------------- tempo dalla ripresa
+
+def test_tempo_from_take_sets_the_song_tempo_and_can_be_undone(tmp_path):
+    from test_beat_track import RATE as BT_RATE, _accelerando, _hits
+    from gui.tempo_from_take_dialog import TempoFromTakeDialog
+    path = str(tmp_path / "acc.wav")
+    write_wav(path, _hits(_accelerando(90, 110, 32), 2.0)[:, None], BT_RATE, bits=16)
+    w = _window()
+    w.project.tempo_bpm = 120
+    t = w.project.add_audio_track("Chitarra")
+    clip = AudioClip("Ritmica", path, 6.0)
+    t.audio_clips.append(clip)
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    view = w.arrangement_view
+    actions = _menu_actions(lambda: view._show_audio_box_menu("Chitarra", clip, w.mapToGlobal(w.rect().center())))
+    assert "Ricava il tempo dalla ripresa..." in actions
+
+    original = TempoFromTakeDialog.exec
+    TempoFromTakeDialog.exec = lambda dlg: (dlg.bar_spin.setValue(3), TempoFromTakeDialog.Accepted)[1]
+    try:
+        view._tempo_from_clip("Chitarra", clip)
+    finally:
+        TempoFromTakeDialog.exec = original
+    assert [b for b, _v in w.project.tempo_changes][:3] == [1, 3, 4]
+    assert w.project.tempo_changes[1][1] in range(90, 95)
+    _app.processEvents()
+    w.undo()
+    assert w.project.tempo_changes == []

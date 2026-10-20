@@ -3609,6 +3609,16 @@ oppure **importando** file registrati con un altro programma.
 - **Tempo**: l'audio non viene stirato. Una clip resta ancorata al beat in
   cui inizia ma dura sempre gli stessi secondi: se cambi il BPM dopo averla
   posizionata, la barra di stato lo ricorda.
+- **Ricava il tempo dalla ripresa...** (tasto destro su una clip): per chi
+  suona libero, senza click. SoundText trova il battito della ripresa e ne
+  mostra il tempo battuta per battuta (media, minimo, massimo e la curva);
+  scegli la battuta su cui cade il primo battito e **Applica il tempo**: il
+  brano prende un cambio di tempo per battuta (riga `Tempo:` del file) e la
+  clip si sposta perche' i battiti cadano sui beat. Dopo la ripresa torna il
+  tempo di prima. Le note scritte, il metronomo, i generatori e la
+  conversione in notazione della ripresa seguono quel tempo. Il primo
+  battito suonato e' preso come inizio di battuta; nelle metriche composte
+  (6/8, 12/8) il battito e' la semiminima puntata.
 
 ### Registrare
 

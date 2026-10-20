@@ -3791,6 +3791,17 @@ programme.
 - **Tempo** : l'audio n'est pas étiré. Un clip reste ancré au temps où il
   commence mais dure toujours le même nombre de secondes : si vous changez
   le BPM après l'avoir placé, la barre d'état vous le rappelle.
+- **Tirer le tempo de la prise...** (clic droit sur un clip) : pour qui
+  joue librement, sans clic. SoundText trouve le temps de la prise et
+  montre son tempo mesure par mesure (moyenne, minimum, maximum et la
+  courbe) ; choisissez la mesure où tombe le premier temps et **Appliquer
+  le tempo** : le morceau prend un changement de tempo par mesure (ligne
+  `Tempo:` du fichier) et le clip se déplace pour que les temps tombent sur
+  les temps du morceau. Après la prise, le tempo d'avant revient. Les notes
+  écrites, le métronome, les générateurs et la conversion de la prise en
+  notation suivent ce tempo. Le premier temps joué est pris comme début de
+  mesure ; dans les mesures composées (6/8, 12/8) le temps est la noire
+  pointée.
 
 ### Enregistrer
 
