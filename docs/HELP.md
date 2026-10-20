@@ -3582,6 +3582,14 @@ oppure **importando** file registrati con un altro programma.
   **Dissolvenze...**. Anche senza dissolvenze, ogni bordo di clip ha una
   microdissolvenza di 5 ms che toglie il clic di un taglio a meta' di un
   suono (anche nel punto di una divisione).
+- **Quantizza l'audio...** (tasto destro): per una ripresa suonata un po'
+  fuori tempo (batteria, chitarra ritmica). SoundText trova gli attacchi,
+  taglia la clip poco prima di ognuno e sposta i pezzi verso la griglia
+  scelta, con **Forza**, **Finestra** e **Swing** come per le note (vedi
+  "Regola la quantizzazione"). Dove un pezzo spostato finisce sopra il
+  successivo si accorcia fino a li', con una dissolvenza incrociata breve;
+  dove si apre un vuoto resta silenzio. Il file non cambia, e un solo
+  Ctrl+Z annulla tutto.
 - **Spostare il contenuto (slip)**: **Alt+trascina** il box per far
   scorrere l'audio dentro la clip, lasciandone fermi inizio e lunghezza (per
   esempio per allineare un attacco al beat dopo averla tagliata).

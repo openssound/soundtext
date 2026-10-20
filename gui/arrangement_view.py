@@ -1513,6 +1513,7 @@ class ArrangementView(QWidget):
             keep_one_action = takes_menu.addAction(tr("Tieni solo la ripresa attiva"))
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
         tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
+        quantize_action = menu.addAction(tr("Quantizza l'audio...")) if not missing else None
         relink_action = menu.addAction(tr("Ritrova file...")) if missing else None
         menu.addSeparator()
         cut_action = menu.addAction(tr("Taglia"))
@@ -1558,6 +1559,8 @@ class ArrangementView(QWidget):
             self._convert_clip_to_notation(track_name, clip)
         elif tempo_action is not None and chosen is tempo_action:
             self._tempo_from_clip(track_name, clip)
+        elif quantize_action is not None and chosen is quantize_action:
+            self._quantize_clip_audio(track_name, clip)
         elif relink_action is not None and chosen is relink_action:
             self._relink_clip(track_name, clip)
         elif chosen is cut_action:
@@ -2157,6 +2160,32 @@ class ArrangementView(QWidget):
             self.host._sync_tempo_metrica_fields()
         self.on_clip_changed(track_name)
         self.host.statusBar().showMessage(message, 6000)
+
+    def _quantize_clip_audio(self, track_name: str, clip: AudioClip):
+        """Quantizza l'audio: pezzi tagliati agli attacchi e spostati verso
+        la griglia (core.audio_slice), un solo Annulla per tutto."""
+        from PySide6.QtWidgets import QDialog
+        from core import audio_slice
+        from .audio_quantize_dialog import AudioQuantizeDialog
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            attacks = audio_slice.clip_attacks(clip, 0.06)
+        except (ValueError, OSError) as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, tr("Quantizza l'audio"), str(e))
+            return
+        QApplication.restoreOverrideCursor()
+        dlg = AudioQuantizeDialog(self, clip.name, len(attacks))
+        self._audio_quantize_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted:
+            return
+        pieces = audio_slice.quantize_clip(self.host.project, clip, dlg.grid_beats(), dlg.settings(), attacks)
+        track = self.host.project.get_track(track_name)
+        index = track.audio_clips.index(clip)
+        track.audio_clips[index:index + 1] = pieces
+        self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("Audio di '{name}' quantizzato: {n} pezzi.", name=clip.name, n=len(pieces)), 5000)
 
     def _tempo_at(self, beat: float) -> float:
         from core.tempo_map import value_at_beat

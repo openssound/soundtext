@@ -3675,6 +3675,14 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   **Fundidos...**. Incluso sin fundidos, cada borde de clip tiene un
   microfundido de 5 ms que quita el clic de un corte en mitad de un sonido
   (también en el punto de una división).
+- **Cuantizar el audio...** (clic derecho): para una toma tocada un poco
+  fuera de tiempo (batería, guitarra rítmica). SoundText encuentra los
+  ataques, corta el clip justo antes de cada uno y mueve los trozos hacia la
+  rejilla elegida, con **Fuerza**, **Ventana** y **Swing** como para las
+  notas (ver «Ajustar la cuantización»). Donde un trozo movido acaba encima
+  del siguiente se acorta hasta ahí, con un fundido cruzado breve; donde se
+  abre un hueco queda silencio. El archivo no cambia, y un solo Ctrl+Z lo
+  deshace todo.
 - **Mover el contenido (slip)**: **Alt+arrastrar** el clip para desplazar el
   audio dentro de él, manteniendo su inicio y su duración (por ejemplo para
   alinear un ataque con el pulso después de recortarlo).

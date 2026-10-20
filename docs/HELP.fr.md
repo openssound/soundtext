@@ -3763,6 +3763,14 @@ programme.
   enchaînés) : clic droit → **Fondus...**. Même sans fondus, chaque bord de
   clip a un micro-fondu de 5 ms qui supprime le clic d'une coupe au milieu
   d'un son (aussi au point d'une division).
+- **Quantifier l'audio...** (clic droit) : pour une prise jouée un peu
+  hors du temps (batterie, guitare rythmique). SoundText trouve les
+  attaques, coupe le clip juste avant chacune et déplace les morceaux vers
+  la grille choisie, avec **Force**, **Fenêtre** et **Swing** comme pour
+  les notes (voir « Régler la quantification »). Là où un morceau déplacé
+  finit sur le suivant, il est raccourci jusque-là, avec un fondu enchaîné
+  bref ; là où un vide s'ouvre, il reste du silence. Le fichier ne change
+  pas, et un seul Ctrl+Z annule tout.
 - **Déplacer le contenu (slip)** : **Alt+glisser** le clip pour faire
   défiler l'audio à l'intérieur, en gardant son début et sa longueur (par
   exemple pour caler une attaque sur le temps après l'avoir coupé).

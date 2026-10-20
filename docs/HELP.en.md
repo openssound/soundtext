@@ -3487,6 +3487,13 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   right-click → **Fades...**. Even without fades, every clip edge has a
   5 ms micro-fade that removes the click of a cut in the middle of a sound
   (also at a split point).
+- **Quantise the audio...** (right-click): for a take played a little out
+  of time (drums, rhythm guitar). SoundText finds the attacks, cuts the clip
+  just before each one and moves the pieces towards the chosen grid, with
+  **Strength**, **Window** and **Swing** as for notes (see "Adjust the
+  quantisation"). Where a moved piece ends over the next one it is
+  shortened up to there, with a short crossfade; where a gap opens there is
+  silence. The file does not change, and a single Ctrl+Z undoes it all.
 - **Moving the content (slip)**: **Alt+drag** the box to slide the audio
   inside the clip, keeping its start and length (for example to line up an
   attack with the beat after trimming it).

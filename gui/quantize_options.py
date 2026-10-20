@@ -19,8 +19,11 @@ from core.i18n import tr
 class QuantizeOptionsWidget(QWidget):
     changed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, cleanup: bool = True, expanded: bool = False):
+        """cleanup=False toglie la riga della pulizia (per l'audio, vedi
+        core.audio_slice); expanded apre il pannello da subito."""
         super().__init__(parent)
+        self._cleanup = cleanup
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.toggle = QToolButton()
@@ -52,10 +55,15 @@ class QuantizeOptionsWidget(QWidget):
             "riconosciuto due volte)."))
         second.addStretch(1)
         rows.addLayout(first)
-        rows.addLayout(second)
+        self.cleanup_row = QWidget()
+        self.cleanup_row.setLayout(second)
+        second.setContentsMargins(0, 0, 0, 0)
+        self.cleanup_row.setVisible(cleanup)
+        rows.addWidget(self.cleanup_row)
         layout.addWidget(self.panel)
         self._load()
-        self.panel.setVisible(False)
+        self.toggle.setChecked(expanded)
+        self.panel.setVisible(expanded)
 
     def _spin(self, row, label, low, high, suffix, tooltip):
         caption = QLabel(label)
@@ -102,16 +110,21 @@ class QuantizeOptionsWidget(QWidget):
         """Lo swing vale solo sulle griglie da 1/8 e 1/16 dritte."""
         self.swing_spin.setEnabled(denominator in SWING_GRIDS and not ternary)
 
-    def settings(self) -> QuantizeSettings:
-        swing = self.swing_spin.value() / 100.0 if self.swing_spin.isEnabled() else 0.5
+    def _spin_values(self) -> QuantizeSettings:
+        """I valori dei campi cosi' come sono (anche quelli che non valgono qui)."""
         return QuantizeSettings(strength=self.strength_spin.value() / 100.0, window=self.window_spin.value() / 100.0,
-                                swing=swing, min_note_sec=self.min_note_spin.value() / 1000.0,
+                                swing=self.swing_spin.value() / 100.0, min_note_sec=self.min_note_spin.value() / 1000.0,
                                 merge_gap_sec=self.merge_spin.value() / 1000.0)
+
+    def settings(self) -> QuantizeSettings:
+        values = self._spin_values()
+        return dataclasses.replace(
+            values, swing=values.swing if self.swing_spin.isEnabled() else 0.5,
+            min_note_sec=values.min_note_sec if self._cleanup else 0.0,
+            merge_gap_sec=values.merge_gap_sec if self._cleanup else 0.0)
 
     def remember(self):
         """Salva le scelte (fatto alla conferma del dialogo, come la griglia)."""
         default = dataclasses.asdict(QuantizeSettings())
-        current = dataclasses.asdict(self.settings())
-        if not self.swing_spin.isEnabled():
-            current["swing"] = self.swing_spin.value() / 100.0
+        current = dataclasses.asdict(self._spin_values())
         app_settings.set_quantize_settings({k: v for k, v in current.items() if v != default[k]})

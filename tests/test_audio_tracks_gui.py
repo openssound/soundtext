@@ -694,3 +694,33 @@ def test_tempo_from_take_can_keep_a_fixed_tempo(tmp_path):
     _app.processEvents()
     w.undo()
     assert len(w.project.get_track("Chitarra").audio_clips) == 1
+
+
+def test_quantize_audio_from_the_clip_menu(tmp_path):
+    from test_audio_slice import _sloppy
+    from gui.audio_quantize_dialog import AudioQuantizeDialog
+    p, clip, _played = _sloppy(tmp_path)
+    w = _window()
+    w.project.tempo_bpm = 120
+    t = w.project.add_audio_track("Batteria")
+    t.audio_clips.append(clip)
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    view = w.arrangement_view
+    assert "Quantizza l'audio..." in _menu_actions(
+        lambda: view._show_audio_box_menu("Batteria", clip, w.mapToGlobal(w.rect().center())))
+
+    def choose(dlg):
+        dlg.grid_combo.setCurrentIndex(dlg.grid_combo.findData(8))
+        return AudioQuantizeDialog.Accepted
+
+    original = AudioQuantizeDialog.exec
+    AudioQuantizeDialog.exec = choose
+    try:
+        view._quantize_clip_audio("Batteria", clip)
+    finally:
+        AudioQuantizeDialog.exec = original
+    assert len(t.audio_clips) == 17
+    _app.processEvents()
+    w.undo()
+    assert len(w.project.get_track("Batteria").audio_clips) == 1
