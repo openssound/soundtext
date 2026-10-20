@@ -3650,7 +3650,37 @@ SoundFont solo tracce audio e metronomo), fa il conteggio e registra finche'
 non premi **■ Stop**. Il dialogo mostra durata e picco della ripresa (e
 avvisa se e' saturata): **Tieni la ripresa** la aggiunge alla traccia come
 clip al punto di partenza; **Registra** di nuovo la sostituisce. Se la
-ripresa si sovrappone a clip gia' presenti, SoundText chiede se eliminarle.
+ripresa si sovrappone a clip gia' presenti, SoundText chiede cosa farne:
+**Come nuova ripresa** (proposta: la clip tiene tutte le riprese e si sceglie
+dopo), **Sostituisci** (elimina le clip sotto) o **Tienile entrambe**
+(suonano insieme).
+
+**Modalita'** (con i punti A e B del loop impostati, menu **Riproduzione →
+Loop**):
+- **In loop fra A e B**: il tratto A-B si ripete senza fermarsi finche' non
+  premi Stop (il conteggio solo all'inizio). Si registra un file solo, e
+  ogni giro completo diventa una ripresa della stessa clip ("Giro 1",
+  "Giro 2"...); resta attivo l'ultimo. Un giro interrotto dallo Stop non
+  conta.
+- **Punch-in fra A e B**: il brano suona dal **pre-roll** (le battute
+  scelte prima di A), ma della ripresa si tiene solo il tratto A-B, con
+  dissolvenze brevi ai due capi. Va come nuova ripresa della clip che c'e'
+  li': la clip si divide in A e in B e solo quel tratto riceve la ripresa,
+  quindi l'originale resta sempre disponibile.
+
+**Riprese di una clip**: una clip con piu' riprese mostra nel box quale
+suona (es. `[2/3]`); tasto destro → **Riprese** per sceglierne un'altra,
+**Comping...** o **Tieni solo la ripresa attiva** (i file delle altre
+restano nella cartella del progetto).
+
+**Comping**: la finestra mostra le riprese una sotto l'altra con la forma
+d'onda; trascinando su una ripresa la si usa in quel tratto (agganciandosi
+al sedicesimo; Shift: libero), un click la sceglie per tutto il tratto sotto
+il mouse. La riga **Comp** in cima mostra il risultato, **▶ Ascolta il
+comp** lo fa sentire. **Applica il comp** divide la clip nei tratti scelti,
+con una dissolvenza incrociata di 10 ms in ogni punto di cambio; ogni tratto
+tiene tutte le riprese, cosi' il comping si puo' rifare. Un solo Ctrl+Z lo
+annulla.
 
 Per sentirti mentre suoni usa il **monitoraggio diretto** della scheda audio
 (manopola o tasto "direct monitor"): e' senza ritardo. SoundText manda in

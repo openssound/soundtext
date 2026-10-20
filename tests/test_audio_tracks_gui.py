@@ -553,3 +553,52 @@ def test_bass_dialog_can_follow_the_chords_of_an_audio_track(tmp_path):
     assert text.strip() and dlg.status_label.text() == ""
     assert "c" in text.lower()                                           # il basso parte dal Do della Strofa
     dlg.reject()
+
+
+# --------------------------------------------------------------- riprese multiple e comping
+
+def _takes_window(tmp_path):
+    from core import audio_takes
+    w = _window()
+    t = w.project.add_audio_track("Voce")
+    clip = AudioClip("Strofa", _wav(tmp_path / "a.wav", seconds=4.0), 0.0, trim_start=1.0)
+    audio_takes.add_take(clip, "Ripresa 2", _wav(tmp_path / "b.wav", seconds=4.0), 1.0)
+    t.audio_clips.append(clip)
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    _app.processEvents()
+    return w, t, clip
+
+
+def test_clip_with_takes_shows_them_and_switches(tmp_path):
+    w, t, clip = _takes_window(tmp_path)
+    view = w.arrangement_view
+    actions = _menu_actions(lambda: view._show_audio_box_menu("Voce", clip, w.mapToGlobal(w.rect().center())))
+    assert "Riprese" in actions
+    view._set_active_take("Voce", clip, 0)
+    assert clip.active_take == 0 and clip.file.endswith("a.wav")
+    _app.processEvents()
+    w.undo()
+    assert w.project.get_track("Voce").audio_clips[0].active_take == 1
+
+
+def test_comping_replaces_the_clip_with_its_stretches(tmp_path):
+    from gui.comping_dialog import CompingDialog
+    w, t, clip = _takes_window(tmp_path)
+    view = w.arrangement_view
+
+    def fake_exec(dlg):
+        dlg.lanes.choose(0, 0.0, 2.0)                     # primo secondo dalla ripresa 1
+        return CompingDialog.Accepted
+
+    original = CompingDialog.exec
+    CompingDialog.exec = fake_exec
+    try:
+        view._comp_clip("Voce", clip)
+    finally:
+        CompingDialog.exec = original
+    parts = sorted(t.audio_clips, key=lambda c: c.start_beat)
+    assert [os.path.basename(c.file) for c in parts] == ["a.wav", "b.wav"]
+    assert parts[0].fade_out == pytest.approx(0.01) and parts[1].fade_in == pytest.approx(0.01)
+    w.undo()
+    assert len(w.project.get_track("Voce").audio_clips) == 1

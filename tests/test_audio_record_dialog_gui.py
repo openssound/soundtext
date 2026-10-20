@@ -193,7 +193,7 @@ def test_main_window_adds_the_take_and_asks_about_overlaps(tmp_path, monkeypatch
 
     new = str(tmp_path / "new.wav")
     write_wav(new, np.zeros((RATE * 2, 1), np.float32), RATE, bits=16)
-    monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))
+    monkeypatch.setattr(w, "_ask_overlap_choice", lambda *a: "replace")
     w._add_recorded_clip(track, AudioClip("Ripresa 2", new, 2.0), "voce", "1")
     assert [c.name for c in track.audio_clips] == ["Ripresa 2"]
     assert (track.input_profile, track.input_channels) == ("voce", "1")
@@ -328,3 +328,83 @@ def test_listen_to_the_take_before_keeping_it(tmp_path):
     dlg.toggle_listen()
     dlg.keep_take()                                             # Tieni: l'ascolto si ferma
     assert dlg._player is None and dlg.result() == QDialog.Accepted
+
+
+# --------------------------------------------------------------- loop e punch-in
+
+def _loop_dialog(tmp_path, region=(4.0, 8.0)):
+    from core.audio_recording import build_backing
+    p = Project(tempo_bpm=120)
+    t = p.add_audio_track("Chitarra")
+    streams, built = {}, {}
+
+    def duplex_factory(*args):
+        streams["duplex"] = FakeDuplex(*args)
+        return streams["duplex"]
+
+    def builder(project, start_beat, count_in_bars, with_metronome, **kwargs):
+        built.update(start=start_beat, **kwargs)
+        return build_backing(project, start_beat, count_in_bars, False, **kwargs)
+
+    dlg = AudioRecordDialog(None, p, t, [("Inizio del brano", 0.0)], str(tmp_path), stream_factory=duplex_factory,
+                            monitor_factory=lambda *a: FakeMonitorStream(*a), backing_builder=builder,
+                            run_in_thread=False, devices=DEVICES, loop_region=region)
+    return dlg, t, streams, built
+
+
+def test_modes_need_the_loop_markers(tmp_path):
+    dlg, _t, _streams = _dialog(tmp_path)
+    assert not dlg.mode_combo.isEnabled() and dlg.mode() == "normal"
+    dlg.reject()
+    dlg, _t, _streams, _built = _loop_dialog(tmp_path)
+    assert dlg.mode_combo.isEnabled()
+    dlg.mode_combo.setCurrentIndex(dlg.mode_combo.findData("punch"))
+    assert dlg.preroll_spin.isVisibleTo(dlg) and not dlg.start_combo.isVisibleTo(dlg)
+    assert dlg._record_start_beat() == 0.0                     # A=4 meno 2 battute, non prima dell'inizio
+    dlg.preroll_spin.setValue(1)
+    assert dlg._record_start_beat() == 0.0
+    dlg.reject()
+
+
+def test_loop_recording_keeps_one_take_per_pass(tmp_path):
+    dlg, t, streams, built = _loop_dialog(tmp_path)
+    dlg.mode_combo.setCurrentIndex(dlg.mode_combo.findData("loop"))
+    dlg.count_in_spin.setValue(1)
+    dlg.latency_spin.setValue(0.0)
+    dlg.start_recording()
+    assert built["start"] == 4.0 and built["end_beat"] == 8.0 and built["loop"]
+    streams["duplex"].pump(int(8.5 * RATE / 480))              # conteggio 2 s + tre giri da 2 s
+    dlg.stop_recording()
+    dlg.keep_take()
+    clip = dlg.result_clip()
+    assert dlg.result_mode() == "loop"
+    assert [tk.name for tk in clip.takes] == ["Giro 1", "Giro 2", "Giro 3"] and clip.active_take == 2
+    assert clip.start_beat == 4.0
+
+
+def test_main_window_puts_punch_and_overlapping_takes_on_the_clip(tmp_path, monkeypatch):
+    from core.audio_tracks import write_wav
+    w = MainWindow()
+    w.show()
+    track = w.project.add_audio_track("Voce")
+    old = str(tmp_path / "old.wav")
+    write_wav(old, np.full((RATE * 10, 1), 0.1, np.float32), RATE, bits=16)
+    track.audio_clips.append(AudioClip("Strofa", old, 0.0, trim_start=2.0))          # beat 0-16
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    new = str(tmp_path / "new.wav")
+    write_wav(new, np.full((RATE * 12, 1), 0.3, np.float32), RATE, bits=16)
+    punch = AudioClip("Ripresa 2", new, 4.0, trim_start=5.0, trim_end=5.0, fade_in=0.01, fade_out=0.01)
+    w._add_recorded_clip(track, punch, "voce", "1", mode="punch")                   # nessuna domanda
+    clips = sorted(track.audio_clips, key=lambda c: c.start_beat)
+    assert [c.start_beat for c in clips] == [0.0, 4.0, 8.0]
+    assert [tk.name for tk in clips[1].takes] == ["Strofa (2)", "Ripresa 2"]
+    w.undo()
+    assert len(w.project.get_track("Voce").audio_clips) == 1
+
+    track = w.project.get_track("Voce")
+    asked = []
+    monkeypatch.setattr(w, "_ask_overlap_choice", lambda *a: asked.append(a) or "take")
+    w._add_recorded_clip(track, AudioClip("Ripresa 3", new, 0.0, trim_start=2.0, trim_end=2.0), "voce", "1")
+    assert asked and len(track.audio_clips) == 1
+    assert [tk.name for tk in track.audio_clips[0].takes] == ["Strofa", "Ripresa 3"]

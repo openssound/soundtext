@@ -43,7 +43,7 @@ from core.arrangement import (
     load_box_file,
     save_box_file,
 )
-from core import audio_tracks
+from core import audio_takes, audio_tracks
 from core.audio_track_notation import audible_clips
 from core.instruments import gm_family_for_program
 from core.model import AudioClip, Clip, Project
@@ -433,6 +433,8 @@ class AudioBoxItem(BoxItem):
             label = tr("{name}  (silenziata)", name=self.clip.name)
         else:
             label = self.clip.name
+        if audio_takes.has_takes(self.clip):
+            label += f"  [{self.clip.active_take + 1}/{len(self.clip.takes)}]"
         painter.drawText(rect.adjusted(FADE_HANDLE_PX + 3, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
 
     def _paint_fades(self, painter, rect):
@@ -1489,6 +1491,17 @@ class ArrangementView(QWidget):
         if not missing and at_beat is not None and at_beat > clip.start_beat:
             split_action = menu.addAction(tr("Dividi qui (beat {at_beat:g})", at_beat=at_beat))
         duplicate_action = menu.addAction(tr("Duplica"))
+        take_actions, comp_action, keep_one_action = {}, None, None
+        if audio_takes.has_takes(clip):
+            takes_menu = menu.addMenu(tr("Riprese"))
+            for i, take in enumerate(clip.takes):
+                action = takes_menu.addAction(take.name)
+                action.setCheckable(True)
+                action.setChecked(i == clip.active_take)
+                take_actions[action] = i
+            takes_menu.addSeparator()
+            comp_action = takes_menu.addAction(tr("Comping..."))
+            keep_one_action = takes_menu.addAction(tr("Tieni solo la ripresa attiva"))
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
         relink_action = menu.addAction(tr("Ritrova file...")) if missing else None
         menu.addSeparator()
@@ -1521,6 +1534,12 @@ class ArrangementView(QWidget):
             self._split_clip(track_name, clip, at_beat)
         elif chosen is duplicate_action:
             self._duplicate_clip(track_name, clip)
+        elif chosen in take_actions:
+            self._set_active_take(track_name, clip, take_actions[chosen])
+        elif comp_action is not None and chosen is comp_action:
+            self._comp_clip(track_name, clip)
+        elif keep_one_action is not None and chosen is keep_one_action:
+            self._keep_only_active_take(track_name, clip)
         elif convert_action is not None and chosen is convert_action:
             self._convert_clip_to_notation(track_name, clip)
         elif relink_action is not None and chosen is relink_action:
@@ -1877,7 +1896,7 @@ class ArrangementView(QWidget):
         path = self._import_audio_file(src)
         if not path:
             return
-        clip.file = path
+        audio_takes.replace_file(clip, clip.file, path)   # anche nella ripresa attiva della lista
         self.on_clip_changed(track_name)
 
     def _split_clip(self, track_name: str, clip: AudioClip, at_beat: float):
@@ -2080,6 +2099,41 @@ class ArrangementView(QWidget):
             return
         clip.gain_db = value
         self.on_clip_changed(track_name)
+
+    def _set_active_take(self, track_name: str, clip: AudioClip, index: int):
+        if index == clip.active_take:
+            return
+        audio_takes.set_active_take(clip, index)
+        self.on_clip_changed(track_name)
+
+    def _keep_only_active_take(self, track_name: str, clip: AudioClip):
+        others = len(clip.takes) - 1
+        reply = QMessageBox.question(
+            self, tr("Tieni solo la ripresa attiva"),
+            tr("Togliere dalla clip '{name}' le altre {n} riprese? I loro file restano nella cartella "
+               "audio del progetto; Ctrl+Z le rimette.", name=clip.name, n=others))
+        if reply != QMessageBox.Yes:
+            return
+        audio_takes.keep_only_active_take(clip)
+        self.on_clip_changed(track_name)
+
+    def _comp_clip(self, track_name: str, clip: AudioClip):
+        """Comping: la clip diventa i tratti scelti nella finestra (vedi
+        gui.comping_dialog), un solo Annulla per tutto."""
+        from .comping_dialog import CompingDialog
+        dlg = CompingDialog(self, clip, self._tempo_map())
+        self._comping_dialog = dlg   # per i test
+        if dlg.exec() != CompingDialog.Accepted:
+            return
+        parts = dlg.result_clips()
+        if not parts:
+            return
+        track = self.host.project.get_track(track_name)
+        index = track.audio_clips.index(clip)
+        track.audio_clips[index:index + 1] = parts
+        self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("Comping di '{name}': {n} tratti.", name=clip.name, n=len(parts)), 5000)
 
     def _normalize_clip(self, track_name: str, clip: AudioClip):
         before = clip.gain_db

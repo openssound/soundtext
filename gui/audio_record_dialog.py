@@ -20,7 +20,7 @@ from core.audio_recording import (
     build_calibration_backing, measure_latency_ms,
     DEFAULT_PROFILE, INPUT_PROFILES, DuplexRecorder, InputMonitor, build_backing, channel_choices,
     TakePlayer, level_to_db, list_input_devices, output_device_for, parse_channel_spec, pick_input_device,
-    recorded_clip, save_take, take_preview,
+    loop_clip, loop_pass_count, punch_clip, recorded_clip, save_take, take_preview,
 )
 
 from .theme import TEXT_DIM, WARN
@@ -87,11 +87,14 @@ class AudioRecordDialog(QDialog):
 
     def __init__(self, parent, project, track, start_options, target_dir, stream_factory=None,
                  monitor_factory=None, backing_builder=None, run_in_thread=True, devices=None,
-                 player_factory=None):
+                 player_factory=None, loop_region=None):
         super().__init__(parent)
         self.project = project
         self.track = track
         self.target_dir = target_dir
+        # (A, B) in beat: abilita la registrazione in loop e il punch-in
+        self.loop_region = loop_region if loop_region and loop_region[1] > loop_region[0] else None
+        self._mode_used = "normal"
         self._stream_factory = stream_factory
         self._monitor_factory = monitor_factory
         self._backing_builder = backing_builder or build_backing
@@ -111,7 +114,7 @@ class AudioRecordDialog(QDialog):
         self.setWindowTitle(tr("Registra — traccia audio '{name}'", name=track.name))
         self.setMinimumWidth(560)
         layout = QVBoxLayout(self)
-        form = QFormLayout()
+        form = self._form = QFormLayout()
 
         self.device_combo = QComboBox()
         for dev in self._devices:
@@ -153,10 +156,31 @@ class AudioRecordDialog(QDialog):
         meter_row.addWidget(self.meter_db_label)
         form.addRow(tr("Livello:"), meter_row)
 
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem(tr("Normale"), "normal")
+        self.mode_combo.addItem(tr("In loop fra A e B (ogni giro e' una ripresa)"), "loop")
+        self.mode_combo.addItem(tr("Punch-in fra A e B"), "punch")
+        if self.loop_region is None:
+            self.mode_combo.setEnabled(False)
+            self.mode_combo.setToolTip(tr("Imposta prima i punti A e B del loop (Riproduzione → Loop)."))
+        else:
+            self.mode_combo.setToolTip(tr(
+                "In loop: il tratto A-B si ripete finche' non premi Stop, e ogni giro diventa una ripresa "
+                "della stessa clip.\nPunch-in: il brano suona dal pre-roll, ma della ripresa si tiene "
+                "solo il tratto A-B, come nuova ripresa della clip che c'e' li'."))
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        form.addRow(tr("Modalita':"), self.mode_combo)
+
         self.start_combo = QComboBox()
         for label, beat in start_options:
             self.start_combo.addItem(label, beat)
         form.addRow(tr("Parti da:"), self.start_combo)
+
+        self.preroll_spin = QSpinBox()
+        self.preroll_spin.setRange(0, 8)
+        self.preroll_spin.setValue(2)
+        self.preroll_spin.setToolTip(tr("Battute che suonano prima del punto A, per entrare a tempo."))
+        form.addRow(tr("Pre-roll (battute):"), self.preroll_spin)
 
         self.count_in_spin = QSpinBox()
         self.count_in_spin.setRange(0, 4)
@@ -240,6 +264,7 @@ class AudioRecordDialog(QDialog):
         self._timer.start()
 
         self._on_device_changed(initial_channels=track.input_channels)
+        self._on_mode_changed()
         self._update_buttons()
         if not self._devices:
             self._set_status(tr("Nessun ingresso audio trovato"), error=True)
@@ -250,6 +275,37 @@ class AudioRecordDialog(QDialog):
             self._set_status(tr("Pronto: prova il livello, poi premi Registra"))
 
     # ------------------------------------------------------------ scelte
+
+    def mode(self) -> str:
+        """"normal", "loop" o "punch" (vedi core.audio_recording)."""
+        return self.mode_combo.currentData() if self.loop_region is not None else "normal"
+
+    def result_mode(self) -> str:
+        """La modalita' con cui e' stata fatta la ripresa tenuta."""
+        return self._mode_used
+
+    def _bar_beats(self) -> float:
+        try:
+            num, den = (int(x) for x in self.project.time_sig.split("/"))
+            return 4.0 * num / den
+        except (ValueError, ZeroDivisionError):
+            return 4.0
+
+    def _record_start_beat(self) -> float:
+        mode = self.mode()
+        if mode == "loop":
+            return self.loop_region[0]
+        if mode == "punch":
+            return max(0.0, self.loop_region[0] - self.preroll_spin.value() * self._bar_beats())
+        return float(self.start_combo.currentData() or 0.0)
+
+    def _on_mode_changed(self, *_args):
+        mode = self.mode()
+        self._form.setRowVisible(self.start_combo, mode == "normal")
+        self._form.setRowVisible(self.preroll_spin, mode == "punch")
+        if mode == "loop":
+            self.hear_track_check.setChecked(False)   # i giri di prima non si sentono comunque
+        self._update_buttons()
 
     def selected_device(self):
         i = self.device_combo.currentIndex()
@@ -342,6 +398,10 @@ class AudioRecordDialog(QDialog):
             count_in = self._backing.count_in_seconds
             if elapsed < count_in:
                 self._set_status(f"Conteggio… {count_in - elapsed:.1f}")
+            elif self._backing.loop:
+                loop = self._backing.loop_seconds
+                self._set_status(tr("● REC  giro {n}  {0}", self._mmss((elapsed - count_in) % loop),
+                                    n=int((elapsed - count_in) // loop) + 1), recording=True)
             else:
                 self._set_status(tr("● REC  {0}", self._mmss(elapsed - count_in)), recording=True)
 
@@ -363,9 +423,12 @@ class AudioRecordDialog(QDialog):
         settings.set_record_count_in_bars(self.count_in_spin.value())
         settings.set_record_metronome(self.metronome_check.isChecked())
         self._stop_monitor()
-        self._start_beat = float(self.start_combo.currentData() or 0.0)
+        self._start_beat = self._record_start_beat()
+        self._recording_mode = self.mode()
         args = (self.project, self._start_beat, self.count_in_spin.value(), self.metronome_check.isChecked())
         kwargs = {"mute_track": None if self.hear_track_check.isChecked() else self.track.name}
+        if self._recording_mode == "loop":
+            kwargs.update(end_beat=self.loop_region[1], loop=True)
         self._set_status(tr("Preparazione della base…"))
         self._update_buttons(preparing=True)
         if not self._run_in_thread:
@@ -478,14 +541,36 @@ class AudioRecordDialog(QDialog):
             return
         self.stop_listening()
         n = len(self.track.audio_clips) + 1
+        mode = getattr(self, "_recording_mode", "normal")
+        latency = self.latency_spin.value()
+        if mode == "loop" and loop_pass_count(self._take, self._backing, latency) <= 0:
+            QMessageBox.information(self, tr("Nessun giro completo"),
+                                    tr("La ripresa e' stata fermata prima della fine del primo giro: "
+                                       "non c'e' niente da tenere."))
+            return
         try:
             path = save_take(self._take, self.target_dir, f"{self.track.name} ripresa {n}")
         except OSError as e:
             QMessageBox.critical(self, tr("Salvataggio non riuscito"), str(e))
             return
-        self._result_clip = recorded_clip(
-            f"Ripresa {n}", path, self._start_beat, self._backing.count_in_seconds,
-            self._take.alignment_seconds, self.latency_spin.value())
+        name = tr("Ripresa {n}", n=n)
+        if mode == "loop":
+            clip = loop_clip(name, path, self._start_beat, self._take, self._backing, latency)
+        elif mode == "punch":
+            from core.tempo_map import build_tempo_beat_map
+            a, b = self.loop_region
+            clip = punch_clip(name, path, self._start_beat, a, b, self._take, self._backing, latency,
+                              build_tempo_beat_map(self.project))
+            if clip is None:
+                QMessageBox.information(self, tr("Punch-in non raggiunto"),
+                                        tr("La ripresa e' stata fermata prima del punto A: non c'e' "
+                                           "niente da tenere."))
+                return
+        else:
+            clip = recorded_clip(name, path, self._start_beat, self._backing.count_in_seconds,
+                                 self._take.alignment_seconds, latency)
+        self._result_clip = clip
+        self._mode_used = mode
         self.accept()
 
     def result_clip(self):
@@ -555,8 +640,9 @@ class AudioRecordDialog(QDialog):
                                            and not recording and not preparing)
         for w in (self.device_combo, self.profile_combo, self.channel_combo, self.start_combo,
                   self.count_in_spin, self.metronome_check, self.hear_track_check, self.latency_spin,
-                  self.calibrate_btn):
+                  self.calibrate_btn, self.preroll_spin):
             w.setEnabled(not recording and not preparing)
+        self.mode_combo.setEnabled(self.loop_region is not None and not recording and not preparing)
         self.calibrate_btn.setEnabled(has_device and not recording and not preparing)
 
     def _set_status(self, text: str, error: bool = False, recording: bool = False):

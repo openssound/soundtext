@@ -35,6 +35,19 @@ class Clip:
 FADE_SHAPES = ("linear", "equal")
 
 
+@dataclass(frozen=True)
+class AudioTake:
+    """Una ripresa alternativa di una clip audio (vedi AudioClip.takes e
+    core.audio_takes). delta: secondi fra il punto di questo file e quello
+    del file della ripresa attiva che suonano nello stesso istante (le
+    riprese hanno ciascuna il suo conteggio e il suo ritardo d'ingresso).
+    Immutabile: si cambia sostituendo la lista, cosi' le copie di una clip
+    (Duplica, Copia) non si condividono le modifiche."""
+    name: str
+    file: str                   # in memoria sempre assoluto, come AudioClip.file
+    delta: float = 0.0
+
+
 @dataclass
 class AudioClip:
     """Una clip di una traccia audio: un file audio (registrato altrove o
@@ -55,6 +68,10 @@ class AudioClip:
     fade_out: float = 0.0
     fade_shape: str = "linear"
     muted: bool = False         # la clip resta nel brano ma non suona
+    # Riprese multiple: tutte, compresa l'attiva (takes[active_take], con
+    # lo stesso file di 'file' e delta 0); vuota = una ripresa sola.
+    takes: List[AudioTake] = field(default_factory=list)
+    active_take: int = 0
 
 
 @dataclass

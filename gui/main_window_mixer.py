@@ -566,30 +566,65 @@ class MixerMixin:
         dlg = self._make_record_dialog(track, options, target_audio_dir(self.current_path))
         if dlg.exec() != QDialog.Accepted or dlg.result_clip() is None:
             return
-        self._add_recorded_clip(track, dlg.result_clip(), dlg.input_profile(), dlg.input_channels_spec())
+        mode = dlg.result_mode() if hasattr(dlg, "result_mode") else "normal"
+        self._add_recorded_clip(track, dlg.result_clip(), dlg.input_profile(), dlg.input_channels_spec(), mode)
 
     def _make_record_dialog(self, track, options, target_dir):
         from .audio_record_dialog import AudioRecordDialog
-        return AudioRecordDialog(self, self.project, track, options, target_dir)
+        a, b = getattr(self, "_loop_a_beat", None), getattr(self, "_loop_b_beat", None)
+        region = (a, b) if a is not None and b is not None else None
+        return AudioRecordDialog(self, self.project, track, options, target_dir, loop_region=region)
 
-    def _add_recorded_clip(self, track, clip, input_profile, input_channels):
+    def _ask_overlap_choice(self, track_name: str, count: int) -> str:
+        """Cosa fare di una ripresa che si sovrappone a delle clip: "take"
+        (nuova ripresa della clip, si sceglie poi quale tenere), "replace"
+        (eliminarle) o "both" (tenerle tutte, suonano insieme)."""
+        box = QMessageBox(QMessageBox.Question, tr("Ripresa sovrapposta"),
+                          tr("La nuova ripresa si sovrappone a {0} clip della traccia '{name}'.", count, name=track_name),
+                          parent=self)
+        take = box.addButton(tr("Come nuova ripresa"), QMessageBox.AcceptRole)
+        replace = box.addButton(tr("Sostituisci"), QMessageBox.DestructiveRole)
+        box.addButton(tr("Tienile entrambe"), QMessageBox.RejectRole)
+        box.setDefaultButton(take)
+        box.setInformativeText(tr("Come nuova ripresa: la clip tiene tutte le riprese (tasto destro → "
+                                  "Riprese) e si puo' fare il comping. Tienile entrambe: suoneranno insieme."))
+        box.exec()
+        clicked = box.clickedButton()
+        return "take" if clicked is take else "replace" if clicked is replace else "both"
+
+    def _add_recorded_clip(self, track, clip, input_profile, input_channels, mode: str = "normal"):
+        """La ripresa tenuta nella traccia. In loop e in punch-in va come
+        nuova ripresa della clip su cui cade (core.audio_takes); una ripresa
+        normale sovrapposta a delle clip chiede cosa farne."""
+        from core.audio_takes import add_recording_as_take
         track.input_profile, track.input_channels = input_profile, input_channels
         view = self.arrangement_view
         end = clip.start_beat + view.clip_length_beats(track.name, clip)
         overlapped = [c for c in track.audio_clips
                       if c.start_beat < end and c.start_beat + view.clip_length_beats(track.name, c) > clip.start_beat]
+        choice = "both"
         if overlapped:
-            reply = QMessageBox.question(
-                self, tr("Ripresa sovrapposta"),
-                tr("La nuova ripresa si sovrappone a {0} clip della traccia '{name}'.\nEliminarle e tenere solo la nuova? (No = le tiene tutte: suoneranno insieme)", len(overlapped), name=track.name))
-            if reply == QMessageBox.Yes:
-                track.audio_clips = [c for c in track.audio_clips if c not in overlapped]
-        track.audio_clips.append(clip)
+            choice = "take" if mode in ("loop", "punch") else self._ask_overlap_choice(track.name, len(overlapped))
+        target = None
+        if choice == "take":
+            target = add_recording_as_take(track.audio_clips, clip, view._tempo_map())
+        elif choice == "replace":
+            track.audio_clips = [c for c in track.audio_clips if c not in overlapped]
+        if target is None:
+            track.audio_clips.append(clip)
         self._mark_dirty()
         self.refresh_mixer()
         self.select_track(track.name)
-        self.statusBar().showMessage(
-            tr("Ripresa '{name}' aggiunta alla traccia '{0}' (file: {file}).", track.name, name=clip.name, file=clip.file), 6000)
+        if target is not None:
+            message = tr("Ripresa '{name}' aggiunta come ripresa {n} della clip '{clip}' (tasto destro → Riprese).",
+                         name=clip.name, n=target.active_take + 1, clip=target.name)
+        elif len(clip.takes) > 1:
+            message = tr("Registrazione in loop: {n} riprese nella clip '{name}' (tasto destro → Riprese).",
+                         n=len(clip.takes), name=clip.name)
+        else:
+            message = tr("Ripresa '{name}' aggiunta alla traccia '{0}' (file: {file}).", track.name, name=clip.name,
+                         file=clip.file)
+        self.statusBar().showMessage(message, 6000)
 
     def remove_track(self):
         if not self.current_track_name:

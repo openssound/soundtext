@@ -302,23 +302,25 @@ def consolidate_project_audio(project: Project, project_path: str) -> int:
     mai salvato, cartella di un altro progetto dopo 'Salva con nome'),
     copiandoli e aggiornando AudioClip.file. I file mancanti restano
     com'erano. Ritorna quanti file sono stati copiati."""
+    from .audio_takes import all_files, replace_file
     audio_dir = audio_dir_for_project(project_path)
     copied: Dict[str, str] = {}
     for track in project.tracks:
         for clip in track.audio_clips:
-            src = os.path.abspath(clip.file)
-            if os.path.dirname(src) == audio_dir or not os.path.isfile(src):
-                continue
-            if src not in copied:
-                os.makedirs(audio_dir, exist_ok=True)
-                dest = os.path.join(audio_dir, os.path.basename(src))
-                if os.path.exists(dest) and not _same_file_content(src, dest):
-                    stem, ext = os.path.splitext(os.path.basename(src))
-                    dest = unique_audio_path(audio_dir, stem, ext)
-                if not os.path.exists(dest):
-                    shutil.copyfile(src, dest)
-                copied[src] = dest
-            clip.file = copied[src]
+            for file in all_files(clip):          # anche le riprese non attive
+                src = os.path.abspath(file)
+                if os.path.dirname(src) == audio_dir or not os.path.isfile(src):
+                    continue
+                if src not in copied:
+                    os.makedirs(audio_dir, exist_ok=True)
+                    dest = os.path.join(audio_dir, os.path.basename(src))
+                    if os.path.exists(dest) and not _same_file_content(src, dest):
+                        stem, ext = os.path.splitext(os.path.basename(src))
+                        dest = unique_audio_path(audio_dir, stem, ext)
+                    if not os.path.exists(dest):
+                        shutil.copyfile(src, dest)
+                    copied[src] = dest
+                replace_file(clip, file, copied[src])
     return len(copied)
 
 

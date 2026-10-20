@@ -22,6 +22,13 @@ Come funziona una ripresa:
    dispositivo, per cio' che i driver non dichiarano) diventano il trim
    iniziale della clip: il file resta intero, come tutte le clip
    (vedi core.audio_tracks).
+
+Registrazione in loop (build_backing con end_beat e loop=True): la base e'
+il solo tratto A-B, che DuplexRecorder ripete senza fermarsi finche' non si
+preme Stop; si registra un solo file lungo, e ogni giro completo diventa una
+ripresa della stessa clip (loop_clip, vedi core.audio_takes). Punch-in
+(punch_clip): si suona dal pre-roll ma della ripresa si tiene solo il
+tratto A-B, che va come nuova ripresa nella clip che c'era li'.
 """
 
 import os
@@ -277,10 +284,12 @@ class ClickSchedule:
 def build_click_schedule(project: Project, start_beat: float, count_in_bars: int, with_metronome: bool,
                          rate: int = AUDIO_SAMPLE_RATE, sound: Optional[str] = None,
                          volume: Optional[float] = None,
-                         max_seconds: float = MAX_RECORD_SECONDS) -> Tuple[ClickSchedule, float]:
+                         max_seconds: float = MAX_RECORD_SECONDS,
+                         loop_seconds: Optional[float] = None) -> Tuple[ClickSchedule, float]:
     """Click del conteggio (count_in_bars battute al tempo e con la metrica
     in vigore a start_beat) e, con with_metronome, del metronomo da
-    start_beat in poi. Ritorna (schedule, durata del conteggio in secondi)."""
+    start_beat in poi (con loop_seconds solo per un giro: la base in loop li
+    ripete). Ritorna (schedule, durata del conteggio in secondi)."""
     from . import settings
     from .tempo_map import (build_metrica_beat_map, build_tempo_beat_map, click_grid_position,
                             seconds_for_beats, value_at_beat)
@@ -300,10 +309,11 @@ def build_click_schedule(project: Project, start_beat: float, count_in_bars: int
     if with_metronome:
         origin = seconds_for_beats(tempo_map, start_beat)
         beat = start_beat
+        limit = count_in_seconds + loop_seconds - 1e-6 if loop_seconds else max_seconds
         while True:
             beat, accent = click_grid_position(metrica_map, beat)
             t = count_in_seconds + seconds_for_beats(tempo_map, beat) - origin
-            if t > max_seconds:
+            if t > limit:
                 break
             times.append((t, accent))
             beat += 1e-6
@@ -321,15 +331,34 @@ class Backing:
     clicks: ClickSchedule
     count_in_seconds: float
     midi_skipped: bool = False  # le tracce con note non si sono potute renderizzare
+    loop: bool = False          # dopo il conteggio, 'samples' si ripete finche' non si ferma
+
+    @property
+    def lead_frames(self) -> int:
+        return int(round(self.count_in_seconds * self.rate))
+
+    @property
+    def loop_seconds(self) -> float:
+        """Durata di un giro (solo con loop)."""
+        return max(0, len(self.samples) - self.lead_frames) / float(self.rate) if self.loop else 0.0
+
+    def position(self, frame: int) -> int:
+        """Il frame di 'samples' che suona al frame 'frame' dell'uscita."""
+        lead, length = self.lead_frames, len(self.samples) - self.lead_frames
+        if not self.loop or frame < lead or length <= 0:
+            return frame
+        return lead + (frame - lead) % length
 
 
 def build_backing(project: Project, start_beat: float, count_in_bars: int = 1, with_metronome: bool = True,
-                  mute_track: Optional[str] = None, stop_check=None) -> Backing:
+                  mute_track: Optional[str] = None, stop_check=None, end_beat: Optional[float] = None,
+                  loop: bool = False) -> Backing:
     """Prepara la base per registrare da start_beat (vedi modulo). Se le
     tracce con note non si possono renderizzare (manca il SoundFont) la base
     contiene solo le tracce audio e midi_skipped e' True: si registra
     comunque, sul metronomo. mute_track esclude una traccia dalla base (non
-    serve riascoltare cio' che si sta per sostituire)."""
+    serve riascoltare cio' che si sta per sostituire). end_beat taglia la
+    base li' (con loop=True il tratto start_beat-end_beat si ripete)."""
     import copy
     from .playback import render_project_mix
     from .tempo_map import build_tempo_beat_map, seconds_for_beats
@@ -351,12 +380,23 @@ def build_backing(project: Project, start_beat: float, count_in_bars: int = 1, w
     if rate != AUDIO_SAMPLE_RATE:
         song, rate = resample(song, rate, AUDIO_SAMPLE_RATE), AUDIO_SAMPLE_RATE
 
-    start_seconds = seconds_for_beats(build_tempo_beat_map(project), start_beat)
-    part = song[int(round(start_seconds * rate)):]
-    clicks, count_in_seconds = build_click_schedule(project, start_beat, count_in_bars, with_metronome, rate)
+    tempo_map = build_tempo_beat_map(project)
+    start_seconds = seconds_for_beats(tempo_map, start_beat)
+    first = int(round(start_seconds * rate))
+    if end_beat is not None and end_beat > start_beat:
+        last = int(round(seconds_for_beats(tempo_map, end_beat) * rate))
+        part = song[first:last]
+        if len(part) < last - first:          # il brano finisce prima di B: silenzio fino a B
+            part = np.concatenate([part, np.zeros((last - first - len(part), 2), dtype=np.float32)])
+    else:
+        part = song[first:]
+        loop = False
+    loop_seconds = len(part) / float(rate) if loop else None
+    clicks, count_in_seconds = build_click_schedule(project, start_beat, count_in_bars, with_metronome, rate,
+                                                    loop_seconds=loop_seconds)
     lead = np.zeros((int(round(count_in_seconds * rate)), 2), dtype=np.float32)
     return Backing(np.concatenate([lead, part.astype(np.float32)]), rate, clicks, count_in_seconds,
-                   midi_skipped)
+                   midi_skipped, loop=loop)
 
 
 # ---------------------------------------------------------------------------
@@ -436,12 +476,8 @@ class DuplexRecorder:
             dac = getattr(time_info, "outputBufferDacTime", 0.0) or 0.0
             if dac > 0:
                 self._first_dac = dac
-        samples = self.backing.samples
         block = np.zeros((frames, 2), dtype=np.float32)
-        end = min(len(samples), self._pos + frames)
-        if end > self._pos:
-            block[:end - self._pos] = samples[self._pos:end]
-        self.backing.clicks.add_into(block, self._pos)
+        self._fill_backing(block, self._pos)
         np.clip(block, -1.0, 1.0, out=block)
         if outdata.shape[1] == 1:
             outdata[:, 0] = block.mean(axis=1)
@@ -465,10 +501,29 @@ class DuplexRecorder:
             self._peak_since_read = max(self._peak_since_read, peak)
         self._recorded += len(chunk)
 
+    def _fill_backing(self, block: np.ndarray, pos: int) -> None:
+        """La base (con i click) dei frame pos..pos+len(block) dell'uscita;
+        in loop, a pezzi fra un giro e l'altro."""
+        b = self.backing
+        samples, done = b.samples, 0
+        while done < len(block):
+            src = b.position(pos + done)
+            n = len(block) - done
+            if b.loop and pos + done >= b.lead_frames:
+                n = min(n, len(samples) - src)        # fino alla fine del giro
+            elif b.loop:
+                n = min(n, b.lead_frames - (pos + done))   # fino alla fine del conteggio
+            n = max(1, n)
+            end = min(len(samples), src + n)
+            if end > src:
+                block[done:done + end - src] = samples[src:end]
+            b.clicks.add_into(block[done:done + n], src)
+            done += n
+
     def _use_rate(self, rate: int):
         b = self.backing
         self.backing = Backing(resample(b.samples, b.rate, rate), rate, b.clicks.at_rate(rate),
-                               b.count_in_seconds, b.midi_skipped)
+                               b.count_in_seconds, b.midi_skipped, b.loop)
         self.rate = rate
 
     def _duplex_callback(self, indata, outdata, frames, time_info, status):
@@ -650,6 +705,67 @@ def recorded_clip(name: str, path: str, start_beat: float, count_in_seconds: flo
     return AudioClip(name=name, file=path, start_beat=start_beat, trim_start=max(0.0, round(trim, 4)))
 
 
+# Un giro della registrazione in loop conta come ripresa se e' stato
+# registrato almeno per questa parte (lo Stop arriva di solito a meta' giro).
+LOOP_PASS_MIN_SHARE = 0.9
+PUNCH_FADE = 0.010
+
+
+def loop_pass_count(take: Take, backing: Backing, manual_latency_ms: float) -> int:
+    """Quanti giri completi ci sono nella ripresa in loop."""
+    loop = backing.loop_seconds
+    if loop <= 0:
+        return 0
+    trim = backing.count_in_seconds + take.alignment_seconds + manual_latency_ms / 1000.0
+    played = take.seconds - trim
+    full = int(played // loop)
+    return full + (1 if played - full * loop >= LOOP_PASS_MIN_SHARE * loop else 0)
+
+
+def loop_clip(name: str, path: str, start_beat: float, take: Take, backing: Backing,
+              manual_latency_ms: float, take_names: Sequence[str] = ()) -> Optional[AudioClip]:
+    """La clip di una registrazione in loop: lunga un giro, a start_beat
+    (il punto A), con una ripresa per giro dello stesso file (vedi
+    core.audio_takes); attiva l'ultima. None se non c'e' nemmeno un giro."""
+    from .audio_takes import add_take, set_active_take
+    from .model import AudioTake
+    passes = loop_pass_count(take, backing, manual_latency_ms)
+    if passes <= 0:
+        return None
+    loop = backing.loop_seconds
+    clip = recorded_clip(name, path, start_beat, backing.count_in_seconds, take.alignment_seconds,
+                         manual_latency_ms)
+    total = take.seconds
+    clip.trim_end = round(max(0.0, total - clip.trim_start - loop), 6)
+    names = list(take_names) or [tr("Giro {n}", n=k + 1) for k in range(passes)]
+    clip.takes = [AudioTake(names[0], path, 0.0)]
+    for k in range(1, passes):
+        add_take(clip, names[k] if k < len(names) else tr("Giro {n}", n=k + 1), path,
+                 clip.trim_start + k * loop, make_active=False)
+    set_active_take(clip, passes - 1)
+    return clip
+
+
+def punch_clip(name: str, path: str, record_start_beat: float, punch_in_beat: float, punch_out_beat: float,
+               take: Take, backing: Backing, manual_latency_ms: float, tempo_map) -> Optional[AudioClip]:
+    """La clip di un punch-in: della ripresa (fatta suonando dal pre-roll,
+    record_start_beat) solo il tratto punch_in-punch_out, con dissolvenze
+    brevi ai due capi. None se la ripresa non arriva al punch-in."""
+    from .tempo_map import seconds_for_beats
+    clip = recorded_clip(name, path, record_start_beat, backing.count_in_seconds, take.alignment_seconds,
+                         manual_latency_ms)
+    skip = seconds_for_beats(tempo_map, punch_in_beat) - seconds_for_beats(tempo_map, record_start_beat)
+    length = seconds_for_beats(tempo_map, punch_out_beat) - seconds_for_beats(tempo_map, punch_in_beat)
+    available = take.seconds - clip.trim_start - skip
+    if available <= 0.05 or length <= 0:
+        return None
+    clip.start_beat = punch_in_beat
+    clip.trim_start = round(clip.trim_start + skip, 6)
+    clip.trim_end = round(max(0.0, take.seconds - clip.trim_start - length), 6)
+    clip.fade_in = clip.fade_out = PUNCH_FADE
+    return clip
+
+
 def take_preview(take: Take, backing: Backing, manual_latency_ms: float,
                  with_backing: bool = True) -> np.ndarray:
     """La ripresa come suonera' nella traccia (stesso trim di recorded_clip),
@@ -661,6 +777,12 @@ def take_preview(take: Take, backing: Backing, manual_latency_ms: float,
     x = resample(x, take.rate, rate)
     trim = take.alignment_seconds + manual_latency_ms / 1000.0 + backing.count_in_seconds
     x = x[max(0, int(round(trim * rate))):]
+    if backing.loop:
+        # in loop si riascolta l'ultimo giro completo (quello che resta attivo)
+        loop = int(round(backing.loop_seconds * rate))
+        passes = loop_pass_count(take, backing, manual_latency_ms)
+        if passes > 0 and loop > 0:
+            x = x[(passes - 1) * loop:passes * loop]
     if with_backing:
         start = int(round(backing.count_in_seconds * rate))
         base = backing.samples[start:start + len(x)]

@@ -3745,8 +3745,37 @@ SoundFont, solo las pistas de audio y el metrónomo), hace la cuenta atrás y
 graba hasta que pulses **■ Stop**. El diálogo muestra la duración y el pico
 de la toma (y avisa si ha saturado): **Conservar la toma** la añade a la
 pista como clip en el punto de partida; **Grabar** de nuevo la sustituye.
-Si la toma se superpone a clips que ya existen, SoundText pregunta si
-eliminarlos.
+Si la toma se superpone a clips que ya existen, SoundText pregunta qué
+hacer: **Como nueva toma** (propuesto: el clip conserva todas las tomas y
+se elige después), **Sustituir** (elimina los clips de debajo) o
+**Conservar ambas** (suenan juntas).
+
+**Modo** (con los puntos A y B del bucle fijados, menú **Reproducción →
+Bucle**):
+- **En bucle entre A y B**: el tramo A-B se repite sin pararse hasta que
+  pulsas Stop (la cuenta atrás solo al principio). Se graba un solo
+  archivo, y cada vuelta completa se convierte en una toma del mismo clip
+  («Vuelta 1», «Vuelta 2»...); queda activa la última. Una vuelta
+  interrumpida por el Stop no cuenta.
+- **Punch-in entre A y B**: la canción suena desde el **pre-roll** (los
+  compases elegidos antes de A), pero de la grabación solo se conserva el
+  tramo A-B, con fundidos breves en los dos extremos. Va como nueva toma
+  del clip que hay ahí: el clip se divide en A y en B y solo ese tramo
+  recibe la toma, así que el original sigue siempre disponible.
+
+**Tomas de un clip**: un clip con varias tomas muestra en su box cuál
+suena (p. ej. `[2/3]`); clic derecho → **Tomas** para elegir otra,
+**Comping...** o **Conservar solo la toma activa** (los archivos de las
+demás se quedan en la carpeta del proyecto).
+
+**Comping**: la ventana muestra las tomas una debajo de otra con su forma
+de onda; arrastrando sobre una toma se usa en ese tramo (ajustando a la
+semicorchea; Mayús: libre), un clic la elige para todo el tramo bajo el
+ratón. La fila **Comp** de arriba muestra el resultado, **▶ Escuchar el
+comp** lo reproduce. **Aplicar el comp** divide el clip en los tramos
+elegidos, con un fundido cruzado de 10 ms en cada punto de cambio; cada
+tramo conserva todas las tomas, así que el comping se puede rehacer. Un
+solo Ctrl+Z lo deshace.
 
 Para oírte mientras tocas usa la **monitorización directa** de la interfaz
 de audio (rueda o botón «direct monitor»): no tiene retardo. SoundText solo

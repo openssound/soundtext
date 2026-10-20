@@ -19,7 +19,7 @@ import re
 import os
 from typing import Optional, List
 
-from .model import Project, Clip, AudioClip, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES
+from .model import Project, Clip, AudioClip, AudioTake, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES
 from .arrangement import flatten_clips_to_text
 from .notation import upgrade_midi_refs
 from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key, clamp_params
@@ -229,6 +229,14 @@ def _prepare_embedded_instruments(text: str) -> List[str]:
 RE_AUDIO_FADE = re.compile(r'\bfade\s*=\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)')
 RE_AUDIO_FADE_SHAPE = re.compile(r'\bfade_shape\s*=\s*(\w+)')
 RE_AUDIO_MUTE = re.compile(r'(?<![\w=])mute(?![\w=])')
+# Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
+# ('take=N', da 1), poi una riga per ripresa:
+#   take "Ripresa 2" file="Voce ripresa 2.wav" delta=0.013
+# Una versione vecchia legge la riga principale (la ripresa attiva) e
+# ignora le altre.
+RE_AUDIO_ACTIVE_TAKE = re.compile(r'(?<![\w"])take\s*=\s*(\d+)')
+RE_AUDIO_TAKE = re.compile(r'(?<![\w=])take\s+"([^"]*)"\s+file\s*=\s*"([^"]*)"\s+delta\s*=\s*(-?\d+(?:\.\d+)?)')
+_RE_QUOTED = re.compile(r'"[^"]*"')
 
 
 def _parse_audio_clip_body(name: str, start_beat: float, body: str,
@@ -236,17 +244,17 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     m = RE_AUDIO_FILE.search(body)
     if not m or not m.group(1).strip():
         return None
-    path = m.group(1).strip().replace("/", os.sep)
-    if base_dir and not os.path.isabs(path):
-        path = os.path.normpath(os.path.join(base_dir, path))
-    clip = AudioClip(name=name, file=path, start_beat=start_beat)
+    clip = AudioClip(name=name, file=_clip_file_path(m.group(1), base_dir), start_beat=start_beat)
     t = RE_AUDIO_TRIM.search(body)
     if t:
         clip.trim_start, clip.trim_end = float(t.group(1)), float(t.group(2))
     g = RE_AUDIO_GAIN.search(body)
     if g:
         clip.gain_db = float(g.group(1))
-    rest = RE_AUDIO_FILE.sub("", body)   # un percorso con "fade=" o "mute" non conta
+    takes = [AudioTake(take_name, _clip_file_path(take_file, base_dir), float(delta))
+             for take_name, take_file, delta in RE_AUDIO_TAKE.findall(body)]
+    body = RE_AUDIO_TAKE.sub("", body)
+    rest = _RE_QUOTED.sub('""', body)   # un percorso o un nome con "fade=" o "mute" non conta
     f = RE_AUDIO_FADE.search(rest)
     if f:
         clip.fade_in, clip.fade_out = float(f.group(1)), float(f.group(2))
@@ -254,17 +262,31 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     if shape and shape.group(1) in FADE_SHAPES:
         clip.fade_shape = shape.group(1)
     clip.muted = RE_AUDIO_MUTE.search(rest) is not None
+    if len(takes) > 1:
+        active = RE_AUDIO_ACTIVE_TAKE.search(rest)
+        index = int(active.group(1)) - 1 if active else 0
+        clip.takes, clip.active_take = takes, max(0, min(len(takes) - 1, index))
     return clip
 
 
-def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
-    path = clip.file
+def _clip_file_path(path: str, base_dir: Optional[str]) -> str:
+    path = path.strip().replace("/", os.sep)
+    if base_dir and not os.path.isabs(path):
+        path = os.path.normpath(os.path.join(base_dir, path))
+    return path
+
+
+def _relative_clip_path(path: str, base_dir: Optional[str]) -> str:
     if base_dir:
         try:
             path = os.path.relpath(os.path.abspath(path), os.path.abspath(base_dir))
         except ValueError:   # Windows: dischi diversi, resta assoluto
             pass
-    parts = [f'file="{path.replace(os.sep, "/")}"']
+    return path.replace(os.sep, "/")
+
+
+def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
+    parts = [f'file="{_relative_clip_path(clip.file, base_dir)}"']
     if clip.trim_start or clip.trim_end:
         parts.append(f"trim={round(clip.trim_start, 4):g},{round(clip.trim_end, 4):g}")
     if clip.gain_db:
@@ -275,7 +297,15 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append(f"fade_shape={clip.fade_shape}")
     if clip.muted:
         parts.append("mute")
-    return " ".join(parts)
+    if len(clip.takes) > 1:
+        parts.append(f"take={clip.active_take + 1}")
+    lines = [" ".join(parts)]
+    if len(clip.takes) > 1:
+        for take in clip.takes:
+            name = take.name.replace('"', "'")
+            lines.append(f'take "{name}" file="{_relative_clip_path(take.file, base_dir)}" '
+                         f'delta={round(take.delta, 6):g}')
+    return "\n  ".join(lines)
 
 
 def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Optional[str] = None) -> Project:

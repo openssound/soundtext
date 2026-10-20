@@ -3555,7 +3555,34 @@ SoundFont, only audio tracks and metronome), does the count-in and records
 until you press **■ Stop**. The dialog shows the length and peak of the take
 (and warns if it clipped): **Keep the take** adds it to the track as a clip
 at the starting point; **Record** again replaces it. If the take overlaps
-clips already there, SoundText asks whether to delete them.
+clips already there, SoundText asks what to do: **As a new take**
+(suggested: the clip keeps all the takes and you choose later), **Replace**
+(deletes the clips below) or **Keep both** (they play together).
+
+**Mode** (with the loop points A and B set, **Playback → Loop** menu):
+- **Looping between A and B**: the A-B section repeats without stopping
+  until you press Stop (count-in only at the start). A single file is
+  recorded, and each complete pass becomes a take of the same clip
+  ("Pass 1", "Pass 2"...); the last one stays active. A pass interrupted by
+  Stop does not count.
+- **Punch-in between A and B**: the song plays from the **pre-roll** (the
+  chosen bars before A), but only the A-B section of the recording is kept,
+  with short fades at both ends. It goes as a new take of the clip that is
+  there: the clip is split at A and at B and only that section receives the
+  take, so the original is always still available.
+
+**Takes of a clip**: a clip with several takes shows in its box which one
+plays (e.g. `[2/3]`); right-click → **Takes** to choose another one,
+**Comping...** or **Keep only the active take** (the files of the others
+stay in the project folder).
+
+**Comping**: the window shows the takes one below the other with their
+waveform; dragging over a take uses it in that section (snapping to the
+sixteenth; Shift: free), a click chooses it for the whole section under the
+mouse. The **Comp** row at the top shows the result, **▶ Listen to the
+comp** plays it. **Apply the comp** splits the clip into the chosen
+sections, with a 10 ms crossfade at each change point; each section keeps
+all the takes, so the comping can be redone. A single Ctrl+Z undoes it.
 
 To hear yourself while playing use the audio interface's **direct
 monitoring** (knob or "direct monitor" button): it has no delay. SoundText

@@ -3834,7 +3834,37 @@ décompte et enregistre jusqu'à ce que vous appuyiez sur **■ Stop**. La
 fenêtre affiche la durée et la crête de la prise (et avertit si elle a
 saturé) : **Garder la prise** l'ajoute à la piste comme clip au point de
 départ ; **Enregistrer** de nouveau la remplace. Si la prise chevauche des
-clips déjà présents, SoundText demande s'il faut les supprimer.
+clips déjà présents, SoundText demande quoi en faire : **Comme nouvelle
+prise** (proposé : le clip garde toutes les prises et on choisit ensuite),
+**Remplacer** (supprime les clips en dessous) ou **Garder les deux** (elles
+jouent ensemble).
+
+**Mode** (avec les points A et B de la boucle placés, menu **Lecture →
+Boucle**) :
+- **En boucle entre A et B** : le passage A-B se répète sans s'arrêter
+  jusqu'à ce que vous appuyiez sur Stop (le décompte seulement au début).
+  Un seul fichier est enregistré, et chaque tour complet devient une prise
+  du même clip (« Tour 1 », « Tour 2 »...) ; le dernier reste actif. Un
+  tour interrompu par le Stop ne compte pas.
+- **Punch-in entre A et B** : le morceau joue depuis le **pre-roll** (les
+  mesures choisies avant A), mais de l'enregistrement on ne garde que le
+  passage A-B, avec de courts fondus aux deux bouts. Il va comme nouvelle
+  prise du clip qui s'y trouve : le clip est divisé en A et en B et seul ce
+  passage reçoit la prise, donc l'original reste toujours disponible.
+
+**Prises d'un clip** : un clip avec plusieurs prises montre dans son box
+laquelle joue (ex. `[2/3]`) ; clic droit → **Prises** pour en choisir une
+autre, **Comping...** ou **Garder seulement la prise active** (les fichiers
+des autres restent dans le dossier du projet).
+
+**Comping** : la fenêtre montre les prises l'une sous l'autre avec leur
+forme d'onde ; en faisant glisser sur une prise on l'utilise dans ce
+passage (aimantation à la double croche ; Maj : libre), un clic la choisit
+pour tout le passage sous la souris. La ligne **Comp** en haut montre le
+résultat, **▶ Écouter le comp** le fait entendre. **Appliquer le comp**
+divise le clip dans les passages choisis, avec un fondu enchaîné de 10 ms à
+chaque changement ; chaque passage garde toutes les prises, donc le comping
+peut être refait. Un seul Ctrl+Z l'annule.
 
 Pour vous entendre pendant que vous jouez, utilisez le **monitoring
 direct** de la carte son (bouton ou touche « direct monitor ») : il est
