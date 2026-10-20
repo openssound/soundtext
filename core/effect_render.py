@@ -169,6 +169,12 @@ def prerender_stems(project: Project) -> Optional[threading.Thread]:
         requests = []
         try:
             tracks = snapshot.audible_tracks()
+            # le clip con il time-stretch, che al primo Play costerebbero secondi
+            from .audio_tracks import build_audio_layers, warm_stretched_layers
+            audio = [t for t in tracks if t.is_audio]
+            if any(abs(c.stretch - 1.0) > 1e-6 for t in audio for c in t.audio_clips):
+                warm_stretched_layers(build_audio_layers(snapshot, audio, build_tempo_beat_map(snapshot, tracks=tracks)),
+                                      stop_check=lambda: _prerender_generation != generation)
             fx = fx_tracks([t for t in tracks if t.is_audio or t.text.strip()])
             if not fx:
                 return

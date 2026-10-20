@@ -68,20 +68,16 @@ def _chords_of_source(dialog, name: str, source):
                 tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=name)
             )
         return chords, source
-    from PySide6.QtWidgets import QApplication
-    waiting = not source.is_ready()
-    if waiting:
-        dialog.status_label.setText(tr("Riconosco gli accordi della traccia audio '{name}'...", name=source.name))
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        QApplication.processEvents()
+    from .worker import run_with_wait
     try:
-        chords = source.chords()
+        if source.is_ready():
+            chords = source.chords()
+        else:                              # la prima volta: qualche secondo, senza bloccare la finestra
+            chords = run_with_wait(dialog, tr("Riconosco gli accordi della traccia audio '{name}'...",
+                                              name=source.name), source.chords)
         text = source.text()
     except (RuntimeError, OSError) as e:
         raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=source.name, error=e))
-    finally:
-        if waiting:
-            QApplication.restoreOverrideCursor()
     if not chords:
         raise ValueError(
             tr("Nella traccia audio '{name}' non ho riconosciuto accordi: serve una parte che suoni "
@@ -735,21 +731,16 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
         name = combo.currentData() if combo is not None else None
         if not name:
             return None
-        from PySide6.QtWidgets import QApplication
         from core import groove
+        from .worker import run_with_wait
         track = self.project.get_track(name)
-        waiting = not groove.is_cached(self.project, track)
-        if waiting:
-            self.status_label.setText(tr("Ascolto il groove di '{name}'...", name=name))
-            QApplication.setOverrideCursor(Qt.WaitCursor)
-            QApplication.processEvents()
         try:
-            return groove.groove_of_track(self.project, track)
+            if groove.is_cached(self.project, track):
+                return groove.groove_of_track(self.project, track)
+            return run_with_wait(self, tr("Ascolto il groove di '{name}'...", name=name),
+                                 groove.groove_of_track, self.project, track)
         except (RuntimeError, OSError, ValueError) as e:
             raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
-        finally:
-            if waiting:
-                QApplication.restoreOverrideCursor()
 
     def _generate_text(self, seed=None) -> str:
         style = self.style_combo.currentData()

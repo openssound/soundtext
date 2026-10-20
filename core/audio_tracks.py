@@ -26,6 +26,7 @@ inizia (convertito in secondi con la mappa del tempo) e dura quanto il file.
 import contextlib
 import dataclasses
 import math
+from collections import OrderedDict
 import os
 import shutil
 import struct
@@ -140,6 +141,37 @@ def read_wav(path: str) -> Tuple[np.ndarray, int]:
     else:
         data = np.frombuffer(raw, dtype="<i4").astype(np.float32) / 2147483648.0
     return data.reshape(-1, info.channels), info.samplerate
+
+
+# File gia' decodificati, per il mix: una clip divisa in tanti pezzi
+# (Quantizza l'audio, comping, tempo fisso) suona centinaia di volte lo
+# stesso file, che va letto una volta sola. Si tengono i piu' usati di
+# recente fino a _DECODED_MAX_BYTES.
+_decoded: "OrderedDict[tuple, Tuple[np.ndarray, int]]" = OrderedDict()
+_decoded_lock = threading.Lock()
+_DECODED_MAX_BYTES = 512 * 1024 * 1024
+
+
+def decoded_wav(path: str) -> Tuple[np.ndarray, int]:
+    """read_wav con cache (per percorso, dimensione e data di modifica). Il
+    risultato non va modificato: e' condiviso."""
+    key = _file_key(path)
+    if key is None:
+        return read_wav(path)                          # file mancante: l'errore di read_wav
+    with _decoded_lock:
+        hit = _decoded.get(key)
+        if hit is not None:
+            _decoded.move_to_end(key)
+            return hit
+    samples, rate = read_wav(path)
+    samples.setflags(write=False)
+    with _decoded_lock:
+        _decoded[key] = (samples, rate)
+        total = sum(s.nbytes for s, _r in _decoded.values())
+        while total > _DECODED_MAX_BYTES and len(_decoded) > 1:
+            _old, (old, _r) = _decoded.popitem(last=False)
+            total -= old.nbytes
+    return samples, rate
 
 
 def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24) -> None:
@@ -619,9 +651,10 @@ def db_to_gain(db: float) -> float:
 # ---------------------------------------------------------------------------
 
 MIN_STRETCH, MAX_STRETCH = 0.25, 4.0
-_stretch_cache: Dict[tuple, np.ndarray] = {}
+_stretch_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _stretch_lock = threading.Lock()
-_STRETCH_CACHE_MAX = 8
+# in byte, non in clip: con "tempo fisso" una ripresa e' un pezzo per battuta
+_STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
 
 
 def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tuple] = None) -> np.ndarray:
@@ -634,6 +667,8 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     if key is not None:
         with _stretch_lock:
             hit = _stretch_cache.get(key)
+            if hit is not None:
+                _stretch_cache.move_to_end(key)
         if hit is not None:
             return hit
     x = np.ascontiguousarray(np.asarray(samples, dtype=np.float32).T)
@@ -645,10 +680,55 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     y = np.ascontiguousarray(y, dtype=np.float32)
     if key is not None:
         with _stretch_lock:
-            while len(_stretch_cache) >= _STRETCH_CACHE_MAX:
-                _stretch_cache.pop(next(iter(_stretch_cache)))
             _stretch_cache[key] = y
+            total = sum(a.nbytes for a in _stretch_cache.values())
+            while total > _STRETCH_CACHE_MAX_BYTES and len(_stretch_cache) > 1:
+                _old, old = _stretch_cache.popitem(last=False)
+                total -= old.nbytes
     return y
+
+
+def _layer_stretch_key(layer: "AudioLayer", samplerate: int) -> tuple:
+    return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate)
+
+
+def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SAMPLE_RATE,
+                          stop_check=None) -> int:
+    """Calcola in anticipo (nella cache) lo stretch delle clip che ne hanno
+    uno, con le stesse chiavi del mix: chiamata in sottofondo (vedi
+    core.effect_render.prerender_stems), il Play le trova pronte. Ritorna
+    quante ne ha calcolate."""
+    done = 0
+    for layer in layers:
+        if abs(layer.stretch - 1.0) <= 1e-6:
+            continue
+        if stop_check and stop_check():
+            break
+        key = _layer_stretch_key(layer, samplerate)
+        with _stretch_lock:
+            if key in _stretch_cache:
+                continue
+        try:
+            samples, rate = decoded_wav(layer.path)
+        except (ValueError, OSError):
+            continue
+        if rate != samplerate:
+            continue
+        first = int(round(layer.trim_start * samplerate))
+        last = len(samples) - int(round(layer.trim_end * samplerate))
+        if last > first:
+            stretched(samples[first:last], samplerate, layer.stretch, key=key)
+            done += 1
+    return done
+
+
+def _tracks_with_tempo_markers(project: Project) -> List[Track]:
+    """Le sole tracce che possono avere marcatori 'tempo=N' nel testo (anche
+    dentro un pattern): leggere le note di tutte le tracce a ogni modifica
+    costerebbe decimi di secondo, e quasi mai ce ne sono."""
+    in_patterns = any("tempo=" in tok for pat in project.patterns.values() for tok in pat.tokens)
+    return [t for t in project.tracks
+            if not t.is_audio and ("tempo=" in t.text or (in_patterns and "%" in t.text))]
 
 
 def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
@@ -658,7 +738,7 @@ def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     if not following:
         return []
     from .tempo_map import build_tempo_beat_map, value_at_beat
-    tempo_map = build_tempo_beat_map(project, tracks=project.tracks)
+    tempo_map = build_tempo_beat_map(project, tracks=_tracks_with_tempo_markers(project))
     changed = []
     for clip in following:
         bpm = value_at_beat(tempo_map, clip.start_beat) or project.tempo_bpm
@@ -779,6 +859,19 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
     vedi core.effect_render): [(campioni (frame, 2) a 'samplerate', inizio
     in secondi)], un inizio negativo ne taglia la parte iniziale."""
     mix = base.astype(np.float32, copy=True)
+    # La lunghezza finale prima di mixare: allungare il mix a ogni clip lo
+    # ricopierebbe tutto ogni volta (lentissimo con centinaia di pezzi).
+    needed = len(mix)
+    for samples, start_seconds in stems:
+        needed = max(needed, int(round(start_seconds * samplerate)) + len(samples))
+    for layer in layers:
+        info = cached_wav_info(layer.path)
+        if info is not None:
+            part = max(0.0, info.seconds - layer.trim_start - layer.trim_end) * layer.stretch
+            needed = max(needed, int(round(layer.start_seconds * samplerate)) + int(math.ceil(part * samplerate)) + 2)
+    used = len(mix)                                # fin dove si e' scritto davvero
+    if needed > len(mix):
+        mix = np.concatenate([mix, np.zeros((needed - len(mix), 2), dtype=np.float32)])
     for samples, start_seconds in stems:
         offset = int(round(start_seconds * samplerate))
         part = samples[max(0, -offset):]
@@ -789,9 +882,10 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if end > len(mix):
             mix = np.concatenate([mix, np.zeros((end - len(mix), 2), dtype=np.float32)])
         mix[offset:end] += part[:, :2]
+        used = max(used, end)
     for layer in layers:
         try:
-            samples, rate = read_wav(layer.path)
+            samples, rate = decoded_wav(layer.path)
         except (ValueError, OSError):
             continue
         if rate != samplerate:
@@ -802,8 +896,7 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if len(part) == 0:
             continue
         if abs(layer.stretch - 1.0) > 1e-6:
-            part = stretched(part, samplerate, layer.stretch,
-                             key=(_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate))
+            part = stretched(part, samplerate, layer.stretch, key=_layer_stretch_key(layer, samplerate))
         part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
         if part.shape[1] == 1:
             stereo = np.repeat(part, 2, axis=1)
@@ -816,7 +909,8 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if end > len(mix):
             mix = np.concatenate([mix, np.zeros((end - len(mix), 2), dtype=np.float32)])
         mix[offset:end] += stereo
-    return mix
+        used = max(used, end)
+    return mix[:used]
 
 
 def _to_stereo(samples: np.ndarray) -> np.ndarray:

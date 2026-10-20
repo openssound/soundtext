@@ -2125,15 +2125,14 @@ class ArrangementView(QWidget):
         from PySide6.QtWidgets import QDialog
         from core import performance_tempo
         from .tempo_from_take_dialog import TempoFromTakeDialog
+        from .worker import run_with_wait
         project = self.host.project
-        QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            analysis = performance_tempo.analyze_clip(project, clip)
-        except (ValueError, OSError) as e:
-            QApplication.restoreOverrideCursor()
+            analysis = run_with_wait(self, tr("Cerco il battito di '{name}'...", name=clip.name),
+                                     performance_tempo.analyze_clip, project, clip)
+        except RuntimeError as e:
             QMessageBox.warning(self, tr("Tempo dalla ripresa"), str(e))
             return
-        QApplication.restoreOverrideCursor()
         if analysis.bars < 2:
             QMessageBox.information(self, tr("Tempo dalla ripresa"), tr(
                 "Nella clip '{name}' non trovo un battito regolare per almeno due battute: serve una parte "
@@ -2167,14 +2166,13 @@ class ArrangementView(QWidget):
         from PySide6.QtWidgets import QDialog
         from core import audio_slice
         from .audio_quantize_dialog import AudioQuantizeDialog
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        from .worker import run_with_wait
         try:
-            attacks = audio_slice.clip_attacks(clip, 0.06)
-        except (ValueError, OSError) as e:
-            QApplication.restoreOverrideCursor()
+            attacks = run_with_wait(self, tr("Cerco gli attacchi di '{name}'...", name=clip.name),
+                                    audio_slice.clip_attacks, clip, 0.06)
+        except RuntimeError as e:
             QMessageBox.warning(self, tr("Quantizza l'audio"), str(e))
             return
-        QApplication.restoreOverrideCursor()
         dlg = AudioQuantizeDialog(self, clip.name, len(attacks))
         self._audio_quantize_dialog = dlg   # per i test
         if dlg.exec() != QDialog.Accepted:

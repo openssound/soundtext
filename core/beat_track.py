@@ -57,7 +57,7 @@ def onset_envelope(samples: np.ndarray, rate: int) -> Tuple[np.ndarray, float]:
     log = np.log1p(100.0 * bands)
     flux = np.maximum(0.0, np.diff(log, axis=0, prepend=log[:1])).sum(axis=1)
     # via l'andamento lento (crescendo, rumore): restano gli attacchi
-    k = max(1, int(round(0.5 * rate / HOP)))
+    k = max(1, min(len(flux), int(round(0.5 * rate / HOP))))   # piu' corta del segnale: "same" non lo allunga
     smooth = np.convolve(flux, np.ones(k) / k, mode="same")
     env = np.maximum(0.0, flux - smooth)
     std = env.std()
@@ -183,11 +183,10 @@ def _attack_time(samples: np.ndarray, rate: int, approx: float) -> float:
     """Il punto in cui comincia davvero l'attacco vicino ad 'approx': la
     finestra dell'inviluppo lo colloca con una decina di millisecondi
     d'anticipo o di ritardo, che per allineare la clip alla battuta contano."""
-    x = np.abs(_mono(samples))
-    a, b = max(0, int((approx - 0.04) * rate)), min(len(x), int((approx + 0.06) * rate))
+    a, b = max(0, int((approx - 0.04) * rate)), min(len(samples), int((approx + 0.06) * rate))
     if b - a < 16:
         return approx
-    part = x[a:b]
+    part = np.abs(_mono(samples[a:b]))            # solo la finestra, non tutto il segnale
     k = max(1, int(0.002 * rate))                       # inviluppo su 2 ms
     env = np.convolve(part, np.ones(k) / k, mode="same")
     peak = env.max()

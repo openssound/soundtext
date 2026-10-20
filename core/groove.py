@@ -6,6 +6,7 @@ batteria che segue la ripresa (core.rhythm_generate.generate_drum_pattern,
 kick_accents): la cassa va sugli accenti forti e ricorrenti.
 """
 
+import bisect
 import threading
 from typing import Dict, List, Optional
 
@@ -49,21 +50,22 @@ def is_cached(project: Project, track: Track) -> bool:
 def _compute(project: Project, track: Track) -> Optional[List[float]]:
     from .audio_slice import detect_attack_strengths
     from .audio_track_notation import audible_clips
-    from .performance_tempo import bar_at_beat, bar_start_beat, clip_samples
+    from .performance_tempo import bar_starts, clip_samples
     from .tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map, seconds_for_beats
     tempo_map = build_tempo_beat_map(project)
-    bar_quarters = bar_start_beat(project, 2) - bar_start_beat(project, 1) or 4.0
+    clips = audible_clips(track)
+    end = max(c.start_beat + audio_tracks.clip_duration_beats(c, tempo_map) for c in clips) if clips else 0.0
+    starts = bar_starts(project, end + 8.0)               # una volta sola per tutti gli attacchi
+    bar_quarters = starts[1] - starts[0] or 4.0
     slots = max(1, int(round(bar_quarters * SLOTS_PER_QUARTER)))
     hits: Dict[int, Dict[int, float]] = {}          # battuta -> {sedicesimo: forza}
-    for clip in audible_clips(track):
+    for clip in clips:
         samples, rate = clip_samples(clip)
         start = seconds_for_beats(tempo_map, clip.start_beat)
         for t, strength in detect_attack_strengths(samples, rate, min_gap=0.06):
             beat = beat_at_elapsed_seconds(tempo_map, 0.0, start + t)
-            bar = bar_at_beat(project, beat)
-            if bar_start_beat(project, bar) > beat + 1e-9:
-                bar -= 1
-            pos = beat - bar_start_beat(project, bar)
+            bar = max(0, bisect.bisect_right(starts, beat + 1e-9) - 1)   # la battuta che lo contiene (da 0)
+            pos = beat - starts[bar]
             slot = int(round(pos * SLOTS_PER_QUARTER))
             if slot >= slots:
                 bar, slot = bar + 1, 0

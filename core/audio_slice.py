@@ -52,9 +52,8 @@ def detect_attack_strengths(samples: np.ndarray, rate: int, min_gap: float = 0.0
             kept.append(t)
     # la forza dal picco del segnale subito dopo l'attacco: l'inviluppo e' in
     # scala logaritmica e appiattirebbe la differenza fra un colpo debole e uno forte
-    x = np.abs(_mono(samples))
     window = int(0.03 * rate)
-    peaks = [float(x[int(t * rate):int(t * rate) + window].max(initial=0.0)) for t in kept]
+    peaks = [float(np.abs(_mono(samples[int(t * rate):int(t * rate) + window])).max(initial=0.0)) for t in kept]
     top = max(peaks) if peaks else 0.0
     return [(t, peak / top if top > 0 else 0.0) for t, peak in zip(kept, peaks)]
 
