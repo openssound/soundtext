@@ -33,6 +33,7 @@ from core.playback import PlaybackEngine, LiveSynth, LivePluginSynth
 from .audio_import_dialog import GRID_CHOICES, TERNARY_ENABLED_GRIDS
 from .highlighter import NotationHighlighter
 from .metronome_engine import MetronomeEngine
+from .quantize_options import QuantizeOptionsWidget
 from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
@@ -250,6 +251,9 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         self.latency_info_label.setStyleSheet(f"color: {TEXT_DIM};")
         quant_row.addWidget(self.latency_info_label)
         layout.addLayout(quant_row)
+        # forza, finestra, swing, pulizia (vedi gui.quantize_options)
+        self.quant_options = QuantizeOptionsWidget()
+        layout.addWidget(self.quant_options)
         self._load_last_quantization()
 
         # --- ascolto delle altre tracce
@@ -571,6 +575,8 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         self.ternary_check.setEnabled(enable)
         if not enable:
             self.ternary_check.setChecked(False)
+        if hasattr(self, "quant_options"):
+            self.quant_options.set_grid(*self._selected_grid())
 
     # ------------------------------------------------------------ registrazione
 
@@ -837,7 +843,8 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         try:
             text = audio_events_to_validated_text(
                 self._captured_events, self.project.tempo_bpm, grid_denom, ternary,
-                self.project.patterns, default_octave=self.instr.default_octave, midi_dir=self.midi_dir)
+                self.project.patterns, default_octave=self.instr.default_octave, midi_dir=self.midi_dir,
+                settings=self.quant_options.settings())
         except ValueError as e:
             QMessageBox.critical(self, tr("Errore nella conversione"), str(e))
             return
@@ -901,6 +908,7 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         grid_denom, ternary = self._selected_grid()
         app_settings.set_last_quantization_grid(grid_denom)
         app_settings.set_last_quantization_ternary(ternary)
+        self.quant_options.remember()
         self._generated_text = text
         super().accept()
 

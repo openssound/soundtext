@@ -12,9 +12,11 @@ from PySide6.QtWidgets import (
     QRadioButton, QVBoxLayout, QWidget,
 )
 
+from core import settings as app_settings
 from core.audio_track_notation import ConversionOptions, audible_clips
 from core.i18n import tr
 from core.instruments import get_instrument, list_instrument_names
+from .quantize_options import QuantizeOptionsWidget
 from .audio_import_dialog import GRID_CHOICES, TERNARY_ENABLED_GRIDS, _min_freq_hz_for_instrument
 
 MODES = (("melody", tr("Melodia")), ("drums", tr("Percussioni")), ("chords", tr("Accordi")))
@@ -56,14 +58,20 @@ class AudioTrackConvertDialog(QDialog):
         self.grid_combo = QComboBox()
         for label, denom in GRID_CHOICES:
             self.grid_combo.addItem(label, denom)
-        self.grid_combo.setCurrentIndex(self.grid_combo.findData(16))
+        # l'ultima griglia scelta, come in "Importa audio"
+        index = self.grid_combo.findData(app_settings.get_last_quantization_grid())
+        self.grid_combo.setCurrentIndex(index if index >= 0 else self.grid_combo.findData(16))
         self.grid_combo.currentIndexChanged.connect(self._on_grid_changed)
         quant_row.addWidget(self.grid_combo)
         self.ternary_check = QCheckBox(tr("Ternario (terzine, 8T/16T)"))
+        self.ternary_check.setChecked(app_settings.get_last_quantization_ternary())
+        self.ternary_check.toggled.connect(self._on_grid_changed)
         quant_row.addWidget(self.ternary_check)
         quant_row.addStretch(1)
         self._quant_row = quant
         form.addRow(tr("Quantizzazione:"), quant)
+        self.quant_options = QuantizeOptionsWidget()
+        form.addRow("", self.quant_options)
         self.voice_check = QCheckBox()
         form.addRow("", self.voice_check)
         self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
@@ -104,6 +112,7 @@ class AudioTrackConvertDialog(QDialog):
     def _on_mode_changed(self):
         mode = self._mode()
         self._form.setRowVisible(self._quant_row, mode != "chords")
+        self._form.setRowVisible(self.quant_options, mode != "chords")
         self._form.setRowVisible(self.voice_check, mode != "chords")
         self._form.setRowVisible(self.sevenths_check, mode == "chords")
         self.voice_check.setText(tr("Sto cantando (non lo strumento)") if mode == "melody"
@@ -119,10 +128,18 @@ class AudioTrackConvertDialog(QDialog):
         self.ternary_check.setEnabled(enable)
         if not enable:
             self.ternary_check.setChecked(False)
+        self.quant_options.set_grid(self.grid_combo.currentData(), self.ternary_check.isChecked())
 
     def _on_destination_changed(self):
         self.instrument_combo.setEnabled(self.new_radio.isChecked())
         self.target_combo.setEnabled(self.existing_radio.isChecked())
+
+    def accept(self):
+        if self._mode() != "chords":
+            app_settings.set_last_quantization_grid(self.grid_combo.currentData())
+            app_settings.set_last_quantization_ternary(self.ternary_check.isChecked())
+            self.quant_options.remember()
+        super().accept()
 
     def destination(self):
         """("new", strumento) o ("existing", nome della traccia)."""
@@ -140,7 +157,8 @@ class AudioTrackConvertDialog(QDialog):
         options = ConversionOptions(mode=mode, grid_denominator=self.grid_combo.currentData(),
                                     ternary=self.ternary_check.isChecked() and mode != "chords",
                                     sevenths=mode == "chords" and self.sevenths_check.isChecked(),
-                                    voice_source=mode != "chords" and self.voice_check.isChecked())
+                                    voice_source=mode != "chords" and self.voice_check.isChecked(),
+                                    quantize=None if mode == "chords" else self.quant_options.settings())
         if mode == "melody":
             # gli stessi parametri del pitch tracking di "Importa audio"
             # (Opzioni -> Import audio), vedi AudioImportDialog

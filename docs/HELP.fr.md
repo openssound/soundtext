@@ -3328,6 +3328,23 @@ facultative.
   quantification perceptible, tout en restant dans la syntaxe normale
   `N:`. La dernière combinaison utilisée est mémorisée à la réouverture de
   la fenêtre.
+- **Régler la quantification** (sous la grille, fermé par défaut ; aussi
+  dans « Jouer au clavier » et dans « Convertir la piste en
+  notation »), pour qui joue de façon imprécise sans vouloir perdre sa
+  manière de jouer :
+  - **Force** : de combien chaque note se déplace vers la grille (100 % =
+    entièrement, 50 % = à mi-chemin) ;
+  - **Fenêtre** : seules les notes proches de la grille sont corrigées ;
+    les plus éloignées (avances et retards voulus) restent où elles sont ;
+  - **Swing** (grilles de 1/8 et 1/16) : la seconde subdivision de chaque
+    paire arrive plus tard, 66 % = shuffle en triolets, ainsi une
+    interprétation swing n'est pas redressée ;
+  - **Écarter les notes plus courtes que** et **Fusionner les notes
+    identiques à moins de** : suppriment les cordes effleurées et les
+    attaques reconnues deux fois.
+  Si les notes ne tombent pas exactement sur la grille (force ou fenêtre
+  sous 100 %, swing), le texte s'écrit en 1/64, comme avec « Off ». Les
+  valeurs sont mémorisées comme la grille.
 - **Mode d'analyse** : Mélodique (détection de hauteur, pour la voix ou les
   instruments qui jouent une note à la fois ; pour les accords il y a le
   mode Accords, ci-dessous) ou Percussive (détection des transitoires pour batterie/

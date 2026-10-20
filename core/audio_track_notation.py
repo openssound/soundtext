@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 
 from . import audio_tracks
+from .audio_quantize import QuantizeSettings
 from .model import AudioClip, Clip, Project, Track
 
 
@@ -39,6 +40,7 @@ class ConversionOptions:
     hop_size: Optional[int] = None
     pitch_confidence_threshold: Optional[float] = None
     min_note_duration_sec: Optional[float] = None
+    quantize: Optional[QuantizeSettings] = None   # forza, finestra, swing, pulizia
 
 
 def _beats_per_bar(time_sig: str) -> float:
@@ -73,6 +75,7 @@ def _convert_clip(project: Project, clip: AudioClip, options: ConversionOptions,
                 min_note_duration_sec=options.min_note_duration_sec,
                 chords=options.mode == "chords", sevenths=options.mode == "chords" and options.sevenths,
                 beats_per_bar=_beats_per_bar(project.time_sig), progress_callback=progress,
+                quantize=options.quantize,
             )
         except SilentAudio:
             return None

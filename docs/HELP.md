@@ -3182,6 +3182,22 @@ Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
   quantizzazione percepibile, restando comunque dentro la normale
   sintassi `N:`. L'ultima combinazione usata viene ricordata alla
   riapertura del dialogo.
+- **Regola la quantizzazione** (sotto la griglia, chiuso di base; c'e'
+  anche in "Suona con la tastiera" e in "Converti la traccia in
+  notazione"), per chi suona impreciso senza voler perdere il suo modo di
+  suonare:
+  - **Forza**: di quanto ogni nota si sposta verso la griglia (100% =
+    tutta, 50% = a meta' strada);
+  - **Finestra**: si correggono solo le note vicine alla griglia; quelle
+    piu' lontane (anticipi e ritardi voluti) restano dove sono;
+  - **Swing** (griglie da 1/8 e 1/16): la seconda suddivisione di ogni
+    coppia va piu' tardi, 66% = shuffle in terzine, cosi' un'esecuzione
+    swing non viene raddrizzata;
+  - **Scarta le note piu' corte di** e **Unisci le note uguali entro**:
+    tolgono le corde sfiorate e gli attacchi riconosciuti due volte.
+  Se le note non finiscono esattamente sulla griglia (forza o finestra
+  sotto il 100%, swing), il testo si scrive a 1/64, come con "Off". I
+  valori si ricordano come la griglia.
 - **Modalita' di analisi**: Melodica (pitch detection, per voce o
   strumenti che suonano una nota alla volta; per gli accordi c'e' la
   modalita' Accordi, qui sotto) oppure Percussiva (rilevamento transienti per

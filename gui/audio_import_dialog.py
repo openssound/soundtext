@@ -28,6 +28,7 @@ from core.playback import PlaybackEngine
 from .worker import Worker
 from .highlighter import NotationHighlighter
 from .metronome_engine import MetronomeEngine
+from .quantize_options import QuantizeOptionsWidget
 from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
@@ -286,6 +287,10 @@ class AudioImportDialog(QDialog):
         options_row.addWidget(self.sevenths_check)
         options_row.addStretch(1)
         mode_layout.addLayout(options_row)
+        # forza, finestra, swing, pulizia: melodia e percussioni
+        self.quant_options = QuantizeOptionsWidget()
+        self.quant_options.changed.connect(self._schedule_conversion)
+        mode_layout.addWidget(self.quant_options)
         mode_layout.addLayout(voice_row)
 
         # parametri avanzati del pitch tracking: solo melodia (Opzioni -> Import audio)
@@ -492,6 +497,8 @@ class AudioImportDialog(QDialog):
         self.ternary_check.setEnabled(enable)
         if not enable:
             self.ternary_check.setChecked(False)
+        if hasattr(self, "quant_options"):
+            self.quant_options.set_grid(*self._selected_grid())
         self._schedule_conversion()
 
     # ------------------------------------------------------------ algoritmo pitch
@@ -505,6 +512,8 @@ class AudioImportDialog(QDialog):
                "quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".") if chords else
             tr("Colpi di batteria o beatbox, riconosciuti come kick, snare e hihat."))
         self.quant_widget.setVisible(not chords)
+        if hasattr(self, "quant_options"):
+            self.quant_options.setVisible(not chords)
         self.voice_source_check.setVisible(not chords)
         self.voice_source_check.setText(
             tr("Sto cantando (non lo strumento)") if melodic else tr("Sto facendo beatbox (non la batteria)"))
@@ -629,6 +638,7 @@ class AudioImportDialog(QDialog):
             align_to_first_note=self._from_mic and not self._recorded_with_metronome,
             chords=is_chords, sevenths=is_chords and self.sevenths_check.isChecked(),
             beats_per_bar=_beats_per_bar(self.project.time_sig),
+            quantize=self.quant_options.settings(),
             progress_callback=progress, pass_progress=False,
         )
         self._worker = worker
@@ -737,6 +747,7 @@ class AudioImportDialog(QDialog):
         grid_denom, ternary = self._selected_grid()
         app_settings.set_last_quantization_grid(grid_denom)
         app_settings.set_last_quantization_ternary(ternary)
+        self.quant_options.remember()
         self._generated_text = text  # riflette le eventuali modifiche manuali, non solo il testo generato
         super().accept()
 

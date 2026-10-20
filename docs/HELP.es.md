@@ -3259,6 +3259,23 @@ opcional.
   internamente una rejilla muy fina (1/64), por debajo del umbral de
   cuantización perceptible, sin salir de la sintaxis normal `N:`. La última
   combinación usada se recuerda al volver a abrir el diálogo.
+- **Ajustar la cuantización** (debajo de la rejilla, cerrado por defecto;
+  también en «Tocar con el teclado» y en «Convertir la pista en
+  notación»), para quien toca impreciso sin querer perder su manera de
+  tocar:
+  - **Fuerza**: cuánto se mueve cada nota hacia la rejilla (100% = del
+    todo, 50% = a mitad de camino);
+  - **Ventana**: solo se corrigen las notas cercanas a la rejilla; las más
+    lejanas (adelantos y retrasos intencionados) se quedan donde están;
+  - **Swing** (rejillas de 1/8 y 1/16): la segunda subdivisión de cada par
+    va más tarde, 66% = shuffle en tresillos, así una interpretación swing
+    no se endereza;
+  - **Descartar las notas más cortas que** y **Unir las notas iguales
+    dentro de**: quitan las cuerdas rozadas y los ataques reconocidos dos
+    veces.
+  Si las notas no acaban exactamente en la rejilla (fuerza o ventana por
+  debajo del 100%, swing), el texto se escribe en 1/64, como con «Off». Los
+  valores se recuerdan como la rejilla.
 - **Modo de análisis**: Melódica (detección de altura, para la voz o
   instrumentos que tocan una nota cada vez; para los acordes está el modo
   Acordes, más abajo) o

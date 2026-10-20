@@ -3105,6 +3105,21 @@ track): converts a musical idea captured via microphone or audio file
   fine grid (1/64), below the perceptible quantisation threshold, while
   still staying within the normal `N:` syntax. The last combination used is
   remembered when the dialog is reopened.
+- **Adjust the quantisation** (below the grid, closed by default; also in
+  "Play with the keyboard" and in "Convert the track to notation"), for
+  those who play imprecisely without wanting to lose their way of playing:
+  - **Strength**: how far each note moves towards the grid (100% = all the
+    way, 50% = halfway);
+  - **Window**: only the notes close to the grid are corrected; the
+    farther ones (intentional early and late notes) stay where they are;
+  - **Swing** (1/8 and 1/16 grids): the second subdivision of each pair
+    comes later, 66% = triplet shuffle, so a swing performance is not
+    straightened out;
+  - **Drop notes shorter than** and **Merge equal notes within**: remove
+    brushed strings and attacks recognised twice.
+  If the notes do not end up exactly on the grid (strength or window below
+  100%, swing), the text is written in 1/64, as with "Off". The values are
+  remembered like the grid.
 - **Analysis mode**: Melodic (pitch detection, for voice or instruments
   playing one note at a time; for chords there is the Chords mode, below) or Percussive
   (transient detection for drums/beatbox, automatically classified as
