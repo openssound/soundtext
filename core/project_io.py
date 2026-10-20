@@ -229,6 +229,10 @@ def _prepare_embedded_instruments(text: str) -> List[str]:
 RE_AUDIO_FADE = re.compile(r'\bfade\s*=\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)')
 RE_AUDIO_FADE_SHAPE = re.compile(r'\bfade_shape\s*=\s*(\w+)')
 RE_AUDIO_MUTE = re.compile(r'(?<![\w=])mute(?![\w=])')
+# Time-stretch 'stretch=1.05' e tempo da seguire 'bpm=96' (vedi
+# AudioClip.stretch e source_bpm).
+RE_AUDIO_STRETCH = re.compile(r'\bstretch\s*=\s*(\d+(?:\.\d+)?)')
+RE_AUDIO_BPM = re.compile(r'\bbpm\s*=\s*(\d+(?:\.\d+)?)')
 # Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
 # ('take=N', da 1), poi una riga per ripresa:
 #   take "Ripresa 2" file="Voce ripresa 2.wav" delta=0.013
@@ -262,6 +266,12 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     if shape and shape.group(1) in FADE_SHAPES:
         clip.fade_shape = shape.group(1)
     clip.muted = RE_AUDIO_MUTE.search(rest) is not None
+    st = RE_AUDIO_STRETCH.search(rest)
+    if st and float(st.group(1)) > 0:
+        clip.stretch = float(st.group(1))
+    bpm = RE_AUDIO_BPM.search(rest)
+    if bpm:
+        clip.source_bpm = float(bpm.group(1))
     if len(takes) > 1:
         active = RE_AUDIO_ACTIVE_TAKE.search(rest)
         index = int(active.group(1)) - 1 if active else 0
@@ -297,6 +307,10 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append(f"fade_shape={clip.fade_shape}")
     if clip.muted:
         parts.append("mute")
+    if abs(clip.stretch - 1.0) > 1e-6:
+        parts.append(f"stretch={round(clip.stretch, 6):g}")
+    if clip.source_bpm:
+        parts.append(f"bpm={round(clip.source_bpm, 3):g}")
     if len(clip.takes) > 1:
         parts.append(f"take={clip.active_take + 1}")
     lines = [" ".join(parts)]

@@ -380,6 +380,7 @@ def test_loop_recording_keeps_one_take_per_pass(tmp_path):
     assert dlg.result_mode() == "loop"
     assert [tk.name for tk in clip.takes] == ["Giro 1", "Giro 2", "Giro 3"] and clip.active_take == 2
     assert clip.start_beat == 4.0
+    assert clip.source_bpm == 120.0                        # registrata a tempo: segue il brano
 
 
 def test_main_window_puts_punch_and_overlapping_takes_on_the_clip(tmp_path, monkeypatch):

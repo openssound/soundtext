@@ -569,6 +569,11 @@ class AudioRecordDialog(QDialog):
         else:
             clip = recorded_clip(name, path, self._start_beat, self._backing.count_in_seconds,
                                  self._take.alignment_seconds, latency)
+        if mode != "punch":
+            # la ripresa va a tempo con il brano: lo segue se il tempo cambia
+            from core.tempo_map import build_tempo_beat_map, value_at_beat
+            clip.source_bpm = float(value_at_beat(build_tempo_beat_map(self.project), clip.start_beat)
+                                    or self.project.tempo_bpm)
         self._result_clip = clip
         self._mode_used = mode
         self.accept()

@@ -59,7 +59,7 @@ def set_active_take(clip: AudioClip, index: int) -> None:
     clip.trim_start = round(max(0.0, trim_start), 6)
     total = audio_tracks.clip_file_seconds(clip)
     if total > 0:
-        clip.trim_end = round(max(0.0, total - clip.trim_start - play), 6)
+        clip.trim_end = round(max(0.0, total - clip.trim_start - play / audio_tracks._stretch(clip)), 6)
     clip.takes = [dataclasses.replace(t, delta=round(t.delta - take.delta, 6)) for t in clip.takes]
     clip.active_take = index
 
@@ -103,15 +103,16 @@ def comp_clip(clip: AudioClip, segments: Sequence[Tuple[float, float, int]], tem
         a = seconds_for_beats(tempo_map, start) - clip_start_s
         b = seconds_for_beats(tempo_map, end) - clip_start_s
         first, last = i == 0, i == len(merged) - 1
+        stretch = audio_tracks._stretch(part)    # a, b e play in secondi del brano, i tagli del file
         if not first:
-            a -= min(half, part.trim_start + a)       # entra prima, dove la ripresa ha audio
+            a -= min(half, part.trim_start * stretch + a)   # entra prima, dove la ripresa ha audio
         if not last:
             b = min(play, b + half)
         a, b = max(0.0, a), min(play, b)
         if b - a < audio_tracks.MIN_CLIP_SECONDS:
             continue
-        part.trim_start = round(part.trim_start + a, 6)
-        part.trim_end = round(part.trim_end + (play - b), 6)
+        part.trim_start = round(part.trim_start + a / stretch, 6)
+        part.trim_end = round(part.trim_end + (play - b) / stretch, 6)
         part.start_beat = round(beat_at_elapsed_seconds(tempo_map, 0.0, clip_start_s + a), 6)
         part.fade_in = clip.fade_in if first else crossfade
         part.fade_out = clip.fade_out if last else crossfade

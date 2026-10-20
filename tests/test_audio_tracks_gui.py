@@ -633,3 +633,64 @@ def test_tempo_from_take_sets_the_song_tempo_and_can_be_undone(tmp_path):
     _app.processEvents()
     w.undo()
     assert w.project.tempo_changes == []
+
+
+# --------------------------------------------------------------- time-stretch
+
+def test_clips_that_follow_the_tempo_stretch_when_it_changes(tmp_path):
+    pytest.importorskip("pedalboard")
+    w, t, clip, item = _window_with_clip(tmp_path)               # 2 s a 120 BPM = 4 beat
+    view = w.arrangement_view
+    actions = _menu_actions(lambda: view._show_audio_box_menu("Voce", clip, w.mapToGlobal(w.rect().center())))
+    assert "Segui il tempo del brano" in actions and "Velocita' (time-stretch)..." in actions
+    view._toggle_follow_tempo("Voce", clip)
+    assert clip.source_bpm == pytest.approx(w.project.tempo_bpm)
+    w.tempo_spin.setValue(w.project.tempo_bpm // 2)               # tempo dimezzato: la clip dura il doppio
+    _app.processEvents()
+    assert clip.stretch == pytest.approx(2.0)
+    assert view.clip_length_beats("Voce", clip) == pytest.approx(4.0)   # sempre le stesse battute
+    view._toggle_follow_tempo("Voce", clip)
+    assert clip.source_bpm == 0.0
+
+
+def test_speed_dialog_sets_the_stretch(tmp_path, monkeypatch):
+    w, t, clip, item = _window_with_clip(tmp_path)
+    monkeypatch.setattr(QInputDialog, "getDouble", staticmethod(lambda *a, **k: (50.0, True)))
+    w.arrangement_view._edit_clip_speed("Voce", clip)
+    assert clip.stretch == pytest.approx(2.0)
+    _app.processEvents()
+    item = next(it for it in w.arrangement_view.canvas._scene.items() if isinstance(it, AudioBoxItem))
+    assert item.rect().width() == pytest.approx(2 * 4 * 24)       # 4 s = 8 beat
+    w.undo()
+    assert w.project.get_track("Voce").audio_clips[0].stretch == 1.0
+
+
+def test_tempo_from_take_can_keep_a_fixed_tempo(tmp_path):
+    pytest.importorskip("pedalboard")
+    from test_beat_track import RATE as BT_RATE, _accelerando, _hits
+    from gui.tempo_from_take_dialog import TempoFromTakeDialog
+    path = str(tmp_path / "acc.wav")
+    write_wav(path, _hits(_accelerando(90, 110, 32), 2.0)[:, None], BT_RATE, bits=16)
+    w = _window()
+    w.project.tempo_bpm = 100
+    t = w.project.add_audio_track("Chitarra")
+    t.audio_clips.append(AudioClip("Ritmica", path, 0.0))
+    w.history.reset(w.project)
+    w.refresh_mixer()
+
+    def fixed(dlg):
+        dlg.bar_spin.setValue(2)
+        dlg.fixed_radio.setChecked(True)
+        dlg.bpm_spin.setValue(100)
+        return TempoFromTakeDialog.Accepted
+
+    original = TempoFromTakeDialog.exec
+    TempoFromTakeDialog.exec = fixed
+    try:
+        w.arrangement_view._tempo_from_clip("Chitarra", t.audio_clips[0])
+    finally:
+        TempoFromTakeDialog.exec = original
+    assert w.project.tempo_changes == [] and len(t.audio_clips) == 10
+    _app.processEvents()
+    w.undo()
+    assert len(w.project.get_track("Chitarra").audio_clips) == 1

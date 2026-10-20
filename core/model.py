@@ -72,6 +72,14 @@ class AudioClip:
     # lo stesso file di 'file' e delta 0); vuota = una ripresa sola.
     takes: List[AudioTake] = field(default_factory=list)
     active_take: int = 0
+    # Time-stretch senza cambiare l'intonazione (core.audio_tracks): durata
+    # nel brano / durata nel file (1.1 = 10% piu' lenta). I tagli restano in
+    # secondi del file; le dissolvenze sono in secondi del brano.
+    stretch: float = 1.0
+    # Il BPM a cui la clip va a tempo: se > 0 la clip segue il tempo del
+    # brano, e lo stretch si ricalcola quando il tempo cambia
+    # (core.audio_tracks.adapt_clips_to_tempo). 0 = durata fissa.
+    source_bpm: float = 0.0
 
 
 @dataclass

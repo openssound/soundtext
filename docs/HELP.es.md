@@ -3700,9 +3700,16 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   lista de sus clips: las acciones sobre la notación (Generar, Tocar con el
   teclado, Importar MIDI, Congelar acordes, Exportar MIDI) no valen para las
   pistas de audio y lo explican con un mensaje.
-- **Tempo**: el audio no se estira. Un clip queda anclado al tiempo en el
-  que empieza pero dura siempre los mismos segundos: si cambias el BPM
-  después de colocarlo, la barra de estado te lo recuerda.
+- **Tempo**: un clip queda anclado al tiempo en el que empieza. Una toma
+  grabada en SoundText **sigue el tempo de la canción**: si cambias el BPM
+  se alarga o se acorta (time-stretch, sin cambiar la afinación) y sigue a
+  tempo. Un archivo importado en cambio dura los mismos segundos; clic
+  derecho → **Seguir el tempo de la canción** para que lo siga a partir de
+  ahí (vale el tempo donde empieza el clip: si el tempo cambia a mitad del
+  clip, cuenta el del principio). **Velocidad (time-stretch)...** la cambia
+  a mano, en porcentaje; el box muestra la velocidad cuando no es 100%. La
+  primera escucha de un clip estirado tarda unos segundos, luego queda en
+  memoria.
 - **Obtener el tempo de la toma...** (clic derecho en un clip): para quien
   toca libre, sin clic. SoundText encuentra el pulso de la toma y muestra
   su tempo compás a compás (media, mínimo, máximo y la curva); elige el
@@ -3712,7 +3719,11 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   vuelve el tempo de antes. Las notas escritas, el metrónomo, los
   generadores y la conversión de la toma en notación siguen ese tempo. El
   primer pulso tocado se toma como inicio de compás; en los compases
-  compuestos (6/8, 12/8) el pulso es la negra con puntillo.
+  compuestos (6/8, 12/8) el pulso es la negra con puntillo. Como
+  alternativa, **Tempo fijo, la toma se adapta**: la canción se queda en el
+  tempo elegido y la toma se divide en cada compás, con cada trozo alargado
+  o acortado para durar un compás exacto (fundidos cruzados de 10 ms entre
+  los trozos).
 
 ### Grabar
 

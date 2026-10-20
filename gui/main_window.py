@@ -938,6 +938,14 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         traccia, trascinamento di uno slider)."""
         self._dirty = True
         self._autosave_generation += 1
+        if not self._restoring_history:
+            # le clip audio che seguono il tempo del brano si riadattano
+            # (time-stretch) prima che la modifica entri nella cronologia
+            from core.audio_tracks import adapt_clips_to_tempo
+            if adapt_clips_to_tempo(self.project) and hasattr(self, "arrangement_view"):
+                # al giro dopo, come in ArrangementView.on_clip_changed: un box puo'
+                # essere ancora in mezzo alla gestione di un evento
+                QTimer.singleShot(0, self.arrangement_view.refresh)
         self._forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:

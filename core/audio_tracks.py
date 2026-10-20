@@ -382,11 +382,17 @@ def clip_is_missing(clip: AudioClip) -> bool:
 
 
 def clip_play_seconds(clip: AudioClip) -> float:
-    """Secondi effettivamente riprodotti (file meno i tagli); 0 se manca."""
+    """Secondi effettivamente riprodotti nel brano (file meno i tagli, per
+    lo stretch); 0 se manca."""
     info = cached_wav_info(clip.file)
     if info is None:
         return 0.0
-    return max(0.0, info.seconds - max(0.0, clip.trim_start) - max(0.0, clip.trim_end))
+    return max(0.0, info.seconds - max(0.0, clip.trim_start) - max(0.0, clip.trim_end)) * _stretch(clip)
+
+
+def _stretch(clip) -> float:
+    s = getattr(clip, "stretch", 1.0) or 1.0
+    return max(MIN_STRETCH, min(MAX_STRETCH, s))
 
 
 def clip_duration_beats(clip: AudioClip, tempo_map) -> float:
@@ -436,11 +442,12 @@ def trim_clip_start_to_beat(clip: AudioClip, new_start_beat: float, tempo_map) -
     total = clip_file_seconds(clip)
     if total <= 0:
         return
+    stretch = _stretch(clip)
     old_s = seconds_for_beats(tempo_map, clip.start_beat)
     new_s = seconds_for_beats(tempo_map, max(0.0, new_start_beat))
-    trim = clip.trim_start + (new_s - old_s)
+    trim = clip.trim_start + (new_s - old_s) / stretch
     trim = max(0.0, min(trim, total - max(0.0, clip.trim_end) - MIN_CLIP_SECONDS))
-    clip.start_beat = round(beat_at_elapsed_seconds(tempo_map, 0.0, old_s + trim - clip.trim_start), 6)
+    clip.start_beat = round(beat_at_elapsed_seconds(tempo_map, 0.0, old_s + (trim - clip.trim_start) * stretch), 6)
     clip.trim_start = round(trim, 6)
 
 
@@ -450,7 +457,7 @@ def trim_clip_end_to_beat(clip: AudioClip, new_end_beat: float, tempo_map) -> No
     total = clip_file_seconds(clip)
     if total <= 0:
         return
-    play = seconds_for_beats(tempo_map, new_end_beat) - seconds_for_beats(tempo_map, clip.start_beat)
+    play = (seconds_for_beats(tempo_map, new_end_beat) - seconds_for_beats(tempo_map, clip.start_beat)) / _stretch(clip)
     play = max(MIN_CLIP_SECONDS, min(play, total - clip.trim_start))
     clip.trim_end = round(max(0.0, total - clip.trim_start - play), 6)
 
@@ -464,13 +471,15 @@ def split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioClip
     offset = seconds_for_beats(tempo_map, at_beat) - seconds_for_beats(tempo_map, clip.start_beat)
     if total <= 0 or offset < MIN_CLIP_SECONDS or offset > clip_play_seconds(clip) - MIN_CLIP_SECONDS:
         return None
+    fade_offset = offset                       # le dissolvenze sono in secondi del brano
+    offset /= _stretch(clip)                   # i tagli in secondi del file
     # La dissolvenza in entrata resta alla prima parte, quella in uscita
     # passa alla seconda; al punto di divisione basta la microdissolvenza.
     second = dataclasses.replace(clip, name=f"{clip.name} (2)", start_beat=round(at_beat, 6),
                                  trim_start=round(clip.trim_start + offset, 6), fade_in=0.0)
     clip.trim_end = round(max(0.0, total - clip.trim_start - offset), 6)
     clip.fade_out = 0.0
-    clip.fade_in = min(clip.fade_in, offset)
+    clip.fade_in = min(clip.fade_in, fade_offset)
     second.fade_out = min(second.fade_out, clip_play_seconds(second))
     return second
 
@@ -503,12 +512,12 @@ def normalize_clip(clip: AudioClip, target_db: float = NORMALIZE_PEAK_DB) -> boo
 
 def slip_clip_content(clip: AudioClip, delta_seconds: float) -> None:
     """Sposta il contenuto dentro la clip lasciandone fermi inizio e
-    lunghezza (slip edit): delta positivo mostra audio piu' avanti nel file.
-    Si ferma ai bordi del file."""
+    lunghezza (slip edit): delta (secondi del brano) positivo mostra audio
+    piu' avanti nel file. Si ferma ai bordi del file."""
     total = clip_file_seconds(clip)
     if total <= 0:
         return
-    delta = max(-clip.trim_start, min(delta_seconds, clip.trim_end))
+    delta = max(-clip.trim_start, min(delta_seconds / _stretch(clip), clip.trim_end))
     clip.trim_start = round(clip.trim_start + delta, 6)
     clip.trim_end = round(max(0.0, clip.trim_end - delta), 6)
 
@@ -519,7 +528,8 @@ def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
     samples, rate = read_wav(clip.file)
     first = int(round(max(0.0, clip.trim_start) * rate))
     last = len(samples) - int(round(max(0.0, clip.trim_end) * rate))
-    part = apply_fades(samples[first:max(first, last)], rate, clip.fade_in, clip.fade_out, clip.fade_shape)
+    part = stretched(samples[first:max(first, last)], rate, _stretch(clip))
+    part = apply_fades(part, rate, clip.fade_in, clip.fade_out, clip.fade_shape)
     write_wav(out_path, part, rate, bits=16)
 
 
@@ -597,10 +607,66 @@ class AudioLayer:
     # Secondi della clip gia' tagliati via perche' cadevano prima di 0 (vedi
     # build_audio_layers): la dissolvenza in entrata ne tiene conto.
     head_skip: float = 0.0
+    stretch: float = 1.0
 
 
 def db_to_gain(db: float) -> float:
     return 10.0 ** (db / 20.0)
+
+
+# ---------------------------------------------------------------------------
+# Time-stretch (pedalboard, Rubber Band): lento, quindi in cache
+# ---------------------------------------------------------------------------
+
+MIN_STRETCH, MAX_STRETCH = 0.25, 4.0
+_stretch_cache: Dict[tuple, np.ndarray] = {}
+_stretch_lock = threading.Lock()
+_STRETCH_CACHE_MAX = 8
+
+
+def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tuple] = None) -> np.ndarray:
+    """samples (frame, canali) allungati di 'stretch' (1.1 = 10% piu'
+    lenti) senza cambiare l'intonazione. Con 'key' il risultato resta in
+    memoria (le stesse clip si riascoltano spesso). Senza pedalboard si
+    ricampiona (cambia anche l'intonazione: meglio che non suonare)."""
+    if abs(stretch - 1.0) < 1e-6 or len(samples) == 0:
+        return samples
+    if key is not None:
+        with _stretch_lock:
+            hit = _stretch_cache.get(key)
+        if hit is not None:
+            return hit
+    x = np.ascontiguousarray(np.asarray(samples, dtype=np.float32).T)
+    try:
+        import pedalboard
+        y = pedalboard.time_stretch(x, float(rate), stretch_factor=1.0 / stretch).T
+    except Exception:
+        y = resample(samples, rate, int(round(rate / stretch))) if stretch > 0 else samples
+    y = np.ascontiguousarray(y, dtype=np.float32)
+    if key is not None:
+        with _stretch_lock:
+            while len(_stretch_cache) >= _STRETCH_CACHE_MAX:
+                _stretch_cache.pop(next(iter(_stretch_cache)))
+            _stretch_cache[key] = y
+    return y
+
+
+def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
+    """Le clip che seguono il tempo del brano (source_bpm > 0) prendono lo
+    stretch del tempo in vigore dove cominciano. Ritorna quelle cambiate."""
+    following = [c for t in project.tracks if t.is_audio for c in t.audio_clips if c.source_bpm > 0]
+    if not following:
+        return []
+    from .tempo_map import build_tempo_beat_map, value_at_beat
+    tempo_map = build_tempo_beat_map(project, tracks=project.tracks)
+    changed = []
+    for clip in following:
+        bpm = value_at_beat(tempo_map, clip.start_beat) or project.tempo_bpm
+        stretch = round(max(MIN_STRETCH, min(MAX_STRETCH, clip.source_bpm / bpm)), 6)
+        if abs(stretch - clip.stretch) > 1e-6:
+            clip.stretch = stretch
+            changed.append(clip)
+    return changed
 
 
 # Microdissolvenza sempre presente su ogni bordo di clip (anche al punto di
@@ -675,15 +741,16 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
             start = seconds_for_beats(tempo_map, clip.start_beat) - offset_seconds
             trim_start = max(0.0, clip.trim_start)
             head_skip = 0.0
+            stretch = _stretch(clip)
             if start < 0:
-                trim_start -= start
+                trim_start -= start / stretch
                 head_skip = -start
                 start = 0.0
             layers.append(AudioLayer(
                 path=os.path.abspath(clip.file), start_seconds=start, trim_start=trim_start,
                 trim_end=max(0.0, clip.trim_end), gain=db_to_gain(clip.gain_db) * track_gain,
                 pan=track.pan, fade_in=max(0.0, clip.fade_in), fade_out=max(0.0, clip.fade_out),
-                fade_shape=clip.fade_shape, head_skip=head_skip,
+                fade_shape=clip.fade_shape, head_skip=head_skip, stretch=stretch,
             ))
     return layers
 
@@ -734,6 +801,9 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         part = samples[first:last]
         if len(part) == 0:
             continue
+        if abs(layer.stretch - 1.0) > 1e-6:
+            part = stretched(part, samplerate, layer.stretch,
+                             key=(_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate))
         part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
         if part.shape[1] == 1:
             stereo = np.repeat(part, 2, axis=1)

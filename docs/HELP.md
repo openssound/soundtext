@@ -3606,9 +3606,16 @@ oppure **importando** file registrati con un altro programma.
   l'elenco delle sue clip: le azioni sulla notazione (Genera, Suona con la
   tastiera, Importa MIDI, Congela accordi, Esporta MIDI) non valgono per le
   tracce audio e lo spiegano con un messaggio.
-- **Tempo**: l'audio non viene stirato. Una clip resta ancorata al beat in
-  cui inizia ma dura sempre gli stessi secondi: se cambi il BPM dopo averla
-  posizionata, la barra di stato lo ricorda.
+- **Tempo**: una clip resta ancorata al beat in cui inizia. Una ripresa
+  registrata in SoundText **segue il tempo del brano**: se cambi il BPM si
+  allunga o si accorcia (time-stretch, senza cambiare l'intonazione) e resta
+  a tempo. Un file importato invece dura gli stessi secondi; tasto destro →
+  **Segui il tempo del brano** per farlo seguire da li' in poi (vale il
+  tempo dove la clip comincia: se il tempo cambia a meta' clip, conta quello
+  all'inizio). **Velocita' (time-stretch)...** la cambia a mano, in
+  percentuale; il box mostra la velocita' quando non e' 100%. Il primo
+  ascolto di una clip stirata richiede qualche secondo, poi resta in
+  memoria.
 - **Ricava il tempo dalla ripresa...** (tasto destro su una clip): per chi
   suona libero, senza click. SoundText trova il battito della ripresa e ne
   mostra il tempo battuta per battuta (media, minimo, massimo e la curva);
@@ -3618,7 +3625,11 @@ oppure **importando** file registrati con un altro programma.
   tempo di prima. Le note scritte, il metronomo, i generatori e la
   conversione in notazione della ripresa seguono quel tempo. Il primo
   battito suonato e' preso come inizio di battuta; nelle metriche composte
-  (6/8, 12/8) il battito e' la semiminima puntata.
+  (6/8, 12/8) il battito e' la semiminima puntata. In alternativa,
+  **Tempo fisso, la ripresa si adatta**: il brano resta al tempo scelto e
+  la ripresa si divide a ogni battuta, con ogni pezzo allungato o
+  accorciato per durare una battuta giusta (dissolvenze incrociate di
+  10 ms fra i pezzi).
 
 ### Registrare
 

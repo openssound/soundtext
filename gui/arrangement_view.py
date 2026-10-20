@@ -435,6 +435,8 @@ class AudioBoxItem(BoxItem):
             label = self.clip.name
         if audio_takes.has_takes(self.clip):
             label += f"  [{self.clip.active_take + 1}/{len(self.clip.takes)}]"
+        if abs(self.clip.stretch - 1.0) > 1e-6:
+            label += f"  {round(100.0 / self.clip.stretch)}%"
         painter.drawText(rect.adjusted(FADE_HANDLE_PX + 3, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
 
     def _paint_fades(self, painter, rect):
@@ -1486,6 +1488,13 @@ class ArrangementView(QWidget):
         mute_action = menu.addAction(tr("Silenzia clip"))
         mute_action.setCheckable(True)
         mute_action.setChecked(clip.muted)
+        follow_action = menu.addAction(tr("Segui il tempo del brano")) if not missing else None
+        if follow_action is not None:
+            follow_action.setCheckable(True)
+            follow_action.setChecked(clip.source_bpm > 0)
+            follow_action.setToolTip(tr("Se il tempo del brano cambia, la clip si allunga o si accorcia "
+                                        "(time-stretch) per restare a tempo."))
+        speed_action = menu.addAction(tr("Velocita' (time-stretch)...")) if not missing else None
         trim_action = menu.addAction(tr("Taglio preciso (secondi)...")) if not missing else None
         split_action = None
         if not missing and at_beat is not None and at_beat > clip.start_beat:
@@ -1529,6 +1538,10 @@ class ArrangementView(QWidget):
         elif chosen is mute_action:
             clip.muted = not clip.muted
             self.on_clip_changed(track_name)
+        elif follow_action is not None and chosen is follow_action:
+            self._toggle_follow_tempo(track_name, clip)
+        elif speed_action is not None and chosen is speed_action:
+            self._edit_clip_speed(track_name, clip)
         elif trim_action is not None and chosen is trim_action:
             self._edit_clip_trim(track_name, clip)
         elif split_action is not None and chosen is split_action:
@@ -2128,13 +2141,49 @@ class ArrangementView(QWidget):
         self._tempo_dialog = dlg   # per i test
         if dlg.exec() != QDialog.Accepted:
             return
-        bars = performance_tempo.apply_performance_tempo(project, clip, analysis, dlg.first_bar())
+        bpm = dlg.fixed_bpm()
+        if bpm is None:
+            bars = performance_tempo.apply_performance_tempo(project, clip, analysis, dlg.first_bar())
+            message = tr("Il brano segue il tempo di '{name}' dalla battuta {bar} per {n} battute.",
+                         name=clip.name, bar=dlg.first_bar(), n=bars)
+        else:
+            pieces = performance_tempo.warp_to_fixed_tempo(project, clip, analysis, dlg.first_bar(), bpm)
+            track = project.get_track(track_name)
+            index = track.audio_clips.index(clip)
+            track.audio_clips[index:index + 1] = pieces
+            message = tr("'{name}' adattata a {bpm} BPM: {n} pezzi, divisi alle battute.", name=clip.name, bpm=bpm,
+                         n=len(pieces))
         if hasattr(self.host, "_sync_tempo_metrica_fields"):
             self.host._sync_tempo_metrica_fields()
         self.on_clip_changed(track_name)
-        self.host.statusBar().showMessage(
-            tr("Il brano segue il tempo di '{name}' dalla battuta {bar} per {n} battute.",
-               name=clip.name, bar=dlg.first_bar(), n=bars), 6000)
+        self.host.statusBar().showMessage(message, 6000)
+
+    def _tempo_at(self, beat: float) -> float:
+        from core.tempo_map import value_at_beat
+        return float(value_at_beat(self._tempo_map(), beat) or self.host.project.tempo_bpm)
+
+    def _toggle_follow_tempo(self, track_name: str, clip: AudioClip):
+        """Segui il tempo del brano: la clip ricorda il tempo a cui va a tempo
+        adesso (quello del brano dove comincia, per lo stretch che ha)."""
+        clip.source_bpm = 0.0 if clip.source_bpm > 0 else round(self._tempo_at(clip.start_beat) * clip.stretch, 3)
+        self.on_clip_changed(track_name)
+
+    def _edit_clip_speed(self, track_name: str, clip: AudioClip):
+        """Velocita' della clip in percentuale (time-stretch senza cambiare
+        l'intonazione): 50% = lunga il doppio."""
+        value, ok = QInputDialog.getDouble(
+            self, tr("Velocita' — {name}", name=clip.name),
+            tr("Velocita' in percentuale (100 = originale, 50 = lenta il doppio; l'intonazione non cambia):"),
+            round(100.0 / clip.stretch, 2), 100.0 / audio_tracks.MAX_STRETCH, 100.0 / audio_tracks.MIN_STRETCH, 1)
+        if not ok:
+            return
+        stretch = round(100.0 / value, 6)
+        if abs(stretch - clip.stretch) < 1e-6:
+            return
+        clip.stretch = stretch
+        if clip.source_bpm > 0:
+            clip.source_bpm = round(self._tempo_at(clip.start_beat) * stretch, 3)   # resta a tempo cosi'
+        self.on_clip_changed(track_name)
 
     def _set_active_take(self, track_name: str, clip: AudioClip, index: int):
         if index == clip.active_take:

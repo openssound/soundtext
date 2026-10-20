@@ -217,7 +217,7 @@ class CompingDialog(QDialog):
             layers.append(audio_tracks.AudioLayer(
                 path=part.file, start_seconds=max(0.0, start), trim_start=part.trim_start, trim_end=part.trim_end,
                 gain=audio_tracks.db_to_gain(part.gain_db), pan=64, fade_in=part.fade_in, fade_out=part.fade_out,
-                fade_shape=part.fade_shape))
+                fade_shape=part.fade_shape, stretch=audio_tracks._stretch(part)))
         return audio_tracks.mix_layers(np.zeros((0, 2), dtype=np.float32), audio_tracks.AUDIO_SAMPLE_RATE, layers)
 
     def toggle_listen(self):

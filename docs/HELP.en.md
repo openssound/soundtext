@@ -3511,9 +3511,16 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   its clips: the notation actions (Generate, Play with the keyboard, Import
   MIDI, Freeze chords, Export MIDI) do not apply to audio tracks and say so
   with a message.
-- **Tempo**: audio is not stretched. A clip stays anchored to the beat on
-  which it starts but always lasts the same number of seconds: if you change
-  the BPM after placing it, the status bar reminds you.
+- **Tempo**: a clip stays anchored to the beat on which it starts. A take
+  recorded in SoundText **follows the song tempo**: if you change the BPM it
+  gets longer or shorter (time-stretch, without changing the pitch) and
+  stays in time. An imported file instead lasts the same number of seconds;
+  right-click → **Follow the song tempo** to make it follow from then on
+  (the tempo where the clip starts counts: if the tempo changes in the
+  middle of the clip, the one at the start applies). **Speed
+  (time-stretch)...** changes it by hand, in percent; the box shows the
+  speed when it is not 100%. The first playback of a stretched clip takes a
+  few seconds, then it stays in memory.
 - **Get the tempo from the take...** (right-click on a clip): for those who
   play freely, without a click. SoundText finds the beat of the take and
   shows its tempo bar by bar (average, minimum, maximum and the curve);
@@ -3523,7 +3530,10 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   the previous tempo comes back. The written notes, the metronome, the
   generators and the conversion of the take into notation follow that
   tempo. The first beat played is taken as the start of a bar; in compound
-  meters (6/8, 12/8) the beat is the dotted quarter.
+  meters (6/8, 12/8) the beat is the dotted quarter. Alternatively, **Fixed
+  tempo, the take adapts**: the song stays at the chosen tempo and the take
+  is split at every bar, with each piece stretched or shortened to last
+  exactly one bar (10 ms crossfades between the pieces).
 
 ### Recording
 

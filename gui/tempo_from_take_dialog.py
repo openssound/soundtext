@@ -2,13 +2,15 @@
 "Ricava il tempo dalla ripresa..." (tasto destro su una clip audio): il
 tempo dell'esecuzione battuta per battuta (core.beat_track), con la curva,
 e la battuta su cui cade il primo battito. Applicando, il brano prende quel
-tempo (core.performance_tempo.apply_performance_tempo).
+tempo (core.performance_tempo.apply_performance_tempo) oppure resta a un
+tempo fisso e la ripresa si adatta (warp_to_fixed_tempo).
 """
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFormLayout, QLabel, QSpinBox, QVBoxLayout, QWidget,
+    QButtonGroup, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QRadioButton, QSpinBox,
+    QVBoxLayout, QWidget,
 )
 
 from core.beat_track import BeatAnalysis, tempo_spread
@@ -76,10 +78,30 @@ class TempoFromTakeDialog(QDialog):
                                     "questa battuta."))
         form.addRow(tr("Il primo battito e' l'inizio della battuta:"), self.bar_spin)
         layout.addLayout(form)
-        note = QLabel(tr("Il brano prende questo tempo, un cambio di tempo per battuta: le note scritte, il "
-                         "metronomo e i generatori lo seguono. Dopo la ripresa torna il tempo di prima."))
-        note.setWordWrap(True)
-        layout.addWidget(note)
+        self.follow_radio = QRadioButton(tr("Il brano segue il tempo dell'esecuzione"))
+        self.follow_radio.setToolTip(tr(
+            "Un cambio di tempo per battuta: le note scritte, il metronomo e i generatori seguono "
+            "l'esecuzione. Dopo la ripresa torna il tempo di prima."))
+        self.fixed_radio = QRadioButton(tr("Tempo fisso, la ripresa si adatta:"))
+        self.fixed_radio.setToolTip(tr(
+            "Il brano resta a questo tempo e la ripresa si divide a ogni battuta: ogni pezzo si allunga "
+            "o si accorcia (time-stretch, senza cambiare l'intonazione) per durare una battuta giusta."))
+        group = QButtonGroup(self)
+        group.addButton(self.follow_radio)
+        group.addButton(self.fixed_radio)
+        self.follow_radio.setChecked(True)
+        self.bpm_spin = QSpinBox()
+        self.bpm_spin.setRange(20, 400)
+        self.bpm_spin.setSuffix(" BPM")
+        self.bpm_spin.setValue(int(round(analysis.mean_bpm)) or 120)
+        self.bpm_spin.setEnabled(False)
+        self.fixed_radio.toggled.connect(self.bpm_spin.setEnabled)
+        layout.addWidget(self.follow_radio)
+        fixed_row = QHBoxLayout()
+        fixed_row.addWidget(self.fixed_radio)
+        fixed_row.addWidget(self.bpm_spin)
+        fixed_row.addStretch(1)
+        layout.addLayout(fixed_row)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText(tr("Applica il tempo"))
         buttons.accepted.connect(self.accept)
@@ -88,3 +110,7 @@ class TempoFromTakeDialog(QDialog):
 
     def first_bar(self) -> int:
         return self.bar_spin.value()
+
+    def fixed_bpm(self):
+        """Il tempo fisso scelto, o None se il brano segue l'esecuzione."""
+        return self.bpm_spin.value() if self.fixed_radio.isChecked() else None

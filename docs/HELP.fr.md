@@ -3788,9 +3788,16 @@ programme.
   la liste de ses clips : les actions sur la notation (Générer, Jouer au
   clavier, Importer un MIDI, Figer les accords, Exporter en MIDI) ne
   s'appliquent pas aux pistes audio et l'expliquent par un message.
-- **Tempo** : l'audio n'est pas étiré. Un clip reste ancré au temps où il
-  commence mais dure toujours le même nombre de secondes : si vous changez
-  le BPM après l'avoir placé, la barre d'état vous le rappelle.
+- **Tempo** : un clip reste ancré au temps où il commence. Une prise
+  enregistrée dans SoundText **suit le tempo du morceau** : si vous changez
+  le BPM, elle s'allonge ou se raccourcit (time-stretch, sans changer la
+  hauteur) et reste en mesure. Un fichier importé, lui, dure le même nombre
+  de secondes ; clic droit → **Suivre le tempo du morceau** pour qu'il le
+  suive à partir de là (c'est le tempo au début du clip qui compte : s'il
+  change au milieu du clip, celui du début s'applique). **Vitesse
+  (time-stretch)...** la change à la main, en pourcentage ; le box montre
+  la vitesse quand elle n'est pas à 100 %. La première écoute d'un clip
+  étiré prend quelques secondes, puis il reste en mémoire.
 - **Tirer le tempo de la prise...** (clic droit sur un clip) : pour qui
   joue librement, sans clic. SoundText trouve le temps de la prise et
   montre son tempo mesure par mesure (moyenne, minimum, maximum et la
@@ -3801,7 +3808,10 @@ programme.
   écrites, le métronome, les générateurs et la conversion de la prise en
   notation suivent ce tempo. Le premier temps joué est pris comme début de
   mesure ; dans les mesures composées (6/8, 12/8) le temps est la noire
-  pointée.
+  pointée. Sinon, **Tempo fixe, la prise s'adapte** : le morceau reste au
+  tempo choisi et la prise est divisée à chaque mesure, chaque morceau
+  étant allongé ou raccourci pour durer exactement une mesure (fondus
+  enchaînés de 10 ms entre les morceaux).
 
 ### Enregistrer
 
