@@ -3643,6 +3643,22 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   aquí**: se convierte en dos clips consecutivos del mismo archivo, que se
   pueden mover, recortar o eliminar por separado (por ejemplo para quitar un
   error en mitad de una toma).
+- **Fundidos**: con el ratón sobre el clip aparecen dos tiradores blancos
+  en las esquinas superiores; arrastra el izquierdo hacia la derecha para el
+  fundido de entrada y el derecho hacia la izquierda para el de salida. La
+  forma de onda y una curva oscura muestran el efecto. Para valores exactos
+  y para la forma (**Lineal** o **Potencia constante**, sin bajada de
+  volumen a la mitad, adecuada para fundidos cruzados): clic derecho →
+  **Fundidos...**. Incluso sin fundidos, cada borde de clip tiene un
+  microfundido de 5 ms que quita el clic de un corte en mitad de un sonido
+  (también en el punto de una división).
+- **Mover el contenido (slip)**: **Alt+arrastrar** el clip para desplazar el
+  audio dentro de él, manteniendo su inicio y su duración (por ejemplo para
+  alinear un ataque con el pulso después de recortarlo).
+- **Normalizar (pico a −1 dB)** (clic derecho): ajusta la ganancia del clip
+  para que su pico llegue a −1 dB.
+- **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
+  en gris, pero no suena; la misma opción lo vuelve a activar.
 - **Convertir en notación...** (clic derecho en un clip): convierte en notas
   la parte del clip que suena, con el mismo motor que «Importar audio»
   (10bis), en una **nueva pista** con el instrumento

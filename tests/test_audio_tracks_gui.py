@@ -369,3 +369,90 @@ def test_export_track_wav_renders_only_that_track(tmp_path, monkeypatch):
     assert proposed["path"] == str(tmp_path / "Chitarra.wav")
     from core.audio_tracks import read_wav_info
     assert read_wav_info(str(tmp_path / "out.wav")).seconds == pytest.approx(1.0, abs=0.001)
+
+
+# --------------------------------------------------------------- dissolvenze, slip, normalizza, silenzia
+
+def test_dragging_the_fade_handles_sets_the_fades_and_can_be_undone(tmp_path):
+    w, t, clip, item = _window_with_clip(tmp_path)              # 2 s a 120 BPM = 96 px
+    canvas = w.arrangement_view.canvas
+    rect = item.sceneBoundingRect()
+    start = canvas.mapFromScene(rect.left() + 1, rect.top() + 3)
+    _drag(canvas, start, start + type(start)(24, 0))            # 24 px = 0,5 s
+    assert clip.fade_in == pytest.approx(0.5, abs=0.03)
+    assert (clip.start_beat, clip.trim_start) == (4.0, 0.0)     # non e' un taglio
+    item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
+    rect = item.sceneBoundingRect()
+    start = canvas.mapFromScene(rect.right() - 1, rect.top() + 3)
+    _drag(canvas, start, start - type(start)(48, 0))
+    assert clip.fade_out == pytest.approx(1.0, abs=0.03)
+    assert clip.trim_end == 0.0
+    w.undo()
+    w.undo()
+    restored = w.project.get_track("Voce").audio_clips[0]
+    assert (restored.fade_in, restored.fade_out) == (0.0, 0.0)
+
+
+def test_alt_drag_slips_the_content_inside_the_clip(tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w, t, clip, item = _window_with_clip(tmp_path)
+    clip.trim_start, clip.trim_end = 0.5, 0.5
+    w.refresh_mixer()
+    _app.processEvents()
+    canvas = w.arrangement_view.canvas
+    item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
+    start = canvas.mapFromScene(item.sceneBoundingRect().center())
+    end = start + type(start)(12, 0)                            # 12 px = 0,25 s
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, Qt.AltModifier, start)
+    QTest.mouseMove(canvas.viewport(), end)
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, Qt.AltModifier, end)
+    _app.processEvents()
+    assert clip.start_beat == 4.0
+    assert (clip.trim_start, clip.trim_end) == (pytest.approx(0.25, abs=0.03), pytest.approx(0.75, abs=0.03))
+    assert w.history.can_undo()
+
+
+def test_box_menu_offers_fades_normalize_and_mute(tmp_path):
+    w, t, clip, item = _window_with_clip(tmp_path)
+    view = w.arrangement_view
+    actions = _menu_actions(lambda: view._show_audio_box_menu("Voce", clip, w.mapToGlobal(w.rect().center())))
+    assert {"Normalizza (picco a −1 dB)", "Dissolvenze...", "Silenzia clip"} <= set(actions)
+
+    view._normalize_clip("Voce", clip)                           # seno a 0,5 di picco
+    assert clip.gain_db == pytest.approx(-1.0 - 20 * np.log10(0.5), abs=0.05)
+
+    view._apply_clip_fades("Voce", clip, 0.5, 5.0, "equal")      # l'uscita non supera il resto
+    assert (clip.fade_in, clip.fade_out, clip.fade_shape) == (0.5, 1.5, "equal")
+
+
+def test_fade_dialog_applies_the_values(tmp_path):
+    from PySide6.QtWidgets import QComboBox, QDoubleSpinBox
+    w, t, clip, item = _window_with_clip(tmp_path)
+    view = w.arrangement_view
+
+    def fill():
+        dlg = view._fade_dialog
+        spins = dlg.findChildren(QDoubleSpinBox)
+        spins[0].setValue(0.2)
+        spins[1].setValue(0.3)
+        combo = dlg.findChildren(QComboBox)[0]
+        combo.setCurrentIndex(combo.findData("equal"))
+        dlg.accept()
+
+    QTimer.singleShot(50, fill)
+    view._edit_clip_fades("Voce", clip)
+    assert (clip.fade_in, clip.fade_out, clip.fade_shape) == (0.2, 0.3, "equal")
+
+
+def test_muted_clip_is_drawn_grey_and_labelled(tmp_path):
+    from gui.arrangement_view import MUTED_CLIP_COLOR
+    w, t, clip, item = _window_with_clip(tmp_path)
+    clip.muted = True
+    w.arrangement_view.on_clip_changed("Voce")
+    _app.processEvents()
+    item = next(it for it in w.arrangement_view.canvas._scene.items() if isinstance(it, AudioBoxItem))
+    assert item.brush().color().name() == MUTED_CLIP_COLOR
+    assert "silenziata" in item.toolTip()
+    w.undo()
+    assert not w.project.get_track("Voce").audio_clips[0].muted

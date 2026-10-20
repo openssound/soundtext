@@ -3551,6 +3551,22 @@ oppure **importando** file registrati con un altro programma.
   **Dividi qui**: diventa due clip consecutive dello stesso file, che si
   possono spostare, tagliare o eliminare separatamente (per esempio per
   togliere un errore a meta' ripresa).
+- **Dissolvenze**: con il mouse sul box compaiono due maniglie bianche
+  agli angoli in alto; trascina quella di sinistra verso destra per la
+  dissolvenza in entrata, quella di destra verso sinistra per quella in
+  uscita. La forma d'onda e una curva scura mostrano l'effetto. Per valori
+  esatti e per la forma (**Lineare** o **Equal power**, senza calo di volume
+  a meta', adatta alle dissolvenze incrociate): tasto destro →
+  **Dissolvenze...**. Anche senza dissolvenze, ogni bordo di clip ha una
+  microdissolvenza di 5 ms che toglie il clic di un taglio a meta' di un
+  suono (anche nel punto di una divisione).
+- **Spostare il contenuto (slip)**: **Alt+trascina** il box per far
+  scorrere l'audio dentro la clip, lasciandone fermi inizio e lunghezza (per
+  esempio per allineare un attacco al beat dopo averla tagliata).
+- **Normalizza (picco a −1 dB)** (tasto destro): imposta il guadagno della
+  clip perche' il suo picco arrivi a −1 dB.
+- **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
+  grigio, ma non suona; si riattiva con la stessa voce.
 - **Converti in notazione...** (tasto destro su una clip): trasforma in note
   la parte che suona della clip, con lo stesso motore di "Importa audio"
   (10bis), in una **nuova traccia** con lo strumento scelto

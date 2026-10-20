@@ -3458,6 +3458,21 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   here**: it becomes two consecutive clips of the same file, which can be
   moved, trimmed or deleted separately (for example to remove a mistake in
   the middle of a take).
+- **Fades**: with the mouse over the box two white handles appear at the
+  top corners; drag the left one to the right for the fade in, the right
+  one to the left for the fade out. The waveform and a dark curve show the
+  effect. For exact values and for the shape (**Linear** or **Equal
+  power**, with no volume dip in the middle, suited to crossfades):
+  right-click → **Fades...**. Even without fades, every clip edge has a
+  5 ms micro-fade that removes the click of a cut in the middle of a sound
+  (also at a split point).
+- **Moving the content (slip)**: **Alt+drag** the box to slide the audio
+  inside the clip, keeping its start and length (for example to line up an
+  attack with the beat after trimming it).
+- **Normalize (peak at −1 dB)** (right-click): sets the clip gain so that
+  its peak reaches −1 dB.
+- **Mute clip** (right-click): the clip stays in place, drawn in grey, but
+  does not play; the same entry turns it back on.
 - **Convert to notation...** (right-click on a clip): turns the playing part
   of the clip into notes, with the same engine as "Import audio" (10bis),
   in a **new track** with the chosen instrument

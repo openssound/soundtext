@@ -16,8 +16,10 @@ import itertools
 import os
 import time
 
+import numpy as np
+
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -94,6 +96,9 @@ EMPTY_AUDIO_ROW_HINT = tr("Doppio click per importare un file audio · ● per r
 FREE_TEXT_ROW_HINT = tr("Traccia scritta a testo (vista Testo) · doppio click per aggiungere un box")
 NO_TRACKS_HINT = tr("Nessuna traccia: comincia da \"+ Aggiungi traccia\" qui a sinistra")
 EDGE_GRAB_PX = 6            # bordo di un box audio che si afferra per tagliarlo
+FADE_HANDLE_PX = 7          # maniglia di una dissolvenza (angoli in alto di un box audio)
+FADE_GRAB_PX = 8            # distanza entro cui la maniglia si afferra
+MUTED_CLIP_COLOR = "#8a8a8a"
 TRIM_SNAP_BEATS = 0.25      # passo del taglio col mouse (Shift = libero)
 
 
@@ -235,9 +240,42 @@ class AudioBoxItem(BoxItem):
     (meno i tagli) alla posizione in cui si trova, con la forma d'onda.
     Si trascina come un box di notazione; i bordi si trascinano per
     tagliarne inizio e fine (l'audio resta dov'e' nel tempo, vedi
-    core.audio_tracks.trim_clip_start_to_beat); doppio click per rinominarlo."""
+    core.audio_tracks.trim_clip_start_to_beat); le maniglie agli angoli in
+    alto regolano le dissolvenze; Alt+trascina sposta il contenuto dentro la
+    clip (slip, vedi core.audio_tracks.slip_clip_content); doppio click per
+    rinominarlo."""
 
     _trim_edge = None
+    _fade_drag = None
+    _slip_from = None
+    _hover = False
+
+    def _px_per_second(self) -> float:
+        play = audio_tracks.clip_play_seconds(self.clip)
+        return self.rect().width() / play if play > 0 else 0.0
+
+    def _fade_handle_x(self, which: str) -> float:
+        pps = self._px_per_second()
+        if which == "in":
+            return min(self.rect().width(), self.clip.fade_in * pps)
+        return max(0.0, self.rect().width() - self.clip.fade_out * pps)
+
+    def _fade_handle_at(self, pos):
+        if getattr(self, "_missing", True) or pos.y() > FADE_GRAB_PX + 2:
+            return None
+        distances = [(abs(pos.x() - self._fade_handle_x(w)), w) for w in ("in", "out")]
+        distance, which = min(distances)
+        return which if distance <= FADE_GRAB_PX else None
+
+    def hoverEnterEvent(self, event):
+        self._hover = True
+        self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._hover = False
+        self.update()
+        super().hoverLeaveEvent(event)
 
     def _edge_at(self, x: float):
         if getattr(self, "_missing", True):
@@ -251,20 +289,65 @@ class AudioBoxItem(BoxItem):
         return None
 
     def hoverMoveEvent(self, event):
-        self.setCursor(Qt.SizeHorCursor if self._edge_at(event.pos().x()) else Qt.ArrowCursor)
+        if self._fade_handle_at(event.pos()):
+            self.setCursor(Qt.PointingHandCursor)
+        else:
+            self.setCursor(Qt.SizeHorCursor if self._edge_at(event.pos().x()) else Qt.ArrowCursor)
         super().hoverMoveEvent(event)
 
+    def _state(self):
+        c = self.clip
+        return (c.start_beat, c.trim_start, c.trim_end, c.fade_in, c.fade_out)
+
     def mousePressEvent(self, event):
-        edge = self._edge_at(event.pos().x()) if event.button() == Qt.LeftButton else None
-        if edge is None:
+        left = event.button() == Qt.LeftButton
+        fade = self._fade_handle_at(event.pos()) if left else None
+        slip = left and fade is None and bool(event.modifiers() & Qt.AltModifier) and not self._missing
+        edge = self._edge_at(event.pos().x()) if left and fade is None and not slip else None
+        if fade is None and not slip and edge is None:
             super().mousePressEvent(event)
             return
         self.view.select_box(self.track_name, self.clip)
-        self._trim_edge = edge
-        self._trim_before = (self.clip.start_beat, self.clip.trim_start, self.clip.trim_end)
+        self._before = self._state()
+        if fade is not None:
+            self._fade_drag = fade
+        elif slip:
+            self._slip_from = (event.scenePos().x(), self.clip.trim_start, self.clip.trim_end)
+            self.setCursor(Qt.ClosedHandCursor)
+        else:
+            self._trim_edge = edge
         event.accept()
 
+    def _drag_fade(self, x: float):
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0:
+            return
+        if self._fade_drag == "in":
+            seconds = max(0.0, min(x / pps, play - self.clip.fade_out))
+            self.clip.fade_in = round(seconds, 3)
+        else:
+            seconds = max(0.0, min((self.rect().width() - x) / pps, play - self.clip.fade_in))
+            self.clip.fade_out = round(seconds, 3)
+        self.update()
+
+    def _drag_slip(self, scene_x: float):
+        pps = self._px_per_second()
+        if pps <= 0:
+            return
+        start_x, trim_start, trim_end = self._slip_from
+        self.clip.trim_start, self.clip.trim_end = trim_start, trim_end
+        # verso destra il contenuto segue il mouse: si scopre audio piu' indietro nel file
+        audio_tracks.slip_clip_content(self.clip, -(scene_x - start_x) / pps)
+        self.update()
+
     def mouseMoveEvent(self, event):
+        if self._fade_drag is not None:
+            self._drag_fade(event.pos().x())
+            return
+        if self._slip_from is not None:
+            self._drag_slip(event.scenePos().x())
+            return
         if self._trim_edge is None:
             super().mouseMoveEvent(event)
             return
@@ -283,12 +366,14 @@ class AudioBoxItem(BoxItem):
         self.update()
 
     def mouseReleaseEvent(self, event):
-        if self._trim_edge is None:
+        if self._trim_edge is None and self._fade_drag is None and self._slip_from is None:
             super().mouseReleaseEvent(event)
             return
-        self._trim_edge = None
+        if self._slip_from is not None:
+            self.unsetCursor()
+        self._trim_edge = self._fade_drag = self._slip_from = None
         self.view.canvas.set_drag_guide(None)
-        if (self.clip.start_beat, self.clip.trim_start, self.clip.trim_end) != self._trim_before:
+        if self._state() != self._before:
             self.view.on_clip_changed(self.track_name)
 
     def _layout(self):
@@ -296,7 +381,7 @@ class AudioBoxItem(BoxItem):
         width = max(6.0, duration * PX_PER_BEAT)
         self.setRect(0, 0, width, ROW_HEIGHT - 10)
         self._missing = audio_tracks.clip_is_missing(self.clip)
-        color = QColor("#d06060" if self._missing else AUDIO_TRACK_COLOR)
+        color = QColor("#d06060" if self._missing else MUTED_CLIP_COLOR if self.clip.muted else AUDIO_TRACK_COLOR)
         self.setBrush(QBrush(color))
         self.setPen(QPen(color.darker(140), 1))
         self.setPos(HEADER_WIDTH + self.clip.start_beat * PX_PER_BEAT, self._fixed_y)
@@ -305,7 +390,8 @@ class AudioBoxItem(BoxItem):
         else:
             seconds = audio_tracks.clip_play_seconds(self.clip)
             gain = tr(", gain {gain_db:+g} dB", gain_db=self.clip.gain_db) if self.clip.gain_db else ""
-            tip = (tr("{name}  ({seconds:.1f} s{gain})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), doppio click per rinominare, tasto destro per altre azioni.", name=self.clip.name, seconds=seconds, gain=gain, file=self.clip.file))
+            muted = tr(", silenziata") if self.clip.muted else ""
+            tip = (tr("{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.", name=self.clip.name, seconds=seconds, gain=gain, muted=muted, file=self.clip.file))
         self.setToolTip(tip)
 
     def mouseDoubleClickEvent(self, event):
@@ -330,6 +416,7 @@ class AudioBoxItem(BoxItem):
                     x = rect.left() + (i + 0.5) * step
                     h = max(0.5, float(peak) * half)
                     painter.drawLine(QPointF(x, mid - h), QPointF(x, mid + h))
+            self._paint_fades(painter, rect)
         if self.clip is self.view.selected_clip:
             sel_pen = QPen(QColor(ACCENT))
             sel_pen.setWidth(3)
@@ -338,8 +425,45 @@ class AudioBoxItem(BoxItem):
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
         painter.setPen(QPen(QColor(_canvas_colors()["box_text"])))
         painter.setFont(QFont("Sans", 9, QFont.Bold))
-        label = tr("{name}  (file mancante)", name=self.clip.name) if self._missing else self.clip.name
-        painter.drawText(rect.adjusted(4, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
+        if self._missing:
+            label = tr("{name}  (file mancante)", name=self.clip.name)
+        elif self.clip.muted:
+            label = tr("{name}  (silenziata)", name=self.clip.name)
+        else:
+            label = self.clip.name
+        painter.drawText(rect.adjusted(FADE_HANDLE_PX + 3, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
+
+    def _paint_fades(self, painter, rect):
+        """Le dissolvenze come zona scurita sopra la curva del guadagno, e le
+        loro maniglie (con il box selezionato o sotto il mouse)."""
+        play = audio_tracks.clip_play_seconds(self.clip)
+        line_color = QColor(_canvas_colors()["box_text"])
+        for which, seconds in (("in", self.clip.fade_in), ("out", self.clip.fade_out)):
+            if seconds <= 0 or play <= 0:
+                continue
+            edge_x = rect.left() if which == "in" else rect.right()
+            handle_x = rect.left() + self._fade_handle_x(which)
+            steps = 24
+            t = np.linspace(0.0, seconds, steps + 1) if which == "in" else np.linspace(play - seconds, play, steps + 1)
+            gains = audio_tracks.fade_envelope_at(t, play, self.clip.fade_in if which == "in" else 0.0,
+                                                  self.clip.fade_out if which == "out" else 0.0,
+                                                  self.clip.fade_shape)
+            xs = np.linspace(edge_x, handle_x, steps + 1) if which == "in" else np.linspace(handle_x, edge_x, steps + 1)
+            curve = [QPointF(float(x), rect.bottom() - float(g) * rect.height()) for x, g in zip(xs, gains)]
+            shade = QPolygonF([QPointF(float(xs[0]), rect.top())] + curve + [QPointF(float(xs[-1]), rect.top())])
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 70))
+            painter.drawPolygon(shade)
+            painter.setPen(QPen(line_color, 1))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPolyline(QPolygonF(curve))
+        if self._hover or self.clip is self.view.selected_clip:
+            painter.setPen(QPen(line_color, 1))
+            painter.setBrush(QColor("#ffffff"))
+            for which in ("in", "out"):
+                x = rect.left() + self._fade_handle_x(which)
+                x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
+                painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
 
 
 # ---------------------------------------------------------------------------
@@ -1351,6 +1475,11 @@ class ArrangementView(QWidget):
         stop_action = menu.addAction(tr("■ Stop"))
         rename_action = menu.addAction(tr("Rinomina..."))
         gain_action = menu.addAction(tr("Guadagno clip (dB)..."))
+        normalize_action = menu.addAction(tr("Normalizza (picco a −1 dB)")) if not missing else None
+        fade_action = menu.addAction(tr("Dissolvenze...")) if not missing else None
+        mute_action = menu.addAction(tr("Silenzia clip"))
+        mute_action.setCheckable(True)
+        mute_action.setChecked(clip.muted)
         trim_action = menu.addAction(tr("Taglio preciso (secondi)...")) if not missing else None
         split_action = None
         if not missing and at_beat is not None and at_beat > clip.start_beat:
@@ -1375,6 +1504,13 @@ class ArrangementView(QWidget):
             self._rename_clip(track_name, clip)
         elif chosen is gain_action:
             self._set_clip_gain(track_name, clip)
+        elif normalize_action is not None and chosen is normalize_action:
+            self._normalize_clip(track_name, clip)
+        elif fade_action is not None and chosen is fade_action:
+            self._edit_clip_fades(track_name, clip)
+        elif chosen is mute_action:
+            clip.muted = not clip.muted
+            self.on_clip_changed(track_name)
         elif trim_action is not None and chosen is trim_action:
             self._edit_clip_trim(track_name, clip)
         elif split_action is not None and chosen is split_action:
@@ -1842,6 +1978,58 @@ class ArrangementView(QWidget):
             return
         clip.gain_db = value
         self.on_clip_changed(track_name)
+
+    def _normalize_clip(self, track_name: str, clip: AudioClip):
+        before = clip.gain_db
+        if not audio_tracks.normalize_clip(clip):
+            self.host.statusBar().showMessage(tr("La clip '{name}' e' muta: niente da normalizzare.", name=clip.name), 4000)
+            return
+        if clip.gain_db != before:
+            self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("Clip '{name}' normalizzata: guadagno {gain_db:+g} dB.", name=clip.name, gain_db=clip.gain_db), 4000)
+
+    def _edit_clip_fades(self, track_name: str, clip: AudioClip):
+        """Dissolvenze in secondi e loro forma, per chi preferisce i numeri
+        alle maniglie (e per scegliere la forma, che con le maniglie non c'e')."""
+        from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout
+        play = audio_tracks.clip_play_seconds(clip)
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Dissolvenze — {name}", name=clip.name))
+        form = QFormLayout(dlg)
+        form.addRow(QLabel(tr("Durata della clip: {play:.3f} s", play=play)))
+        spins = []
+        for label, value in ((tr("In entrata (s):"), clip.fade_in), (tr("In uscita (s):"), clip.fade_out)):
+            spin = QDoubleSpinBox()
+            spin.setDecimals(3)
+            spin.setSingleStep(0.05)
+            spin.setRange(0.0, max(0.0, play))
+            spin.setValue(value)
+            form.addRow(label, spin)
+            spins.append(spin)
+        shape = QComboBox()
+        shape.addItem(tr("Lineare"), "linear")
+        shape.addItem(tr("Equal power (nessun calo di volume a meta')"), "equal")
+        shape.setCurrentIndex(max(0, shape.findData(clip.fade_shape)))
+        form.addRow(tr("Forma:"), shape)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        form.addRow(buttons)
+        self._fade_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted:
+            return
+        self._apply_clip_fades(track_name, clip, spins[0].value(), spins[1].value(), shape.currentData())
+
+    def _apply_clip_fades(self, track_name: str, clip: AudioClip, fade_in: float, fade_out: float, shape: str):
+        play = audio_tracks.clip_play_seconds(clip)
+        before = (clip.fade_in, clip.fade_out, clip.fade_shape)
+        fade_in = max(0.0, min(fade_in, play))
+        clip.fade_in = round(fade_in, 3)
+        clip.fade_out = round(max(0.0, min(fade_out, play - fade_in)), 3)
+        clip.fade_shape = shape
+        if (clip.fade_in, clip.fade_out, clip.fade_shape) != before:
+            self.on_clip_changed(track_name)
 
     def _export_clip(self, clip: Clip):
         suggested = f"{clip.name.replace(' ', '_')}.box"

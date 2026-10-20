@@ -31,6 +31,10 @@ class Clip:
     start_beat: float = 0.0     # posizione assoluta nella traccia, in beat (quarti)
 
 
+# Forme delle dissolvenze di una clip audio (AudioClip.fade_shape).
+FADE_SHAPES = ("linear", "equal")
+
+
 @dataclass
 class AudioClip:
     """Una clip di una traccia audio: un file audio (registrato altrove o
@@ -43,6 +47,14 @@ class AudioClip:
     trim_start: float = 0.0     # secondi del file saltati all'inizio
     trim_end: float = 0.0       # secondi del file saltati alla fine
     gain_db: float = 0.0
+    # Dissolvenze in entrata e in uscita (secondi della parte riprodotta) e
+    # loro forma: "linear" o "equal" (equal-power, senza calo a meta' in una
+    # dissolvenza incrociata). Sotto c'e' sempre una microdissolvenza di
+    # pochi millisecondi (core.audio_tracks.MICRO_FADE_SECONDS) contro i clic.
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+    fade_shape: str = "linear"
+    muted: bool = False         # la clip resta nel brano ma non suona
 
 
 @dataclass

@@ -24,6 +24,7 @@ inizia (convertito in secondi con la mappa del tempo) e dura quanto il file.
 """
 
 import contextlib
+import dataclasses
 import math
 import os
 import shutil
@@ -461,20 +462,63 @@ def split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioClip
     offset = seconds_for_beats(tempo_map, at_beat) - seconds_for_beats(tempo_map, clip.start_beat)
     if total <= 0 or offset < MIN_CLIP_SECONDS or offset > clip_play_seconds(clip) - MIN_CLIP_SECONDS:
         return None
-    second = AudioClip(name=f"{clip.name} (2)", file=clip.file, start_beat=round(at_beat, 6),
-                       trim_start=round(clip.trim_start + offset, 6), trim_end=clip.trim_end,
-                       gain_db=clip.gain_db)
+    # La dissolvenza in entrata resta alla prima parte, quella in uscita
+    # passa alla seconda; al punto di divisione basta la microdissolvenza.
+    second = dataclasses.replace(clip, name=f"{clip.name} (2)", start_beat=round(at_beat, 6),
+                                 trim_start=round(clip.trim_start + offset, 6), fade_in=0.0)
     clip.trim_end = round(max(0.0, total - clip.trim_start - offset), 6)
+    clip.fade_out = 0.0
+    clip.fade_in = min(clip.fade_in, offset)
+    second.fade_out = min(second.fade_out, clip_play_seconds(second))
     return second
 
 
+def clip_peak(clip: AudioClip) -> float:
+    """Picco (valore assoluto, tutti i canali) della parte riprodotta della
+    clip, senza il suo guadagno; 0 se il file manca o e' muto."""
+    try:
+        samples, rate = read_wav(clip.file)
+    except (ValueError, OSError):
+        return 0.0
+    first = int(round(max(0.0, clip.trim_start) * rate))
+    last = len(samples) - int(round(max(0.0, clip.trim_end) * rate))
+    part = samples[first:max(first, last)]
+    return float(np.abs(part).max()) if part.size else 0.0
+
+
+NORMALIZE_PEAK_DB = -1.0
+
+
+def normalize_clip(clip: AudioClip, target_db: float = NORMALIZE_PEAK_DB) -> bool:
+    """Imposta gain_db perche' il picco della clip arrivi a target_db (il file
+    non cambia). False se la clip e' muta o il file manca."""
+    peak = clip_peak(clip)
+    if peak <= 1e-6:
+        return False
+    clip.gain_db = round(target_db - 20.0 * math.log10(peak), 2)
+    return True
+
+
+def slip_clip_content(clip: AudioClip, delta_seconds: float) -> None:
+    """Sposta il contenuto dentro la clip lasciandone fermi inizio e
+    lunghezza (slip edit): delta positivo mostra audio piu' avanti nel file.
+    Si ferma ai bordi del file."""
+    total = clip_file_seconds(clip)
+    if total <= 0:
+        return
+    delta = max(-clip.trim_start, min(delta_seconds, clip.trim_end))
+    clip.trim_start = round(clip.trim_start + delta, 6)
+    clip.trim_end = round(max(0.0, clip.trim_end - delta), 6)
+
+
 def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
-    """Scrive in out_path solo la parte riprodotta della clip (per
-    convertirla in notazione, vedi gui.audio_import_dialog)."""
+    """Scrive in out_path solo la parte riprodotta della clip, con le sue
+    dissolvenze (per convertirla in notazione, vedi gui.audio_import_dialog)."""
     samples, rate = read_wav(clip.file)
     first = int(round(max(0.0, clip.trim_start) * rate))
     last = len(samples) - int(round(max(0.0, clip.trim_end) * rate))
-    write_wav(out_path, samples[first:max(first, last)], rate, bits=16)
+    part = apply_fades(samples[first:max(first, last)], rate, clip.fade_in, clip.fade_out, clip.fade_shape)
+    write_wav(out_path, part, rate, bits=16)
 
 
 # ---------------------------------------------------------------------------
@@ -488,9 +532,10 @@ _PEAKS_CACHE_MAX = 32
 
 def waveform_peaks(clip: AudioClip, buckets: int) -> Optional[np.ndarray]:
     """buckets valori in [0, 1] (picco del valore assoluto, tutti i canali)
-    della parte riprodotta della clip, per disegnarne la forma d'onda. I
-    picchi dell'intero file sono calcolati una volta per file e tenuti in
-    memoria. None se il file manca."""
+    della parte riprodotta della clip, per disegnarne la forma d'onda, con
+    le dissolvenze gia' applicate (si vede quello che si sente). I picchi
+    dell'intero file sono calcolati una volta per file e tenuti in memoria.
+    None se il file manca."""
     key = _file_key(clip.file)
     if key is None or buckets < 1:
         return None
@@ -522,6 +567,11 @@ def waveform_peaks(clip: AudioClip, buckets: int) -> Optional[np.ndarray]:
     for i in range(buckets):
         a, b = edges[i], max(edges[i + 1], edges[i] + 1)
         out[i] = part[a:min(b, len(part))].max() if a < len(part) else 0.0
+    play = clip_play_seconds(clip)
+    if play > 0 and (clip.fade_in > 0 or clip.fade_out > 0):
+        # inviluppo valutato al centro di ogni colonna
+        t = (np.arange(buckets) + 0.5) * (play / buckets)
+        out = out * fade_envelope_at(t, play, clip.fade_in, clip.fade_out, clip.fade_shape)
     return np.clip(out, 0.0, 1.0)
 
 
@@ -539,10 +589,68 @@ class AudioLayer:
     trim_end: float
     gain: float          # lineare, gia' comprensivo di gain clip, volume traccia e master
     pan: int             # 0-127, 64 = centro
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+    fade_shape: str = "linear"
+    # Secondi della clip gia' tagliati via perche' cadevano prima di 0 (vedi
+    # build_audio_layers): la dissolvenza in entrata ne tiene conto.
+    head_skip: float = 0.0
 
 
 def db_to_gain(db: float) -> float:
     return 10.0 ** (db / 20.0)
+
+
+# Microdissolvenza sempre presente su ogni bordo di clip (anche al punto di
+# una divisione): toglie il clic di un taglio a meta' di un suono senza
+# cambiare in modo udibile l'attacco.
+MICRO_FADE_SECONDS = 0.005
+
+
+def _fade_curve(p: np.ndarray, shape: str) -> np.ndarray:
+    """p in [0, 1] -> guadagno in [0, 1] della dissolvenza."""
+    p = np.clip(p, 0.0, 1.0)
+    return np.sin(p * (np.pi / 2)) if shape == "equal" else p
+
+
+def fade_envelope_at(t: np.ndarray, length: float, fade_in: float, fade_out: float,
+                     shape: str = "linear") -> np.ndarray:
+    """Guadagno delle dissolvenze ai tempi t (secondi dall'inizio della parte
+    riprodotta, lunga 'length'), senza la microdissolvenza. Serve a
+    disegnarle (forma d'onda, maniglie)."""
+    g = np.ones(len(t), dtype=np.float32)
+    if fade_in > 0:
+        g *= _fade_curve(t / fade_in, shape).astype(np.float32)
+    if fade_out > 0:
+        g *= _fade_curve((length - t) / fade_out, shape).astype(np.float32)
+    return g
+
+
+def apply_fades(part: np.ndarray, rate: int, fade_in: float, fade_out: float, shape: str = "linear",
+                head_skip: float = 0.0) -> np.ndarray:
+    """Applica a 'part' (forma (frame, canali), la parte riprodotta della
+    clip senza i primi head_skip secondi) le dissolvenze della clip, mai piu'
+    corte della microdissolvenza. Ritorna una copia (float32)."""
+    n = len(part)
+    if n == 0:
+        return part
+    out = part.astype(np.float32, copy=True)
+    fade_in, fade_out = max(0.0, fade_in), max(0.0, fade_out)
+    in_shape = shape if fade_in > MICRO_FADE_SECONDS else "linear"
+    out_shape = shape if fade_out > MICRO_FADE_SECONDS else "linear"
+    fade_in, fade_out = max(fade_in, MICRO_FADE_SECONDS), max(fade_out, MICRO_FADE_SECONDS)
+    skip = int(round(max(0.0, head_skip) * rate))
+    k_in = int(round(fade_in * rate))
+    if skip < k_in:
+        count = min(n, k_in - skip)
+        ramp = _fade_curve((skip + np.arange(count)) / k_in, in_shape).astype(np.float32)
+        out[:count] *= ramp[:, None]
+    full_out = max(1, int(round(fade_out * rate)))
+    k_out = min(n, full_out)
+    # dall'ultimo frame (guadagno 0) indietro fino a k_out frame prima della fine
+    ramp = _fade_curve(np.arange(k_out - 1, -1, -1) / full_out, out_shape)
+    out[n - k_out:] *= ramp.astype(np.float32)[:, None]
+    return out
 
 
 def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
@@ -560,17 +668,20 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
             continue
         track_gain = max(0, min(200, track.volume)) / 100.0 * master
         for clip in track.audio_clips:
-            if clip_play_seconds(clip) <= 0:
+            if clip.muted or clip_play_seconds(clip) <= 0:
                 continue
             start = seconds_for_beats(tempo_map, clip.start_beat) - offset_seconds
             trim_start = max(0.0, clip.trim_start)
+            head_skip = 0.0
             if start < 0:
                 trim_start -= start
+                head_skip = -start
                 start = 0.0
             layers.append(AudioLayer(
                 path=os.path.abspath(clip.file), start_seconds=start, trim_start=trim_start,
                 trim_end=max(0.0, clip.trim_end), gain=db_to_gain(clip.gain_db) * track_gain,
-                pan=track.pan,
+                pan=track.pan, fade_in=max(0.0, clip.fade_in), fade_out=max(0.0, clip.fade_out),
+                fade_shape=clip.fade_shape, head_skip=head_skip,
             ))
     return layers
 
@@ -621,6 +732,7 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         part = samples[first:last]
         if len(part) == 0:
             continue
+        part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
         if part.shape[1] == 1:
             stereo = np.repeat(part, 2, axis=1)
         else:

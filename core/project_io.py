@@ -19,7 +19,7 @@ import re
 import os
 from typing import Optional, List
 
-from .model import Project, Clip, AudioClip, AUDIO_INSTRUMENT_NAME, Effect
+from .model import Project, Clip, AudioClip, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES
 from .arrangement import flatten_clips_to_text
 from .notation import upgrade_midi_refs
 from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key, clamp_params
@@ -222,6 +222,15 @@ def _prepare_embedded_instruments(text: str) -> List[str]:
     return newly_registered
 
 
+# Chiavi delle clip audio aggiunte da SoundText dopo trim= e gain= (le
+# regex di quelle stanno in st_language.stfile): dissolvenze 'fade=entrata,
+# uscita' in secondi, loro forma 'fade_shape=equal' e 'mute'. Scritte solo
+# se diverse dal valore di base; una versione vecchia le ignora.
+RE_AUDIO_FADE = re.compile(r'\bfade\s*=\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)')
+RE_AUDIO_FADE_SHAPE = re.compile(r'\bfade_shape\s*=\s*(\w+)')
+RE_AUDIO_MUTE = re.compile(r'(?<![\w=])mute(?![\w=])')
+
+
 def _parse_audio_clip_body(name: str, start_beat: float, body: str,
                            base_dir: Optional[str]) -> Optional[AudioClip]:
     m = RE_AUDIO_FILE.search(body)
@@ -237,6 +246,14 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     g = RE_AUDIO_GAIN.search(body)
     if g:
         clip.gain_db = float(g.group(1))
+    rest = RE_AUDIO_FILE.sub("", body)   # un percorso con "fade=" o "mute" non conta
+    f = RE_AUDIO_FADE.search(rest)
+    if f:
+        clip.fade_in, clip.fade_out = float(f.group(1)), float(f.group(2))
+    shape = RE_AUDIO_FADE_SHAPE.search(rest)
+    if shape and shape.group(1) in FADE_SHAPES:
+        clip.fade_shape = shape.group(1)
+    clip.muted = RE_AUDIO_MUTE.search(rest) is not None
     return clip
 
 
@@ -252,6 +269,12 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append(f"trim={round(clip.trim_start, 4):g},{round(clip.trim_end, 4):g}")
     if clip.gain_db:
         parts.append(f"gain={round(clip.gain_db, 2):g}")
+    if clip.fade_in or clip.fade_out:
+        parts.append(f"fade={round(clip.fade_in, 4):g},{round(clip.fade_out, 4):g}")
+    if clip.fade_shape != "linear":
+        parts.append(f"fade_shape={clip.fade_shape}")
+    if clip.muted:
+        parts.append("mute")
     return " ".join(parts)
 
 

@@ -280,8 +280,10 @@ def test_mix_places_clip_and_extends_the_base():
         mixed = mix_layers(base, rate, [layer])
     assert len(mixed) == 600                           # 0.4 s + 0.2 s riprodotti
     assert np.all(mixed[:400] == 0)
-    assert np.allclose(mixed[400:, 1], 0.5, atol=1e-6)  # pan tutto a destra: destra piena
-    assert np.allclose(mixed[400:, 0], 0.0, atol=1e-6)  # ...sinistra muta
+    # ai bordi la microdissolvenza (5 ms = 5 campioni a 1000 Hz)
+    assert np.allclose(mixed[405:595, 1], 0.5, atol=1e-6)  # pan tutto a destra: destra piena
+    assert mixed[400, 1] == 0 and 0 < mixed[402, 1] < 0.5 and mixed[599, 1] == 0
+    assert np.allclose(mixed[400:, 0], 0.0, atol=1e-6)     # ...sinistra muta
 
 
 def test_mix_into_empty_render_and_signature_changes_with_file(tmp_path):
@@ -424,4 +426,120 @@ def test_extract_clip_audio_writes_only_the_played_part(tmp_path):
     audio_tracks.extract_clip_audio(clip, out)
     samples, _rate = read_wav(out)
     assert len(samples) == AUDIO_SAMPLE_RATE
-    assert samples[0, 0] == pytest.approx(-0.25, abs=1e-3)
+    # dopo la microdissolvenza dell'inizio: il file da 0,5 s (10 ms piu' avanti)
+    assert samples[480, 0] == pytest.approx(-0.245, abs=1e-3)
+
+
+# --------------------------------------------------------------- dissolvenze, silenzia, normalizza, slip
+
+def _const_wav(tmp_path, seconds=1.0, amp=0.5, name="k.wav"):
+    path = str(tmp_path / name)
+    write_wav(path, np.full((int(seconds * AUDIO_SAMPLE_RATE), 1), amp, dtype=np.float32), AUDIO_SAMPLE_RATE, bits=24)
+    return path
+
+
+def test_fade_shapes_on_a_constant_signal():
+    rate = 1000
+    ones = np.ones((1000, 1), dtype=np.float32)
+    lin = audio_tracks.apply_fades(ones, rate, 0.2, 0.1, "linear")
+    assert lin[0, 0] == 0 and lin[100, 0] == pytest.approx(0.5) and lin[200, 0] == 1
+    assert lin[-1, 0] == 0 and lin[-51, 0] == pytest.approx(0.5)
+    eq = audio_tracks.apply_fades(ones, rate, 0.2, 0.0, "equal")
+    assert eq[100, 0] == pytest.approx(np.sqrt(0.5), abs=1e-6)   # equal power: -3 dB a meta'
+    assert np.all(ones == 1)                                     # l'originale non cambia
+
+
+def test_micro_fade_removes_the_click_of_a_cut_in_the_middle_of_a_sound(tmp_path):
+    t = np.arange(AUDIO_SAMPLE_RATE) / AUDIO_SAMPLE_RATE
+    path = str(tmp_path / "sine.wav")
+    write_wav(path, (0.8 * np.sin(2 * np.pi * 100 * t)).reshape(-1, 1).astype(np.float32), AUDIO_SAMPLE_RATE)
+    # taglio sul picco del seno (2,5 ms): senza dissolvenza si salterebbe da 0 a 0,8
+    layer = AudioLayer(path=path, start_seconds=0.1, trim_start=0.0025, trim_end=0.0025, gain=1.0, pan=64)
+    mixed = mix_layers(np.zeros((0, 2), dtype=np.float32), AUDIO_SAMPLE_RATE, [layer])
+    assert np.abs(np.diff(mixed[:, 0])).max() < 0.02
+
+
+def test_split_point_has_no_click_and_fades_go_to_the_right_part(tmp_path):
+    tempo = build_tempo_beat_map(Project(tempo_bpm=120))
+    clip = AudioClip("K", _const_wav(tmp_path, seconds=2.0), 0.0, fade_in=0.3, fade_out=0.4)
+    second = audio_tracks.split_clip(clip, 2.0, tempo)                # 1 s
+    assert (clip.fade_in, clip.fade_out) == (0.3, 0.0)
+    assert (second.fade_in, second.fade_out) == (0.0, 0.4)
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("A").audio_clips.extend([clip, second])
+    mixed = mix_layers(np.zeros((0, 2), dtype=np.float32), AUDIO_SAMPLE_RATE,
+                       build_audio_layers(p, p.tracks, tempo))
+    assert np.abs(np.diff(mixed[:, 0])).max() < 0.01
+
+
+def test_fade_in_continues_when_playback_starts_inside_it(tmp_path):
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("A").audio_clips.append(AudioClip("K", _const_wav(tmp_path), 0.0, fade_in=1.0))
+    tempo = build_tempo_beat_map(p)
+    layers = build_audio_layers(p, p.tracks, tempo, offset_seconds=0.5)
+    assert layers[0].head_skip == pytest.approx(0.5)
+    mixed = mix_layers(np.zeros((0, 2), dtype=np.float32), AUDIO_SAMPLE_RATE, layers)
+    assert mixed[0, 0] == pytest.approx(0.25, abs=1e-3)              # meta' dissolvenza di 0,5
+
+
+def test_muted_clip_is_silent_and_new_fields_change_the_cache_key(tmp_path):
+    p = Project(tempo_bpm=120)
+    clip = AudioClip("K", _const_wav(tmp_path), 0.0)
+    p.add_audio_track("A").audio_clips.append(clip)
+    tempo = build_tempo_beat_map(p)
+    sig = lambda: layers_signature(build_audio_layers(p, p.tracks, tempo))  # noqa: E731
+    seen = {sig()}
+    for change in (lambda: setattr(clip, "fade_in", 0.2), lambda: setattr(clip, "fade_out", 0.2),
+                   lambda: setattr(clip, "fade_shape", "equal")):
+        change()
+        seen.add(sig())
+    assert len(seen) == 4
+    clip.muted = True
+    assert build_audio_layers(p, p.tracks, tempo) == []
+    assert audio_tracks.audio_tracks_end_beat(p, p.tracks, tempo) > 0   # resta nel brano
+
+
+def test_normalize_sets_the_gain_for_a_peak_of_minus_one_db(tmp_path):
+    clip = AudioClip("K", _const_wav(tmp_path, amp=0.25), 0.0, gain_db=6.0)
+    assert audio_tracks.normalize_clip(clip)
+    assert clip.gain_db == pytest.approx(-1.0 - 20 * np.log10(0.25), abs=0.01)
+    silent = AudioClip("Z", _const_wav(tmp_path, amp=0.0, name="z.wav"), 0.0)
+    assert not audio_tracks.normalize_clip(silent) and silent.gain_db == 0.0
+
+
+def test_slip_moves_the_content_and_stops_at_the_file_edges(tmp_path):
+    clip = _clip_2s(tmp_path, trim_start=0.5)
+    clip.trim_end = 0.5
+    audio_tracks.slip_clip_content(clip, 0.25)
+    assert (clip.start_beat, clip.trim_start, clip.trim_end) == (4.0, 0.75, 0.25)
+    audio_tracks.slip_clip_content(clip, -5.0)
+    assert (clip.trim_start, clip.trim_end) == (0.0, 1.0)
+    assert audio_tracks.clip_play_seconds(clip) == pytest.approx(1.0)
+
+
+def test_waveform_shows_the_fades(tmp_path):
+    clip = AudioClip("K", _const_wav(tmp_path), 0.0)
+    flat = audio_tracks.waveform_peaks(clip, 10)
+    clip.fade_in, clip.fade_out = 0.5, 0.2
+    faded = audio_tracks.waveform_peaks(clip, 10)
+    assert flat[0] == pytest.approx(0.5, abs=1e-3)
+    assert faded[0] < 0.1 and faded[4] < faded[5] == pytest.approx(0.5, abs=1e-3) and faded[-1] < 0.2
+
+
+def test_fade_and_mute_round_trip_in_the_st_file_and_old_files_stay_identical(tmp_path):
+    path = _const_wav(tmp_path)
+    old = ('Traccia Voce [Audio]:\n\nAudio Voce "K" |0:\n  file="k.wav" trim=0.1,0 gain=-3\n')
+    p = parse_project_text(old, base_dir=str(tmp_path))
+    clip = p.get_track("Voce").audio_clips[0]
+    assert (clip.fade_in, clip.fade_out, clip.fade_shape, clip.muted) == (0.0, 0.0, "linear", False)
+    assert '  file="k.wav" trim=0.1,0 gain=-3\n' in project_to_text(p, base_dir=str(tmp_path))
+    clip.fade_in, clip.fade_out, clip.fade_shape, clip.muted = 0.5, 1.25, "equal", True
+    text = project_to_text(p, base_dir=str(tmp_path))
+    assert 'file="k.wav" trim=0.1,0 gain=-3 fade=0.5,1.25 fade_shape=equal mute' in text
+    again = parse_project_text(text, base_dir=str(tmp_path)).get_track("Voce").audio_clips[0]
+    assert (again.fade_in, again.fade_out, again.fade_shape, again.muted) == (0.5, 1.25, "equal", True)
+    assert again.file == path
+    # chiavi sconosciute (di una versione futura) e forma sconosciuta: ignorate
+    odd = parse_project_text(old.replace("gain=-3", "gain=-3 fade_shape=sigmoide boh=1 futuro"),
+                             base_dir=str(tmp_path)).get_track("Voce").audio_clips[0]
+    assert odd.fade_shape == "linear" and not odd.muted and odd.gain_db == -3

@@ -3731,6 +3731,22 @@ programme.
   ici** : il devient deux clips consécutifs du même fichier, qu'on peut
   déplacer, couper ou supprimer séparément (par exemple pour enlever une
   erreur au milieu d'une prise).
+- **Fondus** : avec la souris sur le clip, deux poignées blanches
+  apparaissent aux coins supérieurs ; faites glisser celle de gauche vers la
+  droite pour le fondu d'entrée, celle de droite vers la gauche pour le
+  fondu de sortie. La forme d'onde et une courbe sombre montrent l'effet.
+  Pour des valeurs exactes et pour la forme (**Linéaire** ou **Puissance
+  constante**, sans baisse de volume au milieu, adaptée aux fondus
+  enchaînés) : clic droit → **Fondus...**. Même sans fondus, chaque bord de
+  clip a un micro-fondu de 5 ms qui supprime le clic d'une coupe au milieu
+  d'un son (aussi au point d'une division).
+- **Déplacer le contenu (slip)** : **Alt+glisser** le clip pour faire
+  défiler l'audio à l'intérieur, en gardant son début et sa longueur (par
+  exemple pour caler une attaque sur le temps après l'avoir coupé).
+- **Normaliser (crête à −1 dB)** (clic droit) : règle le gain du clip pour
+  que sa crête atteigne −1 dB.
+- **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
+  gris, mais ne joue pas ; la même entrée le réactive.
 - **Convertir en notation...** (clic droit sur un clip) : transforme en
   notes la partie du clip qui joue, avec le même moteur qu'« Importer de
   l'audio » (10bis), dans une **nouvelle piste** avec
