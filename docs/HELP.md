@@ -2504,6 +2504,15 @@ percussiva selezionata):
 - **Finale sull'ultima battuta**: l'ultima battuta diventa un colpo di
   chiusura (crash e cassa sul primo tempo, poi silenzio), per terminare il
   brano o la sezione.
+  chiusura (crash e cassa sul primo tempo, poi silenzio), per terminare il
+  brano o la sezione.
+- **Segui la ripresa** (c'e' quando il brano ha una traccia audio con delle
+  clip): SoundText ascolta il groove della ripresa (per ogni sedicesimo
+  della battuta, quanto spesso e quanto forte c'e' un colpo) e mette la
+  cassa anche sui suoi accenti forti e ricorrenti, lasciando il rullante
+  dov'e'. Il tempo e' quello del brano: per una ripresa suonata libera usa
+  prima **Ricava il tempo dalla ripresa...** sulla clip. Le battute
+  proposte coprono anche le clip audio.
 - **Intensità**: vedi sopra.
 
 **Componi → Genera nella traccia selezionata → Giro armonico...** (richiede uno

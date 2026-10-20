@@ -2614,6 +2614,14 @@ percussion sélectionnée) :
 - **Final sur la dernière mesure** : la dernière mesure devient un coup de
   conclusion (crash et grosse caisse sur le premier temps, puis silence),
   pour terminer le morceau ou la section.
+- **Suivre la prise** (présent quand le morceau a une piste audio avec des
+  clips) : SoundText écoute le groove de la prise (pour chaque double
+  croche de la mesure, à quelle fréquence et avec quelle force il y a un
+  coup) et met aussi la grosse caisse sur ses accents forts et récurrents,
+  en laissant la caisse claire où elle est. Le tempo est celui du morceau :
+  pour une prise jouée librement, utilisez d'abord **Tirer le tempo de la
+  prise...** sur le clip. Les mesures proposées couvrent aussi les clips
+  audio.
 - **Intensité** : voir plus haut.
 
 **Composer → Générer dans la piste sélectionnée → Grille d'accords...** (nécessite un

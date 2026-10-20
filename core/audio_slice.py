@@ -26,6 +26,13 @@ def detect_attacks(samples: np.ndarray, rate: int, min_gap: float = 0.08,
                    threshold: float = ATTACK_THRESHOLD) -> List[float]:
     """Gli istanti (secondi) degli attacchi: i picchi dell'inviluppo degli
     attacchi sopra la soglia, distanti almeno min_gap, rifiniti sul segnale."""
+    return [t for t, _strength in detect_attack_strengths(samples, rate, min_gap, threshold)]
+
+
+def detect_attack_strengths(samples: np.ndarray, rate: int, min_gap: float = 0.08,
+                            threshold: float = ATTACK_THRESHOLD) -> List[tuple]:
+    """Come detect_attacks, con la forza di ciascuno: [(secondi, forza
+    0-1 rispetto all'attacco piu' forte)]."""
     env, fps = onset_envelope(samples, rate)
     if not env.any():
         return []
@@ -37,13 +44,19 @@ def detect_attacks(samples: np.ndarray, rate: int, min_gap: float = 0.08,
     for i in sorted(peaks, key=lambda k: -env[k]):         # i piu' forti prima
         if all(abs(i - j) >= gap for j in chosen):
             chosen.append(i)
-    from .beat_track import FRAME, HOP
+    from .beat_track import FRAME, HOP, _mono
     times = sorted(_attack_time(samples, rate, (i * HOP + FRAME / 2) / rate) for i in chosen)
-    out: List[float] = []
-    for t in times:                                         # due picchi dello stesso attacco
-        if not out or t - out[-1] >= min_gap / 2:
-            out.append(t)
-    return out
+    kept: List[float] = []
+    for t in times:                                        # due picchi dello stesso attacco
+        if not kept or t - kept[-1] >= min_gap / 2:
+            kept.append(t)
+    # la forza dal picco del segnale subito dopo l'attacco: l'inviluppo e' in
+    # scala logaritmica e appiattirebbe la differenza fra un colpo debole e uno forte
+    x = np.abs(_mono(samples))
+    window = int(0.03 * rate)
+    peaks = [float(x[int(t * rate):int(t * rate) + window].max(initial=0.0)) for t in kept]
+    top = max(peaks) if peaks else 0.0
+    return [(t, peak / top if top > 0 else 0.0) for t, peak in zip(kept, peaks)]
 
 
 def clip_attacks(clip: AudioClip, min_gap: float = 0.08) -> List[float]:

@@ -713,13 +713,50 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
                                      "dell'ultima battuta, poi silenzio."))
         self.ending_check.toggled.connect(self._regenerate_preview)
         options_row.addWidget(self.ending_check)
+        from core.audio_track_notation import audio_tracks_with_clips
+        self._groove_tracks = audio_tracks_with_clips(self.project, self.track_name)
+        if self._groove_tracks:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Segui la ripresa:")))
+            self.groove_combo = QComboBox()
+            self.groove_combo.addItem(tr("nessuna"), None)
+            for track in self._groove_tracks:
+                self.groove_combo.addItem(track.name, track.name)
+            self.groove_combo.setToolTip(tr(
+                "La cassa va anche dove la ripresa ha gli accenti forti e ricorrenti (il groove, sedicesimo "
+                "per sedicesimo). Il tempo e' gia' quello del brano: per una ripresa suonata libera usa prima "
+                "Ricava il tempo dalla ripresa."))
+            self.groove_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.groove_combo)
+
+    def _groove(self):
+        """Il groove della ripresa scelta (core.groove), o None."""
+        combo = getattr(self, "groove_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return None
+        from PySide6.QtWidgets import QApplication
+        from core import groove
+        track = self.project.get_track(name)
+        waiting = not groove.is_cached(self.project, track)
+        if waiting:
+            self.status_label.setText(tr("Ascolto il groove di '{name}'...", name=name))
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            QApplication.processEvents()
+        try:
+            return groove.groove_of_track(self.project, track)
+        except (RuntimeError, OSError, ValueError) as e:
+            raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
+        finally:
+            if waiting:
+                QApplication.restoreOverrideCursor()
 
     def _generate_text(self, seed=None) -> str:
         style = self.style_combo.currentData()
         return generate_drum_pattern(style, bars=self.bars_spin.value(), fill_every=self.fill_every_spin.value(),
                                      intensity=self._intensity(),
                                      phrase_fills=self.phrase_fills_check.isChecked(),
-                                     ending=self.ending_check.isChecked(),
+                                     ending=self.ending_check.isChecked(), kick_accents=self._groove(),
                                      **self._variation_kwargs(seed))
 
 

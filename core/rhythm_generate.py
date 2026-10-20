@@ -798,6 +798,36 @@ def _ending_bar(length: int) -> List[Optional[list]]:
     return [[("crash", 110), ("kick", 110)]] + [None] * (length - 1)
 
 
+# Peso del groove (vedi generate_drum_pattern, kick_accents) da cui un
+# accento della ripresa porta la cassa.
+KICK_ACCENT = 0.6
+KICK_ACCENT_VELOCITY = 100
+
+
+def _kick_on_accents(bar: List[Optional[list]], grid: str, accents: List[float]) -> List[Optional[list]]:
+    """La cassa anche sugli accenti forti della ripresa (un peso per
+    sedicesimo), dove la griglia dello stile ha uno slot e non c'e' gia' il
+    rullante (il backbeat resta com'e')."""
+    m = re.match(r"(\d+)(T?):", grid)
+    if not m:
+        return bar
+    slot_quarters = 4.0 / int(m.group(1)) * (2.0 / 3.0 if m.group(2) else 1.0)
+    bar = list(bar)
+    for i, weight in enumerate(accents):
+        if weight < KICK_ACCENT:
+            continue
+        pos = (i / 4.0) / slot_quarters
+        j = int(round(pos))
+        if abs(pos - j) > 0.01 or not 0 <= j < len(bar):
+            continue
+        hits = bar[j] or []
+        names = {name for name, _vel in hits}
+        if "kick" in names or "snare" in names:
+            continue
+        bar[j] = hits + [("kick", KICK_ACCENT_VELOCITY)]
+    return bar
+
+
 def _with_crash(bar: List[Optional[list]]) -> List[Optional[list]]:
     bar = list(bar)
     existing = bar[0] or []
@@ -809,7 +839,7 @@ def _with_crash(bar: List[Optional[list]]) -> List[Optional[list]]:
 def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
                           variability=0.0, seed: Optional[int] = None,
                           intensity: str = "normal", phrase_fills: bool = False,
-                          ending: bool = False) -> str:
+                          ending: bool = False, kick_accents: Optional[List[float]] = None) -> str:
     """Genera 'bars' battute di batteria nello stile scelto (vedi
     DRUM_STYLES), ripetendo il giro base e sostituendolo ogni 'fill_every'
     battute con un fill (0 o un numero <=0 disabilita i fill: solo il giro
@@ -835,7 +865,11 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
     parte ('full' passa al ride e apre ogni gruppo di battute con un crash);
     'phrase_fills' fa fill piccoli (solo l'ultimo beat) ogni 'fill_every'
     battute e completi ogni 2*'fill_every'; 'ending' chiude l'ultima battuta
-    con un colpo finale."""
+    con un colpo finale.
+
+    'kick_accents': il groove di una ripresa (core.groove, un peso 0-1 per
+    sedicesimo della battuta): nelle battute senza fill la cassa va anche
+    dove la ripresa ha gli accenti forti (vedi _kick_on_accents)."""
     spec = _drum_spec(style)
     if bars <= 0:
         raise ValueError(tr("Il numero di battute deve essere positivo"))
@@ -878,6 +912,8 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
         if amount.any():
             bar = _vary_drum_bar(bar, style, grid, amount, rng, allow_additions=not is_fill_bar)
         bar = _apply_drum_intensity(bar, style, grid, level)
+        if kick_accents and not is_fill_bar and not (ending and is_last):
+            bar = _kick_on_accents(bar, grid, kick_accents)
         if bar_idx > 0:
             prev_was_fill = fill_every > 0 and bar_idx % fill_every == 0 and bar_idx != 1
             if prev_was_fill or (level == "full" and bar_idx % block == 0):

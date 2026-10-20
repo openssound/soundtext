@@ -2453,6 +2453,13 @@ track):
   full.
 - **Ending on the last bar**: the last bar becomes a closing hit (crash and
   kick on the first beat, then silence), to end the song or the section.
+- **Follow the take** (present when the song has an audio track with
+  clips): SoundText listens to the groove of the take (for each sixteenth
+  of the bar, how often and how loud there is a hit) and also puts the kick
+  on its strong, recurring accents, leaving the snare where it is. The
+  tempo is the song's: for a take played freely use **Get the tempo from the
+  take...** on the clip first. The suggested bars also cover the audio
+  clips.
 - **Intensity**: see above.
 
 **Compose → Generate into the selected track → Chord progression...** (requires a

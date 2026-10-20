@@ -2558,6 +2558,15 @@ percusión seleccionada):
 - **Final en el último compás**: el último compás se convierte en un golpe
   de cierre (crash y bombo en el primer tiempo, luego silencio), para
   terminar la canción o la sección.
+  de cierre (crash y bombo en el primer tiempo, luego silencio), para
+  terminar la canción o la sección.
+- **Seguir la toma** (aparece cuando la canción tiene una pista de audio
+  con clips): SoundText escucha el groove de la toma (para cada
+  semicorchea del compás, con qué frecuencia y con qué fuerza hay un golpe)
+  y pone el bombo también en sus acentos fuertes y recurrentes, dejando la
+  caja donde está. El tempo es el de la canción: para una toma tocada libre
+  usa antes **Obtener el tempo de la toma...** en el clip. Los compases
+  propuestos cubren también los clips de audio.
 - **Intensidad**: ver arriba.
 
 **Componer → Generar en la pista seleccionada → Progresión de acordes...** (requiere un
