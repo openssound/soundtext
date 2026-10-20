@@ -44,6 +44,7 @@ from core.arrangement import (
     save_box_file,
 )
 from core import audio_tracks
+from core.audio_track_notation import audible_clips
 from core.instruments import gm_family_for_program
 from core.model import AudioClip, Clip, Project
 from core.notation import bar_starts, validate_track_text
@@ -58,7 +59,8 @@ from .box_transpose_dialog import BoxTransposeDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
 from .main_window_playback import TEXT_DIM_INVERT_BG
 from .rhythm_generate_dialog import (
-    BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, last_box_key,
+    BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, chord_source_tracks,
+    last_box_key,
     project_bar_beats,
 )
 from .theme import ACCENT, BORDER, TEXT_DIM, get_active_theme
@@ -1198,7 +1200,7 @@ class ArrangementView(QWidget):
         un'altra traccia ha gia' accordi da seguire: senza, il dialogo non
         avrebbe niente da generare."""
         return (not instrument.is_percussion and not self._is_bass_instrument(instrument)
-                and project_has_chords(self.host.project, exclude_track_name=track_name))
+                and project_has_chords(self.host.project, exclude_track_name=track_name, audio=True))
 
     def _select_track_from_header(self, track_name: str):
         self.select_box(None, None)
@@ -1211,6 +1213,8 @@ class ArrangementView(QWidget):
             menu = QMenu(self)
             record_action = menu.addAction(tr("● Registra..."))
             import_action = menu.addAction(tr("Importa file audio..."))
+            convert_action = menu.addAction(tr("Converti la traccia in notazione..."))
+            convert_action.setEnabled(bool(audible_clips(track)))
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
@@ -1223,6 +1227,8 @@ class ArrangementView(QWidget):
                 self.host.record_into_audio_track(track_name)
             elif chosen is import_action:
                 self.import_audio_clip(track_name, self.end_of_track_beat(track_name))
+            elif chosen is convert_action:
+                self.convert_track_to_notation(track_name)
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:
@@ -1349,8 +1355,7 @@ class ArrangementView(QWidget):
 
     def _generate_bass_for_new_box(self, track_name: str):
         track = self.host.project.get_track(track_name)
-        other_tracks = [(t.name, t.text) for t in self.host.project.tracks
-                        if t.name != track_name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -1366,8 +1371,7 @@ class ArrangementView(QWidget):
 
     def _generate_melody_for_new_box(self, track_name: str):
         track = self.host.project.get_track(track_name)
-        other_tracks = [(t.name, t.text) for t in self.host.project.tracks
-                        if t.name != track_name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -1969,6 +1973,104 @@ class ArrangementView(QWidget):
         self.host.select_track(name)
         self.host.statusBar().showMessage(
             tr("Clip '{name}' convertita in notazione nella nuova traccia '{0}'.", name, name=clip.name), 6000)
+
+    def convert_track_to_notation(self, track_name: str):
+        """Tutta la traccia audio in una traccia SoundText, un box per clip
+        (vedi core.audio_track_notation.convert_audio_track): le scelte nel
+        dialogo, poi la conversione in background, annullabile."""
+        import copy
+        from PySide6.QtWidgets import QDialog, QProgressDialog
+        from core.audio_import import ConversionCancelled
+        from core.audio_track_notation import convert_audio_track
+        from core.instruments import get_instrument
+        from .audio_track_convert_dialog import AudioTrackConvertDialog
+        from .worker import Worker
+        project = self.host.project
+        track = project.get_track(track_name)
+        dlg = AudioTrackConvertDialog(self, project, track)
+        self._track_convert_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted:
+            return
+        destination, options = dlg.destination(), dlg.options()
+        default_octave = get_instrument(dlg.instrument_name()).default_octave
+        snapshot = copy.deepcopy(project)   # il brano puo' cambiare mentre si converte
+        cancelled = {"value": False}
+        progress_dlg = QProgressDialog(tr("Conversione delle clip di '{name}' in notazione...", name=track_name),
+                                       tr("Annulla"), 0, 100, self)
+        progress_dlg.setWindowTitle(tr("Converti la traccia in notazione"))
+        progress_dlg.setWindowModality(Qt.WindowModal)
+        progress_dlg.setMinimumDuration(0)
+        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
+
+        def progress(frac):
+            if cancelled["value"]:
+                raise ConversionCancelled()
+            worker.progress.emit(frac)
+
+        worker = Worker(convert_audio_track, snapshot, snapshot.get_track(track_name), options, default_octave,
+                        progress_callback=progress, pass_progress=False)
+        worker.progress.connect(lambda f: progress_dlg.setValue(int(f * 100)))
+
+        def finish() -> bool:
+            # come in "Analizza livelli": lo stato prima di close(), che emette canceled
+            was_cancelled = cancelled["value"]
+            self._track_convert_worker = None
+            progress_dlg.canceled.disconnect()
+            progress_dlg.close()
+            return was_cancelled
+
+        def done(result):
+            if not finish():
+                self._place_converted_boxes(track_name, destination, *result)
+
+        def failed(message):
+            if not finish():
+                QMessageBox.warning(self, tr("Converti la traccia in notazione"),
+                                    tr("Conversione non riuscita:\n{message}", message=message))
+
+        worker.finished_ok.connect(done)
+        worker.finished_error.connect(failed)
+        self._track_convert_worker = worker
+        worker.start()
+
+    def _place_converted_boxes(self, source_name: str, destination, boxes, silent):
+        """I box della conversione nella traccia di destinazione (nuova o
+        esistente), ciascuno alla posizione della sua clip o, se li' c'e' gia'
+        qualcosa, nello spazio libero piu' vicino."""
+        project = self.host.project
+        if not boxes:
+            QMessageBox.information(self, tr("Converti la traccia in notazione"),
+                                    tr("Nelle clip di '{name}' non ho riconosciuto niente da scrivere.", name=source_name))
+            return
+        kind, value = destination
+        if kind == "new":
+            existing = {t.name for t in project.tracks}
+            name, n = tr("{name} (note)", name=source_name), 2
+            while name in existing:
+                name, n = tr("{name} (note {n})", name=source_name, n=n), n + 1
+            target = project.add_track(name, value, "")
+        else:
+            target = project.get_track(value)
+            self._wrap_free_text_in_box(target)
+        moved = 0
+        for box in boxes:
+            target.clips.append(box)
+            beat = self.resolve_free_slot(target.name, box, box.start_beat)
+            if abs(beat - box.start_beat) > 1e-9:
+                box.start_beat = round(beat, 6)
+                moved += 1
+        target.text = flatten_clips_to_text(target.clips, project.patterns, target.instrument.default_octave,
+                                            meter=project.meter())
+        self.host._mark_dirty()
+        self.host.refresh_mixer()
+        self.host.select_track(target.name)
+        message = tr("Traccia '{source}' convertita: {n} box nella traccia '{target}'.",
+                     source=source_name, n=len(boxes), target=target.name)
+        if moved:
+            message += " " + tr("{n} spostati nello spazio libero piu' vicino.", n=moved)
+        if silent:
+            message += " " + tr("Clip senza note riconosciute: {names}.", names=", ".join(silent))
+        self.host.statusBar().showMessage(message, 8000)
 
     def _set_clip_gain(self, track_name: str, clip: AudioClip):
         value, ok = QInputDialog.getDouble(

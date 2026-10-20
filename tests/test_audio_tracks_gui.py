@@ -456,3 +456,100 @@ def test_muted_clip_is_drawn_grey_and_labelled(tmp_path):
     assert "silenziata" in item.toolTip()
     w.undo()
     assert not w.project.get_track("Voce").audio_clips[0].muted
+
+
+# --------------------------------------------------------------- traccia audio -> notazione, accordi dall'audio
+
+def _chord_clip_window(tmp_path):
+    from core.audio_tracks import import_audio_file
+    from test_audio_chords import RATE, _hz, _tone_mix
+    x = np.concatenate([_tone_mix([_hz(m) for m in chord], 2.0)
+                        for chord in [(48, 64, 67), (45, 60, 64), (41, 60, 65), (43, 59, 62)]])
+    src = str(tmp_path / "giro.wav")
+    write_wav(src, x[:, None], RATE, bits=16)
+    w = _window()
+    t = w.project.add_audio_track("Chitarra")
+    path = import_audio_file(src, audio_tracks.staging_audio_dir())
+    t.audio_clips += [AudioClip("Strofa", path, 8.0), AudioClip("Ritornello", path, 32.0)]
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    _app.processEvents()
+    return w, t
+
+
+def _run_track_conversion(w, track_name, setup):
+    """Lancia la conversione con le scelte fatte da setup(dialogo) e aspetta la fine."""
+    from gui.audio_track_convert_dialog import AudioTrackConvertDialog
+    view = w.arrangement_view
+
+    def fake_exec(dlg):
+        setup(dlg)
+        return AudioTrackConvertDialog.Accepted
+
+    original = AudioTrackConvertDialog.exec
+    AudioTrackConvertDialog.exec = fake_exec
+    try:
+        view.convert_track_to_notation(track_name)
+    finally:
+        AudioTrackConvertDialog.exec = original
+    worker = view._track_convert_worker
+    worker.wait()
+    for _ in range(50):
+        _app.processEvents()
+        if view._track_convert_worker is None:
+            break
+
+
+def _chords_mode(dlg):
+    dlg.mode_combo.setCurrentIndex(dlg.mode_combo.findData("chords"))
+
+
+def test_audio_track_menu_offers_the_track_conversion(tmp_path):
+    w, t = _chord_clip_window(tmp_path)
+    actions = _menu_actions(lambda: w.arrangement_view.show_track_menu("Chitarra", w.mapToGlobal(w.rect().center())))
+    assert "Converti la traccia in notazione..." in actions
+
+
+def test_convert_track_into_one_new_note_track_and_undo(tmp_path):
+    w, t = _chord_clip_window(tmp_path)
+    _run_track_conversion(w, "Chitarra", _chords_mode)
+    notes = w.project.get_track("Chitarra (note)")
+    assert notes.instrument_name == "Piano"
+    assert [(c.name, c.start_beat) for c in notes.clips] == [("Strofa", 8.0), ("Ritornello", 32.0)]
+    assert notes.clips[0].text.startswith("4: 4C | 4Am | 4F | 4G")
+    assert len(w.project.get_track("Chitarra").audio_clips) == 2          # l'audio resta
+    w.undo()
+    assert w.project.find_track("Chitarra (note)") is None
+
+
+def test_convert_track_into_an_existing_track_uses_free_slots(tmp_path):
+    w, t = _chord_clip_window(tmp_path)
+    keys = w.project.add_track("Tastiera", "Piano", "")
+    keys.clips = [Clip(name="Intro", text="4: c d e f | g a b c*5", start_beat=6.0)]   # 6-14: sopra la Strofa
+    w.refresh_mixer()
+    _app.processEvents()
+
+    def existing(dlg):
+        _chords_mode(dlg)
+        dlg.existing_radio.setChecked(True)
+        dlg.target_combo.setCurrentText("Tastiera")
+
+    _run_track_conversion(w, "Chitarra", existing)
+    keys = w.project.get_track("Tastiera")
+    starts = {c.name: c.start_beat for c in keys.clips}
+    assert starts["Intro"] == 6.0 and starts["Ritornello"] == 32.0
+    assert starts["Strofa"] >= 14.0                                       # spostata dopo l'Intro
+    assert w.project.find_track("Chitarra (note)") is None
+
+
+def test_bass_dialog_can_follow_the_chords_of_an_audio_track(tmp_path):
+    from gui.rhythm_generate_dialog import BassGenerateDialog, chord_source_tracks
+    w, t = _chord_clip_window(tmp_path)
+    sources = chord_source_tracks(w.project)
+    assert [label for label, _s in sources] == ["Chitarra (audio)"]
+    dlg = BassGenerateDialog(w, project=w.project, instrument_name="Bass", context_label="prova",
+                             other_tracks=sources, default_bars=4)
+    text = dlg.preview_edit.toPlainText()
+    assert text.strip() and dlg.status_label.text() == ""
+    assert "c" in text.lower()                                           # il basso parte dal Do della Strofa
+    dlg.reject()

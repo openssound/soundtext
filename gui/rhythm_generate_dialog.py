@@ -43,6 +43,52 @@ from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
 from core.i18n import tr
 
+def chord_source_tracks(project: Project, exclude_track_name: Optional[str] = None) -> list:
+    """Le sorgenti di accordi per basso, accompagnamento e melodia:
+    [(etichetta, sorgente)], dove la sorgente e' il testo di una traccia di
+    note o, per una traccia audio con delle clip, un
+    core.audio_track_notation.AudioChordSource (accordi riconosciuti dal
+    suono, solo quando la si sceglie). Le tracce audio vengono dopo."""
+    from core.audio_track_notation import AudioChordSource, audio_tracks_with_clips
+    sources = [(t.name, t.text) for t in project.tracks if not t.is_audio and t.name != exclude_track_name]
+    sources += [(tr("{name} (audio)", name=t.name), AudioChordSource(project, t))
+                for t in audio_tracks_with_clips(project, exclude_track_name)]
+    return sources
+
+
+def _chords_of_source(dialog, name: str, source):
+    """(accordi [ChordSpan], testo da cui stimare la tonalita') della
+    sorgente scelta. Una traccia audio si analizza la prima volta (qualche
+    secondo, con il cursore d'attesa), poi resta in memoria. ValueError con
+    il motivo se non ci sono accordi da seguire."""
+    if isinstance(source, str):
+        chords = extract_chords_from_track(source, dialog.project.patterns, midi_dir=None)
+        if not chords:
+            raise ValueError(
+                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=name)
+            )
+        return chords, source
+    from PySide6.QtWidgets import QApplication
+    waiting = not source.is_ready()
+    if waiting:
+        dialog.status_label.setText(tr("Riconosco gli accordi della traccia audio '{name}'...", name=source.name))
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.processEvents()
+    try:
+        chords = source.chords()
+        text = source.text()
+    except (RuntimeError, OSError) as e:
+        raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=source.name, error=e))
+    finally:
+        if waiting:
+            QApplication.restoreOverrideCursor()
+    if not chords:
+        raise ValueError(
+            tr("Nella traccia audio '{name}' non ho riconosciuto accordi: serve una parte che suoni "
+               "accordi (chitarra ritmica, pianoforte, un brano intero), non una melodia.", name=source.name))
+    return chords, text
+
+
 DRUM_STYLE_LABELS = [
     ("rock", "Rock"),
     ("funk", "Funk"),
@@ -678,8 +724,10 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
 
 
 class BassGenerateDialog(_GeneratedTrackDialogBase):
-    """other_tracks: [(nome, testo), ...] - le tracce da cui si puo' leggere
-    la sequenza di accordi da seguire (tutte tranne quella di destinazione)."""
+    """other_tracks: [(nome, sorgente), ...] - le tracce da cui si puo'
+    leggere la sequenza di accordi da seguire (tutte tranne quella di
+    destinazione, vedi chord_source_tracks): la sorgente e' il testo di una
+    traccia di note o una traccia audio (AudioChordSource)."""
 
     def __init__(self, parent, project, instrument_name, context_label, other_tracks,
                  min_total_beats=0.0, default_bars=None, track_name=None):
@@ -747,12 +795,7 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
         controls_row.addWidget(self.variation_every_spin)
 
     def _generate_text(self, seed=None) -> str:
-        source_name, source_text = self.other_tracks[self.source_combo.currentIndex()]
-        chords = extract_chords_from_track(source_text, self.project.patterns, midi_dir=None)
-        if not chords:
-            raise ValueError(
-                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=source_name)
-            )
+        chords, _text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
         style = self.style_combo.currentData()
         return generate_bass_from_chords(
             chords, style, octave=self.octave_spin.value(),
@@ -847,12 +890,7 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         controls_row.addWidget(self.variation_every_spin)
 
     def _generate_text(self, seed=None) -> str:
-        source_name, source_text = self.other_tracks[self.source_combo.currentIndex()]
-        chords = extract_chords_from_track(source_text, self.project.patterns, midi_dir=None)
-        if not chords:
-            raise ValueError(
-                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=source_name)
-            )
+        chords, source_text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
         style = self.style_combo.currentData()
         is_melody = style in MELODY_STYLES
         self.variation_every_spin.setEnabled(not is_melody)   # le melodie a frasi hanno la loro forma

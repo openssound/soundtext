@@ -21,7 +21,8 @@ from .selection_actions import handle_selection_context_menu
 from .audio_import_dialog import AudioImportDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
 from .rhythm_generate_dialog import (
-    DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, last_box_key,
+    DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, chord_source_tracks,
+    last_box_key,
 )
 from .theme import GOOD, BAD, WARN
 from core.i18n import tr
@@ -363,7 +364,7 @@ class MixerMixin:
         menu.addSection(tr("Genera una traccia"))
         menu.addAction(tr("Batteria..."), lambda: self.add_generated_track("drums"))
         menu.addAction(tr("Giro armonico..."), lambda: self.add_generated_track("progression"))
-        has_chords = project_has_chords(self.project)
+        has_chords = project_has_chords(self.project, audio=True)
         for kind, label in (("bass", tr("Basso dagli accordi...")), ("melody", tr("Accompagnamento o riff..."))):
             action = menu.addAction(label if has_chords else tr("{label}  (serve un giro di accordi)", label=label),
                                     lambda k=kind: self.add_generated_track(k))
@@ -403,7 +404,7 @@ class MixerMixin:
         from .rhythm_generate_dialog import project_bar_beats
         other_beats = tracks_duration_beats(self.project)
         bar_beats = project_bar_beats(self.project)
-        other_tracks = [(t.name, t.text) for t in self.project.tracks if not t.is_audio]
+        other_tracks = chord_source_tracks(self.project)
         if kind == "drums":
             instrument, base, box = "Drums", "Batteria", "Groove"
         elif kind == "progression":
@@ -923,8 +924,7 @@ class MixerMixin:
         track = self.project.get_track(self.current_track_name)
         if self._reject_audio_track(track, tr("la generazione del basso")):
             return
-        other_tracks = [(t.name, t.text) for t in self.project.tracks
-                        if t.name != track.name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -985,7 +985,7 @@ class MixerMixin:
                 tr("La traccia '{name}' usa lo strumento '{instrument_name}', percussivo.\nUsa 'Genera batteria...' invece: qui le note sono altezze, non hanno senso su una traccia percussiva.", name=track.name, instrument_name=track.instrument_name)
             )
             return
-        if not project_has_chords(self.project, exclude_track_name=track.name):
+        if not project_has_chords(self.project, exclude_track_name=track.name, audio=True):
             QMessageBox.information(
                 self, tr("Nessun giro di accordi"),
                 tr("L'accompagnamento e il riff seguono gli accordi di un'altra traccia, ma nel brano "
@@ -993,8 +993,7 @@ class MixerMixin:
                 "(Traccia → Genera giro armonico in questa traccia...).")
             )
             return
-        other_tracks = [(t.name, t.text) for t in self.project.tracks
-                        if t.name != track.name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
         other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
         dlg = MelodyGenerateDialog(
             self, project=self.project, instrument_name=track.instrument_name,

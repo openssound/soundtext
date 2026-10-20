@@ -1,0 +1,157 @@
+"""
+"Converti la traccia in notazione..." (menu ⋯ di una traccia audio): le
+scelte, una volta sola per tutte le clip della traccia (cosa riconoscere,
+quantizzazione, dove mettere il risultato). La conversione la fa
+core.audio_track_notation.convert_audio_track, lanciata da
+gui.arrangement_view: una traccia SoundText con un box per clip, ciascuno
+alla posizione e con il nome della sua clip.
+"""
+
+from PySide6.QtWidgets import (
+    QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
+    QRadioButton, QVBoxLayout, QWidget,
+)
+
+from core.audio_track_notation import ConversionOptions, audible_clips
+from core.i18n import tr
+from core.instruments import get_instrument, list_instrument_names
+from .audio_import_dialog import GRID_CHOICES, TERNARY_ENABLED_GRIDS, _min_freq_hz_for_instrument
+
+MODES = (("melody", tr("Melodia")), ("drums", tr("Percussioni")), ("chords", tr("Accordi")))
+
+
+def _suggested_instrument(mode: str, input_profile: str) -> str:
+    if mode == "drums":
+        return "Drums"
+    if mode == "chords":
+        return "Guitar" if input_profile == "chitarra" else "Piano"
+    return {"chitarra": "Guitar", "tastiera": "Piano", "voce": "Trumpet"}.get(input_profile, "Piano")
+
+
+class AudioTrackConvertDialog(QDialog):
+    def __init__(self, parent, project, track):
+        super().__init__(parent)
+        self.project = project
+        self.track = track
+        self.setWindowTitle(tr("Converti la traccia in notazione — {name}", name=track.name))
+        layout = QVBoxLayout(self)
+
+        clips = audible_clips(track)
+        skipped = len(track.audio_clips) - len(clips)
+        summary = tr("Clip da convertire: {n}, ciascuna in un box alla sua posizione.", n=len(clips))
+        if skipped:
+            summary += "\n" + tr("Saltate: {n} (silenziate o con il file mancante).", n=skipped)
+        layout.addWidget(QLabel(summary))
+
+        form = self._form = QFormLayout()
+        self.mode_combo = QComboBox()
+        for value, label in MODES:
+            self.mode_combo.addItem(label, value)
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        form.addRow(tr("Cosa riconoscere:"), self.mode_combo)
+
+        quant = QWidget()
+        quant_row = QHBoxLayout(quant)
+        quant_row.setContentsMargins(0, 0, 0, 0)
+        self.grid_combo = QComboBox()
+        for label, denom in GRID_CHOICES:
+            self.grid_combo.addItem(label, denom)
+        self.grid_combo.setCurrentIndex(self.grid_combo.findData(16))
+        self.grid_combo.currentIndexChanged.connect(self._on_grid_changed)
+        quant_row.addWidget(self.grid_combo)
+        self.ternary_check = QCheckBox(tr("Ternario (terzine, 8T/16T)"))
+        quant_row.addWidget(self.ternary_check)
+        quant_row.addStretch(1)
+        self._quant_row = quant
+        form.addRow(tr("Quantizzazione:"), quant)
+        self.voice_check = QCheckBox()
+        form.addRow("", self.voice_check)
+        self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
+        form.addRow("", self.sevenths_check)
+        layout.addLayout(form)
+
+        dest_form = QFormLayout()
+        self.new_radio = QRadioButton(tr("Nuova traccia, strumento:"))
+        self.existing_radio = QRadioButton(tr("Aggiungi alla traccia:"))
+        group = QButtonGroup(self)
+        group.addButton(self.new_radio)
+        group.addButton(self.existing_radio)
+        self.instrument_combo = QComboBox()
+        self.instrument_combo.addItems(list_instrument_names())
+        dest_form.addRow(self.new_radio, self.instrument_combo)
+        self.target_combo = QComboBox()
+        self.target_combo.addItems([t.name for t in project.tracks if not t.is_audio])
+        dest_form.addRow(self.existing_radio, self.target_combo)
+        self.new_radio.setChecked(True)
+        self.existing_radio.setEnabled(self.target_combo.count() > 0)
+        self.existing_radio.setToolTip(tr("I box vanno dove sono le clip, o nello spazio libero piu' vicino."))
+        self.new_radio.toggled.connect(self._on_destination_changed)
+        layout.addLayout(dest_form)
+
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box.button(QDialogButtonBox.Ok).setText(tr("Converti"))
+        self.button_box.button(QDialogButtonBox.Ok).setEnabled(bool(clips))
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+        self._on_mode_changed()
+        self._on_destination_changed()
+
+    def _mode(self) -> str:
+        return self.mode_combo.currentData()
+
+    def _on_mode_changed(self):
+        mode = self._mode()
+        self._form.setRowVisible(self._quant_row, mode != "chords")
+        self._form.setRowVisible(self.voice_check, mode != "chords")
+        self._form.setRowVisible(self.sevenths_check, mode == "chords")
+        self.voice_check.setText(tr("Sto cantando (non lo strumento)") if mode == "melody"
+                                 else tr("Sto facendo beatbox (non la batteria)"))
+        suggested = _suggested_instrument(mode, self.track.input_profile)
+        index = self.instrument_combo.findText(suggested)
+        if index >= 0:
+            self.instrument_combo.setCurrentIndex(index)
+        self._on_grid_changed()
+
+    def _on_grid_changed(self):
+        enable = self.grid_combo.currentData() in TERNARY_ENABLED_GRIDS
+        self.ternary_check.setEnabled(enable)
+        if not enable:
+            self.ternary_check.setChecked(False)
+
+    def _on_destination_changed(self):
+        self.instrument_combo.setEnabled(self.new_radio.isChecked())
+        self.target_combo.setEnabled(self.existing_radio.isChecked())
+
+    def destination(self):
+        """("new", strumento) o ("existing", nome della traccia)."""
+        if self.existing_radio.isChecked():
+            return "existing", self.target_combo.currentText()
+        return "new", self.instrument_combo.currentText()
+
+    def instrument_name(self) -> str:
+        kind, value = self.destination()
+        return value if kind == "new" else self.project.get_track(value).instrument_name
+
+    def options(self) -> ConversionOptions:
+        from .audio_pitch_dialog import current_pitch_params
+        mode = self._mode()
+        options = ConversionOptions(mode=mode, grid_denominator=self.grid_combo.currentData(),
+                                    ternary=self.ternary_check.isChecked() and mode != "chords",
+                                    sevenths=mode == "chords" and self.sevenths_check.isChecked(),
+                                    voice_source=mode != "chords" and self.voice_check.isChecked())
+        if mode == "melody":
+            # gli stessi parametri del pitch tracking di "Importa audio"
+            # (Opzioni -> Import audio), vedi AudioImportDialog
+            params = current_pitch_params()
+            if params["min_freq_auto"]:
+                if not options.voice_source:
+                    options.min_freq_hz = _min_freq_hz_for_instrument(get_instrument(self.instrument_name()))
+            else:
+                options.min_freq_hz = params["min_freq_hz"]
+            options.buf_size = params["buf_size"]
+            options.hop_size = params["hop_size"]
+            options.pitch_confidence_threshold = params["confidence"]
+            options.min_note_duration_sec = params["min_note_ms"] / 1000.0
+        return options

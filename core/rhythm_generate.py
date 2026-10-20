@@ -88,10 +88,15 @@ def tracks_duration_beats(project: Project, exclude_track_name: Optional[str] = 
     traccia di destinazione su cui si sta per generare batteria/basso, la cui
     durata attuale non e' un riferimento utile. Usata dai dialoghi di
     generazione per far coprire di default al risultato l'intera estensione
-    della musica gia' presente nelle altre tracce, invece di fermarsi prima."""
+    della musica gia' presente nelle altre tracce, invece di fermarsi prima.
+    Le tracce audio contano fino alla fine della loro ultima clip."""
     max_beats = 0.0
+    audio = [t for t in project.tracks if t.is_audio and t.name != exclude_track_name]
+    if audio:
+        from .audio_tracks import audio_tracks_end_beat
+        max_beats = audio_tracks_end_beat(project, audio)
     for track in project.tracks:
-        if track.name == exclude_track_name:
+        if track.name == exclude_track_name or track.is_audio:
             continue
         events = track.parsed_events(project.patterns, midi_dir=midi_dir, meter=project.meter())
         if events:
@@ -1961,11 +1966,20 @@ def parse_key(key: str) -> Tuple[int, str, bool]:
 
 
 def project_has_chords(project: Project, midi_dir: Optional[str] = None,
-                       exclude_track_name: Optional[str] = None) -> bool:
+                       exclude_track_name: Optional[str] = None, audio: bool = False) -> bool:
     """Vero se almeno una traccia del progetto (tranne 'exclude_track_name',
     se dato) contiene accordi che basso e accompagnamento possono seguire
-    (vedi extract_chords_from_track)."""
+    (vedi extract_chords_from_track). Con audio=True conta anche una traccia
+    audio con delle clip: i suoi accordi si riconoscono solo quando la si
+    sceglie come sorgente (vedi core.audio_track_notation), qui non si
+    analizza niente."""
+    if audio:
+        from .audio_track_notation import audio_tracks_with_clips
+        if audio_tracks_with_clips(project, exclude_track_name):
+            return True
     for track in project.tracks:
+        if track.is_audio:
+            continue
         if track.instrument.is_percussion or track.name == exclude_track_name:
             continue
         try:

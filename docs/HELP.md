@@ -2575,6 +2575,12 @@ un'altra traccia nel progetto con accordi già scritti):
   MIDI; il blocco e' riconosciuto come accordo noto, altrimenti la
   fondamentale e' la nota piu' bassa). Una traccia fatta solo di note
   singole (melodia, arpeggi) non ha accordi da seguire.
+  Anche una **traccia audio** puo' dare gli accordi (in elenco come
+  "Nome (audio)"): una ripresa di chitarra ritmica o di pianoforte viene
+  analizzata la prima volta che la scegli (qualche secondo), con lo stesso
+  riconoscimento della modalita' Accordi dell'import audio, e gli accordi
+  di ogni clip stanno dove sta la clip. Vale anche per
+  **Accompagnamento o riff** e per la melodia, che ne ricava la tonalita'.
 - **Stile** (ognuno scrive la sua griglia ritmica: quarti, ottavi o, per lo
   shuffle, terzine di ottavo):
   - **Fondamentale**: ripete la tonica per tutta la durata dell'accordo.
@@ -3573,6 +3579,13 @@ oppure **importando** file registrati con un altro programma.
   (proposto in base a cosa hai registrato: chitarra, tastiera, voce) e un
   box che parte dove parte la clip. Funziona bene con parti monofoniche
   (voce, linea di chitarra o basso); la clip audio resta.
+- **Converti la traccia in notazione...** (menu **⋯** della traccia audio):
+  tutte le clip in una volta, con le stesse scelte (melodia, percussioni o
+  accordi, quantizzazione), in **una sola** traccia di note con un box per
+  clip, alla posizione della clip e con il suo nome. Le clip silenziate
+  vengono saltate. Il risultato va in una nuova traccia oppure, con
+  **Aggiungi alla traccia**, in una traccia di note esistente: dove c'e'
+  gia' un box, quello nuovo va nello spazio libero piu' vicino.
 - **Nell'editor classico** una traccia audio mostra, in sola lettura,
   l'elenco delle sue clip: le azioni sulla notazione (Genera, Suona con la
   tastiera, Importa MIDI, Congela accordi, Esporta MIDI) non valgono per le

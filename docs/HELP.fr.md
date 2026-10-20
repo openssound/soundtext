@@ -2688,6 +2688,12 @@ message renvoie à la grille d'accords).
   l'import MIDI ; le bloc est reconnu comme accord connu, sinon la
   fondamentale est la note la plus grave). Une piste faite seulement de
   notes seules (mélodie, arpèges) n'a pas d'accords à suivre.
+  Une **piste audio** peut aussi donner les accords (dans la liste comme
+  « Nom (audio) ») : une prise de guitare rythmique ou de piano est
+  analysée la première fois que vous la choisissez (quelques secondes),
+  avec la même reconnaissance que le mode Accords de l'import audio, et les
+  accords de chaque clip sont là où est le clip. Cela vaut aussi pour
+  **Accompagnement ou riff** et pour la mélodie, qui en tire la tonalité.
 - **Style** (chacun écrit sa propre grille rythmique : noires, croches ou,
   pour le shuffle, triolets de croches) :
   - **Fondamentale** : répète la tonique pendant toute la durée de l'accord.
@@ -3754,6 +3760,13 @@ programme.
   clavier, voix) et un box qui commence là où commence le clip. Cela
   fonctionne bien avec les parties monophoniques (voix, ligne de guitare
   ou de basse) ; le clip audio reste.
+- **Convertir la piste en notation...** (menu **⋯** de la piste audio) :
+  tous les clips d'un coup, avec les mêmes choix (mélodie, percussions ou
+  accords, quantification), dans **une seule** piste de notes avec un box
+  par clip, à la position du clip et avec son nom. Les clips coupés sont
+  ignorés. Le résultat va dans une nouvelle piste ou, avec **Ajouter à la
+  piste**, dans une piste de notes existante : là où il y a déjà un box, le
+  nouveau va dans l'espace libre le plus proche.
 - **Dans l'éditeur classique**, une piste audio affiche, en lecture seule,
   la liste de ses clips : les actions sur la notation (Générer, Jouer au
   clavier, Importer un MIDI, Figer les accords, Exporter en MIDI) ne

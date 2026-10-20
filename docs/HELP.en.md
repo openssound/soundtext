@@ -2522,6 +2522,12 @@ track in the project with chords already written):
   block is recognised as a known chord, otherwise the root is the lowest
   note). A track made only of single notes (melody, arpeggios) has no chords
   to follow.
+  An **audio track** can provide the chords too (listed as "Name (audio)"):
+  a take of rhythm guitar or piano is analysed the first time you choose it
+  (a few seconds), with the same recognition as the Chords mode of audio
+  import, and the chords of each clip sit where the clip sits. This also
+  works for **Accompaniment or riff** and for the melody, which takes its
+  key from them.
 - **Style** (each one writes its own rhythmic grid: quarters, eighths or,
   for the shuffle, eighth-note triplets):
   - **Root**: repeats the root for the whole length of the chord.
@@ -3479,6 +3485,13 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   (suggested according to what you recorded: guitar, keyboard, voice) and a
   box starting where the clip starts. It works well with monophonic parts
   (voice, guitar or bass line); the audio clip remains.
+- **Convert the track to notation...** (**⋯** menu of the audio track): all
+  the clips at once, with the same choices (melody, percussion or chords,
+  quantization), into **a single** note track with one box per clip, at the
+  clip's position and with its name. Muted clips are skipped. The result
+  goes into a new track or, with **Add to the track**, into an existing
+  note track: where there is already a box, the new one goes into the
+  nearest free space.
 - **In the classic editor** an audio track shows, read-only, the list of
   its clips: the notation actions (Generate, Play with the keyboard, Import
   MIDI, Freeze chords, Export MIDI) do not apply to audio tracks and say so

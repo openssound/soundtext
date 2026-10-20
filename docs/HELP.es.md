@@ -2631,6 +2631,12 @@ otra pista del proyecto con acordes ya escritos):
   importación MIDI; el bloque se reconoce como acorde conocido; si no, la
   fundamental es la nota más grave). Una pista hecha solo de notas sueltas
   (melodía, arpegios) no tiene acordes que seguir.
+  También una **pista de audio** puede dar los acordes (en la lista como
+  "Nombre (audio)"): una toma de guitarra rítmica o de piano se analiza la
+  primera vez que la eliges (unos segundos), con el mismo reconocimiento
+  que el modo Acordes de la importación de audio, y los acordes de cada clip
+  están donde está el clip. Vale también para **Acompañamiento o riff** y
+  para la melodía, que saca de ellos la tonalidad.
 - **Estilo** (cada uno escribe su propia rejilla rítmica: negras, corcheas
   o, para el shuffle, tresillos de corchea):
   - **Fundamental**: repite la tónica durante toda la duración del acorde.
@@ -3666,6 +3672,13 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   un box que empieza donde empieza el clip. Funciona bien con partes
   monofónicas (voz, línea de guitarra o de bajo); el clip de audio se
   mantiene.
+- **Convertir la pista en notación...** (menú **⋯** de la pista de audio):
+  todos los clips a la vez, con las mismas opciones (melodía, percusión o
+  acordes, cuantización), en **una sola** pista de notas con un box por
+  clip, en la posición del clip y con su nombre. Los clips silenciados se
+  omiten. El resultado va a una pista nueva o, con **Añadir a la pista**, a
+  una pista de notas existente: donde ya hay un box, el nuevo va al espacio
+  libre más cercano.
 - **En el editor clásico** una pista de audio muestra, en solo lectura, la
   lista de sus clips: las acciones sobre la notación (Generar, Tocar con el
   teclado, Importar MIDI, Congelar acordes, Exportar MIDI) no valen para las
