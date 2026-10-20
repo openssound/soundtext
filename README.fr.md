@@ -253,6 +253,21 @@ d'installation pour Debian/Ubuntu, Arch/CachyOS, Fedora et openSUSE.
   caractéristiques acoustiques de la voix humaine au lieu de celles de
   l'instrument de destination.
 
+- **Pistes audio** : voix, guitare ou clavier enregistrés depuis la carte
+  son pendant que le morceau joue (décompte, métronome, compensation de la
+  latence), ou fichiers importés, comme clips dans la vue Structure du
+  morceau. Le fichier n'est jamais modifié : coupes, division, fondus avec
+  poignées (et micro-fondu automatique contre les clics), Normaliser,
+  Couper, déplacement du contenu (slip) sont des paramètres du clip.
+  **Prises multiples** avec comping passage par passage, **enregistrement
+  en boucle** entre A et B (chaque tour une prise) et **punch-in**.
+  **Tempo de la prise** : le temps d'une partie jouée sans clic devient la
+  carte du tempo du morceau, ou la prise s'adapte à un tempo fixe ;
+  **time-stretch** sans changer la hauteur, avec des clips qui suivent le
+  tempo du morceau ; **Quantifier l'audio** sur ses attaques. Une piste
+  audio entière se convertit en notation et donne les accords à la basse,
+  à l'accompagnement et à la mélodie ; la batterie générée suit son groove.
+
 Non implémenté dans cette première version (indiqué dans le document comme
 phase ultérieure ou hors du standard MVP) : l'import par OMR depuis des
 partitions traditionnelles.
@@ -413,6 +428,14 @@ soundtext/
     audio_percussion.py              détection de transitoires pour les pistes de percussion
     audio_dsp.py                      analyse audio en numpy (attaques SuperFlux, hauteur YIN)
     audio_import.py                   chaîne complète d'import audio -> notation
+    audio_tracks.py                   clips des pistes audio : fichiers, mixage, fondus, time-stretch
+    audio_recording.py                enregistrement dans la piste audio (base, boucle, punch-in)
+    audio_takes.py                    prises multiples d'un clip et comping
+    audio_track_notation.py           piste audio -> notation, accords depuis l'audio
+    audio_slice.py                    attaques d'un clip et quantification de l'audio
+    beat_track.py                     temps d'une prise jouée sans clic
+    performance_tempo.py              carte du tempo depuis la prise, tempo fixe
+    groove.py                         groove d'une prise pour la batterie
     midi_input.py                      clavier MIDI externe (mido + python-rtmidi)
   gui/
     main_window.py     fenêtre principale (éditeur, menus, barre d'outils) ; ses parties dans
@@ -428,6 +451,12 @@ soundtext/
     instrument_dialog.py gestion des instruments personnalisés (sélection GM par nom)
     midi_library_dialog.py gestion de la bibliothèque MIDI (sous-dossiers compris)
     audio_import_dialog.py enregistrement/chargement audio + quantification
+    audio_record_dialog.py enregistrement dans la piste audio (normal, boucle, punch-in)
+    comping_dialog.py     comping des prises d'un clip
+    audio_track_convert_dialog.py convertir la piste audio en notation
+    tempo_from_take_dialog.py tempo de la prise
+    audio_quantize_dialog.py quantifier l'audio d'un clip
+    quantize_options.py   force, fenêtre, swing et nettoyage de la quantification
     voicing_picker.py       menu de choix du voicing au double-clic sur les accords
     help_dialog.py       guide de l'utilisateur intégré
     highlighter.py         coloration syntaxique (basée sur le vrai tokenizer)

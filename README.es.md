@@ -252,6 +252,21 @@ instalación para Debian/Ubuntu, Arch/CachyOS, Fedora y openSUSE.
   características acústicas de la voz humana en lugar de las del
   instrumento de destino.
 
+- **Pistas de audio**: voz, guitarra o teclado grabados desde la interfaz
+  de audio mientras suena la canción (cuenta atrás, metrónomo,
+  compensación de la latencia), o archivos importados, como clips en la
+  vista Estructura de la canción. El archivo nunca se modifica: recortes,
+  división, fundidos con tiradores (y microfundido automático contra los
+  clics), Normalizar, Silenciar y desplazamiento del contenido (slip) son
+  parámetros del clip. **Tomas múltiples** con comping tramo a tramo,
+  **grabación en bucle** entre A y B (cada vuelta una toma) y **punch-in**.
+  **Tempo de la toma**: el pulso de una parte tocada sin clic se convierte
+  en el mapa de tempo de la canción, o la toma se adapta a un tempo fijo;
+  **time-stretch** sin cambiar la afinación, con clips que siguen el tempo
+  de la canción; **Cuantizar el audio** en sus ataques. Una pista de audio
+  entera se convierte en notación y da los acordes al bajo, al
+  acompañamiento y a la melodía; la batería generada sigue su groove.
+
 No implementado en esta primera versión (indicado en el documento como fase
 posterior o fuera del estándar MVP): importación por OMR desde partituras
 tradicionales.
@@ -414,6 +429,14 @@ soundtext/
     audio_percussion.py              detección de transitorios para pistas de percusión
     audio_dsp.py                      análisis de audio en numpy (ataques SuperFlux, altura YIN)
     audio_import.py                   cadena completa de importación audio -> notación
+    audio_tracks.py                   clips de las pistas de audio: archivos, mezcla, fundidos, time-stretch
+    audio_recording.py                grabación en la pista de audio (base, bucle, punch-in)
+    audio_takes.py                    tomas múltiples de un clip y comping
+    audio_track_notation.py           pista de audio -> notación, acordes desde el audio
+    audio_slice.py                    ataques de un clip y cuantización del audio
+    beat_track.py                     pulso de una toma tocada sin clic
+    performance_tempo.py              mapa de tempo desde la toma, tempo fijo
+    groove.py                         groove de una toma para la batería
     midi_input.py                      teclado MIDI externo (mido + python-rtmidi)
   gui/
     main_window.py     ventana principal (editor, menús, barra de herramientas); sus partes en
@@ -429,6 +452,12 @@ soundtext/
     instrument_dialog.py gestión de instrumentos personalizados (selección GM por nombre)
     midi_library_dialog.py gestión de la biblioteca MIDI (subcarpetas incluidas)
     audio_import_dialog.py grabación/carga de audio + cuantización
+    audio_record_dialog.py grabación en la pista de audio (normal, bucle, punch-in)
+    comping_dialog.py     comping de las tomas de un clip
+    audio_track_convert_dialog.py convertir la pista de audio en notación
+    tempo_from_take_dialog.py tempo de la toma
+    audio_quantize_dialog.py cuantizar el audio de un clip
+    quantize_options.py   fuerza, ventana, swing y limpieza de la cuantización
     voicing_picker.py       menú de elección del voicing con doble clic en los acordes
     help_dialog.py       guía del usuario integrada
     highlighter.py         resaltado de sintaxis (basado en el tokenizador real)

@@ -228,6 +228,20 @@ Arch/CachyOS, Fedora and openSUSE.
   instrument: it recalibrates the analysis on the acoustic features of the
   human voice instead of those of the destination instrument.
 
+- **Audio tracks**: voice, guitar or keyboard recorded from the audio
+  interface while the song plays (count-in, metronome, latency
+  compensation), or imported files, as clips in the Song structure view.
+  The file is never modified: trims, splits, fades with handles (and an
+  automatic micro-fade against clicks), Normalize, Mute, slip editing are
+  clip parameters. **Multiple takes** with section-by-section comping,
+  **loop recording** between A and B (each pass a take) and **punch-in**.
+  **Tempo from the take**: the beat of a part played without a click
+  becomes the song's tempo map, or the take adapts to a fixed tempo;
+  **time-stretch** without changing the pitch, with clips that follow the
+  song tempo; **Quantise the audio** at its attacks. A whole audio track
+  converts into notation and gives the chords to bass, accompaniment and
+  melody; generated drums follow its groove.
+
 Not implemented in this first version (indicated in the document as a later
 phase or outside the MVP standard): OMR import from traditional scores.
 
@@ -386,6 +400,14 @@ soundtext/
     audio_percussion.py              transient detection for percussion tracks
     audio_dsp.py                      audio analysis in numpy (SuperFlux onsets, YIN pitch)
     audio_import.py                   complete audio -> notation import pipeline
+    audio_tracks.py                   audio track clips: files, mix, fades, time-stretch
+    audio_recording.py                recording into the audio track (backing, loop, punch-in)
+    audio_takes.py                    multiple takes of a clip and comping
+    audio_track_notation.py           audio track -> notation, chords from audio
+    audio_slice.py                    attacks of a clip and audio quantisation
+    beat_track.py                     beat of a take played without a click
+    performance_tempo.py              tempo map from the take, fixed tempo
+    groove.py                         groove of a take for the drums
     midi_input.py                      external MIDI keyboard (mido + python-rtmidi)
   gui/
     main_window.py     main window (editor, menus, toolbar); its parts in
@@ -401,6 +423,12 @@ soundtext/
     instrument_dialog.py custom instrument management (GM selection by name)
     midi_library_dialog.py MIDI library management (subfolders included)
     audio_import_dialog.py audio recording/loading + quantisation
+    audio_record_dialog.py recording into the audio track (normal, loop, punch-in)
+    comping_dialog.py     comping of the takes of a clip
+    audio_track_convert_dialog.py convert the audio track to notation
+    tempo_from_take_dialog.py tempo from the take
+    audio_quantize_dialog.py quantise the audio of a clip
+    quantize_options.py   strength, window, swing and cleanup of the quantisation
     voicing_picker.py       voicing choice menu on double-click on chords
     help_dialog.py       built-in user guide
     highlighter.py         syntax highlighting (based on the real tokenizer)
