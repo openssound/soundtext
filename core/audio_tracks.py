@@ -953,3 +953,64 @@ def mix_layers_into_wav(wav_path: str, layers: List[AudioLayer], out_path: Optio
     if post is not None:
         mixed = post(mixed, rate)
     write_wav(out_path or wav_path, mixed, rate, bits=bits)
+
+
+# ---------------------------------------------------------------------------
+# Unire i pezzi di una ripresa in una clip sola
+# ---------------------------------------------------------------------------
+
+JOIN_GAP_SECONDS = 0.1      # pezzi piu' lontani di cosi' non fanno parte dello stesso gruppo
+
+
+def connected_pieces(clips: List[AudioClip], clip: AudioClip, tempo_map) -> List[AudioClip]:
+    """I pezzi della stessa ripresa attorno a 'clip': le clip della traccia
+    con lo stesso file che si toccano o si sovrappongono (a meno di
+    JOIN_GAP_SECONDS), a catena. Per Quantizza l'audio, comping e tempo
+    fisso, che ne lasciano tanti."""
+    from .tempo_map import seconds_for_beats
+
+    def span(c):
+        start = seconds_for_beats(tempo_map, c.start_beat)
+        return start, start + clip_play_seconds(c)
+
+    same = sorted((c for c in clips if c.file == clip.file and not c.muted), key=lambda c: c.start_beat)
+    if clip not in same:
+        return [clip]
+    group, (lo, hi) = [clip], span(clip)
+    changed = True
+    while changed:
+        changed = False
+        for c in same:
+            if c in group:
+                continue
+            a, b = span(c)
+            if a <= hi + JOIN_GAP_SECONDS and b >= lo - JOIN_GAP_SECONDS:
+                group.append(c)
+                lo, hi = min(lo, a), max(hi, b)
+                changed = True
+    return sorted(group, key=lambda c: c.start_beat)
+
+
+def join_clips(project: Project, clips: List[AudioClip], dest_dir: str, name: str) -> AudioClip:
+    """Una clip sola, con un file nuovo, che suona come i pezzi insieme
+    (dissolvenze, guadagno e time-stretch gia' applicati): i file dei pezzi
+    restano com'erano. Se i pezzi seguivano il tempo del brano, la nuova
+    clip lo segue dal tempo di adesso."""
+    from .tempo_map import build_tempo_beat_map, seconds_for_beats, value_at_beat
+    tempo_map = build_tempo_beat_map(project)
+    start_beat = min(c.start_beat for c in clips)
+    probe = Project(tempo_bpm=project.tempo_bpm, time_sig=project.time_sig)
+    probe.tempo_changes, probe.metrica_changes = list(project.tempo_changes), list(project.metrica_changes)
+    probe.pickup = project.pickup
+    track = probe.add_audio_track("unione")
+    track.audio_clips = [dataclasses.replace(c) for c in clips]
+    layers = build_audio_layers(probe, [track], tempo_map, offset_seconds=seconds_for_beats(tempo_map, start_beat))
+    mixed = mix_layers(np.zeros((0, 2), dtype=np.float32), AUDIO_SAMPLE_RATE, layers)
+    mono = all((cached_wav_info(c.file) or WavInfo(1, 1, 1, 16, 0, 0)).channels == 1 for c in clips)
+    path = unique_audio_path(dest_dir, name)
+    write_wav(path, mixed[:, :1] if mono else mixed, AUDIO_SAMPLE_RATE, bits=24)
+    follows = any(c.source_bpm > 0 for c in clips)
+    joined = AudioClip(name=name, file=path, start_beat=round(start_beat, 6))
+    if follows:
+        joined.source_bpm = float(value_at_beat(tempo_map, start_beat) or project.tempo_bpm)
+    return joined

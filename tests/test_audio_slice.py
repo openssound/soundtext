@@ -69,3 +69,23 @@ def test_no_attacks_leaves_the_clip(tmp_path):
     p = Project(tempo_bpm=120)
     clip = AudioClip("Muta", path, 0.0)
     assert quantize_clip(p, clip, 0.5) == [clip]
+
+
+def test_join_turns_the_pieces_back_into_one_clip_that_sounds_the_same(tmp_path):
+    from core.audio_tracks import connected_pieces, join_clips, read_wav
+    p, clip, _played = _sloppy(tmp_path)
+    pieces = quantize_clip(p, clip, 0.5)
+    other = AudioClip("Altro", clip.file, 200.0)                     # stesso file, ma lontano
+    p.get_track("Batteria").audio_clips = pieces + [other]
+    tempo_map = build_tempo_beat_map(p)
+    group = connected_pieces(p.get_track("Batteria").audio_clips, pieces[5], tempo_map)
+    assert len(group) == len(pieces) and other not in group
+    before = mix_layers(np.zeros((0, 2), np.float32), RATE, build_audio_layers(p, p.tracks, tempo_map))
+    joined = join_clips(p, group, str(tmp_path), "Batteria unita")
+    assert joined.start_beat == pieces[0].start_beat and joined.file != clip.file
+    assert read_wav(joined.file)[0].shape[1] == 1                     # mono come l'originale
+    p.get_track("Batteria").audio_clips = [joined]
+    after = mix_layers(np.zeros((0, 2), np.float32), RATE, build_audio_layers(p, p.tracks, tempo_map))
+    n = min(len(before), len(after))
+    inner = slice(int(0.01 * RATE), n - int(0.01 * RATE))           # tranne le microdissolvenze ai capi
+    assert np.abs(before[inner] - after[inner]).max() < 1e-3

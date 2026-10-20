@@ -3779,9 +3779,17 @@ programme.
   finit sur le suivant, il est raccourci jusque-là, avec un fondu enchaîné
   bref ; là où un vide s'ouvre, il reste du silence. Le fichier ne change
   pas, et un seul Ctrl+Z annule tout.
+- **Réunir les morceaux en un clip (N)** (clic droit sur l'un des
+  morceaux) : la quantification, le comping et le tempo fixe laissent
+  beaucoup de box. Cette entrée met les morceaux voisins de la même prise
+  dans un nouveau fichier qui sonne exactement comme eux (fondus, gain et
+  time-stretch compris), à leur place : la vue redevient légère. Les
+  fichiers de départ restent.
 - **Déplacer le contenu (slip)** : **Alt+glisser** le clip pour faire
   défiler l'audio à l'intérieur, en gardant son début et sa longueur (par
-  exemple pour caler une attaque sur le temps après l'avoir coupé).
+  exemple pour caler une attaque sur le temps après l'avoir coupé). Si le
+  bureau utilise Alt+glisser pour déplacer les fenêtres (c'est le cas sur
+  certains bureaux Linux), utilisez **Ctrl+Alt+glisser**.
 - **Normaliser (crête à −1 dB)** (clic droit) : règle le gain du clip pour
   que sa crête atteigne −1 dB.
 - **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
@@ -3888,6 +3896,9 @@ Boucle**) :
   passage A-B, avec de courts fondus aux deux bouts. Il va comme nouvelle
   prise du clip qui s'y trouve : le clip est divisé en A et en B et seul ce
   passage reçoit la prise, donc l'original reste toujours disponible.
+  L'enregistrement s'arrête tout seul une seconde après B. Une prise
+  normale plus longue que le clip sur lequel elle va l'allonge (jusqu'au
+  clip suivant).
 
 **Prises d'un clip** : un clip avec plusieurs prises montre dans son box
 laquelle joue (ex. `[2/3]`) ; clic droit → **Prises** pour en choisir une

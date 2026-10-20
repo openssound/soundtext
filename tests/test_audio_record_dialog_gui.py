@@ -409,3 +409,21 @@ def test_main_window_puts_punch_and_overlapping_takes_on_the_clip(tmp_path, monk
     w._add_recorded_clip(track, AudioClip("Ripresa 3", new, 0.0, trim_start=2.0, trim_end=2.0), "voce", "1")
     assert asked and len(track.audio_clips) == 1
     assert [tk.name for tk in track.audio_clips[0].takes] == ["Strofa", "Ripresa 3"]
+
+
+def test_punch_in_stops_by_itself_after_b(tmp_path):
+    dlg, t, streams, built = _loop_dialog(tmp_path, region=(4.0, 8.0))       # A-B: da 2 s a 4 s
+    dlg.mode_combo.setCurrentIndex(dlg.mode_combo.findData("punch"))
+    dlg.preroll_spin.setValue(1)                                               # dalla battuta 1 (beat 0)
+    dlg.count_in_spin.setValue(0)
+    dlg.start_recording()
+    assert built["start"] == 0.0 and "loop" not in built
+    streams["duplex"].pump(int(4.5 * RATE / 480))
+    dlg._tick()
+    assert dlg._recorder is not None                                           # 4,5 s: non ancora
+    streams["duplex"].pump(int(0.6 * RATE / 480))
+    dlg._tick()
+    assert dlg._recorder is None and dlg._take is not None                     # oltre B + 1 s: fermata
+    dlg.keep_take()
+    clip = dlg.result_clip()
+    assert dlg.result_mode() == "punch" and clip.start_beat == 4.0

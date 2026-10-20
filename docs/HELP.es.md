@@ -3692,9 +3692,17 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   del siguiente se acorta hasta ahí, con un fundido cruzado breve; donde se
   abre un hueco queda silencio. El archivo no cambia, y un solo Ctrl+Z lo
   deshace todo.
+- **Unir los trozos en un clip (N)** (clic derecho en uno de los trozos):
+  la cuantización, el comping y el tempo fijo dejan muchos box. Esta
+  opción pone los trozos vecinos de la misma toma en un archivo nuevo que
+  suena exactamente como ellos (fundidos, ganancia y time-stretch
+  incluidos), en su lugar: la vista vuelve a ser ligera. Los archivos de
+  partida se quedan.
 - **Mover el contenido (slip)**: **Alt+arrastrar** el clip para desplazar el
   audio dentro de él, manteniendo su inicio y su duración (por ejemplo para
-  alinear un ataque con el pulso después de recortarlo).
+  alinear un ataque con el pulso después de recortarlo). Si el escritorio
+  usa Alt+arrastrar para mover las ventanas (pasa en algunos escritorios
+  Linux), usa **Ctrl+Alt+arrastrar**.
 - **Normalizar (pico a −1 dB)** (clic derecho): ajusta la ganancia del clip
   para que su pico llegue a −1 dB.
 - **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
@@ -3799,7 +3807,9 @@ Bucle**):
   compases elegidos antes de A), pero de la grabación solo se conserva el
   tramo A-B, con fundidos breves en los dos extremos. Va como nueva toma
   del clip que hay ahí: el clip se divide en A y en B y solo ese tramo
-  recibe la toma, así que el original sigue siempre disponible.
+  recibe la toma, así que el original sigue siempre disponible. La
+  grabación se para sola un segundo después de B. Una toma normal más
+  larga que el clip sobre el que va lo alarga (hasta el clip siguiente).
 
 **Tomas de un clip**: un clip con varias tomas muestra en su box cuál
 suena (p. ej. `[2/3]`); clic derecho → **Tomas** para elegir otra,

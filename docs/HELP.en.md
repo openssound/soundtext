@@ -3501,9 +3501,15 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   quantisation"). Where a moved piece ends over the next one it is
   shortened up to there, with a short crossfade; where a gap opens there is
   silence. The file does not change, and a single Ctrl+Z undoes it all.
+- **Join the pieces into one clip (N)** (right-click on one of the
+  pieces): quantising, comping and fixed tempo leave many boxes. This
+  entry puts the neighbouring pieces of the same take into a new file that
+  sounds exactly like them (fades, gain and time-stretch included), in
+  their place: the view gets light again. The original files stay.
 - **Moving the content (slip)**: **Alt+drag** the box to slide the audio
   inside the clip, keeping its start and length (for example to line up an
-  attack with the beat after trimming it).
+  attack with the beat after trimming it). If the desktop uses Alt+drag to
+  move windows (some Linux desktops do), use **Ctrl+Alt+drag**.
 - **Normalize (peak at −1 dB)** (right-click): sets the clip gain so that
   its peak reaches −1 dB.
 - **Mute clip** (right-click): the clip stays in place, drawn in grey, but
@@ -3603,7 +3609,9 @@ clips already there, SoundText asks what to do: **As a new take**
   chosen bars before A), but only the A-B section of the recording is kept,
   with short fades at both ends. It goes as a new take of the clip that is
   there: the clip is split at A and at B and only that section receives the
-  take, so the original is always still available.
+  take, so the original is always still available. The recording stops by
+  itself one second after B. A normal take longer than the clip it goes on
+  extends it (up to the next clip).
 
 **Takes of a clip**: a clip with several takes shows in its box which one
 plays (e.g. `[2/3]`); right-click → **Takes** to choose another one,

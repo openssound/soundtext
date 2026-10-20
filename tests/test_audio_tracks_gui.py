@@ -724,3 +724,24 @@ def test_quantize_audio_from_the_clip_menu(tmp_path):
     _app.processEvents()
     w.undo()
     assert len(w.project.get_track("Batteria").audio_clips) == 1
+
+
+def test_join_pieces_from_the_clip_menu(tmp_path):
+    from core import audio_slice
+    from test_audio_slice import _sloppy
+    p, clip, _played = _sloppy(tmp_path)
+    w = _window()
+    w.project.tempo_bpm = 120
+    t = w.project.add_audio_track("Batteria")
+    t.audio_clips = audio_slice.quantize_clip(w.project, clip, 0.5)
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    view = w.arrangement_view
+    n = len(t.audio_clips)
+    actions = _menu_actions(lambda: view._show_audio_box_menu("Batteria", t.audio_clips[3], w.mapToGlobal(w.rect().center())))
+    assert f"Unisci i pezzi in una clip ({n})" in actions
+    view._join_pieces("Batteria", list(t.audio_clips))
+    assert len(t.audio_clips) == 1 and t.audio_clips[0].file != clip.file
+    _app.processEvents()
+    w.undo()
+    assert len(w.project.get_track("Batteria").audio_clips) == n

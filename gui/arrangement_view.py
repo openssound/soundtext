@@ -18,7 +18,7 @@ import time
 
 import numpy as np
 
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
+from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QApplication,
@@ -101,6 +101,7 @@ EDGE_GRAB_PX = 6            # bordo di un box audio che si afferra per tagliarlo
 FADE_HANDLE_PX = 7          # maniglia di una dissolvenza (angoli in alto di un box audio)
 FADE_GRAB_PX = 8            # distanza entro cui la maniglia si afferra
 MUTED_CLIP_COLOR = "#8a8a8a"
+MIN_DETAIL_PX = 8           # sotto questa larghezza un box audio e' solo il rettangolo
 TRIM_SNAP_BEATS = 0.25      # passo del taglio col mouse (Shift = libero)
 
 
@@ -399,33 +400,87 @@ class AudioBoxItem(BoxItem):
     def mouseDoubleClickEvent(self, event):
         self.view._rename_clip(self.track_name, self.clip)
 
+    _draw_cache = None
+
+    def _drawing(self, rect):
+        """Le linee della forma d'onda e le curve delle dissolvenze, pronte da
+        disegnare: si ricalcolano solo se cambiano la clip o la larghezza del
+        box (con centinaia di box, ricalcolarle a ogni ridisegno rendeva lo
+        scorrimento lento)."""
+        c = self.clip
+        key = (rect.width(), rect.height(), c.file, c.trim_start, c.trim_end, c.stretch, c.fade_in, c.fade_out,
+               c.fade_shape, _canvas_colors()["box_text"])
+        if self._draw_cache is not None and self._draw_cache[0] == key:
+            return self._draw_cache[1]
+        lines, fades = [], []
+        buckets = max(1, min(4000, int(rect.width() / 2)))
+        peaks = audio_tracks.waveform_peaks(c, buckets)
+        if peaks is not None:
+            mid = rect.center().y()
+            half = rect.height() / 2 - 4
+            step = rect.width() / buckets
+            for i, peak in enumerate(peaks):
+                x = rect.left() + (i + 0.5) * step
+                h = max(0.5, float(peak) * half)
+                lines.append(QLineF(x, mid - h, x, mid + h))
+        play = audio_tracks.clip_play_seconds(c)
+        for which, seconds in (("in", c.fade_in), ("out", c.fade_out)):
+            if seconds <= 0 or play <= 0:
+                continue
+            edge_x = rect.left() if which == "in" else rect.right()
+            handle_x = rect.left() + self._fade_handle_x(which)
+            steps = 24
+            t = np.linspace(0.0, seconds, steps + 1) if which == "in" else np.linspace(play - seconds, play, steps + 1)
+            gains = audio_tracks.fade_envelope_at(t, play, c.fade_in if which == "in" else 0.0,
+                                                  c.fade_out if which == "out" else 0.0, c.fade_shape)
+            xs = np.linspace(edge_x, handle_x, steps + 1) if which == "in" else np.linspace(handle_x, edge_x, steps + 1)
+            curve = [QPointF(float(x), rect.bottom() - float(g) * rect.height()) for x, g in zip(xs, gains)]
+            shade = QPolygonF([QPointF(float(xs[0]), rect.top())] + curve + [QPointF(float(xs[-1]), rect.top())])
+            fades.append((shade, QPolygonF(curve)))
+        self._draw_cache = (key, (lines, fades))
+        return lines, fades
+
     def paint(self, painter, option, widget=None):
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
         rect = self.rect()
+        selected = self.clip is self.view.selected_clip
+        if rect.width() < MIN_DETAIL_PX:
+            # troppo stretto per forma d'onda ed etichetta: solo il box
+            if selected:
+                painter.setPen(QPen(QColor(ACCENT), 2))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(rect)
+            return
+        text_color = QColor(_canvas_colors()["box_text"])
         if not self._missing:
-            buckets = max(1, min(4000, int(rect.width() / 2)))
-            peaks = audio_tracks.waveform_peaks(self.clip, buckets)
-            if peaks is not None:
-                mid = rect.center().y()
-                half = rect.height() / 2 - 4
-                step = rect.width() / buckets
-                wave_color = QColor(_canvas_colors()["box_text"])
-                wave_color.setAlpha(150)
-                painter.setPen(QPen(wave_color, 1))
-                for i, peak in enumerate(peaks):
-                    x = rect.left() + (i + 0.5) * step
-                    h = max(0.5, float(peak) * half)
-                    painter.drawLine(QPointF(x, mid - h), QPointF(x, mid + h))
-            self._paint_fades(painter, rect)
-        if self.clip is self.view.selected_clip:
+            lines, fades = self._drawing(rect)
+            wave_color = QColor(text_color)
+            wave_color.setAlpha(150)
+            painter.setPen(QPen(wave_color, 1))
+            painter.drawLines(lines)
+            for shade, curve in fades:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(0, 0, 0, 70))
+                painter.drawPolygon(shade)
+                painter.setPen(QPen(text_color, 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawPolyline(curve)
+            if self._hover or selected:
+                painter.setPen(QPen(text_color, 1))
+                painter.setBrush(QColor("#ffffff"))
+                for which in ("in", "out"):
+                    x = rect.left() + self._fade_handle_x(which)
+                    x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
+                    painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
+        if selected:
             sel_pen = QPen(QColor(ACCENT))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
-        painter.setPen(QPen(QColor(_canvas_colors()["box_text"])))
+        painter.setPen(QPen(text_color))
         painter.setFont(QFont("Sans", 9, QFont.Bold))
         if self._missing:
             label = tr("{name}  (file mancante)", name=self.clip.name)
@@ -438,38 +493,6 @@ class AudioBoxItem(BoxItem):
         if abs(self.clip.stretch - 1.0) > 1e-6:
             label += f"  {round(100.0 / self.clip.stretch)}%"
         painter.drawText(rect.adjusted(FADE_HANDLE_PX + 3, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
-
-    def _paint_fades(self, painter, rect):
-        """Le dissolvenze come zona scurita sopra la curva del guadagno, e le
-        loro maniglie (con il box selezionato o sotto il mouse)."""
-        play = audio_tracks.clip_play_seconds(self.clip)
-        line_color = QColor(_canvas_colors()["box_text"])
-        for which, seconds in (("in", self.clip.fade_in), ("out", self.clip.fade_out)):
-            if seconds <= 0 or play <= 0:
-                continue
-            edge_x = rect.left() if which == "in" else rect.right()
-            handle_x = rect.left() + self._fade_handle_x(which)
-            steps = 24
-            t = np.linspace(0.0, seconds, steps + 1) if which == "in" else np.linspace(play - seconds, play, steps + 1)
-            gains = audio_tracks.fade_envelope_at(t, play, self.clip.fade_in if which == "in" else 0.0,
-                                                  self.clip.fade_out if which == "out" else 0.0,
-                                                  self.clip.fade_shape)
-            xs = np.linspace(edge_x, handle_x, steps + 1) if which == "in" else np.linspace(handle_x, edge_x, steps + 1)
-            curve = [QPointF(float(x), rect.bottom() - float(g) * rect.height()) for x, g in zip(xs, gains)]
-            shade = QPolygonF([QPointF(float(xs[0]), rect.top())] + curve + [QPointF(float(xs[-1]), rect.top())])
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(0, 0, 0, 70))
-            painter.drawPolygon(shade)
-            painter.setPen(QPen(line_color, 1))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawPolyline(QPolygonF(curve))
-        if self._hover or self.clip is self.view.selected_clip:
-            painter.setPen(QPen(line_color, 1))
-            painter.setBrush(QColor("#ffffff"))
-            for which in ("in", "out"):
-                x = rect.left() + self._fade_handle_x(which)
-                x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
-                painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
 
 
 # ---------------------------------------------------------------------------
@@ -1514,6 +1537,9 @@ class ArrangementView(QWidget):
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
         tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
         quantize_action = menu.addAction(tr("Quantizza l'audio...")) if not missing else None
+        pieces = [] if missing else audio_tracks.connected_pieces(
+            self.host.project.get_track(track_name).audio_clips, clip, self._tempo_map())
+        join_action = menu.addAction(tr("Unisci i pezzi in una clip ({n})", n=len(pieces))) if len(pieces) > 1 else None
         relink_action = menu.addAction(tr("Ritrova file...")) if missing else None
         menu.addSeparator()
         cut_action = menu.addAction(tr("Taglia"))
@@ -1561,6 +1587,8 @@ class ArrangementView(QWidget):
             self._tempo_from_clip(track_name, clip)
         elif quantize_action is not None and chosen is quantize_action:
             self._quantize_clip_audio(track_name, clip)
+        elif join_action is not None and chosen is join_action:
+            self._join_pieces(track_name, pieces)
         elif relink_action is not None and chosen is relink_action:
             self._relink_clip(track_name, clip)
         elif chosen is cut_action:
@@ -2184,6 +2212,27 @@ class ArrangementView(QWidget):
         self.on_clip_changed(track_name)
         self.host.statusBar().showMessage(
             tr("Audio di '{name}' quantizzato: {n} pezzi.", name=clip.name, n=len(pieces)), 5000)
+
+    def _join_pieces(self, track_name: str, pieces):
+        """Unisci i pezzi in una clip: un file nuovo con il mix dei pezzi
+        (vedi core.audio_tracks.join_clips), al posto dei pezzi; un solo Annulla."""
+        from core.audio_tracks import join_clips, target_audio_dir
+        from .worker import run_with_wait
+        try:
+            joined = run_with_wait(self, tr("Unisco {n} pezzi...", n=len(pieces)), join_clips, self.host.project,
+                                   pieces, target_audio_dir(getattr(self.host, "current_path", None)),
+                                   pieces[0].name)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Unisci i pezzi"), str(e))
+            return
+        track = self.host.project.get_track(track_name)
+        index = min(track.audio_clips.index(c) for c in pieces)
+        track.audio_clips = [c for c in track.audio_clips if c not in pieces]
+        track.audio_clips.insert(min(index, len(track.audio_clips)), joined)
+        self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("{n} pezzi uniti nella clip '{name}' (file nuovo: {file}).", n=len(pieces), name=joined.name,
+               file=os.path.basename(joined.file)), 6000)
 
     def _tempo_at(self, beat: float) -> float:
         from core.tempo_map import value_at_beat

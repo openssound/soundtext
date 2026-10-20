@@ -203,3 +203,14 @@ def test_punch_clip_keeps_only_a_to_b(tmp_path):
     assert (clip.fade_in, clip.fade_out) == (rec.PUNCH_FADE, rec.PUNCH_FADE)
     short = rec.Take(np.full((3 * RATE, 1), 0.2, np.float32), RATE, 0.0, 0.2)
     assert rec.punch_clip("P", "/p.wav", 0.0, 4.0, 8.0, short, backing, 0.0, TEMPO) is None
+
+
+def test_a_longer_take_extends_the_clip_up_to_the_next_one(tmp_path):
+    old = AudioClip("Strofa", _const(tmp_path, "old.wav", 0.1, 6.0), 0.0, trim_start=2.0)      # 4 s = beat 0-8
+    after = AudioClip("Dopo", _const(tmp_path, "after.wav", 0.2, 3.0), 12.0)
+    clips = [old, after]
+    longer = AudioClip("Ripresa 2", _const(tmp_path, "long.wav", 0.3, 12.0), 0.0, trim_start=2.0)  # 10 s
+    target = at.add_recording_as_take(clips, longer, TEMPO)
+    assert target is old and target.active_take == 1
+    assert clip_play_seconds(target) == pytest.approx(6.0)        # fino all'inizio di "Dopo" (beat 12)
+    assert after.start_beat == 12.0

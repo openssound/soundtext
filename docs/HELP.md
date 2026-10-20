@@ -3599,9 +3599,16 @@ oppure **importando** file registrati con un altro programma.
   successivo si accorcia fino a li', con una dissolvenza incrociata breve;
   dove si apre un vuoto resta silenzio. Il file non cambia, e un solo
   Ctrl+Z annulla tutto.
+- **Unisci i pezzi in una clip (N)** (tasto destro su uno dei pezzi):
+  quantizzazione, comping e tempo fisso lasciano tanti box. Questa voce
+  mette i pezzi vicini della stessa ripresa in un file nuovo, che suona
+  esattamente come loro (dissolvenze, guadagno e time-stretch compresi),
+  al loro posto: la vista torna leggera. I file di partenza restano.
 - **Spostare il contenuto (slip)**: **Alt+trascina** il box per far
   scorrere l'audio dentro la clip, lasciandone fermi inizio e lunghezza (per
-  esempio per allineare un attacco al beat dopo averla tagliata).
+  esempio per allineare un attacco al beat dopo averla tagliata). Se il
+  desktop usa Alt+trascina per spostare le finestre (succede su alcuni
+  desktop Linux), usa **Ctrl+Alt+trascina**.
 - **Normalizza (picco a −1 dB)** (tasto destro): imposta il guadagno della
   clip perche' il suo picco arrivi a −1 dB.
 - **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
@@ -3704,7 +3711,9 @@ Loop**):
   scelte prima di A), ma della ripresa si tiene solo il tratto A-B, con
   dissolvenze brevi ai due capi. Va come nuova ripresa della clip che c'e'
   li': la clip si divide in A e in B e solo quel tratto riceve la ripresa,
-  quindi l'originale resta sempre disponibile.
+  quindi l'originale resta sempre disponibile. La registrazione si ferma
+  da sola un secondo dopo B. Una ripresa normale piu' lunga della clip su
+  cui va la allunga (fino alla clip successiva).
 
 **Riprese di una clip**: una clip con piu' riprese mostra nel box quale
 suona (es. `[2/3]`); tasto destro → **Riprese** per sceglierne un'altra,

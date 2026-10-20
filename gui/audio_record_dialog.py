@@ -28,6 +28,7 @@ from .worker import Worker
 from core.i18n import tr
 
 METER_FLOOR_DB = -60.0
+PUNCH_STOP_AFTER_B = 1.0      # secondi di ripresa dopo il punto B, poi il punch-in si ferma
 TICK_MS = 50
 
 
@@ -396,6 +397,9 @@ class AudioRecordDialog(QDialog):
         if self._recorder is not None:
             elapsed = self._recorder.elapsed_seconds
             count_in = self._backing.count_in_seconds
+            if getattr(self, "_punch_stop_at", None) is not None and elapsed >= self._punch_stop_at:
+                self.stop_recording()
+                return
             if elapsed < count_in:
                 self._set_status(f"Conteggio… {count_in - elapsed:.1f}")
             elif self._backing.loop:
@@ -476,6 +480,14 @@ class AudioRecordDialog(QDialog):
             self._restart_monitor()
             return
         self._recorder = recorder
+        self._punch_stop_at = None
+        if getattr(self, "_recording_mode", "normal") == "punch":
+            # il punch-in si ferma da solo poco dopo B: oltre non serve niente
+            from core.tempo_map import build_tempo_beat_map, seconds_for_beats
+            tempo_map = build_tempo_beat_map(self.project)
+            self._punch_stop_at = (backing.count_in_seconds + PUNCH_STOP_AFTER_B
+                                   + seconds_for_beats(tempo_map, self.loop_region[1])
+                                   - seconds_for_beats(tempo_map, self._start_beat))
         if backing.midi_skipped:
             self.hint_label.setText(
                 tr("Nessun SoundFont: le tracce con note non si sentono in questa ripresa "

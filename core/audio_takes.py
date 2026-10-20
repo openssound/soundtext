@@ -208,6 +208,16 @@ def add_recording_as_take(track_clips: List[AudioClip], recording: AudioClip, te
         if i == active:
             first_new = index
     set_active_take(target, first_new)
+    # una ripresa che va oltre la fine della clip (e' l'ultimo tratto) la
+    # allunga, senza invadere la clip dopo
+    target_end = target.start_beat + length_of(target)
+    if rec_end > target_end + 1e-6:
+        following = [c.start_beat for c in track_clips if c is not target and c.start_beat >= target_end - 1e-6]
+        new_end = min([rec_end] + following)
+        wanted = (seconds_for_beats(tempo_map, new_end) - seconds_for_beats(tempo_map, target.start_beat))
+        total = audio_tracks.clip_file_seconds(target)
+        if total > 0:
+            target.trim_end = round(max(0.0, total - target.trim_start - wanted / audio_tracks._stretch(target)), 6)
     # i bordi della ripresa (le dissolvenze brevi del punch-in) valgono per il tratto
     if recording.fade_in and abs(target.start_beat - rec_start) < 1e-6:
         target.fade_in = max(target.fade_in, recording.fade_in)
