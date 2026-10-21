@@ -35,14 +35,17 @@ jobs:
 
       # Librerie di sistema: Qt in modalita' offscreen (EGL/xkbcommon/
       # fontconfig), QtMultimedia (pulse; il decodificatore audio e' quello di
-      # PySide6), PortAudio per sounddevice, libfluidsynth (core.fluid).
+      # PySide6), PortAudio per sounddevice, libfluidsynth (core.fluid). E i
+      # due SoundFont GM dei test di rendering (effetti, riverbero, cambio di
+      # SoundFont: /usr/share/sounds/sf2/TimGM6mb.sf2 e FluidR3_GM.sf2), che
+      # senza verrebbero saltati.
       - name: Installa librerie di sistema (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libpulse0 \
-            libportaudio2 libfluidsynth3
+            libportaudio2 libfluidsynth3 timgm6mb-soundfont fluid-soundfont-gm
 
       # FluidSynth da Homebrew (/opt/homebrew/lib, dove core.fluid la cerca);
       # PortAudio e' gia' dentro il pacchetto pip di sounddevice.
