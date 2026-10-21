@@ -3545,13 +3545,16 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   goes into a new track or, with **Add to the track**, into an existing
   note track: where there is already a box, the new one goes into the
   nearest free space.
-  **To redo the conversion** after changing the audio (silences removed,
-  quantization, a new take) choose **Replace the contents of the track**:
-  the boxes and text of the note track are removed and replaced by the new
-  ones (Ctrl+Z brings back the previous ones). The dialog already proposes
-  the "Name (notes)" track and, while SoundText stays open, the choices of
-  the last conversion of the same audio track: usually **Convert** is
-  enough.
+  The new note track **remembers which audio track it comes from** and
+  with which choices (in the file, since version 2.10 of the format). After
+  changing the audio (silences removed, quantization, a new take) just use
+  **Reconvert from 'Name'** in the note track's **⋯** menu, or **Reconvert
+  the linked tracks** in the audio track's menu: the conversion is redone
+  with the same choices and the new boxes replace the old ones (Ctrl+Z
+  brings back the previous ones, manual edits included). To change the
+  choices, reopen **Convert the track to notation...**: it proposes the linked
+  track with the destination **Replace the contents of the track**. Boxes
+  added with **Add to the track** do not create the link.
 - **In the classic editor** an audio track shows, read-only, the list of
   its clips: the notation actions (Generate, Play with the keyboard, Import
   MIDI, Freeze chords, Export MIDI) do not apply to audio tracks and say so

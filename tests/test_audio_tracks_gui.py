@@ -572,6 +572,56 @@ def test_reconvert_replaces_the_note_track_with_the_last_choices(tmp_path):
     convert_module._last_choices.clear()
 
 
+def _wait_for_conversion(view):
+    worker = view._track_convert_worker
+    worker.wait()
+    for _ in range(50):
+        _app.processEvents()
+        if view._track_convert_worker is None:
+            break
+
+
+def test_reconvert_from_the_menus_uses_the_saved_choices(tmp_path):
+    """Dopo la conversione la traccia di note ricorda da dove viene (blocco
+    Conversione, salvato nel file): Riconverti la rifa' senza dialogo."""
+    from core.project_io import parse_project_text, project_to_text
+    w, t = _chord_clip_window(tmp_path)
+    _run_track_conversion(w, "Chitarra", _chords_mode)
+    notes = w.project.get_track("Chitarra (note)")
+    assert notes.conversion["from"] == "Chitarra" and notes.conversion["mode"] == "chords"
+    assert parse_project_text(project_to_text(w.project)).get_track("Chitarra (note)").conversion == notes.conversion
+    view = w.arrangement_view
+    point = w.mapToGlobal(w.rect().center())
+    assert "Riconverti da 'Chitarra'" in _menu_actions(lambda: view.show_track_menu("Chitarra (note)", point))
+    assert "Riconverti le tracce collegate (1)" in _menu_actions(lambda: view.show_track_menu("Chitarra", point))
+    t = w.project.get_track("Chitarra")
+    t.audio_clips = [c for c in t.audio_clips if c.name == "Ritornello"]      # l'audio cambia
+    w._mark_dirty()
+    w.refresh_mixer()
+    view.reconvert_tracks(["Chitarra (note)"])
+    _wait_for_conversion(view)
+    notes = w.project.get_track("Chitarra (note)")
+    assert [(c.name, c.start_beat) for c in notes.clips] == [("Ritornello", 32.0)]
+    assert notes.clips[0].text.startswith("4: 4C | 4Am | 4F | 4G")          # ancora accordi
+    w.undo()
+    assert [c.name for c in w.project.get_track("Chitarra (note)").clips] == ["Strofa", "Ritornello"]
+
+
+def test_boxes_added_to_an_existing_track_do_not_link_it(tmp_path):
+    w, t = _chord_clip_window(tmp_path)
+    w.project.add_track("Tastiera", "Piano", "")
+    w.refresh_mixer()
+
+    def existing(dlg):
+        _chords_mode(dlg)
+        dlg.existing_radio.setChecked(True)
+        dlg.target_combo.setCurrentText("Tastiera")
+
+    _run_track_conversion(w, "Chitarra", existing)
+    assert len(w.project.get_track("Tastiera").clips) == 2
+    assert w.project.get_track("Tastiera").conversion is None
+
+
 def test_bass_dialog_can_follow_the_chords_of_an_audio_track(tmp_path):
     from gui.rhythm_generate_dialog import BassGenerateDialog, chord_source_tracks
     w, t = _chord_clip_window(tmp_path)

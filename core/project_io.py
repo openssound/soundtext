@@ -39,6 +39,7 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
     _parse_mixer_body, _notation_body_lines, _extract_named_blocks, _extract_box_blocks,
     RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks, parse_bpm,
     RE_KEY_LIST_HDR, RE_TITLE, RE_COMPOSER, RE_LYRICIST, parse_key_list,
+    RE_CONVERSION_HDR, conversion_blocks, parse_conversion_body, conversion_body_text,
 )
 
 
@@ -300,9 +301,24 @@ def _relative_clip_path(path: str, base_dir: Optional[str]) -> str:
 # dichiara 2.8 e resta leggibile, senza avvisi, dalle versioni precedenti.
 _DECIMAL_TEMPO_VERSION = (2, 9)
 _BASE_FILE_VERSION = (2, 8)
+# Il blocco "Conversione Nome:" (traccia di note nata da una traccia audio)
+# c'e' dalla 2.10: solo i file che ne hanno uno lo dichiarano.
+_CONVERSION_VERSION = (2, 10)
+
+
+def linked_conversion(project: Project, track) -> Optional[dict]:
+    """Le scelte della conversione da cui e' nata la traccia di note, se la
+    traccia audio da cui viene c'e' ancora; altrimenti None."""
+    conversion = getattr(track, "conversion", None)
+    if not conversion or track.is_audio:
+        return None
+    source = project.find_track(conversion.get("from"))
+    return conversion if source is not None and source.is_audio else None
 
 
 def _file_language_version(project: Project) -> tuple:
+    if any(linked_conversion(project, t) for t in project.tracks):
+        return _CONVERSION_VERSION
     tempos = [project.tempo_bpm] + [v for _b, v in project.tempo_changes]
     if any(isinstance(v, float) and not float(v).is_integer() for v in tempos):
         return _DECIMAL_TEMPO_VERSION
@@ -542,6 +558,13 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
             mode, current_name = "effects", m.group(1)   # gia' letto nella pre-scansione
             continue
 
+        m = RE_CONVERSION_HDR.match(line)
+        if m:
+            if mode:
+                flush()
+            mode, current_name = "effects", m.group(1)   # letto a parte, vedi _read_conversions
+            continue
+
         m = RE_BOX_HDR.match(line)
         if m:
             if mode:
@@ -616,8 +639,25 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         if t.clips:
             t.text = flatten_clips_to_text(t.clips, project.patterns, t.instrument.default_octave,
                                            meter=project.meter())
+    _read_conversions(project, lines)
 
     return project
+
+
+def _read_conversions(project: Project, lines) -> None:
+    """I blocchi "Conversione Nome:" (2.10) sulle tracce di note. Come in
+    st_language.song: si ignorano quelli di una traccia che non c'e' o e'
+    audio, quelli il cui da= non e' una traccia audio e i doppioni (gli
+    avvisi li da' "st-language check"); un valore non valido vale il
+    predefinito."""
+    for name, body, _line in conversion_blocks(lines):
+        track = project.find_track(name)
+        if track is None or track.is_audio or track.conversion is not None:
+            continue
+        conversion, _problems = parse_conversion_body(body)
+        source = project.find_track(conversion["from"])
+        if source is not None and source.is_audio:
+            track.conversion = conversion
 
 
 def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
@@ -694,6 +734,15 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
         if not t.clips:
             lines.extend(_notation_body_lines(t.text))
         lines.append("")
+
+    # Da quale traccia audio e' nata una traccia di note (2.10): solo se
+    # quella traccia audio c'e' ancora, vedi linked_conversion.
+    for t in project.tracks:
+        conversion = linked_conversion(project, t)
+        if conversion:
+            lines.append(f"Conversione {t.name}:")
+            lines.append("  " + conversion_body_text(conversion))
+            lines.append("")
 
     for name, pat in project.patterns.items():
         lines.append(f"Pattern %{name}:")

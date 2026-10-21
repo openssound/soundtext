@@ -323,21 +323,48 @@ class AudioClipActions:
         """Tutta la traccia audio in una traccia SoundText, un box per clip
         (vedi core.audio_track_notation.convert_audio_track): le scelte nel
         dialogo, poi la conversione in background, annullabile."""
-        import copy
-        from PySide6.QtWidgets import QDialog, QProgressDialog
-        from core.audio_import import ConversionCancelled
-        from core.audio_track_notation import convert_audio_track
+        from PySide6.QtWidgets import QDialog
         from core.instruments import get_instrument
         from .audio_track_convert_dialog import AudioTrackConvertDialog
-        from .worker import Worker
         project = self.host.project
         track = project.get_track(track_name)
         dlg = AudioTrackConvertDialog(self, project, track)
         self._track_convert_dialog = dlg   # per i test
         if dlg.exec() != QDialog.Accepted:
             return
-        destination, options = dlg.destination(), dlg.options()
+        options = dlg.options()
         default_octave = get_instrument(dlg.instrument_name()).default_octave
+        self._run_track_conversion(track_name, [(dlg.destination(), options, default_octave)],
+                                   on_placed=dlg.remember_choices)
+
+    def reconvert_tracks(self, note_track_names):
+        """Riconverti: rifa' la conversione di ogni traccia di note dalla sua
+        traccia audio, con le scelte salvate (Track.conversion), senza
+        dialogo; i box nuovi prendono il posto dei vecchi, un Annulla per
+        traccia."""
+        from core.audio_track_notation import options_from_conversion
+        from .audio_track_convert_dialog import with_pitch_params
+        project = self.host.project
+        by_source = {}
+        for name in note_track_names:
+            target = project.get_track(name)
+            options = with_pitch_params(options_from_conversion(target.conversion), target.instrument_name)
+            by_source.setdefault(target.conversion["from"], []).append(
+                (("replace", name), options, target.instrument.default_octave))
+        for source, jobs in by_source.items():
+            self._run_track_conversion(source, jobs)
+
+    def _run_track_conversion(self, track_name: str, jobs, on_placed=None):
+        """Le conversioni 'jobs' [(destinazione, opzioni, ottava)] della
+        traccia audio, una dopo l'altra in background con una sola finestra
+        di avanzamento, annullabile; on_placed(nome della traccia di note)
+        dopo ognuna."""
+        import copy
+        from PySide6.QtWidgets import QProgressDialog
+        from core.audio_import import ConversionCancelled
+        from core.audio_track_notation import convert_audio_track
+        from .worker import Worker
+        project = self.host.project
         snapshot = copy.deepcopy(project)   # il brano puo' cambiare mentre si converte
         cancelled = {"value": False}
         progress_dlg = QProgressDialog(tr("Conversione delle clip di '{name}' in notazione...", name=track_name),
@@ -347,13 +374,18 @@ class AudioClipActions:
         progress_dlg.setMinimumDuration(0)
         progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
 
-        def progress(frac):
-            if cancelled["value"]:
-                raise ConversionCancelled()
-            worker.progress.emit(frac)
+        def convert_all(progress_callback):
+            results = []
+            for i, (_destination, options, default_octave) in enumerate(jobs):
+                def progress(frac, i=i):
+                    if cancelled["value"]:
+                        raise ConversionCancelled()
+                    progress_callback((i + frac) / len(jobs))
+                results.append(convert_audio_track(snapshot, snapshot.get_track(track_name), options,
+                                                   default_octave, progress_callback=progress))
+            return results
 
-        worker = Worker(convert_audio_track, snapshot, snapshot.get_track(track_name), options, default_octave,
-                        progress_callback=progress, pass_progress=False)
+        worker = Worker(convert_all)
         worker.progress.connect(lambda f: progress_dlg.setValue(int(f * 100)))
 
         def finish() -> bool:
@@ -364,11 +396,18 @@ class AudioClipActions:
             progress_dlg.close()
             return was_cancelled
 
-        def done(result):
-            if not finish():
-                target = self._place_converted_boxes(track_name, destination, *result)
-                if target is not None:
-                    dlg.remember_choices(target)
+        def done(results):
+            if finish():
+                return
+            for (destination, options, _octave), (boxes, silent) in zip(jobs, results):
+                target = self._place_converted_boxes(track_name, destination, boxes, silent)
+                if target is None:
+                    continue
+                if destination[0] != "existing":     # aggiunti a una traccia: Riconverti la svuoterebbe
+                    from core.audio_track_notation import conversion_record
+                    self.host.project.get_track(target).conversion = conversion_record(track_name, options)
+                if on_placed is not None:
+                    on_placed(target)
 
         def failed(message):
             if not finish():

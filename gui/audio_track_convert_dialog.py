@@ -6,11 +6,12 @@ core.audio_track_notation.convert_audio_track, lanciata da
 gui.arrangement_view: una traccia SoundText con un box per clip, ciascuno
 alla posizione e con il nome della sua clip.
 
-Per rifare la conversione dopo una modifica all'audio ("riconvertire") c'e'
-la destinazione "Sostituisci il contenuto della traccia": il dialogo propone
-le scelte dell'ultima conversione della stessa traccia audio (ricordate
-finche' SoundText resta aperto) e, la prima volta, la traccia "Nome (note)"
-se esiste gia'.
+Per rifare la conversione dopo una modifica all'audio c'e' la destinazione
+"Sostituisci il contenuto della traccia". Il dialogo propone la traccia di
+note nata da questa traccia audio con le scelte di allora (Track.conversion,
+salvata nel file dalla 2.10); senza, le scelte dell'ultima conversione fatta
+finche' SoundText resta aperto e la traccia "Nome (note)" se esiste gia'.
+Riconverti (menu delle tracce) rifa' la conversione senza dialogo.
 """
 
 from PySide6.QtWidgets import (
@@ -19,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import settings as app_settings
-from core.audio_track_notation import ConversionOptions, audible_clips
+from core.audio_track_notation import ConversionOptions, audible_clips, converted_from
 from core.i18n import tr
 from core.instruments import get_instrument, list_instrument_names
 from .quantize_options import QuantizeOptionsWidget
@@ -127,8 +128,11 @@ class AudioTrackConvertDialog(QDialog):
         self._on_destination_changed()
 
     def _restore_choices(self):
-        """Le scelte dell'ultima conversione di questa traccia audio; senza,
-        la traccia "Nome (note)" se esiste (vedi docstring del modulo)."""
+        """Le scelte proposte (vedi docstring del modulo)."""
+        linked = converted_from(self.project, self.track.name)
+        if linked:
+            self._restore_conversion(linked[0])
+            return
         last = _last_choices.get(self.track.name, {})
         if last:
             self.mode_combo.setCurrentIndex(max(0, self.mode_combo.findData(last["mode"])))
@@ -139,6 +143,19 @@ class AudioTrackConvertDialog(QDialog):
         if index >= 0:
             self.replace_combo.setCurrentIndex(index)
             self.replace_radio.setChecked(True)
+
+    def _restore_conversion(self, target):
+        conversion = target.conversion
+        self.mode_combo.setCurrentIndex(max(0, self.mode_combo.findData(conversion["mode"])))
+        self.grid_combo.setCurrentIndex(max(0, self.grid_combo.findData(conversion["grid"])))
+        self.ternary_check.setChecked(conversion["triplets"])
+        from core.audio_track_notation import options_from_conversion
+        quantize = options_from_conversion(dict(conversion, mode="melody")).quantize
+        self.quant_options.set_settings(quantize)
+        self.voice_check.setChecked(conversion["voice"])
+        self.sevenths_check.setChecked(conversion["sevenths"])
+        self.replace_combo.setCurrentIndex(self.replace_combo.findText(target.name))
+        self.replace_radio.setChecked(True)
 
     def _mode(self) -> str:
         return self.mode_combo.currentData()
@@ -198,24 +215,29 @@ class AudioTrackConvertDialog(QDialog):
         return value if kind == "new" else self.project.get_track(value).instrument_name
 
     def options(self) -> ConversionOptions:
-        from .audio_pitch_dialog import current_pitch_params
         mode = self._mode()
         options = ConversionOptions(mode=mode, grid_denominator=self.grid_combo.currentData(),
                                     ternary=self.ternary_check.isChecked() and mode != "chords",
                                     sevenths=mode == "chords" and self.sevenths_check.isChecked(),
                                     voice_source=mode != "chords" and self.voice_check.isChecked(),
                                     quantize=None if mode == "chords" else self.quant_options.settings())
-        if mode == "melody":
-            # gli stessi parametri del pitch tracking di "Importa audio"
-            # (Opzioni -> Import audio), vedi AudioImportDialog
-            params = current_pitch_params()
-            if params["min_freq_auto"]:
-                if not options.voice_source:
-                    options.min_freq_hz = _min_freq_hz_for_instrument(get_instrument(self.instrument_name()))
-            else:
-                options.min_freq_hz = params["min_freq_hz"]
-            options.buf_size = params["buf_size"]
-            options.hop_size = params["hop_size"]
-            options.pitch_confidence_threshold = params["confidence"]
-            options.min_note_duration_sec = params["min_note_ms"] / 1000.0
-        return options
+        return with_pitch_params(options, self.instrument_name())
+
+
+def with_pitch_params(options: ConversionOptions, instrument_name: str) -> ConversionOptions:
+    """Per la melodia, gli stessi parametri del pitch tracking di "Importa
+    audio" (Opzioni -> Import audio, vedi AudioImportDialog): valgono anche
+    per Riconverti, perche' non sono salvati nel brano."""
+    from .audio_pitch_dialog import current_pitch_params
+    if options.mode == "melody":
+        params = current_pitch_params()
+        if params["min_freq_auto"]:
+            if not options.voice_source:
+                options.min_freq_hz = _min_freq_hz_for_instrument(get_instrument(instrument_name))
+        else:
+            options.min_freq_hz = params["min_freq_hz"]
+        options.buf_size = params["buf_size"]
+        options.hop_size = params["hop_size"]
+        options.pitch_confidence_threshold = params["confidence"]
+        options.min_note_duration_sec = params["min_note_ms"] / 1000.0
+    return options

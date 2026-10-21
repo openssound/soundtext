@@ -152,6 +152,11 @@ class Track:
     # canali della scheda audio ("1", "2", "1+2", ...).
     input_profile: str = ""
     input_channels: str = ""
+    # Solo tracce di note nate da "Converti la traccia in notazione": da
+    # quale traccia audio e con quali scelte (blocco "Conversione Nome:"
+    # del file, dalla 2.10; chiavi di st_language.stfile.parse_conversion_body),
+    # per rifarla con Riconverti. None se la traccia non viene da una conversione.
+    conversion: Optional[dict] = None
     # Lo strumento come lo definisce il brano (blocco "Strumento Nome:" del
     # file, vedi Project.instruments): se c'e', vale lui e non quello con lo
     # stesso nome registrato in locale, che puo' venire da un altro brano.
@@ -244,6 +249,9 @@ class Project:
 
     def remove_track(self, name: str):
         self.tracks = [t for t in self.tracks if t.name != name]
+        for t in self.tracks:              # tracce di note convertite da quella tolta
+            if t.conversion and t.conversion.get("from") == name:
+                t.conversion = None
 
     def get_track(self, name: str) -> Track:
         for t in self.tracks:
@@ -263,6 +271,9 @@ class Project:
         if track.is_audio:
             # Una traccia audio resta audio: qui si puo' solo rinominarla.
             track.name = new_name
+            for t in self.tracks:          # le tracce convertite la seguono
+                if t.conversion and t.conversion.get("from") == old_name:
+                    t.conversion = dict(t.conversion, **{"from": new_name})
             return
         if new_instrument not in self.instruments:
             get_instrument(new_instrument)  # valida

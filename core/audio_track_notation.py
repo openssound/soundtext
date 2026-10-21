@@ -43,6 +43,38 @@ class ConversionOptions:
     quantize: Optional[QuantizeSettings] = None   # forza, finestra, swing, pulizia
 
 
+def conversion_record(source_name: str, options: ConversionOptions) -> dict:
+    """Le scelte da ricordare sulla traccia di note (Track.conversion, il
+    blocco "Conversione Nome:" del file): le chiavi normalizzate di
+    st_language.stfile.parse_conversion_body. I parametri del pitch tracking
+    no: sono impostazioni del programma, non del brano."""
+    q = options.quantize or QuantizeSettings()
+    return {"from": source_name, "mode": options.mode, "grid": options.grid_denominator,
+            "triplets": options.ternary, "strength": q.strength, "window": q.window, "swing": q.swing,
+            "min_note_sec": q.min_note_sec, "merge_gap_sec": q.merge_gap_sec,
+            "sevenths": options.sevenths, "voice": options.voice_source}
+
+
+def options_from_conversion(conversion: dict) -> ConversionOptions:
+    """Il contrario di conversion_record (senza i parametri del pitch
+    tracking, vedi gui.audio_track_convert_dialog.with_pitch_params)."""
+    chords = conversion["mode"] == "chords"
+    return ConversionOptions(
+        mode=conversion["mode"], grid_denominator=conversion["grid"],
+        ternary=conversion["triplets"] and not chords, sevenths=chords and conversion["sevenths"],
+        voice_source=not chords and conversion["voice"],
+        quantize=None if chords else QuantizeSettings(
+            strength=conversion["strength"], window=conversion["window"], swing=conversion["swing"],
+            min_note_sec=conversion["min_note_sec"], merge_gap_sec=conversion["merge_gap_sec"]))
+
+
+def converted_from(project: Project, audio_track_name: str) -> List[Track]:
+    """Le tracce di note nate dalla traccia audio, da riconvertire con lei."""
+    from .project_io import linked_conversion
+    return [t for t in project.tracks
+            if (linked_conversion(project, t) or {}).get("from") == audio_track_name]
+
+
 def _beats_per_bar(time_sig: str) -> float:
     try:
         num, den = (int(x) for x in str(time_sig).split("/"))

@@ -1254,6 +1254,13 @@ class ArrangementView(AudioClipActions, QWidget):
             import_action = menu.addAction(tr("Importa file audio..."))
             convert_action = menu.addAction(tr("Converti la traccia in notazione..."))
             convert_action.setEnabled(bool(audible_clips(track)))
+            from core.audio_track_notation import converted_from
+            linked = [t.name for t in converted_from(self.host.project, track_name)]
+            reconvert_action = None
+            if linked:
+                reconvert_action = menu.addAction(tr("Riconverti le tracce collegate ({n})", n=len(linked)))
+                reconvert_action.setToolTip(", ".join(linked))
+                reconvert_action.setEnabled(bool(audible_clips(track)))
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
@@ -1268,6 +1275,8 @@ class ArrangementView(AudioClipActions, QWidget):
                 self.import_audio_clip(track_name, self.end_of_track_beat(track_name))
             elif chosen is convert_action:
                 self.convert_track_to_notation(track_name)
+            elif reconvert_action is not None and chosen is reconvert_action:
+                self.reconvert_tracks(linked)
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:
@@ -1294,6 +1303,13 @@ class ArrangementView(AudioClipActions, QWidget):
         keyboard_action = menu.addAction(tr("Suona con la tastiera..."))
         import_midi_action = menu.addAction(tr("Importa MIDI..."))
         import_audio_action = menu.addAction(tr("Importa audio → note..."))
+        from core.project_io import linked_conversion
+        conversion = linked_conversion(self.host.project, track)
+        reconvert_action = None
+        if conversion:
+            reconvert_action = menu.addAction(tr("Riconverti da '{name}'", name=conversion["from"]))
+            reconvert_action.setToolTip(tr("Rifa' la conversione dalla traccia audio con le stesse scelte: "
+                                           "il contenuto della traccia viene sostituito (Ctrl+Z lo riporta)."))
         menu.addSeparator()
         edit_action = menu.addAction(tr("Nome e strumento..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
@@ -1322,6 +1338,9 @@ class ArrangementView(AudioClipActions, QWidget):
             {keyboard_action: self.host.play_keyboard_into_selected_track,
              import_midi_action: self.host.import_midi_into_selected_track,
              import_audio_action: self.host.import_audio_into_selected_track}[chosen]()
+            return
+        if reconvert_action is not None and chosen is reconvert_action:
+            self.reconvert_tracks([track_name])
             return
         if chosen is edit_action:
             self.host._open_edit_dialog_for(track_name)
