@@ -141,7 +141,7 @@ class PlaybackMixin:
             # click deve aspettare che l'audio inizi DAVVERO (vedi
             # _mark_audio_started), non il momento in cui play() e' stato
             # chiamato (l'export MIDI + il rendering offline non sono istantanei).
-            self.metronome_engine.start(self._playback_tempo_map, self._playback_metrica_map,
+            self.metronome_engine.start(self._metronome_tempo_map(), self._playback_metrica_map,
                                           offset_beats=_resume_offset_beats, start_immediately=False)
         self._playback_paused_beat = None
         self._set_play_pause_button(playing=True)
@@ -657,6 +657,35 @@ class PlaybackMixin:
 
     # -------------------------------------------------------------- metronomo
 
+    def _listening_speed(self) -> float:
+        """La velocita' d'ascolto che vale davvero: solo in streaming."""
+        from core.playback import streaming_available
+        return self.playback.speed if streaming_available() else 1.0
+
+    def _metronome_tempo_map(self):
+        """La mappa del tempo per il click: rallentata come l'ascolto."""
+        speed = self._listening_speed()
+        if speed >= 1.0 - 1e-6:
+            return self._playback_tempo_map
+        return [(beat, bpm * speed) for beat, bpm in self._playback_tempo_map]
+
+    def _on_speed_changed(self, *_args):
+        """Rallenta l'ascolto (combo della barra): riparte dal punto in cui
+        si e' se sta suonando."""
+        from core.playback import streaming_available
+        speed = self.speed_combo.currentData() or 1.0
+        self.playback.set_speed(speed)
+        if speed < 1.0 and not streaming_available():
+            self.statusBar().showMessage(tr("Rallentare l'ascolto richiede la libreria FluidSynth e "
+                                            "sounddevice: con il motore attuale si ascolta a velocita' normale."),
+                                         8000)
+            return
+        if self._playback_start_wall is not None and self.playback.is_playing():
+            beat = self._current_elapsed_beats()
+            self.playback.stop()
+            self.metronome_engine.stop()
+            self.play(_resume_offset_beats=beat)
+
     def _on_metronome_toggled(self, checked):
         if checked and self.playback.is_playing():
             current_beat = self._current_elapsed_beats()
@@ -664,7 +693,7 @@ class PlaybackMixin:
             # gia' avviato), quindi il riferimento temporale del click va
             # fissato subito, non aspettato da mark_started() (che qui non
             # verrebbe piu' richiamato da _mark_audio_started).
-            self.metronome_engine.start(self._playback_tempo_map, self._playback_metrica_map,
+            self.metronome_engine.start(self._metronome_tempo_map(), self._playback_metrica_map,
                                           offset_beats=current_beat, start_immediately=True)
         else:
             self.metronome_engine.stop()

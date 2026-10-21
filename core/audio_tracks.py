@@ -440,6 +440,38 @@ def clip_duration_beats(clip: AudioClip, tempo_map) -> float:
     return beat_at_elapsed_seconds(tempo_map, 0.0, start_s + seconds) - clip.start_beat
 
 
+def clip_loops(clip: AudioClip, tempo_map) -> bool:
+    return clip.loop_length > clip_duration_beats(clip, tempo_map) + 1e-6 and clip_play_seconds(clip) > 0
+
+
+def clip_span_beats(clip: AudioClip, tempo_map) -> float:
+    """Quanti beat occupa la clip nel brano: la parte suonata, o tutta la
+    ripetizione in loop."""
+    return clip.loop_length if clip_loops(clip, tempo_map) else clip_duration_beats(clip, tempo_map)
+
+
+def loop_repeats(clip: AudioClip, tempo_map) -> List[AudioClip]:
+    """La clip come la si sente: se si ripete in loop, una copia per giro
+    (l'ultimo tagliato dove finisce la ripetizione), con la dissolvenza in
+    entrata solo sul primo e quella in uscita solo sull'ultimo. Altrimenti
+    [clip]."""
+    if not clip_loops(clip, tempo_map):
+        return [clip]
+    period = clip_duration_beats(clip, tempo_map)
+    end = clip.start_beat + clip.loop_length
+    copies = []
+    k = 0
+    while clip.start_beat + k * period < end - 1e-6 and k < 4096:
+        copy = dataclasses.replace(clip, start_beat=round(clip.start_beat + k * period, 6), loop_length=0.0,
+                                   fade_in=clip.fade_in if k == 0 else 0.0, fade_out=0.0)
+        if copy.start_beat + clip_duration_beats(copy, tempo_map) > end + 1e-6:
+            trim_clip_end_to_beat(copy, end, tempo_map)
+        copies.append(copy)
+        k += 1
+    copies[-1].fade_out = min(clip.fade_out, clip_play_seconds(copies[-1]))
+    return copies
+
+
 def audio_tracks_end_beat(project: Project, tracks: List[Track], tempo_map=None) -> float:
     """Beat in cui finisce l'ultima clip audio (con il file presente: una
     mancante non suona) delle tracce indicate."""
@@ -449,7 +481,7 @@ def audio_tracks_end_beat(project: Project, tracks: List[Track], tempo_map=None)
     if tempo_map is None:
         from .tempo_map import build_tempo_beat_map
         tempo_map = build_tempo_beat_map(project, tracks=tracks)
-    return max(c.start_beat + clip_duration_beats(c, tempo_map) for c in clips)
+    return max(c.start_beat + clip_span_beats(c, tempo_map) for c in clips)
 
 
 # ---------------------------------------------------------------------------
@@ -501,7 +533,30 @@ def _trim_clip_start_to_beat(clip: AudioClip, new_start_beat: float, tempo_map) 
     trim = clip.trim_start + (new_s - old_s) / stretch
     trim = max(0.0, min(trim, total - max(0.0, clip.trim_end) - MIN_CLIP_SECONDS))
     clip.start_beat = round(beat_at_elapsed_seconds(tempo_map, 0.0, old_s + (trim - clip.trim_start) * stretch), 6)
+    # la curva del volume resta sull'audio a cui si riferiva
+    clip.gain_points = shift_gain_points(clip.gain_points, -(trim - clip.trim_start) * stretch)
     clip.trim_start = round(trim, 6)
+
+
+def shift_gain_points(points, delta: float, length: Optional[float] = None) -> list:
+    """I punti della curva del volume spostati di 'delta' secondi; quelli
+    che escono dall'inizio (o, con 'length', dalla fine) della parte suonata
+    lasciano al bordo un punto con il valore che la curva aveva li', cosi'
+    il volume dentro non cambia."""
+    if not points:
+        return []
+    moved = [(t + delta, db) for t, db in points]
+    lo, hi = 0.0, length if length is not None else float("inf")
+    inside = [(round(t, 6), db) for t, db in moved if lo - 1e-9 <= t <= hi + 1e-9]
+    xs = np.array([t for t, _ in moved])
+    edge_db = lambda x: round(float(gain_curve_db(np.array([x]), moved)[0]), 3)   # noqa: E731
+    if xs.min() < lo - 1e-9 and (not inside or inside[0][0] > lo + 1e-9):
+        inside.insert(0, (lo, edge_db(lo)))
+    if length is not None and xs.max() > hi + 1e-9 and (not inside or inside[-1][0] < hi - 1e-9):
+        inside.append((round(hi, 6), edge_db(hi)))
+    if not inside:                    # tutti fuori da un lato: resta il valore al bordo
+        inside = [(lo, edge_db(lo))]
+    return inside
 
 
 def trim_clip_end_to_beat(clip: AudioClip, new_end_beat: float, tempo_map) -> None:
@@ -526,6 +581,8 @@ def split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioClip
     cade dentro la clip."""
     with _play_order_trims(clip):
         second = _split_clip(clip, at_beat, tempo_map)
+    if second is not None:
+        clip.loop_length = second.loop_length = 0.0      # divisa, non si ripete piu' (la parte resta)
     if second is not None and second.reverse:
         second.trim_start, second.trim_end = second.trim_end, second.trim_start
     return second
@@ -547,6 +604,9 @@ def _split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioCli
     clip.fade_out = 0.0
     clip.fade_in = min(clip.fade_in, fade_offset)
     second.fade_out = min(second.fade_out, clip_play_seconds(second))
+    if clip.gain_points:
+        second.gain_points = shift_gain_points(clip.gain_points, -fade_offset)
+        clip.gain_points = shift_gain_points(clip.gain_points, 0.0, length=fade_offset)
     return second
 
 
@@ -664,6 +724,9 @@ def waveform_peaks(clip: AudioClip, buckets: int) -> Optional[np.ndarray]:
         # inviluppo valutato al centro di ogni colonna
         t = (np.arange(buckets) + 0.5) * (play / buckets)
         out = out * fade_envelope_at(t, play, clip.fade_in, clip.fade_out, clip.fade_shape)
+    if play > 0 and clip.gain_points:
+        t = (np.arange(buckets) + 0.5) * (play / buckets)
+        out = out * np.power(10.0, gain_curve_db(t, clip.gain_points) / 20.0)
     return np.clip(out, 0.0, 1.0)
 
 
@@ -698,6 +761,9 @@ class AudioLayer:
     transpose: float = 0.0
     reverse: bool = False
     channel: str = "stereo"
+    # Curva del volume (AudioClip.gain_points), in secondi della parte
+    # suonata: come le dissolvenze, tiene conto di head_skip.
+    gain_points: tuple = ()
 
 
 def db_to_gain(db: float) -> float:
@@ -992,8 +1058,12 @@ def apply_fades(part: np.ndarray, rate: int, fade_in: float, fade_out: float, sh
         return part
     out = part.astype(np.float32, copy=True)
     fade_in, fade_out = max(0.0, fade_in), max(0.0, fade_out)
-    in_shape = shape if fade_in > MICRO_FADE_SECONDS else "linear"
-    out_shape = shape if fade_out > MICRO_FADE_SECONDS else "linear"
+    # "entrata/uscita" quando le due forme sono diverse (dissolvenza
+    # incrociata automatica su un lato solo, vedi auto_crossfades)
+    in_shape, _sep, out_shape = shape.partition("/")
+    out_shape = out_shape or in_shape
+    in_shape = in_shape if fade_in > MICRO_FADE_SECONDS else "linear"
+    out_shape = out_shape if fade_out > MICRO_FADE_SECONDS else "linear"
     fade_in, fade_out = max(fade_in, MICRO_FADE_SECONDS), max(fade_out, MICRO_FADE_SECONDS)
     skip = int(round(max(0.0, head_skip) * rate))
     k_in = int(round(fade_in * rate))
@@ -1007,6 +1077,70 @@ def apply_fades(part: np.ndarray, rate: int, fade_in: float, fade_out: float, sh
     ramp = _fade_curve(np.arange(k_out - 1, -1, -1) / full_out, out_shape)
     out[n - k_out:] *= ramp.astype(np.float32)[:, None]
     return out
+
+
+# Dissolvenza incrociata automatica: dove una clip comincia prima che la
+# precedente della stessa traccia finisca (e continua dopo), le due si
+# incrociano per tutta la sovrapposizione, a potenza costante. Oltre questa
+# durata la sovrapposizione e' voluta (due riprese che suonano insieme,
+# "Tienile entrambe" della registrazione) e si lascia com'e'.
+AUTO_CROSSFADE_MAX_SECONDS = 2.0
+
+
+def auto_crossfades(clips: List[AudioClip], tempo_map) -> Dict[int, Tuple[float, float]]:
+    """{id(clip): (entrata, uscita)} in secondi del brano: le dissolvenze
+    incrociate automatiche delle clip udibili di una traccia che si
+    sovrappongono in parte (vedi AUTO_CROSSFADE_MAX_SECONDS)."""
+    from .tempo_map import seconds_for_beats
+    spans = []
+    for clip in clips:
+        if clip.muted:
+            continue
+        play = clip_play_seconds(clip)
+        if play <= 0:
+            continue
+        start = seconds_for_beats(tempo_map, clip.start_beat)
+        spans.append((start, start + play, clip))
+    spans.sort(key=lambda s: (s[0], s[1]))
+    out: Dict[int, Tuple[float, float]] = {}
+    for i, (a_start, a_end, a) in enumerate(spans):
+        for b_start, b_end, b in spans[i + 1:]:
+            if b_start >= a_end - 1e-6:
+                break
+            overlap = a_end - b_start
+            if b_start <= a_start + 1e-6 or b_end <= a_end + 1e-6 or overlap > AUTO_CROSSFADE_MAX_SECONDS:
+                continue                   # una dentro l'altra, o sovrapposizione voluta
+            a_in, a_out = out.get(id(a), (0.0, 0.0))
+            b_in, b_out = out.get(id(b), (0.0, 0.0))
+            out[id(a)] = (a_in, max(a_out, overlap))
+            out[id(b)] = (max(b_in, overlap), b_out)
+    return out
+
+
+def _with_crossfade(fade: float, shape: str, auto: float) -> Tuple[float, str]:
+    """La dissolvenza di un lato con quella incrociata automatica: vince la
+    piu' lunga, e quella automatica e' a potenza costante."""
+    return (auto, "equal") if auto > fade + 1e-6 else (fade, shape)
+
+
+GAIN_CURVE_MIN_DB, GAIN_CURVE_MAX_DB = -60.0, 12.0
+
+
+def gain_curve_db(t: np.ndarray, points) -> np.ndarray:
+    """dB della curva del volume ai tempi t (secondi della parte suonata)."""
+    if not points:
+        return np.zeros(len(t), dtype=np.float32)
+    xs = np.array([p[0] for p in points], dtype=np.float64)
+    ys = np.array([max(GAIN_CURVE_MIN_DB, min(GAIN_CURVE_MAX_DB, p[1])) for p in points], dtype=np.float64)
+    return np.interp(t, xs, ys).astype(np.float32)
+
+
+def apply_gain_curve(part: np.ndarray, rate: int, points, head_skip: float = 0.0) -> np.ndarray:
+    """La curva del volume su 'part' (come apply_fades: senza i primi
+    head_skip secondi). Ritorna una copia (float32)."""
+    t = head_skip + np.arange(len(part), dtype=np.float64) / rate
+    gains = np.power(10.0, gain_curve_db(t, points) / 20.0).astype(np.float32)
+    return part.astype(np.float32, copy=False) * gains[:, None]
 
 
 def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
@@ -1023,9 +1157,15 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
         if not track.is_audio:
             continue
         track_gain = max(0, min(200, track.volume)) / 100.0 * master
-        for clip in track.audio_clips:
+        heard = [c for clip in track.audio_clips for c in loop_repeats(clip, tempo_map)]
+        crossfades = auto_crossfades(heard, tempo_map)
+        for clip in heard:
             if clip.muted or clip_play_seconds(clip) <= 0:
                 continue
+            auto_in, auto_out = crossfades.get(id(clip), (0.0, 0.0))
+            fade_in, in_shape = _with_crossfade(max(0.0, clip.fade_in), clip.fade_shape, auto_in)
+            fade_out, out_shape = _with_crossfade(max(0.0, clip.fade_out), clip.fade_shape, auto_out)
+            fade_shape = in_shape if in_shape == out_shape else f"{in_shape}/{out_shape}"
             if clip.reverse:
                 # al contrario: la clip suona il file rovesciato, dove i
                 # tagli si scambiano di posto
@@ -1042,10 +1182,11 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
                 path=os.path.abspath(clip.file), start_seconds=start, trim_start=trim_start,
                 trim_end=max(0.0, clip.trim_end),
                 gain=db_to_gain(clip.gain_db) * track_gain * (-1.0 if clip.invert else 1.0),
-                pan=track.pan, fade_in=max(0.0, clip.fade_in), fade_out=max(0.0, clip.fade_out),
-                fade_shape=clip.fade_shape, head_skip=head_skip, stretch=stretch,
+                pan=track.pan, fade_in=fade_in, fade_out=fade_out,
+                fade_shape=fade_shape, head_skip=head_skip, stretch=stretch,
                 segments=tempo_segments(clip, tempo_map, trim_start),
                 transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel,
+                gain_points=tuple((float(t), float(db)) for t, db in clip.gain_points),
             ))
     return layers
 
@@ -1111,6 +1252,8 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if _layer_needs_stretch(layer):
             part = _stretch_layer_part(layer, part, samplerate)
         part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
+        if layer.gain_points:
+            part = apply_gain_curve(part, samplerate, layer.gain_points, layer.head_skip)
         if part.shape[1] == 1:
             stereo = np.repeat(part, 2, axis=1)
         else:

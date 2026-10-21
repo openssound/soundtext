@@ -101,6 +101,11 @@ FADE_HANDLE_PX = 7          # maniglia di una dissolvenza (angoli in alto di un 
 FADE_GRAB_PX = 8            # distanza entro cui la maniglia si afferra
 MUTED_CLIP_COLOR = "#8a8a8a"
 MIN_DETAIL_PX = 8           # sotto questa larghezza un box audio e' solo il rettangolo
+# Curva del volume di una clip audio (AudioClip.gain_points): dB in cima e
+# in fondo al box, raggio dei punti e distanza entro cui si afferrano.
+CURVE_TOP_DB, CURVE_BOTTOM_DB = 6.0, -40.0
+CURVE_POINT_PX = 4
+CURVE_GRAB_PX = 7
 TRIM_SNAP_BEATS = 0.25      # passo del taglio col mouse (Shift = libero)
 
 
@@ -251,11 +256,68 @@ class AudioBoxItem(BoxItem):
     _trim_edge = None
     _fade_drag = None
     _slip_from = None
+    _point_drag = None
     _hover = False
+
+    # --- curva del volume -------------------------------------------------
+
+    def _db_to_y(self, db: float) -> float:
+        r = self.rect()
+        p = (CURVE_TOP_DB - max(CURVE_BOTTOM_DB, min(CURVE_TOP_DB, db))) / (CURVE_TOP_DB - CURVE_BOTTOM_DB)
+        return r.top() + 2 + p * (r.height() - 4)
+
+    def _y_to_db(self, y: float) -> float:
+        r = self.rect()
+        p = max(0.0, min(1.0, (y - r.top() - 2) / max(1.0, r.height() - 4)))
+        db = round(CURVE_TOP_DB - p * (CURVE_TOP_DB - CURVE_BOTTOM_DB), 1)
+        return 0.0 if abs(db) < 0.75 else db        # lo 0 dB si aggancia: un pixel vale quasi 1 dB
+
+    def _point_at(self, pos):
+        """Indice del punto della curva sotto il mouse, o None."""
+        pps = self._px_per_second()
+        if pps <= 0:
+            return None
+        for i, (t, db) in enumerate(self.clip.gain_points):
+            if abs(pos.x() - t * pps) <= CURVE_GRAB_PX and abs(pos.y() - self._db_to_y(db)) <= CURVE_GRAB_PX:
+                return i
+        return None
+
+    def add_curve_point(self, x: float, y: float) -> None:
+        """Un punto della curva a x (pixel dall'inizio del box, nel primo
+        giro) e all'altezza y (o, con y None, sulla curva com'e')."""
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0 or play <= 0:
+            return
+        t = round(max(0.0, min(play, (x % max(1.0, self._content_width())) / pps)), 3)
+        db = self._y_to_db(y) if y is not None else round(float(
+            audio_tracks.gain_curve_db(np.array([t]), self.clip.gain_points)[0]), 1)
+        points = [p for p in self.clip.gain_points if abs(p[0] - t) > 1e-3] + [(t, db)]
+        self.clip.gain_points = sorted(points)
+        self.update()
+
+    def _drag_point(self, pos):
+        i = self._point_drag
+        points = list(self.clip.gain_points)
+        pps = self._px_per_second()
+        lo = points[i - 1][0] + 0.001 if i > 0 else 0.0
+        hi = points[i + 1][0] - 0.001 if i + 1 < len(points) else audio_tracks.clip_play_seconds(self.clip)
+        t = round(max(lo, min(hi, pos.x() / pps)), 3) if pps > 0 else points[i][0]
+        points[i] = (t, self._y_to_db(pos.y()))
+        self.clip.gain_points = points
+        self.update()
+
+    def _content_width(self) -> float:
+        """La larghezza di un giro: tutto il box, salvo che la clip si
+        ripeta in loop."""
+        if self.clip.loop_length <= 0:
+            return self.rect().width()
+        beats = audio_tracks.clip_duration_beats(self.clip, self.view._tempo_map())
+        return min(self.rect().width(), beats * PX_PER_BEAT)
 
     def _px_per_second(self) -> float:
         play = audio_tracks.clip_play_seconds(self.clip)
-        return self.rect().width() / play if play > 0 else 0.0
+        return self._content_width() / play if play > 0 else 0.0
 
     def _fade_handle_x(self, which: str) -> float:
         pps = self._px_per_second()
@@ -292,7 +354,9 @@ class AudioBoxItem(BoxItem):
         return None
 
     def hoverMoveEvent(self, event):
-        if self._fade_handle_at(event.pos()):
+        if self._point_at(event.pos()) is not None:
+            self.setCursor(Qt.SizeAllCursor)
+        elif self._fade_handle_at(event.pos()):
             self.setCursor(Qt.PointingHandCursor)
         else:
             self.setCursor(Qt.SizeHorCursor if self._edge_at(event.pos().x()) else Qt.ArrowCursor)
@@ -300,10 +364,24 @@ class AudioBoxItem(BoxItem):
 
     def _state(self):
         c = self.clip
-        return (c.start_beat, c.trim_start, c.trim_end, c.fade_in, c.fade_out)
+        return (c.start_beat, c.trim_start, c.trim_end, c.fade_in, c.fade_out, c.loop_length,
+                tuple(c.gain_points))
 
     def mousePressEvent(self, event):
         left = event.button() == Qt.LeftButton
+        if left and not getattr(self, "_missing", True):
+            point = self._point_at(event.pos())
+            ctrl = bool(event.modifiers() & Qt.ControlModifier)
+            if point is not None or (ctrl and self._edge_at(event.pos().x()) is None
+                                     and self._fade_handle_at(event.pos()) is None):
+                self.view.select_box(self.track_name, self.clip)
+                self._before = self._state()
+                if point is None:                  # Ctrl+clic: un punto nuovo
+                    self.add_curve_point(event.pos().x(), event.pos().y())
+                    point = self._point_at(event.pos())
+                self._point_drag = point
+                event.accept()
+                return
         fade = self._fade_handle_at(event.pos()) if left else None
         slip = left and fade is None and bool(event.modifiers() & Qt.AltModifier) and not self._missing
         edge = self._edge_at(event.pos().x()) if left and fade is None and not slip else None
@@ -319,6 +397,9 @@ class AudioBoxItem(BoxItem):
             self.setCursor(Qt.ClosedHandCursor)
         else:
             self._trim_edge = edge
+            # Ctrl sul bordo destro (o una clip che gia' si ripete): ripeti in loop
+            self._loop_drag = edge == "right" and (bool(event.modifiers() & Qt.ControlModifier)
+                                                    or self.clip.loop_length > 0)
         event.accept()
 
     def _drag_fade(self, x: float):
@@ -345,6 +426,9 @@ class AudioBoxItem(BoxItem):
         self.update()
 
     def mouseMoveEvent(self, event):
+        if self._point_drag is not None:
+            self._drag_point(event.pos())
+            return
         if self._fade_drag is not None:
             self._drag_fade(event.pos().x())
             return
@@ -360,6 +444,10 @@ class AudioBoxItem(BoxItem):
         tempo_map = self.view._tempo_map()
         if self._trim_edge == "left":
             audio_tracks.trim_clip_start_to_beat(self.clip, beat, tempo_map)
+        elif getattr(self, "_loop_drag", False):
+            span = beat - self.clip.start_beat
+            content = audio_tracks.clip_duration_beats(self.clip, tempo_map)
+            self.clip.loop_length = round(span, 6) if span > content + 1e-6 else 0.0
         else:
             audio_tracks.trim_clip_end_to_beat(self.clip, beat, tempo_map)
         self.prepareGeometryChange()
@@ -369,12 +457,18 @@ class AudioBoxItem(BoxItem):
         self.update()
 
     def mouseReleaseEvent(self, event):
+        if self._point_drag is not None:
+            self._point_drag = None
+            if self._state() != self._before:
+                self.view.on_clip_changed(self.track_name)
+            return
         if self._trim_edge is None and self._fade_drag is None and self._slip_from is None:
             super().mouseReleaseEvent(event)
             return
         if self._slip_from is not None:
             self.unsetCursor()
         self._trim_edge = self._fade_drag = self._slip_from = None
+        self._loop_drag = False
         self.view.canvas.set_drag_guide(None)
         if self._state() != self._before:
             self.view.on_clip_changed(self.track_name)
@@ -397,8 +491,18 @@ class AudioBoxItem(BoxItem):
             tip = (tr("{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.", name=self.clip.name, seconds=seconds, gain=gain, muted=muted, file=self.clip.file))
         self.setToolTip(tip)
 
+    def remove_point_at(self, pos) -> bool:
+        """Doppio clic su un punto della curva del volume: lo toglie."""
+        point = self._point_at(pos)
+        if point is None:
+            return False
+        del self.clip.gain_points[point]
+        self.view.on_clip_changed(self.track_name)
+        return True
+
     def mouseDoubleClickEvent(self, event):
-        self.view._rename_clip(self.track_name, self.clip)
+        if not self.remove_point_at(event.pos()):
+            self.view._rename_clip(self.track_name, self.clip)
 
     _draw_cache = None
 
@@ -408,21 +512,29 @@ class AudioBoxItem(BoxItem):
         box (con centinaia di box, ricalcolarle a ogni ridisegno rendeva lo
         scorrimento lento)."""
         c = self.clip
+        content = self._content_width()
         key = (rect.width(), rect.height(), c.file, c.trim_start, c.trim_end, c.stretch, c.fade_in, c.fade_out,
-               c.fade_shape, _canvas_colors()["box_text"])
+               c.fade_shape, _canvas_colors()["box_text"], c.reverse, c.channel, content, tuple(c.gain_points))
         if self._draw_cache is not None and self._draw_cache[0] == key:
             return self._draw_cache[1]
         lines, fades = [], []
-        buckets = max(1, min(4000, int(rect.width() / 2)))
+        buckets = max(1, min(4000, int(content / 2)))
         peaks = audio_tracks.waveform_peaks(c, buckets)
         if peaks is not None:
             mid = rect.center().y()
             half = rect.height() / 2 - 4
-            step = rect.width() / buckets
-            for i, peak in enumerate(peaks):
-                x = rect.left() + (i + 0.5) * step
-                h = max(0.5, float(peak) * half)
-                lines.append(QLineF(x, mid - h, x, mid + h))
+            step = content / buckets
+            offset = 0.0
+            while offset < rect.width() - 0.5:         # un giro dopo l'altro se si ripete
+                for i, peak in enumerate(peaks):
+                    x = rect.left() + offset + (i + 0.5) * step
+                    if x > rect.right():
+                        break
+                    h = max(0.5, float(peak) * half)
+                    lines.append(QLineF(x, mid - h, x, mid + h))
+                if offset > 0:
+                    lines.append(QLineF(rect.left() + offset, rect.top() + 2, rect.left() + offset, rect.bottom() - 2))
+                offset += max(content, 1.0)
         play = audio_tracks.clip_play_seconds(c)
         for which, seconds in (("in", c.fade_in), ("out", c.fade_out)):
             if seconds <= 0 or play <= 0:
@@ -439,6 +551,29 @@ class AudioBoxItem(BoxItem):
             fades.append((shade, QPolygonF(curve)))
         self._draw_cache = (key, (lines, fades))
         return lines, fades
+
+    def _paint_curve(self, painter, rect):
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0 or play <= 0:
+            return
+        points = self.clip.gain_points
+        content = self._content_width()
+        color = QColor("#ffd54f")
+        offset = 0.0
+        while offset < rect.width() - 0.5:
+            xs = [0.0] + [t for t, _db in points] + [play]
+            dbs = audio_tracks.gain_curve_db(np.array(xs), points)
+            line = [QPointF(rect.left() + offset + min(content, t * pps), self._db_to_y(float(db)))
+                    for t, db in zip(xs, dbs)]
+            painter.setPen(QPen(color, 1.5))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPolyline(QPolygonF(line))
+            painter.setBrush(color)
+            for t, db in points:
+                painter.drawEllipse(QPointF(rect.left() + offset + t * pps, self._db_to_y(db)),
+                                    CURVE_POINT_PX, CURVE_POINT_PX)
+            offset += max(content, 1.0)
 
     def paint(self, painter, option, widget=None):
         painter.setPen(self.pen())
@@ -467,6 +602,8 @@ class AudioBoxItem(BoxItem):
                 painter.setPen(QPen(text_color, 1))
                 painter.setBrush(Qt.NoBrush)
                 painter.drawPolyline(curve)
+            if self.clip.gain_points:
+                self._paint_curve(painter, rect)
             if self._hover or selected:
                 painter.setPen(QPen(text_color, 1))
                 painter.setBrush(QColor("#ffffff"))
@@ -696,6 +833,8 @@ class ArrangementCanvas(QGraphicsView):
             return
         item = self._box_at(view_pos)
         if item is not None:
+            if isinstance(item, AudioBoxItem) and item.remove_point_at(item.mapFromScene(self.mapToScene(view_pos))):
+                return
             self.view.edit_box(item)
             return
         hit = self._track_and_beat_at(view_pos)
@@ -985,6 +1124,7 @@ class ArrangementView(AudioClipActions, QWidget):
             y += ROW_HEIGHT + ROW_GAP
         for item in old_items.values():
             scene.removeItem(item)
+        self._draw_crossfade_zones(scene)
 
         # spazio sotto l'ultima riga per il pulsante "Aggiungi traccia"
         scene_height = max(y + 50, RULER_HEIGHT + ROW_HEIGHT)
@@ -992,6 +1132,46 @@ class ArrangementView(AudioClipActions, QWidget):
         self.canvas.setBackgroundBrush(QColor(_canvas_colors()["bg"]))
         self._rebuild_headers()
         self.canvas.refresh_add_button_icon()
+
+    def _draw_crossfade_zones(self, scene):
+        """Le dissolvenze incrociate automatiche (core.audio_tracks.
+        auto_crossfades) disegnate a X sulla sovrapposizione delle clip."""
+        from PySide6.QtGui import QPainterPath
+        from PySide6.QtWidgets import QGraphicsPathItem
+        from core.tempo_map import beat_at_elapsed_seconds, seconds_for_beats
+        for item in getattr(self, "_xfade_items", []):
+            if item.scene() is scene:
+                scene.removeItem(item)
+        self._xfade_items = []
+        tempo_map = None
+        for t in self.host.project.tracks:
+            if not t.is_audio or len(t.audio_clips) < 2:
+                continue
+            if tempo_map is None:
+                tempo_map = self._tempo_map()
+            zones = audio_tracks.auto_crossfades(t.audio_clips, tempo_map)
+            top = self.canvas.row_ys.get(t.name, 0) + 5
+            for clip in t.audio_clips:
+                fade_in = zones.get(id(clip), (0.0, 0.0))[0]
+                if fade_in <= 0:
+                    continue
+                start_s = seconds_for_beats(tempo_map, clip.start_beat)
+                end_beat = beat_at_elapsed_seconds(tempo_map, 0.0, start_s + fade_in)
+                x0 = HEADER_WIDTH + clip.start_beat * PX_PER_BEAT
+                x1 = HEADER_WIDTH + end_beat * PX_PER_BEAT
+                bottom = top + ROW_HEIGHT - 10
+                path = QPainterPath()
+                path.moveTo(x0, top)
+                path.lineTo(x1, bottom)
+                path.moveTo(x0, bottom)
+                path.lineTo(x1, top)
+                item = QGraphicsPathItem(path)
+                item.setPen(QPen(QColor(ACCENT), 1.5))
+                item.setZValue(10)
+                item.setAcceptedMouseButtons(Qt.NoButton)
+                item.setToolTip(tr("Dissolvenza incrociata automatica ({ms} ms)", ms=int(round(fade_in * 1000))))
+                scene.addItem(item)
+                self._xfade_items.append(item)
 
     def _rebuild_headers(self):
         """Ricrea le testate delle tracce. Le vecchie si cancellano con
@@ -1104,7 +1284,7 @@ class ArrangementView(AudioClipActions, QWidget):
         (alla posizione della clip, vedi core.audio_tracks) per un AudioClip."""
         project = self.host.project
         if isinstance(clip, AudioClip):
-            return audio_tracks.clip_duration_beats(clip, self._tempo_map())
+            return audio_tracks.clip_span_beats(clip, self._tempo_map())     # con la ripetizione in loop
         track = project.get_track(track_name)
         return clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
                                    start_beat=clip.start_beat, meter=project.meter())

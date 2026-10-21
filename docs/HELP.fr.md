@@ -3827,6 +3827,25 @@ programme.
   certains bureaux Linux), utilisez **Ctrl+Alt+glisser**.
 - **Normaliser (crête à −1 dB)** (clic droit) : règle le gain du clip pour
   que sa crête atteigne −1 dB.
+- **Fondu enchaîné automatique** : là où un clip commence avant que le
+  précédent de la même piste se termine, les deux se croisent sur tout le
+  chevauchement (à puissance constante), et la zone est dessinée en X.
+  Cela vaut pour les chevauchements jusqu'à 2 secondes : au-delà, les deux
+  clips jouent ensemble (comme avec **Garder les deux** après un
+  enregistrement). Un fondu plus long du clip reste le sien.
+- **Répéter en boucle** : **Ctrl+glisser le bord droit** d'un clip et le
+  clip se répète jusqu'où vous allez (une ligne marque chaque tour) ; en
+  glissant de nouveau le bord droit, la répétition s'allonge ou se
+  raccourcit. Par clic droit : **Répéter en boucle...** (combien de fois)
+  et **Supprimer la répétition**. Diviser un clip qui se répète supprime
+  la répétition.
+- **Courbe de volume** dans le clip : **Ctrl+clic** sur le clip ajoute un
+  point (ou clic droit → **Courbe de volume : point ici**) ; faites glisser
+  les points vers le haut ou le bas (le 0 dB s'aimante), un **double clic**
+  sur un point le supprime, **Supprimer la courbe de volume** les supprime
+  tous. Entre deux points le volume change progressivement ; la forme
+  d'onde le montre. Les points restent sur l'audio auquel ils se
+  rapportent, même en rognant ou en divisant le clip.
 - **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
   gris, mais ne joue pas ; la même entrée le réactive.
 - **Transposer...** (clic droit) : monte ou baisse le clip de quelques
@@ -4126,6 +4145,11 @@ qu'on entend.
   boucle** les remet à zéro. La section apparaît comme une bande colorée
   sur la règle de la Structure du morceau. On peut activer, déplacer ou
   retirer la boucle même pendant que le morceau joue, sans interruption.
+- **Vitesse d'écoute** (menu déroulant dans la barre, 100 %-50 %) :
+  ralentit le morceau sans changer sa hauteur, pour travailler un passage
+  (aussi en boucle) ; le métronome suit. La première fois à une nouvelle
+  vitesse, le morceau met quelques secondes à se préparer. Ne change ni le
+  morceau ni l'exportation.
 - La boucle nécessite la lecture directe décrite plus haut (bibliothèque
   FluidSynth + `sounddevice`) : avec les lecteurs de repli le morceau n'est pas
   répété, et un message dans la barre d'état le signale.

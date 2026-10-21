@@ -1235,6 +1235,24 @@ def _cache_put(key: Optional[str], entry: tuple):
 _stream_available = None
 
 
+# Rallenta l'ascolto (PlaybackEngine.set_speed): velocita' possibili.
+MIN_SPEED = 0.5
+
+
+def slowed_entry(entry: tuple, speed: float) -> tuple:
+    """Il mix (int16 (frame, canali), frequenza) rallentato a 'speed' (0,5-1)
+    senza cambiare l'intonazione (Rubber Band, vedi audio_tracks.stretched).
+    Lento sui brani lunghi: chi lo chiama lo tiene in cache."""
+    import numpy as np
+    from .audio_tracks import stretched
+    samples, rate = entry
+    if speed >= 1.0 - 1e-6 or len(samples) == 0:
+        return entry
+    x = samples.astype(np.float32) / 32767.0
+    y = stretched(x, rate, 1.0 / speed)
+    return np.clip(np.round(y * 32767.0), -32768, 32767).astype(np.int16), rate
+
+
 def streaming_available() -> bool:
     """True se la riproduzione passa da core.audio_stream (partenza da un
     punto qualsiasi, loop, posizione esatta): serve la libreria FluidSynth per il
@@ -1371,6 +1389,15 @@ class PlaybackEngine:
         # i canali MIDI dal synth (un'uscita per canale), le tracce con effetti
         # e le tracce audio dai loro campioni.
         self.track_levels = None
+        # Rallenta l'ascolto (set_speed): la velocita' scelta e quella del
+        # buffer che sta suonando (la posizione si riporta al tempo del brano).
+        self.speed = 1.0
+        self._playing_speed = 1.0
+
+    def set_speed(self, speed: float):
+        """Velocita' d'ascolto da 0,5 a 1 (1 = normale), senza cambiare
+        l'intonazione; vale dalla prossima riproduzione, solo in streaming."""
+        self.speed = max(MIN_SPEED, min(1.0, float(speed)))
 
     def _levels_of(self, samples, rate):
         """Livelli (core.levels) del mix int16 che sta per suonare; None se
@@ -1395,7 +1422,7 @@ class PlaybackEngine:
         player = self._pcm_player
         if player is None or not player.is_active():
             return None
-        return player.position_frames() / float(player.samplerate)
+        return player.position_frames() / float(player.samplerate) * self._playing_speed
 
     def set_loop_seconds(self, loop: Optional[tuple]):
         """Cambia al volo la sezione in loop (inizio, fine) in secondi, o la
@@ -1403,8 +1430,8 @@ class PlaybackEngine:
         se non si e' in streaming."""
         player = self._pcm_player
         if player is not None:
-            player.set_loop(None if loop is None else
-                            (loop[0] * player.samplerate, loop[1] * player.samplerate))
+            scale = player.samplerate / self._playing_speed
+            player.set_loop(None if loop is None else (loop[0] * scale, loop[1] * scale))
 
     def is_playing(self) -> bool:
         # self._proc copre i backend a subprocess (CLI fluidsynth/timidity/
@@ -1595,14 +1622,32 @@ class PlaybackEngine:
             allora sul player esterno)."""
             samples, rate = entry
             self.master_levels = self._levels_of(samples, rate)
+            speed = self.speed if cache_key is not None else 1.0
+            if speed < 1.0 - 1e-6:
+                # Rallenta l'ascolto: il mix gia' pronto, rallentato una
+                # volta per velocita' (in cache)
+                slow_key = f"{cache_key}|speed{speed:.3f}"
+                slow = _cache_get(slow_key)
+                if slow is None:
+                    self._rendering = True
+                    try:
+                        slow = slowed_entry(entry, speed)
+                    finally:
+                        self._rendering = False
+                    _cache_put(slow_key, slow)
+                if self._play_token != my_token:
+                    return True
+                samples = slow[0]
+            scale = rate / speed
             player = audio_stream.PcmPlayer(samples, rate)
             player.set_loop(None if loop_seconds is None else
-                            (loop_seconds[0] * rate, loop_seconds[1] * rate))
+                            (loop_seconds[0] * scale, loop_seconds[1] * scale))
             with self._proc_lock:
                 if self._play_token != my_token:
                     return True
+                self._playing_speed = speed
                 try:
-                    player.start(start_seconds * rate)
+                    player.start(start_seconds * scale)
                 except Exception:
                     log.warning("Stream audio non avviabile: si usa il player esterno", exc_info=True)
                     return False

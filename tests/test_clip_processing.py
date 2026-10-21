@@ -141,3 +141,113 @@ def test_new_keys_round_trip_in_the_st_file(tmp_path):
     assert (a.transpose, a.reverse, a.invert, a.channel) == (-0.3, True, True, "left")
     assert (b.transpose, b.reverse, b.invert, b.channel) == (0.0, False, False, "stereo")
     assert project_to_text(back, str(tmp_path)) == text
+
+
+# ---------------------------------------------------------------------------
+# Dissolvenza incrociata automatica (core.audio_tracks.auto_crossfades)
+# ---------------------------------------------------------------------------
+
+def _const(tmp_path, name, seconds, value):
+    path = str(tmp_path / name)
+    write_wav(path, np.full((int(seconds * RATE), 1), value, np.float32), RATE)
+    return path
+
+
+def test_overlapping_clips_crossfade_without_jumps(tmp_path):
+    p = Project(tempo_bpm=120)                                       # 1 beat = 0,5 s
+    track = p.add_audio_track("A")
+    a = AudioClip("A", _const(tmp_path, "a.wav", 2.0, 0.5), 0.0)     # 0-2 s
+    b = AudioClip("B", _const(tmp_path, "b.wav", 2.0, 0.5), 3.0)     # 1,5-3,5 s
+    track.audio_clips = [a, b]
+    assert at.auto_crossfades(track.audio_clips, TEMPO) == {id(a): (0.0, 0.5), id(b): (0.5, 0.0)}
+    layers = at.build_audio_layers(p, p.tracks, TEMPO)
+    assert [(l.fade_in, l.fade_out, l.fade_shape) for l in layers] == [(0.0, 0.5, "linear/equal"),
+                                                                       (0.5, 0.0, "equal/linear")]
+    out = at.mix_layers(np.zeros((0, 2), np.float32), RATE, layers)[:, 0]
+    zone = out[int(1.4 * RATE):int(2.1 * RATE)]
+    assert np.abs(np.diff(zone)).max() < 1e-3                       # nessun salto
+    assert out[int(1.0 * RATE)] == pytest.approx(0.5, abs=1e-3)
+    assert out[int(2.6 * RATE)] == pytest.approx(0.5, abs=1e-3)
+
+
+def test_long_or_nested_overlaps_are_left_alone(tmp_path):
+    long_a = AudioClip("A", _const(tmp_path, "a.wav", 6.0, 0.2), 0.0)    # 0-6 s
+    long_b = AudioClip("B", _const(tmp_path, "b.wav", 6.0, 0.2), 4.0)    # 2-8 s: 4 s insieme, voluto
+    inner = AudioClip("C", _const(tmp_path, "c.wav", 1.0, 0.2), 2.0)     # 1-2 s, dentro A
+    assert at.auto_crossfades([long_a, long_b], TEMPO) == {}
+    assert at.auto_crossfades([long_a, inner], TEMPO) == {}
+    muted = AudioClip("M", _const(tmp_path, "m.wav", 2.0, 0.2), 11.0, muted=True)
+    assert at.auto_crossfades([long_b, muted], TEMPO) == {}
+
+
+def test_own_longer_fade_wins(tmp_path):
+    a = AudioClip("A", _const(tmp_path, "a.wav", 2.0, 0.5), 0.0, fade_out=1.0)
+    b = AudioClip("B", _const(tmp_path, "b.wav", 2.0, 0.5), 3.0)
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("A").audio_clips = [a, b]
+    first = at.build_audio_layers(p, p.tracks, TEMPO)[0]
+    assert (first.fade_out, first.fade_shape) == (1.0, "linear")
+
+
+# ---------------------------------------------------------------------------
+# Ripeti in loop (AudioClip.loop_length, core.audio_tracks.loop_repeats)
+# ---------------------------------------------------------------------------
+
+def test_loop_repeats_the_clip_and_cuts_the_last_round(tmp_path):
+    clip = AudioClip("R", _ramp(tmp_path), 2.0, fade_in=0.1, fade_out=0.1, loop_length=5.0)   # 1 s = 2 beat
+    copies = at.loop_repeats(clip, TEMPO)
+    assert [c.start_beat for c in copies] == [2.0, 4.0, 6.0]
+    assert at.clip_duration_beats(copies[-1], TEMPO) == pytest.approx(1.0)
+    assert [(c.fade_in, c.fade_out) for c in copies] == [(0.1, 0.0), (0.0, 0.0), (0.0, 0.1)]
+    assert at.clip_span_beats(clip, TEMPO) == 5.0
+    out = _mix(clip)[:, 0]
+    assert len(out) == pytest.approx(3.5 * RATE, abs=8)               # da 1 s a 3,5 s
+    for second in (1.5, 2.5, 3.25):                                   # stesso punto della rampa a ogni giro
+        lag = second - 1.0 - int(second - 1.0)
+        assert out[int(second * RATE)] == pytest.approx(0.5 * lag, abs=0.01)
+
+
+def test_shorter_loop_length_means_no_loop(tmp_path):
+    clip = AudioClip("R", _ramp(tmp_path), 0.0, loop_length=1.0)     # la clip dura 2 beat
+    assert at.loop_repeats(clip, TEMPO) == [clip] and at.clip_span_beats(clip, TEMPO) == pytest.approx(2.0)
+
+
+def test_split_removes_the_loop_and_loop_round_trips(tmp_path):
+    clip = AudioClip("R", _ramp(tmp_path), 0.0, loop_length=8.0)
+    second = at.split_clip(clip, 1.0, TEMPO)
+    assert second is not None and clip.loop_length == second.loop_length == 0.0
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("A").audio_clips.append(AudioClip("R", _ramp(tmp_path), 0.0, loop_length=6.5))
+    text = project_to_text(p, str(tmp_path))
+    assert "loop=6.5" in text
+    assert parse_project_text(text, base_dir=str(tmp_path)).get_track("A").audio_clips[0].loop_length == 6.5
+
+
+# ---------------------------------------------------------------------------
+# Curva del volume (AudioClip.gain_points)
+# ---------------------------------------------------------------------------
+
+def test_gain_curve_follows_the_points(tmp_path):
+    path = _const(tmp_path, "c.wav", 2.0, 0.5)
+    clip = AudioClip("C", path, 0.0, gain_points=[(0.5, 0.0), (1.5, -20.0)])
+    out = _mix(clip)[:, 0]
+    assert out[int(0.25 * RATE)] == pytest.approx(0.5, abs=1e-3)          # prima del primo punto: 0 dB
+    assert out[int(1.0 * RATE)] == pytest.approx(0.5 * 10 ** (-10 / 20), abs=1e-3)
+    assert out[int(1.75 * RATE)] == pytest.approx(0.05, abs=1e-3)          # dopo l'ultimo: -20 dB
+    assert np.abs(np.diff(out[int(0.4 * RATE):int(1.6 * RATE)])).max() < 1e-3
+
+
+def test_gain_curve_survives_trim_split_and_the_file(tmp_path):
+    path = _const(tmp_path, "c.wav", 2.0, 0.5)
+    clip = AudioClip("C", path, 0.0, gain_points=[(0.5, 0.0), (1.5, -20.0)])
+    at.trim_clip_start_to_beat(clip, 1.0, TEMPO)                            # toglie 0,5 s davanti
+    assert clip.gain_points == [(0.0, 0.0), (1.0, -20.0)]
+    second = at.split_clip(clip, 2.0, TEMPO)                                # a 0,5 s della parte suonata
+    assert clip.gain_points == [(0.0, 0.0), (0.5, -10.0)]
+    assert second.gain_points == [(0.0, -10.0), (0.5, -20.0)]
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("A").audio_clips.append(AudioClip("C", path, 0.0, gain_points=[(0.0, 0.0), (2.5, -6.0)]))
+    text = project_to_text(p, str(tmp_path))
+    assert "gain_points=0:0,2.5:-6" in text
+    back = parse_project_text(text, base_dir=str(tmp_path)).get_track("A").audio_clips[0]
+    assert back.gain_points == [(0.0, 0.0), (2.5, -6.0)] and back.gain_db == 0.0

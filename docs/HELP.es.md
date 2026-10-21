@@ -3738,6 +3738,25 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   Linux), usa **Ctrl+Alt+arrastrar**.
 - **Normalizar (pico a −1 dB)** (clic derecho): ajusta la ganancia del clip
   para que su pico llegue a −1 dB.
+- **Fundido cruzado automático**: donde un clip empieza antes de que
+  termine el anterior de la misma pista, los dos se cruzan durante toda la
+  superposición (a potencia constante), y la zona se dibuja con una X. Vale
+  para superposiciones de hasta 2 segundos: más allá los dos clips suenan
+  juntos (como con **Conservar ambas** tras una grabación). Un fundido del
+  clip más largo sigue siendo el suyo.
+- **Repetir en bucle**: **Ctrl+arrastrar el borde derecho** de un clip y el
+  clip se repite hasta donde llegues (una línea marca cada vuelta);
+  arrastrando de nuevo el borde derecho se alarga o se acorta la
+  repetición. Con clic derecho: **Repetir en bucle...** (cuántas veces) y
+  **Quitar la repetición**. Dividir un clip que se repite quita la
+  repetición.
+- **Curva de volumen** dentro del clip: **Ctrl+clic** en el clip añade un
+  punto (o clic derecho → **Curva de volumen: punto aquí**); arrastra los
+  puntos arriba y abajo (el 0 dB se engancha), **doble clic** en un punto
+  lo quita, **Quitar la curva de volumen** los quita todos. Entre un punto
+  y otro el volumen cambia gradualmente; la forma de onda lo muestra. Los
+  puntos se quedan en el audio al que se refieren también al recortar o
+  dividir el clip.
 - **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
   en gris, pero no suena; la misma opción lo vuelve a activar.
 - **Transponer...** (clic derecho): sube o baja el clip unos semitonos sin
@@ -4031,6 +4050,11 @@ alineada con lo que se oye.
   bucle** los pone a cero. La sección aparece como una franja de color en la
   regla de la Estructura de la canción. Se puede activar, mover o quitar el
   bucle incluso mientras la canción suena, sin interrupciones.
+- **Velocidad de escucha** (menú desplegable en la barra, 100%-50%):
+  ralentiza la canción sin cambiar su afinación, para practicar un pasaje
+  (también en bucle); el metrónomo la sigue. La primera vez a una
+  velocidad nueva la canción tarda unos segundos en prepararse. No cambia
+  ni la canción ni la exportación.
 - El bucle requiere la reproducción directa descrita arriba (biblioteca
   FluidSynth + `sounddevice`): con los reproductores alternativos la canción no se
   repite, y un mensaje en la barra de estado lo indica.

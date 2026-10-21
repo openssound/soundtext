@@ -3640,6 +3640,23 @@ oppure **importando** file registrati con un altro programma.
   desktop Linux), usa **Ctrl+Alt+trascina**.
 - **Normalizza (picco a −1 dB)** (tasto destro): imposta il guadagno della
   clip perche' il suo picco arrivi a −1 dB.
+- **Dissolvenza incrociata automatica**: dove una clip comincia prima che
+  la precedente della stessa traccia finisca, le due si incrociano per
+  tutta la sovrapposizione (a potenza costante), e la zona e' disegnata a
+  X. Vale per sovrapposizioni fino a 2 secondi: oltre, le due clip suonano
+  insieme (come con **Tienile entrambe** dopo una registrazione). Una
+  dissolvenza della clip piu' lunga resta la sua.
+- **Ripeti in loop**: **Ctrl+trascina il bordo destro** di una clip e la
+  clip si ripete fin dove arrivi (una linea segna ogni giro); trascinando
+  di nuovo il bordo destro si allunga o si accorcia la ripetizione. Dal
+  tasto destro: **Ripeti in loop...** (quante volte) e **Togli la
+  ripetizione**. Dividere una clip che si ripete toglie la ripetizione.
+- **Curva del volume** dentro la clip: **Ctrl+clic** sulla clip aggiunge un
+  punto (o tasto destro → **Curva del volume: punto qui**); trascina i punti
+  su e giu' (lo 0 dB si aggancia), **doppio clic** su un punto lo toglie,
+  **Togli la curva del volume** le toglie tutte. Fra un punto e l'altro il
+  volume cambia gradualmente; la forma d'onda lo mostra. I punti restano
+  sull'audio a cui si riferiscono anche tagliando o dividendo la clip.
 - **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
   grigio, ma non suona; si riattiva con la stessa voce.
 - **Trasponi...** (tasto destro): alza o abbassa la clip di qualche
@@ -3925,6 +3942,11 @@ dispositivo audio, quindi resta allineata a cio' che si sente.
   sezione appare come una fascia colorata sul righello della Struttura
   brano. Si puo' attivare, spostare o togliere il loop anche mentre il
   brano suona, senza interruzioni.
+- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%): rallenta il
+  brano senza cambiarne l'intonazione, per esercitarsi su un passaggio
+  (anche in loop); il metronomo segue. La prima volta a una velocita' nuova
+  il brano si prepara per qualche secondo. Non cambia ne' il brano ne'
+  l'esportazione.
 - Il loop richiede la riproduzione diretta descritta sopra
   (libreria FluidSynth + `sounddevice`): con i player di ripiego il brano non
   viene ripetuto, e un messaggio in barra di stato lo segnala.

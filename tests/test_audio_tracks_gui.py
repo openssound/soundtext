@@ -930,3 +930,50 @@ def test_freeze_and_unfreeze_from_the_track_menu(tmp_path):
     assert [x.name for x in w.project.tracks] == ["Voce"] and not t.mute
     w.undo()
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
+
+
+def test_ctrl_dragging_the_right_edge_loops_the_clip(tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w, t, clip, item = _window_with_clip(tmp_path)               # 2 s = 4 beat, dal beat 4
+    canvas = w.arrangement_view.canvas
+    rect = item.sceneBoundingRect()
+    start = canvas.mapFromScene(rect.right() - 2, rect.center().y())
+    end = start + type(start)(8 * 24, 0)                          # +8 beat
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, Qt.ControlModifier, start)
+    QTest.mouseMove(canvas.viewport(), end)
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, Qt.ControlModifier, end)
+    _app.processEvents()
+    assert clip.loop_length == pytest.approx(12.0) and clip.trim_end == 0.0
+    item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
+    assert item.rect().width() == pytest.approx(12 * 24)
+    w.undo()
+    assert w.project.get_track("Voce").audio_clips[0].loop_length == 0.0
+
+
+def test_gain_curve_points_on_the_box(tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w, t, clip, item = _window_with_clip(tmp_path)                 # 2 s = 4 beat = 96 px
+    canvas = w.arrangement_view.canvas
+    rect = item.sceneBoundingRect()
+    vp = canvas.viewport()
+    at_point = canvas.mapFromScene(rect.left() + 48, item.mapToScene(0, item._db_to_y(0.0)).y())
+    QTest.mouseClick(vp, Qt.LeftButton, Qt.ControlModifier, at_point)
+    _app.processEvents()
+    assert clip.gain_points == [(1.0, 0.0)]
+    item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
+    low = canvas.mapFromScene(rect.left() + 48, item.mapToScene(0, item._db_to_y(-20.0)).y())
+    QTest.mousePress(vp, Qt.LeftButton, Qt.NoModifier, at_point)
+    QTest.mouseMove(vp, low)
+    QTest.mouseRelease(vp, Qt.LeftButton, Qt.NoModifier, low)
+    _app.processEvents()
+    assert clip.gain_points[0][0] == pytest.approx(1.0, abs=0.02)
+    assert clip.gain_points[0][1] == pytest.approx(-20.0, abs=1.0)
+    item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
+    import gui.arrangement_view as av
+    renamed = []
+    w.arrangement_view._rename_clip = lambda *a: renamed.append(a)     # mai una finestra modale nei test
+    QTest.mouseDClick(vp, Qt.LeftButton, Qt.NoModifier, low)
+    _app.processEvents()
+    assert clip.gain_points == [] and renamed == []

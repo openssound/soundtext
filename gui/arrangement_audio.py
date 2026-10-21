@@ -10,6 +10,8 @@ main_window_mixer...): i metodi lavorano su self, che e' la vista.
 import dataclasses
 import os
 
+import numpy as np
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QInputDialog, QLabel, QMenu, QMessageBox
 
@@ -43,6 +45,15 @@ class AudioClipActions:
                                         "(time-stretch) per restare a tempo."))
         speed_action = menu.addAction(tr("Velocita' (time-stretch)...")) if not missing else None
         trim_action = menu.addAction(tr("Taglio preciso (secondi)...")) if not missing else None
+        curve_action = menu.addAction(tr("Curva del volume: punto qui")) \
+            if not missing and at_beat is not None and at_beat >= clip.start_beat else None
+        if curve_action is not None:
+            curve_action.setToolTip(tr("Aggiunge un punto alla curva del volume dentro la clip: trascinalo "
+                                       "su e giu'; Ctrl+clic sulla clip ne aggiunge altri, doppio clic su un "
+                                       "punto lo toglie."))
+        uncurve_action = menu.addAction(tr("Togli la curva del volume")) if clip.gain_points else None
+        loop_action = menu.addAction(tr("Ripeti in loop...")) if not missing else None
+        unloop_action = menu.addAction(tr("Togli la ripetizione")) if not missing and clip.loop_length > 0 else None
         transpose_action = tuning_action = reverse_action = invert_action = None
         channel_actions = {}
         if not missing:
@@ -118,6 +129,16 @@ class AudioClipActions:
             self._edit_clip_speed(track_name, clip)
         elif trim_action is not None and chosen is trim_action:
             self._edit_clip_trim(track_name, clip)
+        elif curve_action is not None and chosen is curve_action:
+            self._add_curve_point_at(track_name, clip, at_beat)
+        elif uncurve_action is not None and chosen is uncurve_action:
+            clip.gain_points = []
+            self.on_clip_changed(track_name)
+        elif loop_action is not None and chosen is loop_action:
+            self._loop_clip(track_name, clip)
+        elif unloop_action is not None and chosen is unloop_action:
+            clip.loop_length = 0.0
+            self.on_clip_changed(track_name)
         elif transpose_action is not None and chosen is transpose_action:
             self._transpose_clip(track_name, clip)
         elif tuning_action is not None and chosen is tuning_action:
@@ -540,6 +561,36 @@ class AudioClipActions:
         if not ok or value == clip.gain_db:
             return
         clip.gain_db = value
+        self.on_clip_changed(track_name)
+
+    def _add_curve_point_at(self, track_name: str, clip: AudioClip, at_beat: float):
+        """Un punto della curva del volume al beat del clic, sulla curva com'e'
+        (0 dB se e' la prima): poi lo si trascina."""
+        from core.tempo_map import seconds_for_beats
+        tempo_map = self._tempo_map()
+        t = seconds_for_beats(tempo_map, at_beat) - seconds_for_beats(tempo_map, clip.start_beat)
+        play = audio_tracks.clip_play_seconds(clip)
+        if play <= 0:
+            return
+        t = round(max(0.0, min(play, t % play if clip.loop_length > 0 else t)), 3)
+        db = round(float(audio_tracks.gain_curve_db(np.array([t]), clip.gain_points)[0]), 1)
+        clip.gain_points = sorted([p for p in clip.gain_points if abs(p[0] - t) > 1e-3] + [(t, db)])
+        self.on_clip_changed(track_name)
+
+    def _loop_clip(self, track_name: str, clip: AudioClip):
+        """Quante volte suonare la clip di fila (AudioClip.loop_length); lo
+        stesso si fa con Ctrl+trascina del bordo destro."""
+        content = audio_tracks.clip_duration_beats(clip, self._tempo_map())
+        if content <= 0:
+            return
+        current = max(1, round(clip.loop_length / content)) if clip.loop_length > 0 else 4
+        times, ok = QInputDialog.getInt(
+            self, tr("Ripeti in loop"),
+            tr("Quante volte suona la clip di fila (1 = nessuna ripetizione)?\n"
+               "Anche con Ctrl+trascina del bordo destro, fino a dove vuoi."), current, 1, 256)
+        if not ok:
+            return
+        clip.loop_length = round(content * times, 6) if times > 1 else 0.0
         self.on_clip_changed(track_name)
 
     def _transpose_clip(self, track_name: str, clip: AudioClip):

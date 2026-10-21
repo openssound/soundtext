@@ -240,6 +240,10 @@ RE_AUDIO_TRANSPOSE = re.compile(r'\btranspose\s*=\s*(-?\d+(?:\.\d+)?)')
 RE_AUDIO_REVERSE = re.compile(r'(?<![\w=])reverse(?![\w=])')
 RE_AUDIO_INVERT = re.compile(r'(?<![\w=])invert(?![\w=])')
 RE_AUDIO_CHANNEL = re.compile(r'\bchannel\s*=\s*(\w+)')
+# Ripeti in loop: 'loop=8', la lunghezza in beat della ripetizione.
+RE_AUDIO_LOOP = re.compile(r'\bloop\s*=\s*(\d+(?:\.\d+)?)')
+# Curva del volume: 'gain_points=0:0,2.5:-6' (secondi:dB).
+RE_AUDIO_GAIN_POINTS = re.compile(r'\bgain_points\s*=\s*((?:\d+(?:\.\d+)?:-?\d+(?:\.\d+)?,?)+)')
 # Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
 # ('take=N', da 1), poi una riga per ripresa:
 #   take "Ripresa 2" file="Voce ripresa 2.wav" delta=0.013
@@ -291,6 +295,13 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     ch = RE_AUDIO_CHANNEL.search(rest)
     if ch and ch.group(1) in CLIP_CHANNELS:
         clip.channel = ch.group(1)
+    lp = RE_AUDIO_LOOP.search(rest)
+    if lp:
+        clip.loop_length = float(lp.group(1))
+    gp = RE_AUDIO_GAIN_POINTS.search(rest)
+    if gp:
+        points = [tuple(float(v) for v in item.split(":")) for item in gp.group(1).split(",") if item]
+        clip.gain_points = sorted(points)
     if len(takes) > 1:
         active = RE_AUDIO_ACTIVE_TAKE.search(rest)
         index = int(active.group(1)) - 1 if active else 0
@@ -367,6 +378,10 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append("invert")
     if clip.channel != "stereo":
         parts.append(f"channel={clip.channel}")
+    if clip.loop_length > 0:
+        parts.append(f"loop={round(clip.loop_length, 4):g}")
+    if clip.gain_points:
+        parts.append("gain_points=" + ",".join(f"{round(t, 4):g}:{round(db, 2):g}" for t, db in clip.gain_points))
     if len(clip.takes) > 1:
         parts.append(f"take={clip.active_take + 1}")
     lines = [" ".join(parts)]

@@ -3545,6 +3545,22 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   move windows (some Linux desktops do), use **Ctrl+Alt+drag**.
 - **Normalize (peak at −1 dB)** (right-click): sets the clip gain so that
   its peak reaches −1 dB.
+- **Automatic crossfade**: where a clip starts before the previous one on
+  the same track ends, the two cross over the whole overlap (equal power),
+  and the zone is drawn as an X. It applies to overlaps up to 2 seconds:
+  beyond that the two clips play together (as with **Keep both** after a
+  recording). A longer fade of the clip stays its own.
+- **Loop**: **Ctrl+drag the right edge** of a clip and the clip repeats as
+  far as you go (a line marks each round); dragging the right edge again
+  lengthens or shortens the repetition. From the right-click menu:
+  **Loop...** (how many times) and **Remove the loop**. Splitting a looped
+  clip removes the loop.
+- **Volume curve** inside the clip: **Ctrl+click** on the clip adds a point
+  (or right-click → **Volume curve: point here**); drag the points up and
+  down (0 dB snaps), **double-click** a point to remove it, **Remove the
+  volume curve** removes them all. Between points the volume changes
+  gradually; the waveform shows it. The points stay on the audio they
+  refer to, also when trimming or splitting the clip.
 - **Mute clip** (right-click): the clip stays in place, drawn in grey, but
   does not play; the same entry turns it back on.
 - **Transpose...** (right-click): raises or lowers the clip by a few
@@ -3822,6 +3838,10 @@ so it stays aligned with what you hear.
   appears as a coloured band on the Song structure ruler. You can turn on,
   move or remove the loop even while the song is playing, without
   interruptions.
+- **Playback speed** (drop-down in the toolbar, 100%-50%): slows the song
+  down without changing its pitch, to practice a passage (also in a loop);
+  the metronome follows. The first time at a new speed the song takes a
+  few seconds to prepare. It changes neither the song nor the export.
 - The loop requires the direct playback described above (FluidSynth library +
   `sounddevice`): with the fallback players the song is not repeated, and a
   message in the status bar says so.

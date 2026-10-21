@@ -683,6 +683,16 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.metronome_checkbox.toggled.connect(self._on_metronome_toggled)
         toolbar.addWidget(self.metronome_checkbox)
 
+        # Rallenta l'ascolto (per esercitarsi, anche con il loop A-B)
+        self.speed_combo = QComboBox()
+        for percent in (100, 90, 80, 75, 70, 60, 50):
+            self.speed_combo.addItem(f"{percent}%", percent / 100.0)
+        self.speed_combo.setToolTip(tr("Velocita' d'ascolto: rallenta il brano senza cambiarne l'intonazione, "
+                                       "per esercitarsi (anche con il loop A-B). Non cambia il brano ne' "
+                                       "l'esportazione."))
+        self.speed_combo.currentIndexChanged.connect(self._on_speed_changed)
+        toolbar.addWidget(self.speed_combo)
+
         toolbar.addSeparator()
 
         # --- Brano: tempo, metrica, tonalita' ------------------------------

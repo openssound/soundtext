@@ -6,7 +6,7 @@ Volume/Pan) come richiesto dall'MVP (sezione 8).
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .instruments import InstrumentProfile, get_instrument
 from .notation import Pattern, parse_track_text, Event, Meter
@@ -90,6 +90,15 @@ class AudioClip:
     reverse: bool = False
     invert: bool = False
     channel: str = "stereo"
+    # Ripeti in loop (core.audio_tracks.loop_repeats): la parte suonata si
+    # ripete fino a occupare loop_length beat dall'inizio della clip; 0 (o
+    # meno della parte stessa) = nessuna ripetizione.
+    loop_length: float = 0.0
+    # Curva del volume dentro la clip: [(secondi dall'inizio della parte
+    # suonata, nel brano; dB)], in ordine; fra un punto e l'altro il volume
+    # cambia in linea retta (in dB), prima del primo e dopo l'ultimo resta.
+    # Vuota = nessuna curva. Si somma al guadagno della clip.
+    gain_points: List[Tuple[float, float]] = field(default_factory=list)
 
 
 @dataclass
