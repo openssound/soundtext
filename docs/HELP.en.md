@@ -2209,6 +2209,13 @@ the track label on the left.
   tritone substitutes and minor iv; **Another version** offers another one.
   Durations and rests stay, and the chords that do not change stay written
   as they were.
+- **Harmonize the melody...** (a box with a melody, or an audio clip with a
+  single-voice part): proposes chords in three versions, **Simple** (I, IV,
+  V), **Diatonic** (all degrees of the key) and **Rich** (sevenths,
+  secondary dominants; **Another version** offers another one), one per
+  bar or per half bar, in the key recognized from the melody (editable).
+  The chords go into a new track "Chords of Name", with a box where the
+  melody starts; from there bass and accompaniment can be generated.
 - **Rename...**
 - **Duplicate**: creates a copy on the same track, right after the end of
   the original box (or in the first free space available from there).
@@ -2575,6 +2582,14 @@ track in the project with chords already written):
   pattern short. With Variability some styles alternate a second pattern
   (see above).
 - **Intensity**: see above (also in **Generate accompaniment/riff**).
+
+**Leave room for the other parts** (shown when the song already has other
+written parts): the accompaniment stays above the bass and below the
+melody, the melody above the accompaniment, instead of using the
+instrument's whole range; the tooltip shows the notes used.
+**Recognizable chorus** (phrase melodies): where the chord track repeats a
+section (two "Chorus" boxes, or two identical boxes) the melody comes back
+the same as the first time.
 
 **Generate accompaniment** also has **Close inversions** (checked by
 default): each chord chooses the inversion closest to the previous one

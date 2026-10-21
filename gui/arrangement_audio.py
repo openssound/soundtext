@@ -92,6 +92,7 @@ class AudioClipActions:
             keep_one_action = takes_menu.addAction(tr("Tieni solo la ripresa attiva"))
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
         style_action = menu.addAction(tr("Salva come stile del generatore...")) if not missing else None
+        harmonize_action = menu.addAction(tr("Armonizza la melodia...")) if not missing else None
         tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
         quantize_action = menu.addAction(tr("Quantizza l'audio...")) if not missing else None
         silences_action = menu.addAction(tr("Rimuovi i silenzi...")) if not missing else None
@@ -165,6 +166,8 @@ class AudioClipActions:
             self._keep_only_active_take(track_name, clip)
         elif convert_action is not None and chosen is convert_action:
             self._convert_clip_to_notation(track_name, clip)
+        elif harmonize_action is not None and chosen is harmonize_action:
+            self._harmonize_audio_clip(track_name, clip)
         elif style_action is not None and chosen is style_action:
             self._save_audio_clip_as_style(track_name, clip)
         elif tempo_action is not None and chosen is tempo_action:
@@ -576,6 +579,26 @@ class AudioClipActions:
         db = round(float(audio_tracks.gain_curve_db(np.array([t]), clip.gain_points)[0]), 1)
         clip.gain_points = sorted([p for p in clip.gain_points if abs(p[0] - t) > 1e-3] + [(t, db)])
         self.on_clip_changed(track_name)
+
+    def _harmonize_audio_clip(self, track_name: str, clip: AudioClip):
+        """La melodia della clip (riconosciuta come in Converti in notazione,
+        modalita' melodia) armonizzata: vedi harmonize_melody."""
+        from core.audio_track_notation import ConversionOptions, _convert_clip
+        from .worker import run_with_wait
+        track = self.host.project.get_track(track_name)
+        options = ConversionOptions(mode="melody", voice_source=track.input_profile == "voce")
+        try:
+            text = run_with_wait(self, tr("Ascolto la melodia di '{name}'...", name=clip.name),
+                                 _convert_clip, self.host.project, clip, options, 4)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Armonizza la melodia"), str(e))
+            return
+        if not text:
+            QMessageBox.information(self, tr("Armonizza la melodia"), tr(
+                "In '{name}' non ho riconosciuto una melodia: serve una parte a una voce (canto, linea di "
+                "chitarra o di fiato).", name=clip.name))
+            return
+        self.harmonize_melody(clip.name, text, clip.start_beat)
 
     def _loop_clip(self, track_name: str, clip: AudioClip):
         """Quante volte suonare la clip di fila (AudioClip.loop_length); lo

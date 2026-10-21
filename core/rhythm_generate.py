@@ -113,6 +113,68 @@ def track_end_beat(project: Project, track, midi_dir: Optional[str] = None) -> f
     return max((e.start + e.duration for e in events), default=0.0)
 
 
+def part_registers(project: Project, exclude_track_name: Optional[str] = None,
+                   midi_dir: Optional[str] = None) -> dict:
+    """Dove suonano le parti gia' scritte (note MIDI), per non sovrapporre i
+    registri: 'bass_top' (la nota piu' acuta dei bassi), 'comp_top' (il
+    registro alto dell'accompagnamento, 75 percentile delle note degli
+    strumenti polifonici) e 'melody_low' (il registro basso delle melodie,
+    10 percentile degli strumenti a una voce). Le chiavi mancano se non ci
+    sono parti di quel tipo; le sigle d'accordo non contano (il loro
+    registro lo decide lo strumento)."""
+    from .instruments import gm_family_for_program
+    groups = {"bass": [], "comp": [], "melody": []}
+    for track in project.tracks:
+        if track.is_audio or track.name == exclude_track_name or track.mute:
+            continue
+        instrument = track.instrument
+        if instrument.is_percussion:
+            continue
+        pitches = []
+        for ev in track.parsed_events(project.patterns, midi_dir=midi_dir, meter=project.meter()):
+            if ev.kind == "note" and ev.letter:
+                pitches.append(pitch_to_midi(ev.letter, ev.octave))
+            elif ev.kind == "block" and ev.items:
+                pitches += [pitch_to_midi(it["letter"], it["octave"]) for it in ev.items
+                            if it.get("kind") == "note" and it.get("letter")]
+        if not pitches:
+            continue
+        if gm_family_for_program(instrument.gm_program) == "Bassi":
+            groups["bass"] += pitches
+        elif instrument.polyphonic:
+            groups["comp"] += pitches
+        else:
+            groups["melody"] += pitches
+    out = {}
+    if groups["bass"]:
+        out["bass_top"] = max(groups["bass"])
+    if groups["comp"]:
+        comp = sorted(groups["comp"])
+        out["comp_top"] = comp[min(len(comp) - 1, int(0.75 * len(comp)))]
+    if groups["melody"]:
+        mel = sorted(groups["melody"])
+        out["melody_low"] = mel[int(0.1 * len(mel))]
+    return out
+
+
+REGISTER_MIN_SPAN = 12      # almeno un'ottava, se no il registro non si stringe
+
+
+def fit_register(low: int, high: int, polyphonic: bool, registers: dict) -> Tuple[int, int]:
+    """L'estensione (low, high) dello strumento ristretta per lasciare
+    spazio alle altre parti (vedi part_registers): un accompagnamento sta
+    sopra il basso e sotto la melodia, una melodia sopra l'accompagnamento.
+    Se resterebbe meno di un'ottava, quel limite non si applica."""
+    floor = registers.get("bass_top") if polyphonic else registers.get("comp_top")
+    ceiling = registers.get("melody_low") if polyphonic else None
+    new_low, new_high = low, high
+    if floor is not None and floor + 1 <= high - REGISTER_MIN_SPAN:
+        new_low = max(low, floor + 1)
+    if ceiling is not None and ceiling - 1 >= new_low + REGISTER_MIN_SPAN:
+        new_high = min(high, ceiling - 1)
+    return new_low, new_high
+
+
 def section_end_bars(project: Project, start_beat: float, bars: int, bar_beats: float,
                      exclude_track_name: Optional[str] = None) -> List[int]:
     """Le battute (da 0, contate da start_beat) che chiudono una sezione
@@ -1863,7 +1925,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            variability=0.0, seed: Optional[int] = None,
                            bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
                            voice_leading: bool = False, key: Optional[str] = None,
-                           meter: Optional[str] = None) -> str:
+                           meter: Optional[str] = None, repeats=()) -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -1894,7 +1956,8 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         from .melody_generate import generate_phrase_melody   # import locale: evita il ciclo
         return generate_phrase_melody(chords, style, octave, range_low, range_high, key=key,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
-                                      bar_beats=bar_beats, meter=meter, intensity=intensity)
+                                      bar_beats=bar_beats, meter=meter, intensity=intensity,
+                                      repeats=repeats)
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
                or user_styles.get_user_style("riff", style))
     if pattern is None:

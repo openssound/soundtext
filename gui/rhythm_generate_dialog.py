@@ -31,7 +31,7 @@ from core.playback import PlaybackEngine
 
 from core.rhythm_generate import (
     DRUM_STYLES, BASS_STYLES, COMPING_STYLES, RIFF_STYLES, PROGRESSION_STYLES, generate_drum_pattern,
-    section_end_bars, track_end_beat, kick_beats_of_track,
+    section_end_bars, track_end_beat, kick_beats_of_track, fit_register, part_registers,
     extract_chords_from_track, generate_bass_from_chords, generate_melodic_line,
     generate_chord_progression, parse_key, drum_styles_for_meter, meter_beats, INTENSITIES,
     Variability, splice_bars, MELODY_STYLES,
@@ -970,15 +970,39 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         style = self.style_combo.currentData()
         is_melody = style in MELODY_STYLES
         self.variation_every_spin.setEnabled(not is_melody)   # le melodie a frasi hanno la loro forma
+        range_low, range_high = self._register()
         return generate_melodic_line(
             chords, style, octave=self.octave_spin.value(),
-            range_low=self.range_low, range_high=self.range_high, polyphonic=self.polyphonic,
+            range_low=range_low, range_high=range_high, polyphonic=self.polyphonic,
             variation_every=self.variation_every_spin.value(),
             min_total_beats=self.bars_spin.value() * self.bar_beats, bar_beats=self.bar_beats,
             intensity=self._intensity(), voice_leading=self._voice_leading(),
             key=self._melody_key(source_text) if is_melody else None, meter=self.project.time_sig,
-            **self._variation_kwargs(seed),
+            repeats=self._repeats() if is_melody else (), **self._variation_kwargs(seed),
         )
+
+    def _repeats(self):
+        """Le sezioni che tornano nella traccia degli accordi scelta, dove la
+        melodia si ripete (Ritornello riconoscibile)."""
+        check = getattr(self, "repeat_check", None)
+        if check is not None:
+            check.setEnabled(bool(self._source_repeats()))
+        if check is None or not check.isChecked():
+            return ()
+        return self._source_repeats()
+
+    def _source_repeats(self):
+        from core.melody_generate import section_repeats
+        name = self.other_tracks[self.source_combo.currentIndex()][0]
+        return section_repeats(self.project, self.project.find_track(name), 0.0)
+
+    def _register(self):
+        """L'estensione usata: quella dello strumento, o ristretta per non
+        sovrapporsi alle altre parti (Lascia spazio alle altre parti)."""
+        check = getattr(self, "space_check", None)
+        if check is None or not check.isChecked():
+            return self.range_low, self.range_high
+        return fit_register(self.range_low, self.range_high, self.polyphonic, self._registers)
 
     def _melody_key(self, source_text: str):
         """Tonalita' della melodia: quella del progetto, o quella riconosciuta
@@ -1000,6 +1024,31 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
             tr("Leggera: restano le note sul 1 e sul 3 (piu' lunghe), per strofe e intro.\n"
             "Piena: accordi con l'ottava sopra, basso che sale d'ottava a fine accordo.\n"
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
+        self._registers = part_registers(self.project, exclude_track_name=self.track_name)
+        if fit_register(self.range_low, self.range_high, self.polyphonic, self._registers) != \
+                (self.range_low, self.range_high):
+            from core.chords import midi_to_token
+            low, high = fit_register(self.range_low, self.range_high, self.polyphonic, self._registers)
+            options_row.addSpacing(12)
+            self.space_check = QCheckBox(tr("Lascia spazio alle altre parti"))
+            self.space_check.setChecked(True)
+            notes = {"low": midi_to_token(low), "high": midi_to_token(high)}
+            self.space_check.setToolTip(
+                tr("L'accompagnamento sta sopra il basso e sotto la melodia gia' scritti: note da {low} a "
+                   "{high} invece di tutta l'estensione dello strumento.", **notes) if self.polyphonic else
+                tr("La melodia sta sopra l'accompagnamento gia' scritto: note da {low} a {high} invece di "
+                   "tutta l'estensione dello strumento.", **notes))
+            self.space_check.toggled.connect(self._regenerate_preview)
+            options_row.addWidget(self.space_check)
+        if not self.polyphonic:
+            options_row.addSpacing(12)
+            self.repeat_check = QCheckBox(tr("Ritornello riconoscibile"))
+            self.repeat_check.setChecked(True)
+            self.repeat_check.setToolTip(tr(
+                "Solo per le melodie a frasi: dove la traccia degli accordi ripete una sezione (box con lo "
+                "stesso nome, come due Ritornelli, o con lo stesso contenuto) la melodia torna uguale."))
+            self.repeat_check.toggled.connect(self._regenerate_preview)
+            options_row.addWidget(self.repeat_check)
         if self.polyphonic:
             options_row.addSpacing(12)
             self.voice_leading_check = QCheckBox(tr("Rivolti vicini"))

@@ -301,11 +301,13 @@ def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str) 
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
-                           intensity: str = "normal") -> str:
+                           intensity: str = "normal", repeats=()) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
-    [range_low, range_high]. 'style' e' uno di MELODY_STYLES. Solleva
+    [range_low, range_high]. 'style' e' uno di MELODY_STYLES. 'repeats'
+    (vedi section_repeats): le sezioni che tornano, dove la melodia torna
+    uguale a quella della prima volta (un ritornello riconoscibile). Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -406,7 +408,57 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         if pitches:
             prev2, prev = (pitches[-2] if len(pitches) > 1 else prev), pitches[-1]
 
+    notes = _apply_repeats(notes, repeats)
     return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng)
+
+
+def _apply_repeats(notes, repeats):
+    """Le note delle sezioni che tornano rimpiazzate da quelle della prima
+    volta: [(inizio, fine, inizio della sezione da ripetere)] in beat."""
+    for start, end, source in sorted(repeats):
+        length = end - start
+        if length <= 0 or source >= start:
+            continue
+        copied = [(t - source + start, min(d, end - (t - source + start)), p, b)
+                  for t, d, p, b in notes if source - 1e-6 <= t < source + length - 1e-6]
+        kept = [n for n in notes if not start - 1e-6 <= n[0] < end - 1e-6]
+        # la nota prima della sezione non deve suonarci sopra
+        kept = [(t, min(d, start - t) if t < start < t + d else d, p, b) for t, d, p, b in kept]
+        notes = sorted(kept + copied)
+    return notes
+
+
+def section_repeats(project, track, part_start: float = 0.0) -> List[Tuple[float, float, float]]:
+    """Le sezioni della traccia (i suoi box nella Struttura brano) che
+    ripetono una sezione precedente: stesso nome (senza numeri o "copia")
+    o stesso contenuto. [(inizio, fine, inizio della prima volta)] in beat
+    contati da part_start (dove comincia la parte generata)."""
+    import re
+    from .arrangement import clip_duration_beats
+    if track is None or track.is_audio or not track.clips:
+        return []
+
+    def name_key(name):
+        name = re.sub(r"\s*\((?:copia|\d+)\)\s*$", "", name.strip().lower())
+        return re.sub(r"\s*\d+$", "", name)
+
+    seen_names: Dict[str, float] = {}
+    seen_texts: Dict[str, float] = {}
+    out = []
+    for clip in sorted(track.clips, key=lambda c: c.start_beat):
+        length = clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
+                                     start_beat=clip.start_beat, meter=project.meter())
+        key, text = name_key(clip.name), " ".join(clip.text.split())
+        first = seen_names.get(key) if key else None
+        if first is None:
+            first = seen_texts.get(text)
+        if first is not None and length > 0:
+            out.append((clip.start_beat - part_start, clip.start_beat + length - part_start, first - part_start))
+        else:
+            if key:
+                seen_names.setdefault(key, clip.start_beat)
+            seen_texts.setdefault(text, clip.start_beat)
+    return [r for r in out if r[2] >= 0]
 
 
 def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: random.Random) -> str:

@@ -2254,6 +2254,14 @@ tasto destro sull'etichetta della traccia a sinistra.
   secondarie e II-V verso l'accordo dopo, sostituti di tritono e iv minore;
   **Altra versione** ne propone un'altra. Durate e pause restano, gli
   accordi che non cambiano restano scritti com'erano.
+- **Armonizza la melodia...** (box con una melodia, o clip audio con una
+  parte a una voce): propone gli accordi in tre versioni, **Semplice** (I,
+  IV, V), **Diatonica** (tutti i gradi della tonalita') e **Ricca**
+  (settime, dominanti secondarie; **Altra versione** ne propone un'altra),
+  uno per battuta o per mezza battuta, nella tonalita' riconosciuta dalla
+  melodia (modificabile). Gli accordi vanno in una traccia nuova "Accordi
+  di Nome", con un box dove comincia la melodia; da li' si possono generare
+  basso e accompagnamento.
 - **Rinomina...**
 - **Duplica**: crea una copia sulla stessa traccia, subito dopo la fine
   del box originale (o nel primo spazio libero disponibile da lì).
@@ -2627,6 +2635,14 @@ un'altra traccia nel progetto con accordi già scritti):
   battuta ne tronca il disegno. Con la Variabilità alcuni stili alternano
   un secondo disegno (vedi sopra).
 - **Intensità**: vedi sopra (anche in **Genera accompagnamento/riff**).
+
+**Lascia spazio alle altre parti** (c'e' quando il brano ha gia' altre
+parti scritte): l'accompagnamento sta sopra il basso e sotto la melodia,
+la melodia sopra l'accompagnamento, invece di usare tutta l'estensione
+dello strumento; il suggerimento mostra le note usate. **Ritornello
+riconoscibile** (melodie a frasi): dove la traccia degli accordi ripete
+una sezione (due box "Ritornello", o due box uguali) la melodia torna
+uguale alla prima volta.
 
 In **Genera accompagnamento** c'è anche **Rivolti vicini** (spuntato di
 default): ogni accordo sceglie il rivolto più vicino al precedente

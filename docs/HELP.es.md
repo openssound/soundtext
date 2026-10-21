@@ -2301,6 +2301,14 @@ derecho en la etiqueta de la pista a la izquierda.
   dominantes secundarias y II-V hacia el acorde siguiente, sustitutos de
   tritono y iv menor; **Otra versión** propone otra. Duraciones y silencios
   se mantienen, y los acordes que no cambian quedan escritos como estaban.
+- **Armonizar la melodía...** (una caja con una melodía, o un clip de
+  audio con una parte a una voz): propone los acordes en tres versiones,
+  **Sencilla** (I, IV, V), **Diatónica** (todos los grados de la
+  tonalidad) y **Rica** (séptimas, dominantes secundarias; **Otra
+  versión** propone otra), uno por compás o por medio compás, en la
+  tonalidad reconocida en la melodía (modificable). Los acordes van a una
+  pista nueva "Acordes de Nombre", con una caja donde empieza la melodía;
+  desde ahí se pueden generar bajo y acompañamiento.
 - **Cambiar nombre...**
 - **Duplicar**: crea una copia en la misma pista, justo después del final
   del box original (o en el primer espacio libre disponible a partir de
@@ -2689,6 +2697,14 @@ otra pista del proyecto con acordes ya escritos):
   un compás corta el patrón. Con la Variabilidad algunos estilos alternan un
   segundo patrón (ver arriba).
 - **Intensidad**: ver arriba (también en **Generar acompañamiento/riff**).
+
+**Dejar espacio a las otras partes** (aparece cuando la canción ya tiene
+otras partes escritas): el acompañamiento se queda por encima del bajo y
+por debajo de la melodía, la melodía por encima del acompañamiento, en
+lugar de usar toda la extensión del instrumento; la ayuda muestra las
+notas usadas. **Estribillo reconocible** (melodías por frases): donde la
+pista de acordes repite una sección (dos cajas "Estribillo", o dos cajas
+iguales) la melodía vuelve igual que la primera vez.
 
 En **Generar acompañamiento** también está **Inversiones cercanas**
 (marcado por defecto): cada acorde elige la inversión más cercana a la

@@ -1667,6 +1667,15 @@ class ArrangementView(AudioClipActions, QWidget):
         from .reharmonize_dialog import can_reharmonize
         reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
             if can_reharmonize(clip.text, self.host.project.patterns) else None
+        harmonize_action = None
+        if reharmonize_action is None and not self.host.project.get_track(track_name).instrument.is_percussion:
+            from core.harmonize import melody_notes
+            try:
+                has_melody = bool(melody_notes(clip.text, self.host.project.patterns))
+            except Exception:          # testo non valido: niente da armonizzare
+                has_melody = False
+            if has_melody:
+                harmonize_action = menu.addAction(tr("Armonizza la melodia..."))
         rename_action = menu.addAction(tr("Rinomina..."))
         duplicate_action = menu.addAction(tr("Duplica"))
         menu.addSeparator()
@@ -1690,6 +1699,8 @@ class ArrangementView(AudioClipActions, QWidget):
             self._transpose_clip(track_name, clip)
         elif reharmonize_action is not None and chosen is reharmonize_action:
             self.reharmonize_clip(track_name, clip)
+        elif harmonize_action is not None and chosen is harmonize_action:
+            self.harmonize_melody(clip.name, clip.text, clip.start_beat)
         elif chosen is rename_action:
             self._rename_clip(track_name, clip)
         elif chosen is duplicate_action:
@@ -1709,6 +1720,18 @@ class ArrangementView(AudioClipActions, QWidget):
             track = self.host.project.get_track(track_name)
             track.clips.remove(clip)
             self.on_clip_changed(track_name)
+
+    def harmonize_melody(self, source_name: str, text: str, start_beat: float):
+        """Armonizza una melodia (gui.harmonize_dialog): gli accordi vanno in
+        una traccia nuova, con un box dove comincia la melodia."""
+        from .harmonize_dialog import HarmonizeDialog, add_harmony_track
+        dlg = HarmonizeDialog(self, self.host.project, text, source_name)
+        self._harmonize_dialog = dlg   # per i test
+        if dlg.exec() != HarmonizeDialog.Accepted or not dlg.result_text():
+            return
+        name = add_harmony_track(self, source_name, dlg.result_text(), start_beat)
+        if hasattr(self.host, "statusBar"):
+            self.host.statusBar().showMessage(tr("Accordi nella traccia nuova '{name}'.", name=name), 6000)
 
     def reharmonize_clip(self, track_name: str, clip: Clip):
         """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il

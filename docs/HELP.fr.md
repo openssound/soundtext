@@ -2351,6 +2351,14 @@ clic droit sur l'étiquette de la piste à gauche.
   suivant, substitutions tritoniques et iv mineur ; **Autre version** en
   propose une autre. Durées et silences restent, et les accords qui ne
   changent pas restent écrits comme avant.
+- **Harmoniser la mélodie...** (une boîte avec une mélodie, ou un clip audio
+  avec une partie à une voix) : propose les accords en trois versions,
+  **Simple** (I, IV, V), **Diatonique** (tous les degrés de la tonalité)
+  et **Riche** (septièmes, dominantes secondaires ; **Autre version** en
+  propose une autre), un par mesure ou par demi-mesure, dans la tonalité
+  reconnue dans la mélodie (modifiable). Les accords vont dans une
+  nouvelle piste « Accords de Nom », avec une boîte là où commence la
+  mélodie ; de là on peut générer basse et accompagnement.
 - **Renommer...**
 - **Dupliquer** : crée une copie sur la même piste, juste après la fin du
   box d'origine (ou dans le premier espace libre disponible à partir de là).
@@ -2748,6 +2756,14 @@ message renvoie à la grille d'accords).
   alternent un second motif (voir plus haut).
 - **Intensité** : voir plus haut (aussi dans **Générer
   l'accompagnement/le riff**).
+
+**Laisser de la place aux autres parties** (présent quand le morceau a déjà
+d'autres parties écrites) : l'accompagnement reste au-dessus de la basse
+et sous la mélodie, la mélodie au-dessus de l'accompagnement, au lieu
+d'utiliser toute l'étendue de l'instrument ; l'infobulle montre les notes
+utilisées. **Refrain reconnaissable** (mélodies en phrases) : là où la
+piste d'accords répète une section (deux boîtes « Refrain », ou deux
+boîtes identiques) la mélodie revient identique à la première fois.
 
 Dans **Générer l'accompagnement** il y a aussi **Renversements proches**
 (coché par défaut) : chaque accord choisit le renversement le plus proche
