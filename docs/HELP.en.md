@@ -2601,6 +2601,9 @@ which follows any chord progression.
 
 **Where to save from** ("Save as generator style..."):
 - right-click a **box** in the Song structure view;
+- right-click an **audio clip** (a take): first the conversion to notes, as
+  in "Convert to notation" (choose **Drums** for a drum style), then the
+  same dialog;
 - the **Compose → Generator styles → Save the track as a style...** menu (the whole selected track);
 - the **MIDI library** (menu Compose → Manage MIDI library): the
   button below the preview offers all the channels of the selected file.

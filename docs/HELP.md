@@ -2656,6 +2656,9 @@ un nuovo modello, che segue qualunque giro di accordi.
 
 **Da dove si salva** («Salva come stile del generatore...»):
 - tasto destro su un **box** nella vista Struttura brano;
+- tasto destro su una **clip audio** (una ripresa): prima la conversione in
+  note come in "Converti in notazione" (scegli **Drums** per uno stile di
+  batteria), poi lo stesso dialogo;
 - menu **Componi → Stili dei generatori → Salva la traccia come stile...** (tutta la traccia selezionata);
 - **Libreria MIDI** (menu Componi → Gestisci libreria MIDI): il pulsante
   sotto l'anteprima propone tutti i canali del file selezionato.

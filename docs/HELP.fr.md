@@ -2776,6 +2776,9 @@ d'accords.
 
 **D'où l'enregistrer** (« Enregistrer comme style du générateur... ») :
 - clic droit sur un **box** dans la vue Structure du morceau ;
+- clic droit sur un **clip audio** (une prise) : d'abord la conversion en
+  notes comme dans « Convertir en notation » (choisissez **Drums** pour un
+  style de batterie), puis la même boîte de dialogue ;
 - menu **Composer → Styles des générateurs → Enregistrer la piste comme style...** (toute la piste sélectionnée) ;
 - **Bibliothèque MIDI** (menu Composer → Gérer la bibliothèque
   MIDI) : le bouton sous l'aperçu propose tous les canaux du fichier

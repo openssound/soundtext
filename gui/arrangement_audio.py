@@ -59,6 +59,7 @@ class AudioClipActions:
             comp_action = takes_menu.addAction(tr("Comping..."))
             keep_one_action = takes_menu.addAction(tr("Tieni solo la ripresa attiva"))
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
+        style_action = menu.addAction(tr("Salva come stile del generatore...")) if not missing else None
         tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
         quantize_action = menu.addAction(tr("Quantizza l'audio...")) if not missing else None
         silences_action = menu.addAction(tr("Rimuovi i silenzi...")) if not missing else None
@@ -108,6 +109,8 @@ class AudioClipActions:
             self._keep_only_active_take(track_name, clip)
         elif convert_action is not None and chosen is convert_action:
             self._convert_clip_to_notation(track_name, clip)
+        elif style_action is not None and chosen is style_action:
+            self._save_audio_clip_as_style(track_name, clip)
         elif tempo_action is not None and chosen is tempo_action:
             self._tempo_from_clip(track_name, clip)
         elif quantize_action is not None and chosen is quantize_action:
@@ -244,20 +247,19 @@ class AudioClipActions:
         if (clip.start_beat, clip.trim_start, clip.trim_end) != before:
             self.on_clip_changed(track_name)
 
-    def _convert_clip_to_notation(self, track_name: str, clip: AudioClip):
-        """Converte la parte riprodotta della clip in notazione (stesso
-        motore di 'Importa audio', vedi gui.audio_import_dialog) in una nuova
-        traccia, con un box che parte dove parte la clip."""
+    def _clip_notation_text(self, track_name: str, clip: AudioClip, title: str, prompt: str):
+        """La parte riprodotta della clip convertita in notazione (stesso
+        motore di 'Importa audio', vedi gui.audio_import_dialog), con lo
+        strumento chiesto all'utente: (strumento, testo), o None se annullato."""
         import tempfile
         from core.instruments import list_instrument_names
         track = self.host.project.get_track(track_name)
         names = list_instrument_names()
         preferred = {"chitarra": "Guitar", "tastiera": "Piano", "voce": "Trumpet"}.get(track.input_profile, "Piano")
-        instrument, ok = QInputDialog.getItem(
-            self, tr("Converti in notazione"), tr("Strumento della nuova traccia:"), names,
-            names.index(preferred) if preferred in names else 0, False)
+        instrument, ok = QInputDialog.getItem(self, title, prompt, names,
+                                              names.index(preferred) if preferred in names else 0, False)
         if not ok:
-            return
+            return None
         fd, tmp = tempfile.mkstemp(suffix=".wav", prefix="soundtext_clip_")
         os.close(fd)
         try:
@@ -271,8 +273,16 @@ class AudioClipActions:
             if os.path.exists(tmp):
                 os.remove(tmp)
         self.host._sync_tempo_metrica_fields()
-        if not text:
+        return (instrument, text) if text else None
+
+    def _convert_clip_to_notation(self, track_name: str, clip: AudioClip):
+        """Converte la parte riprodotta della clip in notazione in una nuova
+        traccia, con un box che parte dove parte la clip."""
+        converted = self._clip_notation_text(track_name, clip, tr("Converti in notazione"),
+                                             tr("Strumento della nuova traccia:"))
+        if converted is None:
             return
+        instrument, text = converted
         project = self.host.project
         existing = {t.name for t in project.tracks}
         name, n = f"{clip.name} (note)", 2
@@ -287,6 +297,27 @@ class AudioClipActions:
         self.host.select_track(name)
         self.host.statusBar().showMessage(
             tr("Clip '{name}' convertita in notazione nella nuova traccia '{0}'.", name, name=clip.name), 6000)
+
+    def _save_audio_clip_as_style(self, track_name: str, clip: AudioClip):
+        """Salva come stile del generatore una ripresa: prima la conversione
+        in note (strumento a scelta: una batteria per uno stile di batteria),
+        poi lo stesso dialogo dei box (gui.save_style_dialog)."""
+        from core.instruments import get_instrument
+        from .save_style_dialog import SaveStyleDialog, chord_sources_of, source_for_part
+        converted = self._clip_notation_text(track_name, clip, tr("Salva come stile del generatore"),
+                                             tr("Strumento della ripresa (Drums per uno stile di batteria):"))
+        if converted is None:
+            return
+        instrument, text = converted
+        project = self.host.project
+        source = source_for_part(tr("clip '{name}'", name=clip.name), text, get_instrument(instrument),
+                                 offset_beats=clip.start_beat)
+        dlg = SaveStyleDialog(self, [source], chord_sources_of(project, track_name), project.patterns,
+                              meter=project.time_sig)
+        self._save_style_dialog = dlg   # per i test
+        if dlg.exec() == SaveStyleDialog.Accepted and dlg.saved_style():
+            self.host.statusBar().showMessage(
+                tr("Stile «{0}» salvato fra gli stili personali.", dlg.saved_style()[1]), 4000)
 
     def convert_track_to_notation(self, track_name: str):
         """Tutta la traccia audio in una traccia SoundText, un box per clip

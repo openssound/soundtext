@@ -2717,6 +2717,9 @@ acordes.
 
 **Desde dónde se guarda** («Guardar como estilo del generador...»):
 - clic derecho en un **box** en la vista Estructura de la canción;
+- clic derecho en un **clip de audio** (una toma): primero la conversión a
+  notas como en «Convertir en notación» (elige **Drums** para un estilo de
+  batería), luego el mismo diálogo;
 - menú **Componer → Estilos de los generadores → Guardar la pista como estilo...** (toda la pista seleccionada);
 - **Biblioteca MIDI** (menú Componer → Gestionar biblioteca MIDI):
   el botón debajo de la vista previa ofrece todos los canales del archivo
