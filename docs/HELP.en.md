@@ -2202,6 +2202,13 @@ the track label on the left.
   anchor `bar=N`, **▶ Play** plays it from its place in the song, so the
   anchor reaches the right bar (the same holds for **▶ Play** on a
   selection).
+- **Reharmonize...** (boxes with chords only): the same enrichment as the
+  generated chord progression, applied to a progression already written.
+  The **How rich** slider goes from 0 (the progression as it is) to
+  sevenths and ninths, secondary dominants and II-V toward the next chord,
+  tritone substitutes and minor iv; **Another version** offers another one.
+  Durations and rests stay, and the chords that do not change stay written
+  as they were.
 - **Rename...**
 - **Duplicate**: creates a copy on the same track, right after the end of
   the original box (or in the first free space available from there).
@@ -2460,6 +2467,10 @@ track):
   full.
 - **Ending on the last bar**: the last bar becomes a closing hit (crash and
   kick on the first beat, then silence), to end the song or the section.
+- **Fills at the end of sections** (checked when the other tracks have
+  boxes): a full fill in the last bar before each box of the other tracks
+  (Verse, Chorus...) in the Song structure, and the crash when the new
+  section starts, on top of the fills every N bars.
 - **Follow the take** (present when the song has an audio track with
   clips): SoundText listens to the groove of the take (for each sixteenth
   of the bar, how often and how loud there is a hit) and also puts the kick
@@ -2577,6 +2588,10 @@ two-note chords, which already have their own pattern).
 - **Variation every N chords**: every N chords uses a slightly different
   treatment of the same chord (octave jump, different note...) instead of
   repeating the pattern identically — 0 disables variations.
+- **Follow the kick of** (shown when the song has a drum track): the bass
+  attacks fall on the kick hits of the chosen track, with the style's
+  notes, so bass and drums play together. There is always a note at the
+  start of each chord.
 
 Both show a preview that can be edited by hand before confirming (like the
 audio import, section 10bis), and the result is appended to the content

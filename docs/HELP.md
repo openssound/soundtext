@@ -2248,6 +2248,12 @@ tasto destro sull'etichetta della traccia a sinistra.
   box. I richiami a pattern e file MIDI si trasportano con il suffisso:
   `%Giro` diventa `%Giro+2`, `&"Riff"+1` diventa `&"Riff"+3` (il pattern
   resta com'e', perche' lo possono usare anche altri).
+- **Riarmonizza...** (box di soli accordi): lo stesso arricchimento del
+  giro armonico generato, applicato a un giro gia' scritto. Il cursore
+  **Quanto ricco** va da 0 (il giro com'e') a settime e none, dominanti
+  secondarie e II-V verso l'accordo dopo, sostituti di tritono e iv minore;
+  **Altra versione** ne propone un'altra. Durate e pause restano, gli
+  accordi che non cambiano restano scritti com'erano.
 - **Rinomina...**
 - **Duplica**: crea una copia sulla stessa traccia, subito dopo la fine
   del box originale (o nel primo spazio libero disponibile da lì).
@@ -2511,8 +2517,10 @@ percussiva selezionata):
 - **Finale sull'ultima battuta**: l'ultima battuta diventa un colpo di
   chiusura (crash e cassa sul primo tempo, poi silenzio), per terminare il
   brano o la sezione.
-  chiusura (crash e cassa sul primo tempo, poi silenzio), per terminare il
-  brano o la sezione.
+- **Fill alla fine delle sezioni** (spuntato quando le altre tracce hanno
+  dei box): un fill completo nell'ultima battuta prima di ogni box delle
+  altre tracce (Strofa, Ritornello...) nella Struttura brano, e il crash
+  quando la sezione nuova comincia, oltre ai fill ogni N battute.
 - **Segui la ripresa** (c'e' quando il brano ha una traccia audio con delle
   clip): SoundText ascolta il groove della ripresa (per ogni sedicesimo
   della battuta, quanto spesso e quanto forte c'e' un colpo) e mette la
@@ -2632,6 +2640,10 @@ troppo dal registro di partenza. Vale per gli accordi di almeno tre note
 - **Variazione ogni N accordi**: ogni N accordi usa un trattamento
   leggermente diverso dello stesso accordo (salto d'ottava, nota diversa...)
   invece di ripetere identico il disegno — 0 disattiva le variazioni.
+- **Segui la cassa di** (c'e' quando il brano ha una traccia di
+  batteria): gli attacchi del basso cadono sui colpi di cassa della traccia
+  scelta, con le note dello stile, cosi' basso e batteria suonano insieme.
+  All'inizio di ogni accordo c'e' sempre una nota.
 
 Entrambi mostrano un'anteprima modificabile a mano prima di confermare
 (come l'importazione audio, sezione 10bis), e il risultato viene accodato

@@ -31,6 +31,7 @@ from core.playback import PlaybackEngine
 
 from core.rhythm_generate import (
     DRUM_STYLES, BASS_STYLES, COMPING_STYLES, RIFF_STYLES, PROGRESSION_STYLES, generate_drum_pattern,
+    section_end_bars, track_end_beat, kick_beats_of_track,
     extract_chords_from_track, generate_bass_from_chords, generate_melodic_line,
     generate_chord_progression, parse_key, drum_styles_for_meter, meter_beats, INTENSITIES,
     Variability, splice_bars, MELODY_STYLES,
@@ -643,7 +644,13 @@ class _GeneratedTrackDialogBase(QDialog):
 
 
 class DrumGenerateDialog(_GeneratedTrackDialogBase):
-    def __init__(self, parent, project, instrument_name, context_label, default_bars=8, track_name=None):
+    def __init__(self, parent, project, instrument_name, context_label, default_bars=8, track_name=None,
+                 start_beat=None):
+        # Dove andra' la parte generata (per i fill di fine sezione); None =
+        # in coda al testo gia' scritto della traccia.
+        if start_beat is None:
+            start_beat = track_end_beat(project, project.find_track(track_name) if track_name else None)
+        self.start_beat = start_beat
         # Preimpostato (dal chiamante, vedi gui.main_window_mixer) al numero
         # di battute che copre l'estensione delle altre tracce gia' scritte
         # nel progetto, cosi' la batteria generata le copre per intero di
@@ -704,6 +711,16 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
             "come fa un batterista alla fine delle frasi. Senza spunta: sempre fill completi."))
         self.phrase_fills_check.toggled.connect(self._regenerate_preview)
         options_row.addWidget(self.phrase_fills_check)
+        self.section_fills_check = QCheckBox(tr("Fill alla fine delle sezioni"))
+        has_sections = bool(self._section_ends(256))
+        self.section_fills_check.setChecked(has_sections)
+        self.section_fills_check.setEnabled(has_sections)
+        self.section_fills_check.setToolTip(
+            tr("Un fill completo nell'ultima battuta prima di ogni box delle altre tracce (Strofa, "
+               "Ritornello...) nella Struttura brano, e il crash quando la sezione nuova comincia.")
+            if has_sections else tr("Le altre tracce non hanno box che dividano il brano in sezioni."))
+        self.section_fills_check.toggled.connect(self._regenerate_preview)
+        options_row.addWidget(self.section_fills_check)
         self.ending_check = QCheckBox(tr("Finale sull'ultima battuta"))
         self.ending_check.setToolTip(tr("Chiude la parte con un colpo di piatto e cassa sul primo tempo "
                                      "dell'ultima battuta, poi silenzio."))
@@ -742,13 +759,19 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
         except (RuntimeError, OSError, ValueError) as e:
             raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
 
+    def _section_ends(self, bars: int) -> list:
+        return section_end_bars(self.project, self.start_beat, bars, project_bar_beats(self.project),
+                                exclude_track_name=self.track_name)
+
     def _generate_text(self, seed=None) -> str:
         style = self.style_combo.currentData()
-        return generate_drum_pattern(style, bars=self.bars_spin.value(), fill_every=self.fill_every_spin.value(),
+        bars = self.bars_spin.value()
+        sections = self._section_ends(bars) if self.section_fills_check.isChecked() else []
+        return generate_drum_pattern(style, bars=bars, fill_every=self.fill_every_spin.value(),
                                      intensity=self._intensity(),
                                      phrase_fills=self.phrase_fills_check.isChecked(),
                                      ending=self.ending_check.isChecked(), kick_accents=self._groove(),
-                                     **self._variation_kwargs(seed))
+                                     section_fill_bars=sections, **self._variation_kwargs(seed))
 
 
 class BassGenerateDialog(_GeneratedTrackDialogBase):
@@ -758,8 +781,11 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
     traccia di note o una traccia audio (AudioChordSource)."""
 
     def __init__(self, parent, project, instrument_name, context_label, other_tracks,
-                 min_total_beats=0.0, default_bars=None, track_name=None):
+                 min_total_beats=0.0, default_bars=None, track_name=None, start_beat=None):
         self.other_tracks = other_tracks
+        if start_beat is None:
+            start_beat = track_end_beat(project, project.find_track(track_name) if track_name else None)
+        self.start_beat = start_beat
         # Le battute sono un controllo esplicito del dialogo (vedi
         # _build_controls, come in DrumGenerateDialog): il chiamante puo'
         # preimpostarle direttamente (default_bars, es. per un nuovo box
@@ -829,8 +855,16 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
             chords, style, octave=self.octave_spin.value(),
             variation_every=self.variation_every_spin.value(),
             min_total_beats=self.bars_spin.value() * self.bar_beats, bar_beats=self.bar_beats,
-            intensity=self._intensity(), **self._variation_kwargs(seed),
+            intensity=self._intensity(), kick_beats=self._kick_beats(), **self._variation_kwargs(seed),
         )
+
+    def _kick_beats(self):
+        """I colpi di cassa della traccia di batteria scelta, o None."""
+        combo = getattr(self, "kick_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return None
+        return kick_beats_of_track(self.project, self.project.get_track(name), self.start_beat) or None
 
     def _build_options(self, options_row):
         self._add_intensity_combo(
@@ -838,6 +872,20 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
             tr("Leggera: restano le note sul 1 e sul 3 (piu' lunghe), per strofe e intro.\n"
             "Piena: accordi con l'ottava sopra, basso che sale d'ottava a fine accordo.\n"
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
+        drums = [t for t in self.project.tracks
+                 if not t.is_audio and t.name != self.track_name and t.instrument.is_percussion and t.text.strip()]
+        if drums:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Segui la cassa di:")))
+            self.kick_combo = QComboBox()
+            self.kick_combo.addItem(tr("nessuna"), None)
+            for track in drums:
+                self.kick_combo.addItem(track.name, track.name)
+            self.kick_combo.setToolTip(tr(
+                "Gli attacchi del basso cadono sui colpi di cassa della traccia di batteria scelta, con le note "
+                "dello stile: basso e batteria suonano insieme. All'inizio di ogni accordo c'e' sempre una nota."))
+            self.kick_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.kick_combo)
 
 
 class MelodyGenerateDialog(_GeneratedTrackDialogBase):

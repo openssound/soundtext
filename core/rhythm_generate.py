@@ -104,6 +104,35 @@ def tracks_duration_beats(project: Project, exclude_track_name: Optional[str] = 
     return max_beats
 
 
+def track_end_beat(project: Project, track, midi_dir: Optional[str] = None) -> float:
+    """Dove finisce il testo gia' scritto di una traccia di note (0 se e'
+    vuota): dove si accoda quello che si genera."""
+    if track is None or track.is_audio or not track.text.strip():
+        return 0.0
+    events = track.parsed_events(project.patterns, midi_dir=midi_dir, meter=project.meter())
+    return max((e.start + e.duration for e in events), default=0.0)
+
+
+def section_end_bars(project: Project, start_beat: float, bars: int, bar_beats: float,
+                     exclude_track_name: Optional[str] = None) -> List[int]:
+    """Le battute (da 0, contate da start_beat) che chiudono una sezione
+    della Struttura brano: quelle subito prima dell'inizio di un box di
+    un'altra traccia di note (Strofa, Ritornello...), se cade a inizio
+    battuta. Per i fill di sezione della batteria (generate_drum_pattern)."""
+    if bar_beats <= 0:
+        return []
+    out = set()
+    for track in project.tracks:
+        if track.is_audio or track.name == exclude_track_name:
+            continue
+        for clip in track.clips:
+            rel = (clip.start_beat - start_beat) / bar_beats
+            idx = int(round(rel)) - 1
+            if abs(rel - round(rel)) < 1e-6 and 0 <= idx < bars - 1:
+                out.add(idx)
+    return sorted(out)
+
+
 # ---------------------------------------------------------------------------
 # Batteria
 # ---------------------------------------------------------------------------
@@ -839,7 +868,8 @@ def _with_crash(bar: List[Optional[list]]) -> List[Optional[list]]:
 def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
                           variability=0.0, seed: Optional[int] = None,
                           intensity: str = "normal", phrase_fills: bool = False,
-                          ending: bool = False, kick_accents: Optional[List[float]] = None) -> str:
+                          ending: bool = False, kick_accents: Optional[List[float]] = None,
+                          section_fill_bars=()) -> str:
     """Genera 'bars' battute di batteria nello stile scelto (vedi
     DRUM_STYLES), ripetendo il giro base e sostituendolo ogni 'fill_every'
     battute con un fill (0 o un numero <=0 disabilita i fill: solo il giro
@@ -869,7 +899,11 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
 
     'kick_accents': il groove di una ripresa (core.groove, un peso 0-1 per
     sedicesimo della battuta): nelle battute senza fill la cassa va anche
-    dove la ripresa ha gli accenti forti (vedi _kick_on_accents)."""
+    dove la ripresa ha gli accenti forti (vedi _kick_on_accents).
+
+    'section_fill_bars': le battute (da 0) che chiudono una sezione del
+    brano (vedi section_end_bars): li' c'e' sempre un fill completo, oltre
+    a quelli ogni 'fill_every', e la battuta dopo rientra con il crash."""
     spec = _drum_spec(style)
     if bars <= 0:
         raise ValueError(tr("Il numero di battute deve essere positivo"))
@@ -883,6 +917,10 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
     grooves = [main] + (spec.get("alts") or DRUM_ALTS.get(style, []))
     fills = _style_fills(style)
     block = fill_every if fill_every > 0 else 4
+    section_ends = {b for b in section_fill_bars if 0 <= b < bars - 1}
+
+    def fill_at(idx: int) -> bool:
+        return idx in section_ends or (fill_every > 0 and (idx + 1) % fill_every == 0 and idx != bars - 1)
 
     slots: List[Optional[list]] = []
     groove = main
@@ -891,7 +929,7 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
         is_last = bar_idx == bars - 1
         if bar_idx > 0 and bar_idx % block == 0 and amount.rhythm > 0 and len(grooves) > 1:
             groove = rng.choices(grooves, weights=[1.0] + [amount.rhythm] * (len(grooves) - 1))[0]
-        is_fill_bar = fill_every > 0 and (bar_idx + 1) % fill_every == 0 and not is_last
+        is_fill_bar = fill_at(bar_idx)
         if ending and is_last and bars > 1:
             slots.extend(_ending_bar(len(main)))
             continue
@@ -899,7 +937,8 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
             fill = fills[0]
             if amount.rhythm > 0 and len(fills) > 1:
                 fill = rng.choices(fills, weights=[1.0] + [amount.rhythm] * (len(fills) - 1))[0]
-            big = not phrase_fills or (bar_idx + 1) % (2 * fill_every) == 0
+            big = (not phrase_fills or bar_idx in section_ends
+                   or (fill_every > 0 and (bar_idx + 1) % (2 * fill_every) == 0))
             if not big:
                 cut = (len(groove) * 3) // 4
                 bar = list(groove[:cut]) + list(fill[cut:])
@@ -915,7 +954,8 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
         if kick_accents and not is_fill_bar and not (ending and is_last):
             bar = _kick_on_accents(bar, grid, kick_accents)
         if bar_idx > 0:
-            prev_was_fill = fill_every > 0 and bar_idx % fill_every == 0 and bar_idx != 1
+            prev_was_fill = (bar_idx - 1) in section_ends or (
+                fill_every > 0 and bar_idx % fill_every == 0 and bar_idx != 1)
             if prev_was_fill or (level == "full" and bar_idx % block == 0):
                 bar = _with_crash(bar)
         slots.extend(bar)
@@ -1551,10 +1591,53 @@ def _line_level(intensity: str, idx: int, count: int) -> str:
     return _intensity_at(intensity, idx, count)
 
 
+KICK_NAMES = ("kick", "kick2")
+
+
+def kick_beats_of_track(project: Project, track, start_beat: float = 0.0,
+                        midi_dir: Optional[str] = None) -> List[float]:
+    """I colpi di cassa di una traccia di batteria, in beat da start_beat
+    (quelli prima si scartano): per il basso agganciato alla cassa."""
+    out = set()
+    for ev in track.parsed_events(project.patterns, midi_dir=midi_dir, meter=project.meter()):
+        names = [ev.name] if ev.kind == "percussion" else [
+            item.get("name") for item in (ev.items or []) if item.get("kind") == "percussion"]
+        if any(n in KICK_NAMES for n in names) and ev.start >= start_beat - 1e-9:
+            out.add(round(ev.start - start_beat, 6))
+    return sorted(out)
+
+
+def _kick_grid(kick_beats: List[float], grid: str) -> str:
+    """La griglia piu' larga che contiene sia lo stile sia i colpi di cassa."""
+    for candidate in ("4:", "8:", "16:"):
+        unit = _GRID_UNIT_BEATS[candidate]
+        if unit <= _GRID_UNIT_BEATS.get(grid, 1.0) + 1e-9 and \
+                all(abs(b / unit - round(b / unit)) < 1e-6 for b in kick_beats):
+            return candidate
+    return "16:"
+
+
+def _events_on_kicks(events: list, kicks: List[float]) -> list:
+    """Gli attacchi di un accordo spostati sui colpi di cassa (posizioni
+    dall'inizio dell'accordo): ogni colpo suona la nota che lo stile suona
+    in quel punto; sull'inizio dell'accordo c'e' sempre una nota, anche
+    senza cassa, perche' il cambio d'accordo si senta."""
+    sounding = [(t, role) for t, role in events if role != "rest"]
+    if not sounding:
+        return events
+    positions = sorted(set([0.0] + list(kicks)))
+    out = []
+    for pos in positions:
+        role = next((r for t, r in reversed(sounding) if t <= pos + 1e-9), sounding[0][1])
+        out.append((pos, role))
+    return out
+
+
 def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int = 2,
                                variation_every: int = 4, min_total_beats: float = 0.0,
                                variability=0.0, seed: Optional[int] = None,
-                               bar_beats: float = BEATS_PER_BAR, intensity: str = "normal") -> str:
+                               bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
+                               kick_beats: Optional[List[float]] = None) -> str:
     """Genera una linea di basso che segue 'chords' (vedi
     extract_chords_from_track), nello stile scelto (vedi BASS_STYLES),
     all'ottava indicata. Ogni 'variation_every' accordi (0 disabilita le
@@ -1576,7 +1659,11 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
     una Variability (ritmo, note, dinamica: con la dinamica le note hanno
     accenti e velocity diverse). 'style' puo' essere uno stile personale
     'user:<nome>' (vedi core.user_styles). Solleva ValueError se 'chords'
-    e' vuota o lo stile non e' valido."""
+    e' vuota o lo stile non e' valido.
+
+    'kick_beats' (vedi kick_beats_of_track): il basso agganciato alla cassa,
+    gli attacchi cadono sui colpi di cassa (con le note dello stile); il
+    ritmo non si varia piu' e la griglia si stringe se la cassa lo chiede."""
     if not chords:
         raise ValueError(tr("Nessun accordo da seguire: la traccia sorgente non ne contiene."))
     user = user_styles.get_user_style("bass", style)
@@ -1588,6 +1675,9 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
 
     pattern = user or BASS_PATTERNS.get(style)
     grid = pattern["grid"] if pattern else "4:"  # gli stili storici: un attacco per quarto
+    if kick_beats:
+        grid = _kick_grid(kick_beats, grid)
+        amount = amount._replace(rhythm=0.0)
     unit = _GRID_UNIT_BEATS[grid]
     _line_level(intensity, 0, 1)   # intensita' valida?
 
@@ -1602,8 +1692,12 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         else:
             events = _legacy_events(span, style, octave, variant, next_root)
         events = _apply_line_intensity(events, level, fuller_chords=False, octave_lift=True)
+        if kick_beats:
+            begin = span.start_beat           # la linea parte dal beat 0 degli accordi
+            events = _events_on_kicks(events, [b - begin for b in kick_beats
+                                               if begin - 1e-9 <= b < begin + span.duration_beats - 1e-9])
         starts = _quantize_starts(events, unit, total_units, amount, rng, octave_jumps=True)
-        if amount.notes > 0 and level != "light":
+        if amount.notes > 0 and level != "light" and not kick_beats:
             starts = _add_passing_note(starts, total_units, next_root, amount.notes, rng)
         return starts
 
@@ -1612,7 +1706,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         return None if resolved is None else _note_token(resolved[0], octave + resolved[1])
 
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
-                               anticipate=unit <= 0.5 and intensity != "light")
+                               anticipate=unit <= 0.5 and intensity != "light" and not kick_beats)
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
     return " ".join([grid] + _emit_line(line, end_u, render, velocity_at))
 
@@ -2167,6 +2261,78 @@ def generate_chord_progression(key: str, style: str, bars: int = 0, chord_bars: 
     for symbol, dur in chords:
         mult = int(dur / unit)
         tokens.append(f"{mult}{symbol}" if mult > 1 else symbol)
+    return " ".join(tokens)
+
+
+_RE_CHORD_ROOT = re.compile(r"^([A-G][#b]?)(.*)$")
+
+
+def reharmonize_text(text: str, patterns: Dict[str, Pattern], key: str, richness: float,
+                     seed: Optional[int] = None, bar_beats: float = BEATS_PER_BAR) -> str:
+    """Riarmonizza un giro gia' scritto (solo accordi e pause), con le
+    stesse trasformazioni del giro armonico generato (colori, dominanti
+    secondarie, II-V, sostituti di tritono, iv minore: vedi _enrich_harmony
+    e _CHORD_COLORS) applicate con probabilita' 'richness' (0-1). Durate e
+    pause restano; gli accordi che non cambiano restano scritti com'erano.
+    Riproducibile per 'seed'. Solleva ValueError se il testo contiene note
+    o non contiene accordi."""
+    tonic, mode, flats = parse_key(key)
+    roots = _FLAT_ROOTS if flats else _SHARP_ROOTS
+    chromatic_roots = _SHARP_ROOTS if "#" in (key or "") else _FLAT_ROOTS
+    rng = random.Random(seed)
+    bar = Fraction(bar_beats).limit_denominator(64)
+    runs, current = [], []        # sequenze di accordi separate dalle pause
+    spelled = {}                  # (semitoni, qualita') -> come era scritta la fondamentale
+    for ev in parse_track_text(text, patterns):
+        dur = Fraction(ev.duration).limit_denominator(64)
+        if ev.kind == "rest":
+            if current:
+                runs.append(current)
+                current = []
+            runs.append(dur)
+            continue
+        if ev.kind != "chord":
+            raise ValueError(tr("Si riarmonizzano solo gli accordi: il box contiene anche note o altro."))
+        m = _RE_CHORD_ROOT.match(ev.symbol or "")
+        if not m:
+            raise ValueError(tr("Accordo non riconosciuto: '{symbol}'", symbol=ev.symbol))
+        root_pc = _SHARP_ROOTS.index(m.group(1)) if m.group(1) in _SHARP_ROOTS else _FLAT_ROOTS.index(m.group(1))
+        off = (root_pc - tonic) % 12
+        quality = m.group(2) + (f"/{ev.bass}" if ev.bass else "")
+        spelled.setdefault((off, quality), m.group(1))
+        current.append([off, quality, dur, False])
+    if current:
+        runs.append(current)
+    if not any(isinstance(r, list) for r in runs):
+        raise ValueError(tr("Nessun accordo da riarmonizzare."))
+    pieces = []                   # (simbolo o None per la pausa, durata)
+    for run in runs:
+        if not isinstance(run, list):
+            pieces.append((None, run))
+            continue
+        seq = []
+        for off, quality, dur, chromatic in run:
+            if richness > 0 and "/" not in quality and rng.random() < _COLOR_P * richness:
+                options = _DOMINANT_COLORS if (quality == "" and off == 7) else _CHORD_COLORS.get(quality)
+                if options:
+                    quality = rng.choice(options)
+            seq.append([off, quality, dur, chromatic])
+        if richness > 0:
+            seq = _enrich_harmony(seq, mode, bar, richness, rng)
+        for off, quality, dur, chromatic in seq:
+            if dur <= 0:
+                continue
+            root = spelled.get((off, quality)) or spelled.get(
+                next(((o, q) for o, q in spelled if o == off), None)) or \
+                (chromatic_roots if chromatic else roots)[(tonic + off) % 12]
+            pieces.append((root + quality, dur))
+    unit = next(u for u in (Fraction(1), Fraction(1, 2), Fraction(1, 4), Fraction(1, 8), Fraction(1, 16))
+                if all((dur / u).denominator == 1 for _s, dur in pieces))
+    tokens = [f"{int(4 / unit)}:"]
+    for symbol, dur in pieces:
+        mult = int(dur / unit)
+        body = symbol if symbol is not None else "r"
+        tokens.append(f"{mult}{body}" if mult > 1 else body)
     return " ".join(tokens)
 
 

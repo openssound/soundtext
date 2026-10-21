@@ -426,7 +426,7 @@ class MixerMixin:
         if kind == "drums":
             dlg = DrumGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
                                      default_bars=math.ceil(other_beats / bar_beats) if other_beats > 0 else 8,
-                                     track_name=name)
+                                     track_name=name, start_beat=0.0)
         elif kind == "progression":
             dlg = ChordProgressionDialog(self, project=self.project, instrument_name=instrument,
                                          context_label=context,
@@ -434,7 +434,8 @@ class MixerMixin:
                                          track_name=name)
         elif kind == "bass":
             dlg = BassGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
-                                     other_tracks=other_tracks, min_total_beats=other_beats, track_name=name)
+                                     other_tracks=other_tracks, min_total_beats=other_beats, track_name=name,
+                                     start_beat=0.0)
         else:
             instr = get_instrument(instrument)
             dlg = MelodyGenerateDialog(

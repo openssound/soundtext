@@ -2344,6 +2344,13 @@ clic droit sur l'étiquette de la piste à gauche.
   utilise une ancre de mesure `bar=N`, **▶ Play** le joue depuis sa place
   dans le morceau, pour que l'ancre mène à la bonne mesure (de même pour
   **▶ Play** sur une sélection).
+- **Réharmoniser...** (boîtes d'accords seulement) : le même
+  enrichissement que la grille d'accords générée, appliqué à une grille déjà
+  écrite. Le curseur **Richesse** va de 0 (la grille telle quelle) aux
+  septièmes et neuvièmes, dominantes secondaires et II-V vers l'accord
+  suivant, substitutions tritoniques et iv mineur ; **Autre version** en
+  propose une autre. Durées et silences restent, et les accords qui ne
+  changent pas restent écrits comme avant.
 - **Renommer...**
 - **Dupliquer** : crée une copie sur la même piste, juste après la fin du
   box d'origine (ou dans le premier espace libre disponible à partir de là).
@@ -2621,6 +2628,11 @@ percussion sélectionnée) :
 - **Final sur la dernière mesure** : la dernière mesure devient un coup de
   conclusion (crash et grosse caisse sur le premier temps, puis silence),
   pour terminer le morceau ou la section.
+- **Breaks à la fin des sections** (coché quand les autres pistes ont des
+  boîtes) : un break complet dans la dernière mesure avant chaque boîte des
+  autres pistes (Couplet, Refrain...) dans la Structure du morceau, et la
+  crash quand la nouvelle section commence, en plus des breaks toutes les N
+  mesures.
 - **Suivre la prise** (présent quand le morceau a une piste audio avec des
   clips) : SoundText écoute le groove de la prise (pour chaque double
   croche de la mesure, à quelle fréquence et avec quelle force il y a un
@@ -2751,6 +2763,10 @@ motif).
   traitement légèrement différent du même accord (saut d'octave, note
   différente...) au lieu de répéter le motif à l'identique — 0 désactive
   les variations.
+- **Suivre la grosse caisse de** (présent quand le morceau a une piste de
+  batterie) : les attaques de la basse tombent sur les coups de grosse
+  caisse de la piste choisie, avec les notes du style : basse et batterie
+  jouent ensemble. Au début de chaque accord il y a toujours une note.
 
 Les deux affichent un aperçu modifiable à la main avant de confirmer (comme
 l'import audio, section 10bis), et le résultat est ajouté à la suite du

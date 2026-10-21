@@ -2295,6 +2295,12 @@ derecho en la etiqueta de la pista a la izquierda.
   compás `bar=N`, **▶ Play** lo toca desde su lugar en la canción, para que
   el ancla lleve al compás correcto (lo mismo vale para **▶ Play** sobre
   una selección).
+- **Rearmonizar...** (cajas solo de acordes): el mismo enriquecimiento de
+  la progresión generada, aplicado a una progresión ya escrita. El cursor
+  **Cuánto rico** va de 0 (la progresión tal cual) a séptimas y novenas,
+  dominantes secundarias y II-V hacia el acorde siguiente, sustitutos de
+  tritono y iv menor; **Otra versión** propone otra. Duraciones y silencios
+  se mantienen, y los acordes que no cambian quedan escritos como estaban.
 - **Cambiar nombre...**
 - **Duplicar**: crea una copia en la misma pista, justo después del final
   del box original (o en el primer espacio libre disponible a partir de
@@ -2567,6 +2573,11 @@ percusión seleccionada):
   terminar la canción o la sección.
   de cierre (crash y bombo en el primer tiempo, luego silencio), para
   terminar la canción o la sección.
+- **Redobles al final de las secciones** (marcado cuando las otras pistas
+  tienen cajas): un redoble completo en el último compás antes de cada caja
+  de las otras pistas (Estrofa, Estribillo...) en la Estructura de la
+  canción, y el crash cuando empieza la nueva sección, además de los
+  redobles cada N compases.
 - **Seguir la toma** (aparece cuando la canción tiene una pista de audio
   con clips): SoundText escucha el groove de la toma (para cada
   semicorchea del compás, con qué frecuencia y con qué fuerza hay un golpe)
@@ -2691,6 +2702,10 @@ tres notas (no para arpegios ni bicordes, que ya tienen su propio patrón).
 - **Variación cada N acordes**: cada N acordes usa un tratamiento
   ligeramente distinto del mismo acorde (salto de octava, nota distinta...)
   en lugar de repetir idéntico el patrón — 0 desactiva las variaciones.
+- **Seguir el bombo de** (aparece cuando la canción tiene una pista de
+  batería): los ataques del bajo caen en los golpes de bombo de la pista
+  elegida, con las notas del estilo, así bajo y batería tocan juntos. Al
+  inicio de cada acorde siempre hay una nota.
 
 Los dos muestran una vista previa editable a mano antes de confirmar (como
 la importación de audio, sección 10bis), y el resultado se añade a

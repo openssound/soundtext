@@ -1410,7 +1410,7 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         dlg = DrumGenerateDialog(self, project=self.host.project, instrument_name=track.instrument_name,
                                   context_label=tr("nuovo box (traccia '{name}')", name=track.name), default_bars=4,
-                                  track_name=track.name)
+                                  track_name=track.name, start_beat=self.end_of_track_beat(track_name))
         if dlg.exec() != DrumGenerateDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
@@ -1426,7 +1426,7 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         dlg = BassGenerateDialog(self, project=self.host.project, instrument_name=track.instrument_name,
                                   context_label=tr("nuovo box (traccia '{name}')", name=track.name), other_tracks=other_tracks,
-                                  track_name=track.name)
+                                  track_name=track.name, start_beat=self.end_of_track_beat(track_name))
         if dlg.exec() != BassGenerateDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
@@ -1480,6 +1480,9 @@ class ArrangementView(AudioClipActions, QWidget):
         play_action = menu.addAction(tr("▶ Play"))
         stop_action = menu.addAction(tr("■ Stop"))
         transpose_action = menu.addAction(tr("Trasponi..."))
+        from .reharmonize_dialog import can_reharmonize
+        reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
+            if can_reharmonize(clip.text, self.host.project.patterns) else None
         rename_action = menu.addAction(tr("Rinomina..."))
         duplicate_action = menu.addAction(tr("Duplica"))
         menu.addSeparator()
@@ -1501,6 +1504,8 @@ class ArrangementView(AudioClipActions, QWidget):
             self._stop_preview()
         elif chosen is transpose_action:
             self._transpose_clip(track_name, clip)
+        elif reharmonize_action is not None and chosen is reharmonize_action:
+            self.reharmonize_clip(track_name, clip)
         elif chosen is rename_action:
             self._rename_clip(track_name, clip)
         elif chosen is duplicate_action:
@@ -1519,6 +1524,18 @@ class ArrangementView(AudioClipActions, QWidget):
         elif chosen is delete_action:
             track = self.host.project.get_track(track_name)
             track.clips.remove(clip)
+            self.on_clip_changed(track_name)
+
+    def reharmonize_clip(self, track_name: str, clip: Clip):
+        """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il
+        risultato prende il posto del testo del box (si annulla con Ctrl+Z)."""
+        from .reharmonize_dialog import ReharmonizeDialog
+        dlg = ReharmonizeDialog(self, self.host.project, clip.text, clip.name)
+        self._reharmonize_dialog = dlg   # per i test
+        if dlg.exec() != ReharmonizeDialog.Accepted or not dlg.result_text():
+            return
+        if dlg.result_text() != clip.text:
+            clip.text = dlg.result_text()
             self.on_clip_changed(track_name)
 
     def _save_clip_as_style(self, track_name: str, clip: Clip):
