@@ -8,7 +8,7 @@ import os
 import sys
 
 APP_NAME = "SoundText"
-APP_VERSION = "1.8.1"
+APP_VERSION = "1.9.0"
 # Pagina per sostenere il progetto (donazioni), aperta da Aiuto -> Sostieni
 # SoundText...; vuota = la voce non c'e'.
 SUPPORT_URL = ""
