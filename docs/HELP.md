@@ -1597,6 +1597,12 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     traccia quando scende sotto la soglia, per togliere fruscio, ronzio e
     rumori tra una frase e l'altra nelle tracce audio registrate. Se taglia
     l'inizio o la fine delle note, abbassa la soglia o allunga il rilascio.
+  - **Riduzione rumore** (riduzione, soglia): toglie il fruscio costante
+    (ventola, amplificatore, preamplificatore) anche mentre si suona, al
+    contrario del noise gate. Lo impara da solo dal tratto piu' silenzioso
+    della traccia (non dai silenzi digitali fra una clip e l'altra): basta
+    che la ripresa abbia mezzo secondo di solo rumore, all'inizio o alla
+    fine. Preset Leggera, Fruscio, Forte.
   - **Volume** (guadagno, ±24 dB): alza o abbassa il livello e basta. Per
     esempio −6 dB (preset "Margine per il master") all'inizio della catena
     del master quando le tracce sommate superano 0 dB: compressore e
@@ -2636,6 +2642,10 @@ un'altra traccia nel progetto con accordi già scritti):
   un secondo disegno (vedi sopra).
 - **Intensità**: vedi sopra (anche in **Genera accompagnamento/riff**).
 
+**Suona nei silenzi di** (riff e melodie, quando il brano ha una traccia
+audio): la melodia tace dove canta la traccia scelta e suona nelle sue
+pause (almeno mezzo secondo), come un fiato che risponde alla voce.
+
 **Lascia spazio alle altre parti** (c'e' quando il brano ha gia' altre
 parti scritte): l'accompagnamento sta sopra il basso e sotto la melodia,
 la melodia sopra l'accompagnamento, invece di usare tutta l'estensione
@@ -3322,6 +3332,10 @@ Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
   di confermare con "Inserisci nella traccia" — utile per verificare a orecchio la conversione
   (o una propria variante) prima di sostituire il contenuto della
   traccia/pattern.
+- **Confronto**: accanto ad "▶ Ascolta" si sceglie cosa sentire: **solo il
+  risultato**, **prima l'audio, poi il risultato** oppure **audio e
+  risultato insieme** (a meta' volume ciascuno), per sentire cosa la
+  conversione ha lasciato fuori.
 
 Nota sulla qualita' del riconoscimento: il rilevamento delle note melodiche
 segmenta l'audio con un rilevatore di attacchi dedicato (affidabile anche
@@ -3689,6 +3703,12 @@ oppure **importando** file registrati con un altro programma.
 - **Canale** (tasto destro, solo per i file stereo): **Solo sinistro**,
   **Solo destro** o **Mono (somma dei due)**, per esempio quando la
   chitarra e' entrata solo nell'ingresso 1 di una ripresa stereo.
+- **Correggi l'intonazione...** (tasto destro): ogni nota si avvicina alla
+  nota piu' vicina della scala del brano (Tonalita'; se non e' impostata,
+  stimata dalle note), di quanto dice la forza: 100% esattamente sulla
+  nota, 50% a meta' strada. Lavora nota per nota, quindi vibrato e
+  inflessioni restano. Il file non cambia; la prima volta la clip si
+  prepara per qualche secondo.
 - **Tonalita' del brano da questa traccia...** (menu **⋯** della traccia
   audio): riconosce gli accordi della traccia e propone la tonalita' che
   ne viene come tonalita' del brano, utile al giro armonico e alla melodia.
@@ -3717,6 +3737,10 @@ oppure **importando** file registrati con un altro programma.
   notazione...**: propone la traccia collegata con la destinazione
   **Sostituisci il contenuto della traccia**. I box aggiunti con **Aggiungi
   alla traccia** non creano il collegamento.
+- **Melodia e accordi insieme**: nella conversione della traccia, con
+  **Melodia** si puo' spuntare **Anche gli accordi, in un'altra traccia
+  nuova**: dalla stessa ripresa (voce e chitarra, un brano intero) escono
+  in un passaggio solo due tracce, la melodia e gli accordi.
 - **Nell'editor classico** una traccia audio mostra, in sola lettura,
   l'elenco delle sue clip: le azioni sulla notazione (Genera, Suona con la
   tastiera, Importa MIDI, Congela accordi, Esporta MIDI) non valgono per le

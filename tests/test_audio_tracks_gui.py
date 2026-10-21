@@ -977,3 +977,19 @@ def test_gain_curve_points_on_the_box(tmp_path):
     QTest.mouseDClick(vp, Qt.LeftButton, Qt.NoModifier, low)
     _app.processEvents()
     assert clip.gain_points == [] and renamed == []
+
+
+def test_convert_melody_and_chords_together(tmp_path):
+    w, t = _chord_clip_window(tmp_path)
+
+    def both(dlg):
+        dlg.mode_combo.setCurrentIndex(dlg.mode_combo.findData("melody"))
+        assert dlg.with_chords_check.isVisibleTo(dlg)
+        dlg.with_chords_check.setChecked(True)
+
+    _run_track_conversion(w, "Chitarra", both)
+    melody = w.project.get_track("Chitarra (note)")
+    chords = w.project.get_track("Chitarra (note 2)")
+    assert melody.conversion["mode"] == "melody" and chords.conversion["mode"] == "chords"
+    assert chords.clips[0].text.startswith("4: 4C | 4Am | 4F | 4G")
+    assert [c.start_beat for c in chords.clips] == [8.0, 32.0]

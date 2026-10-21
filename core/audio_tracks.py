@@ -661,10 +661,11 @@ def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
     trims = (clip.trim_end, clip.trim_start) if clip.reverse else (clip.trim_start, clip.trim_end)
     layer = AudioLayer(path=clip.file, start_seconds=0.0, trim_start=max(0.0, trims[0]),
                        trim_end=max(0.0, trims[1]), gain=1.0, pan=64, stretch=_stretch(clip),
-                       transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel)
+                       transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel,
+                       pitch_correct=clip.pitch_correct)
     part = _layer_part(layer, samples, rate)
     if _layer_needs_stretch(layer):
-        part = stretched(part, rate, layer.stretch, semitones=layer.transpose)
+        part = stretched(part, rate, layer.stretch, semitones=_layer_semitones(layer, part, rate))
     part = apply_fades(part, rate, clip.fade_in, clip.fade_out, clip.fade_shape)
     if clip.invert:
         part = -part
@@ -764,6 +765,10 @@ class AudioLayer:
     # Curva del volume (AudioClip.gain_points), in secondi della parte
     # suonata: come le dissolvenze, tiene conto di head_skip.
     gain_points: tuple = ()
+    # Correzione dell'intonazione (AudioClip.pitch_correct) e la tonalita'
+    # del brano che da' la scala ("" = stimata dalle note).
+    pitch_correct: int = 0
+    pitch_key: str = ""
 
 
 def db_to_gain(db: float) -> float:
@@ -779,6 +784,12 @@ _stretch_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _stretch_lock = threading.Lock()
 # in byte, non in clip: con "tempo fisso" una ripresa e' un pezzo per battuta
 _STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
+
+
+def _has_shift(semitones) -> bool:
+    if isinstance(semitones, np.ndarray):
+        return bool(np.any(np.abs(semitones) > 1e-6))
+    return abs(semitones) > 1e-6
 
 
 def _stretch_lookup(key: tuple, from_disk: bool = True) -> Optional[np.ndarray]:
@@ -817,7 +828,7 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     cambiare la durata. Con 'key' il risultato resta in memoria (le stesse
     clip si riascoltano spesso). Senza pedalboard si ricampiona (cambia
     anche l'intonazione: meglio che non suonare) e non si traspone."""
-    if (abs(stretch - 1.0) < 1e-6 and abs(semitones) < 1e-6) or len(samples) == 0:
+    if (abs(stretch - 1.0) < 1e-6 and not _has_shift(semitones)) or len(samples) == 0:
         return samples
     if key is not None:
         hit = _stretch_lookup(key)
@@ -826,11 +837,13 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     x = np.ascontiguousarray(np.asarray(samples, dtype=np.float32).T)
     try:
         import pedalboard
+        shift = (np.ascontiguousarray(semitones, dtype=np.float64) if isinstance(semitones, np.ndarray)
+                 else float(semitones))
         y = pedalboard.time_stretch(x, float(rate), stretch_factor=1.0 / stretch,
-                                    pitch_shift_in_semitones=float(semitones)).T
+                                    pitch_shift_in_semitones=shift).T
     except Exception:
         y = resample(samples, rate, int(round(rate / stretch))) if stretch > 0 else samples
-    if abs(semitones) > 1e-6:
+    if _has_shift(semitones):
         # Rubber Band puo' sbagliare la lunghezza di qualche campione: la
         # trasposizione non deve spostare quello che segue
         exact = int(round(len(samples) * stretch))
@@ -846,7 +859,7 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
 
 def _layer_stretch_key(layer: "AudioLayer", samplerate: int) -> tuple:
     return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate, layer.segments,
-            layer.transpose, layer.reverse, layer.channel)
+            layer.transpose, layer.reverse, layer.channel, layer.pitch_correct, layer.pitch_key)
 
 
 def select_channel(samples: np.ndarray, channel: str) -> np.ndarray:
@@ -874,14 +887,30 @@ def _layer_part(layer: "AudioLayer", samples: np.ndarray, samplerate: int) -> np
 
 
 def _layer_needs_stretch(layer: "AudioLayer") -> bool:
-    return abs(layer.stretch - 1.0) > 1e-6 or abs(layer.transpose) > 1e-6 or bool(layer.segments)
+    return (abs(layer.stretch - 1.0) > 1e-6 or abs(layer.transpose) > 1e-6 or bool(layer.segments)
+            or layer.pitch_correct > 0)
+
+
+def _layer_semitones(layer: "AudioLayer", part: np.ndarray, samplerate: int):
+    """La trasposizione del layer: un numero, o con la correzione
+    dell'intonazione una curva per campione (core.pitch_correct)."""
+    if layer.pitch_correct <= 0:
+        return layer.transpose
+    from .pitch_correct import correction_curve
+    mono = part.mean(axis=1) if part.ndim == 2 else part
+    return layer.transpose + correction_curve(mono, samplerate, layer.pitch_correct / 100.0, layer.pitch_key)
 
 
 def _stretch_layer_part(layer: "AudioLayer", part: np.ndarray, samplerate: int) -> np.ndarray:
     key = _layer_stretch_key(layer, samplerate)
+    if layer.pitch_correct > 0:
+        hit = _stretch_lookup(key)            # l'analisi delle note costa: prima la cache
+        if hit is not None:
+            return hit
+    semitones = _layer_semitones(layer, part, samplerate)
     if layer.segments:
-        return stretched_segments(part, samplerate, layer.segments, key=key, semitones=layer.transpose)
-    return stretched(part, samplerate, layer.stretch, key=key, semitones=layer.transpose)
+        return stretched_segments(part, samplerate, layer.segments, key=key, semitones=semitones)
+    return stretched(part, samplerate, layer.stretch, key=key, semitones=semitones)
 
 
 SEGMENT_CROSSFADE = 0.005    # fra un tratto e l'altro di uno stretch a tratti
@@ -932,7 +961,9 @@ def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Opt
         first, last = int(round(a * rate)), min(len(samples), int(round(b * rate)))
         if last <= first:
             continue
-        piece = stretched(samples[first:min(len(samples), last + pad)], rate, stretch, semitones=semitones)
+        stop = min(len(samples), last + pad)
+        shift = semitones[first:stop] if isinstance(semitones, np.ndarray) else semitones
+        piece = stretched(samples[first:stop], rate, stretch, semitones=shift)
         exact = int(round((last - first) * stretch))
         need = exact + pad
         if len(piece) < need:
@@ -1187,6 +1218,7 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
                 segments=tempo_segments(clip, tempo_map, trim_start),
                 transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel,
                 gain_points=tuple((float(t), float(db)) for t, db in clip.gain_points),
+                pitch_correct=int(clip.pitch_correct), pitch_key=project.key if clip.pitch_correct else "",
             ))
     return layers
 

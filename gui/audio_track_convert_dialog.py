@@ -86,6 +86,11 @@ class AudioTrackConvertDialog(QDialog):
         form.addRow("", self.voice_check)
         self.sevenths_check = QCheckBox(tr("Riconosci le settime (7, maj7, m7)"))
         form.addRow("", self.sevenths_check)
+        self.with_chords_check = QCheckBox(tr("Anche gli accordi, in un'altra traccia nuova"))
+        self.with_chords_check.setToolTip(tr(
+            "Dalla stessa ripresa, in un passaggio solo, la melodia e gli accordi che la accompagnano "
+            "(una ripresa di voce e chitarra, o un brano intero): due tracce, ciascuna con un box per clip."))
+        form.addRow("", self.with_chords_check)
         layout.addLayout(form)
 
         dest_form = QFormLayout()
@@ -166,6 +171,7 @@ class AudioTrackConvertDialog(QDialog):
         self._form.setRowVisible(self.quant_options, mode != "chords")
         self._form.setRowVisible(self.voice_check, mode != "chords")
         self._form.setRowVisible(self.sevenths_check, mode == "chords")
+        self._form.setRowVisible(self.with_chords_check, mode == "melody")
         self.voice_check.setText(tr("Sto cantando (non lo strumento)") if mode == "melody"
                                  else tr("Sto facendo beatbox (non la batteria)"))
         suggested = _suggested_instrument(mode, self.track.input_profile)
@@ -222,6 +228,16 @@ class AudioTrackConvertDialog(QDialog):
                                     voice_source=mode != "chords" and self.voice_check.isChecked(),
                                     quantize=None if mode == "chords" else self.quant_options.settings())
         return with_pitch_params(options, self.instrument_name())
+
+
+    def chords_job(self):
+        """La seconda conversione di "Anche gli accordi" ((destinazione,
+        opzioni)), o None."""
+        if self._mode() != "melody" or not self.with_chords_check.isChecked():
+            return None
+        options = ConversionOptions(mode="chords", grid_denominator=self.grid_combo.currentData(),
+                                    sevenths=self.sevenths_check.isChecked())
+        return ("new", _suggested_instrument("chords", self.track.input_profile)), options
 
 
 def with_pitch_params(options: ConversionOptions, instrument_name: str) -> ConversionOptions:

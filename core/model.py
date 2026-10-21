@@ -99,6 +99,9 @@ class AudioClip:
     # cambia in linea retta (in dB), prima del primo e dopo l'ultimo resta.
     # Vuota = nessuna curva. Si somma al guadagno della clip.
     gain_points: List[Tuple[float, float]] = field(default_factory=list)
+    # Correzione dell'intonazione (core.pitch_correct): forza 0-100%, 0 =
+    # spenta. La scala e' quella della tonalita' del brano.
+    pitch_correct: int = 0
 
 
 @dataclass

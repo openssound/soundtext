@@ -1662,6 +1662,12 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     ronflement et bruits entre les phrases dans les pistes audio
     enregistrées. S'il coupe le début ou la fin des notes, baissez le seuil
     ou allongez le relâchement.
+  - **Réduction de bruit** (réduction, seuil) : supprime le souffle
+    constant (ventilateur, ampli, préampli) même pendant le jeu,
+    contrairement au noise gate. Elle l'apprend toute seule dans le passage
+    le plus silencieux de la piste (pas dans les silences numériques entre
+    les clips) : il suffit que la prise ait une demi-seconde de bruit seul,
+    au début ou à la fin. Presets Légère, Souffle, Forte.
   - **Volume** (gain, ±24 dB) : monte ou baisse simplement le niveau. Par
     exemple −6 dB (préréglage « Marge pour le master ») au début de la
     chaîne du master quand la somme des pistes dépasse 0 dB : le
@@ -2757,6 +2763,11 @@ message renvoie à la grille d'accords).
 - **Intensité** : voir plus haut (aussi dans **Générer
   l'accompagnement/le riff**).
 
+**Jouer dans les silences de** (riffs et mélodies, quand le morceau a une
+piste audio) : la mélodie se tait là où la piste choisie chante et joue
+dans ses pauses (au moins une demi-seconde), comme un cuivre qui répond à
+la voix.
+
 **Laisser de la place aux autres parties** (présent quand le morceau a déjà
 d'autres parties écrites) : l'accompagnement reste au-dessus de la basse
 et sous la mélodie, la mélodie au-dessus de l'accompagnement, au lieu
@@ -3483,6 +3494,10 @@ mode), **2. Audio** (enregistrement ou fichier, tempo et mesure) et
   « Insérer dans la piste » —
   utile pour vérifier à l'oreille la conversion (ou votre propre variante)
   avant de remplacer le contenu de la piste/du pattern.
+- **Comparaison** : à côté de « ▶ Écouter » on choisit quoi entendre :
+  **résultat seulement**, **d'abord l'audio, puis le résultat** ou
+  **audio et résultat ensemble** (chacun à mi-volume), pour entendre ce
+  que la conversion a laissé de côté.
 
 Note sur la qualité de la reconnaissance : la détection des notes
 mélodiques segmente l'audio avec un détecteur d'attaques dédié (fiable même
@@ -3879,6 +3894,12 @@ programme.
 - **Canal** (clic droit, fichiers stéréo seulement) : **Gauche seulement**,
   **Droite seulement** ou **Mono (somme des deux)**, par exemple quand la
   guitare n'est entrée que dans l'entrée 1 d'une prise stéréo.
+- **Corriger la justesse...** (clic droit) : chaque note se rapproche de
+  la note la plus proche de la gamme du morceau (Tonalité ; si elle n'est
+  pas définie, estimée d'après les notes), autant que l'indique la force :
+  100 % exactement sur la note, 50 % à mi-chemin. Le travail se fait note
+  par note, donc vibrato et inflexions restent. Le fichier ne change pas ;
+  la première fois, le clip met quelques secondes à se préparer.
 - **Tonalité du morceau depuis cette piste...** (menu **⋯** de la piste
   audio) : reconnaît les accords de la piste et propose la tonalité qui en
   résulte comme tonalité du morceau, utile pour la grille d'accords et la
@@ -3908,6 +3929,10 @@ programme.
   les choix, rouvrez **Convertir la piste en notation...** : elle propose
   la piste liée avec la destination **Remplacer le contenu de la piste**.
   Les box ajoutés avec **Ajouter à la piste** ne créent pas le lien.
+- **Mélodie et accords ensemble** : dans la conversion de la piste, avec
+  **Mélodie** on peut cocher **Les accords aussi, dans une autre nouvelle
+  piste** : de la même prise (voix et guitare, un morceau entier) sortent
+  en une seule passe deux pistes, la mélodie et les accords.
 - **Dans l'éditeur classique**, une piste audio affiche, en lecture seule,
   la liste de ses clips : les actions sur la notation (Générer, Jouer au
   clavier, Importer un MIDI, Figer les accords, Exporter en MIDI) ne

@@ -1566,6 +1566,12 @@ effects, divided by family in the **+ Effect** menu:
     when it drops below the threshold, to remove hiss, hum and noises
     between phrases in recorded audio tracks. If it cuts the start or the end
     of the notes, lower the threshold or lengthen the release.
+  - **Noise reduction** (reduction, threshold): removes constant hiss
+    (fan, amplifier, preamp) even while playing, unlike the noise gate. It
+    learns it by itself from the quietest stretch of the track (not from
+    the digital silence between clips): the take just needs half a second
+    of noise alone, at the start or at the end. Presets Light, Hiss,
+    Strong.
   - **Volume** (gain, ±24 dB): just raises or lowers the level. For
     example −6 dB (preset "Headroom for the master") at the start of the
     master chain when the summed tracks go over 0 dB: compressor and
@@ -2583,6 +2589,10 @@ track in the project with chords already written):
   (see above).
 - **Intensity**: see above (also in **Generate accompaniment/riff**).
 
+**Play in the gaps of** (riffs and melodies, when the song has an audio
+track): the melody is silent where the chosen track sings and plays in
+its pauses (at least half a second), like a horn answering the voice.
+
 **Leave room for the other parts** (shown when the song already has other
 written parts): the accompaniment stays above the bass and below the
 melody, the melody above the accompaniment, instead of using the
@@ -3243,6 +3253,9 @@ or Chords, with only the options of that mode below), **2. Audio**
   content of the preview with the target instrument before confirming with
   "Insert into the track" — useful to check the conversion (or your own variant) by ear before
   replacing the content of the track/pattern.
+- **Comparison**: next to "▶ Listen" you choose what to hear: **result
+  only**, **first the audio, then the result** or **audio and result
+  together** (half volume each), to hear what the conversion left out.
 
 Note on recognition quality: melodic note detection segments the audio with
 a dedicated onset detector (reliable even in the low register and on the
@@ -3592,6 +3605,12 @@ SoundText while the rest of the song plays (see "Recording" below), or by
 - **Channel** (right-click, stereo files only): **Left only**, **Right
   only** or **Mono (sum of both)**, for example when the guitar only went
   into input 1 of a stereo take.
+- **Correct the pitch...** (right-click): each note moves toward the
+  nearest note of the song's scale (Key; if not set, estimated from the
+  notes), as much as the strength says: 100% exactly on the note, 50%
+  halfway. It works note by note, so vibrato and inflections stay. The
+  file does not change; the first time the clip takes a few seconds to
+  prepare.
 - **Song key from this track...** (the audio track's **⋯** menu):
   recognizes the track's chords and offers the resulting key as the song
   key, useful for the chord progression and the melody.
@@ -3619,6 +3638,10 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   choices, reopen **Convert the track to notation...**: it proposes the linked
   track with the destination **Replace the contents of the track**. Boxes
   added with **Add to the track** do not create the link.
+- **Melody and chords together**: in the track conversion, with
+  **Melody** you can check **The chords too, in another new track**: from
+  the same take (voice and guitar, a whole song) two tracks come out in a
+  single pass, the melody and the chords.
 - **In the classic editor** an audio track shows, read-only, the list of
   its clips: the notation actions (Generate, Play with the keyboard, Import
   MIDI, Freeze chords, Export MIDI) do not apply to audio tracks and say so

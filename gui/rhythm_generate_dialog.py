@@ -971,7 +971,7 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         is_melody = style in MELODY_STYLES
         self.variation_every_spin.setEnabled(not is_melody)   # le melodie a frasi hanno la loro forma
         range_low, range_high = self._register()
-        return generate_melodic_line(
+        text = generate_melodic_line(
             chords, style, octave=self.octave_spin.value(),
             range_low=range_low, range_high=range_high, polyphonic=self.polyphonic,
             variation_every=self.variation_every_spin.value(),
@@ -980,6 +980,31 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
             key=self._melody_key(source_text) if is_melody else None, meter=self.project.time_sig,
             repeats=self._repeats() if is_melody else (), **self._variation_kwargs(seed),
         )
+        regions = self._voice_regions()
+        if regions:
+            from core.melody_generate import rest_where
+            text = rest_where(text, regions, self.project.patterns)
+        return text
+
+    def _voice_regions(self):
+        """Dove canta la traccia audio scelta in "Suona nei silenzi di"
+        (core.melody_generate.voice_regions), o []."""
+        combo = getattr(self, "gaps_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return []
+        cached = getattr(self, "_voice_cache", None)
+        if cached is not None and cached[0] == name:
+            return cached[1]
+        from core.melody_generate import voice_regions
+        from .worker import run_with_wait
+        try:
+            regions = run_with_wait(self, tr("Ascolto dove canta '{name}'...", name=name),
+                                    voice_regions, self.project, self.project.get_track(name))
+        except RuntimeError as e:
+            raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
+        self._voice_cache = (name, regions)
+        return regions
 
     def _repeats(self):
         """Le sezioni che tornano nella traccia degli accordi scelta, dove la
@@ -1040,6 +1065,20 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
                    "tutta l'estensione dello strumento.", **notes))
             self.space_check.toggled.connect(self._regenerate_preview)
             options_row.addWidget(self.space_check)
+        from core.audio_track_notation import audio_tracks_with_clips
+        voices = audio_tracks_with_clips(self.project, self.track_name) if not self.polyphonic else []
+        if voices:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Suona nei silenzi di:")))
+            self.gaps_combo = QComboBox()
+            self.gaps_combo.addItem(tr("nessuna"), None)
+            for track in voices:
+                self.gaps_combo.addItem(track.name, track.name)
+            self.gaps_combo.setToolTip(tr(
+                "La melodia tace dove canta (o suona) la traccia audio scelta e riempie le sue pause, "
+                "come un fiato che risponde alla voce. Le pause brevi (meno di mezzo secondo) non contano."))
+            self.gaps_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.gaps_combo)
         if not self.polyphonic:
             options_row.addSpacing(12)
             self.repeat_check = QCheckBox(tr("Ritornello riconoscibile"))

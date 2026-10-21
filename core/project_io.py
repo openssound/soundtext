@@ -242,6 +242,8 @@ RE_AUDIO_INVERT = re.compile(r'(?<![\w=])invert(?![\w=])')
 RE_AUDIO_CHANNEL = re.compile(r'\bchannel\s*=\s*(\w+)')
 # Ripeti in loop: 'loop=8', la lunghezza in beat della ripetizione.
 RE_AUDIO_LOOP = re.compile(r'\bloop\s*=\s*(\d+(?:\.\d+)?)')
+# Correzione dell'intonazione: 'pitch_correct=60' (forza in %).
+RE_AUDIO_PITCH_CORRECT = re.compile(r'\bpitch_correct\s*=\s*(\d+)')
 # Curva del volume: 'gain_points=0:0,2.5:-6' (secondi:dB).
 RE_AUDIO_GAIN_POINTS = re.compile(r'\bgain_points\s*=\s*((?:\d+(?:\.\d+)?:-?\d+(?:\.\d+)?,?)+)')
 # Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
@@ -298,6 +300,9 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     lp = RE_AUDIO_LOOP.search(rest)
     if lp:
         clip.loop_length = float(lp.group(1))
+    pc = RE_AUDIO_PITCH_CORRECT.search(rest)
+    if pc:
+        clip.pitch_correct = max(0, min(100, int(pc.group(1))))
     gp = RE_AUDIO_GAIN_POINTS.search(rest)
     if gp:
         points = [tuple(float(v) for v in item.split(":")) for item in gp.group(1).split(",") if item]
@@ -380,6 +385,8 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append(f"channel={clip.channel}")
     if clip.loop_length > 0:
         parts.append(f"loop={round(clip.loop_length, 4):g}")
+    if clip.pitch_correct:
+        parts.append(f"pitch_correct={clip.pitch_correct}")
     if clip.gain_points:
         parts.append("gain_points=" + ",".join(f"{round(t, 4):g}:{round(db, 2):g}" for t, db in clip.gain_points))
     if len(clip.takes) > 1:

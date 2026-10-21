@@ -77,3 +77,21 @@ def test_speed_combo_sets_the_engine_and_slows_the_click(monkeypatch):
     w.speed_combo.setCurrentIndex(0)
     assert w.playback.speed == 1.0 and w._metronome_tempo_map() is w._playback_tempo_map
     w.close()
+
+
+def test_comparison_buffer_sequence_and_together(tmp_path, monkeypatch):
+    import core.playback as pb
+    from core.audio_tracks import write_wav
+    from core.model import Project
+    path = str(tmp_path / "voce.wav")
+    write_wav(path, np.full((RATE, 1), 0.4, np.float32), RATE)
+    notes = np.full((RATE // 2, 2), 0.2, np.float32)
+    monkeypatch.setattr(pb, "render_project_mix", lambda project, stop_check=None: (notes, RATE))
+    seq = pb.comparison_buffer(Project(), path, "sequence")
+    gap = int(pb.COMPARE_GAP_SECONDS * RATE)
+    assert seq.shape == (RATE + gap + RATE // 2, 2)
+    assert seq[10, 0] == pytest.approx(0.4, abs=1e-3) and seq[-10, 1] == pytest.approx(0.2)
+    together = pb.comparison_buffer(Project(), path, "together")
+    assert together.shape == (RATE, 2)
+    assert together[10, 0] == pytest.approx(0.3, abs=1e-3)          # meta' di ciascuno
+    assert together[-10, 0] == pytest.approx(0.2, abs=1e-3)         # solo l'audio

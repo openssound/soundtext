@@ -358,6 +358,13 @@ class AudioImportDialog(QDialog):
         )
         self.preview_play_btn.clicked.connect(self._on_preview_play)
         preview_play_row.addWidget(self.preview_play_btn)
+        self.compare_combo = QComboBox()
+        self.compare_combo.addItem(tr("solo il risultato"), "result")
+        self.compare_combo.addItem(tr("prima l'audio, poi il risultato"), "sequence")
+        self.compare_combo.addItem(tr("audio e risultato insieme"), "together")
+        self.compare_combo.setToolTip(tr("Anteprima a confronto: l'audio di partenza e le note riconosciute, "
+                                         "una dopo l'altro o insieme, per sentire cosa e' rimasto fuori."))
+        preview_play_row.addWidget(self.compare_combo)
         self.preview_stop_btn = QPushButton(tr("■ Stop"))
         self.preview_stop_btn.clicked.connect(self._stop_preview_playback)
         preview_play_row.addWidget(self.preview_stop_btn)
@@ -718,9 +725,29 @@ class AudioImportDialog(QDialog):
             return
         project = Project(name="preview", tempo_bpm=self.project.tempo_bpm)
         copy_synth(project.add_track("Anteprima", self.instrument_name, text), self.project.find_track(self.track_name))
+        mode = self.compare_combo.currentData()
+        if mode != "result" and self.source_path:
+            self._play_comparison(project, mode)
+            return
 
         self._preview_highlight.play(project, self.project.patterns, get_instrument(self.instrument_name).default_octave,
                                      midi_dir=self.midi_dir, only_audible=False)
+
+    def _play_comparison(self, project, mode: str):
+        """Anteprima a confronto (core.playback.comparison_buffer)."""
+        from core.audio_tracks import AUDIO_SAMPLE_RATE
+        from core.playback import comparison_buffer
+        from .worker import run_with_wait
+        self._stop_preview_playback()
+        try:
+            samples = run_with_wait(self, tr("Preparo il confronto..."), comparison_buffer,
+                                    project, self.source_path, mode)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Anteprima a confronto"), str(e))
+            return
+        if not self._preview_playback.play_buffer(samples, AUDIO_SAMPLE_RATE):
+            QMessageBox.information(self, tr("Anteprima a confronto"), tr(
+                "Il confronto richiede la riproduzione diretta (libreria sounddevice)."))
 
     def _stop_preview_playback(self):
         self._preview_highlight.stop()

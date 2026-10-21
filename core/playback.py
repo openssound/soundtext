@@ -1253,6 +1253,39 @@ def slowed_entry(entry: tuple, speed: float) -> tuple:
     return np.clip(np.round(y * 32767.0), -32768, 32767).astype(np.int16), rate
 
 
+COMPARE_MODES = ("result", "sequence", "together")
+COMPARE_GAP_SECONDS = 0.6
+
+
+def comparison_buffer(project: Project, audio_path: str, mode: str, stop_check=None):
+    """L'anteprima a confronto di una conversione in notazione: l'audio di
+    partenza (audio_path, anche mp3/m4a) e le note di 'project' renderizzate,
+    "sequence" uno dopo l'altro (con una breve pausa) o "together" insieme
+    (ciascuno a meta' volume, allineati all'inizio). float32 (frame, 2) a
+    48 kHz; solleva RuntimeError come render_project_mix."""
+    import numpy as np
+    from .audio_decode import read_audio
+    from .audio_tracks import AUDIO_SAMPLE_RATE, resample
+    notes, rate = render_project_mix(project, stop_check)
+    original, orig_rate = read_audio(audio_path)
+    original = np.asarray(original, dtype=np.float32)
+    if original.ndim == 1:
+        original = original[:, None]
+    if orig_rate != AUDIO_SAMPLE_RATE:
+        original = resample(original, orig_rate, AUDIO_SAMPLE_RATE)
+    original = np.repeat(original[:, :1], 2, axis=1) if original.shape[1] == 1 else original[:, :2]
+    if rate != AUDIO_SAMPLE_RATE:
+        notes = resample(notes, rate, AUDIO_SAMPLE_RATE)
+    if mode == "sequence":
+        gap = np.zeros((int(COMPARE_GAP_SECONDS * AUDIO_SAMPLE_RATE), 2), np.float32)
+        return np.concatenate([original, gap, notes]).astype(np.float32)
+    n = max(len(original), len(notes))
+    out = np.zeros((n, 2), np.float32)
+    out[:len(original)] += 0.5 * original
+    out[:len(notes)] += 0.5 * notes
+    return out
+
+
 def streaming_available() -> bool:
     """True se la riproduzione passa da core.audio_stream (partenza da un
     punto qualsiasi, loop, posizione esatta): serve la libreria FluidSynth per il
@@ -1953,6 +1986,28 @@ class PlaybackEngine:
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
         return self.backend_available()
+
+    def play_buffer(self, samples, samplerate: int, on_audio_started=None) -> bool:
+        """Suona una volta i campioni gia' pronti 'samples' (float32 (frame,
+        2)), per esempio l'anteprima a confronto di una conversione. False se
+        lo streaming audio non e' disponibile."""
+        import numpy as np
+        self.stop()
+        if not audio_stream.is_available() or len(samples) == 0:
+            return False
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
+        player = audio_stream.PcmPlayer(pcm, samplerate)
+        with self._proc_lock:
+            try:
+                player.start(0)
+            except Exception:
+                log.warning("Stream audio non avviabile per l'anteprima", exc_info=True)
+                return False
+            self._pcm_player = player
+            self._playing_speed = 1.0
+        if on_audio_started:
+            on_audio_started()
+        return True
 
     def play_loop_buffer(self, samples, samplerate: int, on_audio_started=None) -> bool:
         """Suona in loop, finche' non si chiama stop(), i campioni gia' pronti

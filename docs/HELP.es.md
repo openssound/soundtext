@@ -1628,6 +1628,12 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     entre una frase y otra en las pistas de audio grabadas. Si corta el
     principio o el final de las notas, baja el umbral o alarga la
     liberación.
+  - **Reducción de ruido** (reducción, umbral): quita el soplido constante
+    (ventilador, amplificador, previo) incluso mientras se toca, al
+    contrario que la puerta de ruido. Lo aprende sola del tramo más
+    silencioso de la pista (no de los silencios digitales entre clips):
+    basta que la toma tenga medio segundo de solo ruido, al principio o al
+    final. Presets Ligera, Soplido, Fuerte.
   - **Volumen** (ganancia, ±24 dB): solo sube o baja el nivel. Por
     ejemplo −6 dB (preajuste «Margen para el máster») al principio de la
     cadena del máster cuando la suma de las pistas supera 0 dB: el
@@ -2698,6 +2704,11 @@ otra pista del proyecto con acordes ya escritos):
   segundo patrón (ver arriba).
 - **Intensidad**: ver arriba (también en **Generar acompañamiento/riff**).
 
+**Tocar en los silencios de** (riffs y melodías, cuando la canción tiene
+una pista de audio): la melodía calla donde canta la pista elegida y
+suena en sus pausas (al menos medio segundo), como un viento que responde
+a la voz.
+
 **Dejar espacio a las otras partes** (aparece cuando la canción ya tiene
 otras partes escritas): el acompañamiento se queda por encima del bajo y
 por debajo de la melodía, la melodía por encima del acompañamiento, en
@@ -3410,6 +3421,10 @@ Acordes, con debajo solo las opciones de ese modo), **2. Audio**
   contenido actual de la vista previa con el instrumento de destino antes
   de confirmar con «Insertar en la pista» — útil para comprobar de oído la conversión (o tu
   propia variante) antes de sustituir el contenido de la pista/del pattern.
+- **Comparación**: junto a «▶ Escuchar» se elige qué oír: **solo el
+  resultado**, **primero el audio, luego el resultado** o **audio y
+  resultado juntos** (cada uno a medio volumen), para oír qué ha dejado
+  fuera la conversión.
 
 Nota sobre la calidad del reconocimiento: la detección de las notas
 melódicas segmenta el audio con un detector de ataques específico (fiable
@@ -3790,6 +3805,12 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
 - **Canal** (clic derecho, solo archivos estéreo): **Solo izquierdo**,
   **Solo derecho** o **Mono (suma de los dos)**, por ejemplo cuando la
   guitarra entró solo por la entrada 1 de una toma estéreo.
+- **Corregir la afinación...** (clic derecho): cada nota se acerca a la
+  nota más cercana de la escala de la canción (Tonalidad; si no está
+  establecida, estimada a partir de las notas), tanto como dice la
+  fuerza: 100% exactamente en la nota, 50% a medio camino. Trabaja nota
+  por nota, así que el vibrato y las inflexiones se mantienen. El archivo
+  no cambia; la primera vez el clip tarda unos segundos en prepararse.
 - **Tonalidad de la canción desde esta pista...** (menú **⋯** de la pista
   de audio): reconoce los acordes de la pista y propone la tonalidad que
   resulta como tonalidad de la canción, útil para la progresión y la
@@ -3819,6 +3840,10 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   pista en notación...**: propone la pista vinculada con el destino
   **Sustituir el contenido de la pista**. Los box añadidos con **Añadir a
   la pista** no crean el vínculo.
+- **Melodía y acordes juntos**: en la conversión de la pista, con
+  **Melodía** se puede marcar **También los acordes, en otra pista
+  nueva**: de la misma toma (voz y guitarra, una canción entera) salen en
+  una sola pasada dos pistas, la melodía y los acordes.
 - **En el editor clásico** una pista de audio muestra, en solo lectura, la
   lista de sus clips: las acciones sobre la notación (Generar, Tocar con el
   teclado, Importar MIDI, Congelar acordes, Exportar MIDI) no valen para las

@@ -486,3 +486,76 @@ def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: rando
         tokens.append((f"{mult}" if mult > 1 else "") + _note_token(pitch % 12, pitch // 12 - 1))
         t = start + mult * 0.5
     return " ".join(tokens)
+
+
+# ---------------------------------------------------------------------------
+# Melodia nei silenzi della voce
+# ---------------------------------------------------------------------------
+
+VOICE_MIN_SILENCE = 0.5      # secondi: una pausa piu' corta della voce non lascia spazio
+
+
+def voice_regions(project, track) -> List[Tuple[float, float]]:
+    """Dove la traccia audio suona (canta), [(beat d'inizio, beat di fine)]
+    del brano: lo stesso rilevamento di "Rimuovi i silenzi" (core.audio_silence),
+    con pause di almeno VOICE_MIN_SILENCE."""
+    from .audio_silence import clip_levels_db, sound_regions
+    from .audio_track_notation import audible_clips
+    from .tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map, seconds_for_beats
+    tempo_map = build_tempo_beat_map(project)
+    out = []
+    for clip in audible_clips(track):
+        levels, total = clip_levels_db(clip)
+        start_s = seconds_for_beats(tempo_map, clip.start_beat)
+        for a, b in sound_regions(levels, total, min_silence=VOICE_MIN_SILENCE, pre_roll=0.0):
+            out.append((beat_at_elapsed_seconds(tempo_map, 0.0, start_s + a),
+                        beat_at_elapsed_seconds(tempo_map, 0.0, start_s + b)))
+    return sorted(out)
+
+
+def _grid_unit(text: str) -> Optional[float]:
+    import re
+    m = re.match(r"\s*(\d+)(T?):", text)
+    if not m:
+        return None
+    unit = 4.0 / int(m.group(1))
+    return unit * 2.0 / 3.0 if m.group(2) else unit
+
+
+def rest_where(text: str, regions, patterns=None, min_overlap: float = 0.25) -> str:
+    """Il testo generato con una pausa al posto di ogni nota (o accordo)
+    che cade per almeno 'min_overlap' della sua durata dentro 'regions'
+    (beat, vedi voice_regions): la melodia suona nei silenzi della voce.
+    Se il testo non ha una griglia sola, lo lascia com'e'."""
+    from .notation import parse_track_text
+    unit = _grid_unit(text)
+    if unit is None or not regions:
+        return text
+    header = text.split()[0]
+    tokens = [header]
+    velocity = None
+    for ev in parse_track_text(text, patterns or {}):
+        mult = ev.duration / unit
+        if abs(mult - round(mult)) > 1e-6 or round(mult) < 1:
+            return text
+        mult = int(round(mult))
+        prefix = f"{mult}" if mult > 1 else ""
+        body = None
+        if ev.kind in ("note", "block"):
+            overlap = sum(max(0.0, min(b, ev.start + ev.duration) - max(a, ev.start)) for a, b in regions)
+            if overlap < min_overlap * ev.duration:
+                if ev.kind == "note":
+                    body = f"{ev.letter}*{ev.octave}"
+                else:
+                    body = "[" + " ".join(f"{it['letter']}*{it['octave']}" for it in ev.items
+                                          if it.get("kind") == "note") + "]"
+        elif ev.kind != "rest":
+            return text                       # altro (accordi per sigla, percussioni): non si tocca
+        if body is None:
+            tokens.append(f"{prefix}r")
+            continue
+        if ev.velocity != velocity:
+            tokens.append(f"{ev.velocity}@")
+            velocity = ev.velocity
+        tokens.append(prefix + body)
+    return " ".join(tokens)

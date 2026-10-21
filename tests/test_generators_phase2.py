@@ -150,3 +150,55 @@ def test_melody_dialog_registers_and_chorus_options():
     second = [(s - 32, l, o) for s, l, o in notes if 32 <= s < 47]
     assert first and first == second
     dlg.reject()
+
+
+# ---------------------------------------------------------------------------
+# Melodia nei silenzi della voce (core.melody_generate.voice_regions, rest_where)
+# ---------------------------------------------------------------------------
+
+def _voice_project(tmp_path):
+    import numpy as np
+    from core.audio_tracks import AUDIO_SAMPLE_RATE as RATE, write_wav
+    from core.model import AudioClip
+    t = np.arange(8 * RATE) / RATE                                   # 8 s = 16 beat a 120
+    voice = np.where((t < 2) | ((t >= 4) & (t < 6)), 0.3 * np.sin(2 * np.pi * 220 * t), 0.0)
+    path = str(tmp_path / "voce.wav")
+    write_wav(path, voice.reshape(-1, 1).astype(np.float32), RATE)
+    p = Project(tempo_bpm=120)
+    p.add_audio_track("Voce").audio_clips.append(AudioClip("Voce", path, 0.0))
+    return p
+
+
+def test_voice_regions_in_beats(tmp_path):
+    from core.melody_generate import voice_regions
+    p = _voice_project(tmp_path)
+    regions = voice_regions(p, p.get_track("Voce"))
+    assert len(regions) == 2
+    assert regions[0][0] == pytest.approx(0.0) and regions[0][1] == pytest.approx(4.1, abs=0.15)
+    assert regions[1][0] == pytest.approx(8.0, abs=0.1) and regions[1][1] == pytest.approx(12.1, abs=0.15)
+
+
+def test_melody_rests_where_the_voice_sings(tmp_path):
+    from core.melody_generate import rest_where
+    text = "8: " + " ".join(["c*5"] * 32)                            # 16 beat di ottavi
+    out = rest_where(text, [(0.0, 4.1), (8.0, 12.1)])
+    starts = [ev.start for ev in parse_track_text(out, {}) if ev.kind == "note"]
+    assert starts and all(4.0 <= s < 8.0 or s >= 12.0 for s in starts)
+    assert sum(ev.duration for ev in parse_track_text(out, {})) == pytest.approx(16.0)
+    assert rest_where("4: 4C", [(0.0, 4.0)]) == "4: 4C"               # sigle d'accordo: non si toccano
+
+
+def test_melody_dialog_plays_in_the_gaps(tmp_path):
+    _qt()
+    from gui.rhythm_generate_dialog import MelodyGenerateDialog, chord_source_tracks
+    p = _voice_project(tmp_path)
+    acc = p.add_track("Accordi", "Piano", "4: 4C 4Am 4F 4G")
+    p.add_track("Tromba", "Trumpet", "")
+    dlg = MelodyGenerateDialog(None, p, "Trumpet", "prova", chord_source_tracks(p, "Tromba"), polyphonic=False,
+                               default_octave=5, range_low=54, range_high=82, default_bars=4,
+                               track_name="Tromba")
+    dlg.gaps_combo.setCurrentIndex(1)
+    starts = [ev.start for ev in parse_track_text(dlg._generate_text(seed=1), {}) if ev.kind == "note"]
+    assert starts and all(4.0 <= s < 8.0 or s >= 12.0 for s in starts)
+    assert acc is not None
+    dlg.reject()

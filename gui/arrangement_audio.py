@@ -54,12 +54,14 @@ class AudioClipActions:
         uncurve_action = menu.addAction(tr("Togli la curva del volume")) if clip.gain_points else None
         loop_action = menu.addAction(tr("Ripeti in loop...")) if not missing else None
         unloop_action = menu.addAction(tr("Togli la ripetizione")) if not missing and clip.loop_length > 0 else None
-        transpose_action = tuning_action = reverse_action = invert_action = None
+        transpose_action = tuning_action = correct_action = reverse_action = invert_action = None
         channel_actions = {}
         if not missing:
             transpose_action = menu.addAction(tr("Trasponi...") if not clip.transpose else
                                               tr("Trasponi ({semitones:+g} semitoni)...", semitones=clip.transpose))
             tuning_action = menu.addAction(tr("Controlla l'accordatura..."))
+            correct_action = menu.addAction(tr("Correggi l'intonazione...") if not clip.pitch_correct else
+                                            tr("Correggi l'intonazione ({n}%)...", n=clip.pitch_correct))
             reverse_action = menu.addAction(tr("Suona al contrario"))
             reverse_action.setCheckable(True)
             reverse_action.setChecked(clip.reverse)
@@ -142,6 +144,8 @@ class AudioClipActions:
             self.on_clip_changed(track_name)
         elif transpose_action is not None and chosen is transpose_action:
             self._transpose_clip(track_name, clip)
+        elif correct_action is not None and chosen is correct_action:
+            self._pitch_correct_clip(track_name, clip)
         elif tuning_action is not None and chosen is tuning_action:
             self.check_clip_tuning(track_name, clip)
         elif reverse_action is not None and chosen is reverse_action:
@@ -393,8 +397,18 @@ class AudioClipActions:
             return
         options = dlg.options()
         default_octave = get_instrument(dlg.instrument_name()).default_octave
-        self._run_track_conversion(track_name, [(dlg.destination(), options, default_octave)],
-                                   on_placed=dlg.remember_choices)
+        jobs = [(dlg.destination(), options, default_octave)]
+        chords = dlg.chords_job()
+        if chords is not None:                 # melodia e accordi insieme
+            destination, chord_options = chords
+            jobs.append((destination, chord_options, get_instrument(destination[1]).default_octave))
+        placed = []
+
+        def on_placed(target):                 # si ricorda la prima (la melodia)
+            if not placed:
+                dlg.remember_choices(target)
+            placed.append(target)
+        self._run_track_conversion(track_name, jobs, on_placed=on_placed)
 
     def key_from_audio_track(self, track_name: str):
         """La tonalita' del brano dagli accordi riconosciuti nella traccia
@@ -614,6 +628,19 @@ class AudioClipActions:
         if not ok:
             return
         clip.loop_length = round(content * times, 6) if times > 1 else 0.0
+        self.on_clip_changed(track_name)
+
+    def _pitch_correct_clip(self, track_name: str, clip: AudioClip):
+        """Forza della correzione dell'intonazione (AudioClip.pitch_correct)."""
+        key = self.host.project.key or tr("stimata dalle note")
+        value, ok = QInputDialog.getInt(
+            self, tr("Correggi l'intonazione"),
+            tr("Ogni nota si avvicina alla nota della scala piu' vicina (tonalita': {key}).\n"
+               "Forza in % (0 = nessuna correzione, 100 = esattamente sulla nota; il vibrato resta):",
+               key=key), clip.pitch_correct or 60, 0, 100, 10)
+        if not ok or value == clip.pitch_correct:
+            return
+        clip.pitch_correct = value
         self.on_clip_changed(track_name)
 
     def _transpose_clip(self, track_name: str, clip: AudioClip):

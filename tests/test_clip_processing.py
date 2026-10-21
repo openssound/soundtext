@@ -251,3 +251,48 @@ def test_gain_curve_survives_trim_split_and_the_file(tmp_path):
     assert "gain_points=0:0,2.5:-6" in text
     back = parse_project_text(text, base_dir=str(tmp_path)).get_track("A").audio_clips[0]
     assert back.gain_points == [(0.0, 0.0), (2.5, -6.0)] and back.gain_db == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Correzione dell'intonazione (AudioClip.pitch_correct, core.pitch_correct)
+# ---------------------------------------------------------------------------
+
+def _peak_hz(x):
+    spectrum = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+    freqs = np.fft.rfftfreq(len(x), 1.0 / RATE)
+    k = int(np.argmax(spectrum))
+    a, b, c = spectrum[k - 1], spectrum[k], spectrum[k + 1]          # interpolazione parabolica
+    return freqs[k] + 0.5 * (a - c) / (a - 2 * b + c) * (freqs[1] - freqs[0])
+
+
+def _mix_in_key(clip, key):
+    p = Project(tempo_bpm=120, key=key)
+    p.add_audio_track("A").audio_clips.append(clip)
+    layers = at.build_audio_layers(p, p.tracks, build_tempo_beat_map(p))
+    return at.mix_layers(np.zeros((0, 2), np.float32), RATE, layers)[:, 0]
+
+
+def test_pitch_correction_moves_notes_to_the_scale(tmp_path):
+    pytest.importorskip("pedalboard")
+    path = _sine(tmp_path, 450.0, seconds=2.0)                         # La crescente di 39 cent
+    full = _mix_in_key(AudioClip("S", path, pitch_correct=100), "C")
+    half = _mix_in_key(AudioClip("S", path, pitch_correct=50), "C")
+    assert _peak_hz(full[RATE // 2:3 * RATE // 2]) == pytest.approx(440.0, abs=1.5)
+    assert _peak_hz(half[RATE // 2:3 * RATE // 2]) == pytest.approx(445.0, abs=1.5)
+    assert len(full) == pytest.approx(2 * RATE, abs=4)
+    # il Sib non e' in Do: in Fa maggiore il 450 Hz va al La (440), il 470 al Sib (466)
+    up = _mix_in_key(AudioClip("S", _sine(tmp_path, 470.0), pitch_correct=100), "F")
+    assert _peak_hz(up[RATE // 2:3 * RATE // 2]) == pytest.approx(466.2, abs=1.5)
+
+
+def test_pitch_correct_round_trips_and_changes_the_signature(tmp_path):
+    path = _stereo(tmp_path)
+    p = Project(tempo_bpm=120)
+    track = p.add_audio_track("A")
+    track.audio_clips = [AudioClip("S", path, pitch_correct=60)]
+    text = project_to_text(p, str(tmp_path))
+    assert "pitch_correct=60" in text
+    assert parse_project_text(text, base_dir=str(tmp_path)).get_track("A").audio_clips[0].pitch_correct == 60
+    with_correction = at.layers_signature(at.build_audio_layers(p, p.tracks, TEMPO))
+    track.audio_clips[0].pitch_correct = 0
+    assert at.layers_signature(at.build_audio_layers(p, p.tracks, TEMPO)) != with_correction
