@@ -715,6 +715,35 @@ _stretch_lock = threading.Lock()
 _STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
 
 
+def _stretch_lookup(key: tuple, from_disk: bool = True) -> Optional[np.ndarray]:
+    """Lo stretch gia' calcolato per 'key': in memoria o, salvato a
+    un'apertura precedente, nella cache su disco del progetto."""
+    with _stretch_lock:
+        hit = _stretch_cache.get(key)
+        if hit is not None:
+            _stretch_cache.move_to_end(key)
+            return hit
+    if not from_disk:
+        return None
+    from . import disk_cache
+    hit = disk_cache.load("stretch:" + repr(key))
+    if hit is not None:
+        _stretch_store(key, hit, to_disk=False)
+    return hit
+
+
+def _stretch_store(key: tuple, y: np.ndarray, to_disk: bool = True) -> None:
+    if to_disk:
+        from . import disk_cache
+        disk_cache.store("stretch:" + repr(key), y)
+    with _stretch_lock:
+        _stretch_cache[key] = y
+        total = sum(a.nbytes for a in _stretch_cache.values())
+        while total > _STRETCH_CACHE_MAX_BYTES and len(_stretch_cache) > 1:
+            _old, old = _stretch_cache.popitem(last=False)
+            total -= old.nbytes
+
+
 def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tuple] = None,
               semitones: float = 0.0) -> np.ndarray:
     """samples (frame, canali) allungati di 'stretch' (1.1 = 10% piu'
@@ -725,10 +754,7 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     if (abs(stretch - 1.0) < 1e-6 and abs(semitones) < 1e-6) or len(samples) == 0:
         return samples
     if key is not None:
-        with _stretch_lock:
-            hit = _stretch_cache.get(key)
-            if hit is not None:
-                _stretch_cache.move_to_end(key)
+        hit = _stretch_lookup(key)
         if hit is not None:
             return hit
     x = np.ascontiguousarray(np.asarray(samples, dtype=np.float32).T)
@@ -748,12 +774,7 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
             y = np.concatenate([y, np.zeros((exact - len(y), y.shape[1]), dtype=np.float32)])
     y = np.ascontiguousarray(y, dtype=np.float32)
     if key is not None:
-        with _stretch_lock:
-            _stretch_cache[key] = y
-            total = sum(a.nbytes for a in _stretch_cache.values())
-            while total > _STRETCH_CACHE_MAX_BYTES and len(_stretch_cache) > 1:
-                _old, old = _stretch_cache.popitem(last=False)
-                total -= old.nbytes
+        _stretch_store(key, y)
     return y
 
 
@@ -836,10 +857,7 @@ def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Opt
     incrociata di SEGMENT_CROSSFADE (ogni tratto sborda un poco nel
     successivo, cosi' all'unione non c'e' un clic). In cache come stretched."""
     if key is not None:
-        with _stretch_lock:
-            hit = _stretch_cache.get(key)
-            if hit is not None:
-                _stretch_cache.move_to_end(key)
+        hit = _stretch_lookup(key)
         if hit is not None:
             return hit
     pad = int(SEGMENT_CROSSFADE * rate)
@@ -870,12 +888,7 @@ def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Opt
         pos += exact
     out = out[:pos]
     if key is not None:
-        with _stretch_lock:
-            _stretch_cache[key] = out
-            total_bytes = sum(a.nbytes for a in _stretch_cache.values())
-            while total_bytes > _STRETCH_CACHE_MAX_BYTES and len(_stretch_cache) > 1:
-                _old, old = _stretch_cache.popitem(last=False)
-                total_bytes -= old.nbytes
+        _stretch_store(key, out)
     return out
 
 
@@ -892,9 +905,8 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
         if stop_check and stop_check():
             break
         key = _layer_stretch_key(layer, samplerate)
-        with _stretch_lock:
-            if key in _stretch_cache:
-                continue
+        if _stretch_lookup(key) is not None:
+            continue
         try:
             samples, rate = decoded_wav(layer.path)
         except (ValueError, OSError):

@@ -500,6 +500,7 @@ class MixerMixin:
             if self.project.get_track(track_name).synth:
                 actions[menu.addAction(tr("Parametri dello strumento plugin..."))] = \
                     lambda: self.edit_track_synth(track_name)
+        self.add_freeze_action(menu, track_name)
         actions[menu.addAction(tr("Esporta MIDI (solo questa)..."))] = self.export_selected_track_midi
         actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.export_track_wav(track_name)
         actions[menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))] = \

@@ -1266,6 +1266,8 @@ class ArrangementView(AudioClipActions, QWidget):
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
+            if hasattr(self.host, "add_freeze_action"):
+                self.host.add_freeze_action(menu, track_name)
             export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
             export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
             menu.addSeparator()
@@ -1318,6 +1320,8 @@ class ArrangementView(AudioClipActions, QWidget):
         edit_action = menu.addAction(tr("Nome e strumento..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
         synth_params_action = menu.addAction(tr("Parametri dello strumento plugin...")) if track.synth else None
+        if hasattr(self.host, "add_freeze_action"):
+            self.host.add_freeze_action(menu, track_name)
         export_action = menu.addAction(tr("Esporta MIDI (solo questa)..."))
         export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
         export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))

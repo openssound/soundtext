@@ -3721,6 +3721,19 @@ at the end of the file, `gain` the clip gain in dB (both optional). If a
 file can no longer be found the clip stays in the project, drawn in red,
 and does not play: right-click → **Locate file...** to point to it again.
 
+**Freeze to audio** (track menu, note tracks too): the track becomes an
+audio clip in a new track "Name (frozen)", computed only once as it sounds
+in Solo (notes, plugin or SFZ instrument, effects, NAM, volume and pan).
+The original track stays in the song, muted and with ❄ under its name;
+**Unfreeze** removes the audio track and makes it play again. Useful on
+slow computers: Play no longer recomputes the heavy tracks.
+
+**Disk cache**: tracks processed by effects, plugin instruments and
+time-stretch are saved in `<Project>_audio/cache/` and reused when the
+project is opened again, instead of being redone. A change (notes, clips,
+effects, files) makes them recompute; the folder stays under 2 GB (the
+least recently used renders are removed) and can be deleted at any time.
+
 ### Exporting
 
 - **Project → Export → Audio mix (WAV)...** exports the song as it sounds

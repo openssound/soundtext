@@ -248,6 +248,10 @@ RE_AUDIO_CHANNEL = re.compile(r'\bchannel\s*=\s*(\w+)')
 RE_AUDIO_ACTIVE_TAKE = re.compile(r'(?<![\w"])take\s*=\s*(\d+)')
 RE_AUDIO_TAKE = re.compile(r'(?<![\w=])take\s+"([^"]*)"\s+file\s*=\s*"([^"]*)"\s+delta\s*=\s*(-?\d+(?:\.\d+)?)')
 _RE_QUOTED = re.compile(r'"[^"]*"')
+# Traccia congelata in audio (core.freeze), nel suo blocco Mixer:
+# 'congelata: "Nome della traccia audio"'. Una versione vecchia la ignora e
+# trova la traccia silenziata: suona la versione congelata, come qui.
+RE_MIXER_FROZEN = re.compile(r'\bcongelata\s*[:=]\s*"([^"]*)"')
 
 
 def _parse_audio_clip_body(name: str, start_beat: float, body: str,
@@ -388,6 +392,10 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         name: _parse_mixer_body(body)
         for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR)
     }
+    for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR):
+        frozen = RE_MIXER_FROZEN.search(body)
+        if frozen and name in track_mixer_overrides:
+            track_mixer_overrides[name]["frozen"] = frozen.group(1)
     track_effects = {
         name: _parse_effects_body(body, base_dir)
         for name, body in _extract_named_blocks(text.splitlines(), RE_EFFECTS_HDR)
@@ -448,6 +456,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
                     track.reverb = overrides["reverb"]
                 if "chorus" in overrides:
                     track.chorus = overrides["chorus"]
+                track.frozen = overrides.get("frozen", "")
             if current_name in track_effects:
                 track.effects = track_effects[current_name]
             if current_name in track_synths and track_synths[current_name][0]:
@@ -776,9 +785,11 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     # impostazioni tutte di default non generano alcun blocco, per non
     # appesantire inutilmente i file piu' semplici.
     for t in project.tracks:
-        if t.volume != 100 or t.pan != 64 or t.mute or t.solo or t.reverb or t.chorus:
+        frozen = t.frozen if project.find_track(t.frozen) is not None else ""
+        if t.volume != 100 or t.pan != 64 or t.mute or t.solo or t.reverb or t.chorus or frozen:
             lines.append(f"Mixer {t.name}:")
             sends = (f" riverbero: {t.reverb}" if t.reverb else "") + (f" chorus: {t.chorus}" if t.chorus else "")
+            sends += f' congelata: "{frozen}"' if frozen else ""
             lines.append(
                 f"  volume: {t.volume} pan: {_pan_0_127_to_normalized(t.pan)} "
                 f"mute: {'si' if t.mute else 'no'} solo: {'si' if t.solo else 'no'}{sends}"

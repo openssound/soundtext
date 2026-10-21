@@ -3821,6 +3821,20 @@ fine del file, `gain` il guadagno della clip in dB (entrambi facoltativi).
 Se un file non si trova piu' la clip resta nel progetto, disegnata in rosso,
 e non suona: tasto destro → **Ritrova file...** per indicarlo di nuovo.
 
+**Congela in audio** (menu della traccia, anche per le tracce di note): la
+traccia diventa una clip audio in una traccia nuova "Nome (congelata)",
+calcolata una volta sola come si sente in Solo (note, strumento plugin o
+SFZ, effetti, NAM, volume e pan). La traccia di partenza resta nel brano,
+silenziata e con ❄ sotto il nome; **Scongela** toglie la traccia audio e la
+fa tornare a suonare. Serve sui computer lenti: il Play non ricalcola piu'
+le tracce pesanti.
+
+**Cache su disco**: le tracce elaborate dagli effetti, gli strumenti plugin
+e il time-stretch si salvano in `<Progetto>_audio/cache/` e si riusano alla
+riapertura del progetto, invece di rifarli. Una modifica (note, clip,
+effetti, file) li fa ricalcolare; la cartella non supera 2 GB (si tolgono
+i rendering usati meno di recente) e si puo' cancellare quando si vuole.
+
 ### Esportare
 
 - **Progetto → Esporta → Mix audio (WAV)...** esporta il brano come si sente

@@ -193,8 +193,9 @@ class PlaybackMixin:
         self.metronome_engine.stop()
         self.playback.stop()
         self.effects_panel.shutdown()
-        from core import plugins
+        from core import disk_cache, plugins
         plugins.shutdown()
+        disk_cache.wait_writes(5.0)        # i rendering in scrittura nella cache su disco
         super().closeEvent(event)
         if getattr(self, "_restart_requested", False) and event.isAccepted():
             self._restart_requested = False

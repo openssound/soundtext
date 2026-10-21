@@ -3924,6 +3924,21 @@ opcionales). Si un archivo ya no se encuentra, el clip se queda en el
 proyecto, dibujado en rojo, y no suena: clic derecho → **Localizar
 archivo...** para indicarlo de nuevo.
 
+**Congelar en audio** (menú de la pista, también para pistas de notas): la
+pista se convierte en un clip de audio en una pista nueva "Nombre
+(congelada)", calculado una sola vez tal como suena en Solo (notas,
+instrumento plugin o SFZ, efectos, NAM, volumen y panorama). La pista
+original se queda en la canción, silenciada y con ❄ bajo el nombre;
+**Descongelar** quita la pista de audio y la hace sonar de nuevo. Sirve en
+ordenadores lentos: Play ya no recalcula las pistas pesadas.
+
+**Caché en disco**: las pistas procesadas por efectos, los instrumentos
+plugin y el time-stretch se guardan en `<Proyecto>_audio/cache/` y se
+reutilizan al volver a abrir el proyecto, en lugar de rehacerlos. Un
+cambio (notas, clips, efectos, archivos) los recalcula; la carpeta no
+supera 2 GB (se quitan los renders usados hace más tiempo) y se puede
+borrar cuando se quiera.
+
 ### Exportar
 
 - **Proyecto → Exportar → Mezcla de audio (WAV)...** exporta la canción tal

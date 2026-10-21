@@ -171,6 +171,9 @@ class Track:
     # file, vedi Project.instruments): se c'e', vale lui e non quello con lo
     # stesso nome registrato in locale, che puo' venire da un altro brano.
     instrument_def: Optional[InstrumentProfile] = field(default=None, repr=False, compare=False)
+    # Traccia congelata in audio (core.freeze): il nome della traccia audio
+    # che la suona al suo posto; questa resta, silenziata. "" = non congelata.
+    frozen: str = ""
 
     @property
     def is_audio(self) -> bool:
@@ -262,6 +265,8 @@ class Project:
         for t in self.tracks:              # tracce di note convertite da quella tolta
             if t.conversion and t.conversion.get("from") == name:
                 t.conversion = None
+            if t.frozen == name:           # tolta la sua versione congelata: torna a suonare
+                t.frozen, t.mute = "", False
 
     def get_track(self, name: str) -> Track:
         for t in self.tracks:
@@ -281,9 +286,11 @@ class Project:
         if track.is_audio:
             # Una traccia audio resta audio: qui si puo' solo rinominarla.
             track.name = new_name
-            for t in self.tracks:          # le tracce convertite la seguono
+            for t in self.tracks:          # le tracce convertite (e congelate) la seguono
                 if t.conversion and t.conversion.get("from") == old_name:
                     t.conversion = dict(t.conversion, **{"from": new_name})
+                if t.frozen == old_name:
+                    t.frozen = new_name
             return
         if new_instrument not in self.instruments:
             get_instrument(new_instrument)  # valida

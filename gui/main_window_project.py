@@ -6,6 +6,7 @@ import time
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
 
+from core import disk_cache
 from core.model import Project
 from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
@@ -154,6 +155,7 @@ class ProjectMixin:
         self.schedule_playback_prepare()
         set_session_instruments(project.instruments)
         self.current_path = path
+        disk_cache.set_project(path)       # i rendering salvati accanto al progetto
         self.current_track_name = None
         # Il progetto appena sostituito e' per definizione "a riposo": non ci
         # sono ancora modifiche da salvare rispetto a questo stato (vedi
@@ -294,6 +296,7 @@ class ProjectMixin:
             QMessageBox.critical(self, tr("Errore di salvataggio"), tr("Impossibile salvare '{path}':\n{e}", path=path, e=e))
             return
         self.current_path = path
+        disk_cache.set_project(path)
         # Come al caricamento (load_project_file), il nome del progetto e' il
         # nome del file: cosi' le esportazioni successive lo propongono.
         self.project.name = os.path.splitext(os.path.basename(path))[0]
@@ -703,6 +706,77 @@ class ProjectMixin:
                 QMessageBox.critical(self, tr("Errore esportazione audio"), msg)
 
         worker.progress.connect(lambda done: progress_dlg.setValue(int(done)))
+        worker.finished_ok.connect(handle_ok)
+        worker.finished_error.connect(handle_error)
+        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
+        worker.start()
+
+    def add_freeze_action(self, menu, track_name: str):
+        """Nel menu di una traccia: Congela in audio, o Scongela se lo e'
+        gia'. Niente per la traccia audio che ne suona un'altra congelata."""
+        from core import freeze
+        project = self.project
+        track = project.get_track(track_name)
+        if any(t.frozen == track_name for t in project.tracks):
+            return None
+        if freeze.is_frozen(project, track):
+            action = menu.addAction(tr("Scongela (torna a '{name}')", name=track.name))
+            action.setToolTip(tr("Toglie la traccia audio congelata e la traccia torna a suonare com'era."))
+        else:
+            action = menu.addAction(tr("Congela in audio"))
+            action.setToolTip(tr("La traccia diventa una clip audio, calcolata una volta sola (note, strumento, "
+                                 "effetti): il computer lavora meno. La traccia resta, silenziata; "
+                                 "Scongela la fa tornare."))
+        action.triggered.connect(lambda _checked=False: self.toggle_freeze(track_name))
+        return action
+
+    def toggle_freeze(self, track_name: str):
+        """Congela in audio (in un thread, annullabile) o scongela la traccia."""
+        from core import freeze
+        from core.audio_tracks import target_audio_dir
+        track = self.project.get_track(track_name)
+        if freeze.is_frozen(self.project, track):
+            removed = freeze.unfreeze(self.project, track)
+            self._mark_dirty()
+            self.refresh_mixer()
+            self.statusBar().showMessage(tr("'{name}' scongelata: suona di nuovo dalle sue note ed effetti.",
+                                            name=track.name) if removed else
+                                         tr("'{name}' scongelata.", name=track.name), 6000)
+            return
+        if not track.is_audio:
+            ok, msg = validate_track_text(track.text, self.project.patterns)
+            if not ok:
+                QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile congelare:\n{msg}", msg=msg))
+                return
+        progress_dlg = QProgressDialog(tr("Congelo '{name}' in audio...", name=track.name), tr("Annulla"), 0, 0, self)
+        progress_dlg.setWindowTitle(tr("Congela in audio"))
+        progress_dlg.setWindowModality(Qt.WindowModal)
+        progress_dlg.setMinimumDuration(0)
+        progress_dlg.setAutoClose(False)
+        cancelled = {"value": False}
+        worker = Worker(freeze.render_frozen_audio, self.project, track, target_audio_dir(self.current_path),
+                        stop_check=lambda: cancelled["value"], pass_progress=False)
+        self._freeze_worker = worker
+
+        def handle_ok(path):
+            worker.wait()
+            progress_dlg.close()
+            self._freeze_worker = None
+            if self.project.find_track(track_name) is not track:
+                return                     # la traccia e' sparita intanto
+            audio = freeze.apply_freeze(self.project, track, path)
+            self._mark_dirty()
+            self.refresh_mixer()
+            self.statusBar().showMessage(tr("'{name}' congelata in audio nella traccia '{audio}'.",
+                                            name=track.name, audio=audio.name), 6000)
+
+        def handle_error(msg):
+            worker.wait()
+            progress_dlg.close()
+            self._freeze_worker = None
+            if not cancelled["value"]:
+                QMessageBox.critical(self, tr("Congela in audio"), msg)
+
         worker.finished_ok.connect(handle_ok)
         worker.finished_error.connect(handle_error)
         progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))

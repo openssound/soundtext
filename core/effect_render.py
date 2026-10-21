@@ -30,6 +30,7 @@ import numpy as np
 
 from .effects import (DRY_SYNTH_ROOM, active_effects, apply_effect_chain, chain_signature, effects_available,
                       lv2_instrument_missing, plugin_substitute, synth_dry_for)
+from . import disk_cache
 from .model import Project, Track
 
 # Memoria massima delle due cache insieme (una traccia stereo di 3 minuti a
@@ -45,10 +46,17 @@ def _cache_get(key: str) -> Optional[np.ndarray]:
         value = _cache.pop(key, None)
         if value is not None:
             _cache[key] = value      # piu' recente in fondo
-        return value
+            return value
+    # non in memoria: magari salvata su disco a un'apertura precedente
+    value = disk_cache.load("stem:" + key)
+    if value is not None:
+        _cache_put(key, value, to_disk=False)
+    return value
 
 
-def _cache_put(key: str, value: np.ndarray):
+def _cache_put(key: str, value: np.ndarray, to_disk: bool = True):
+    if to_disk:
+        disk_cache.store("stem:" + key, value)
     with _cache_lock:
         _cache.pop(key, None)
         _cache[key] = value

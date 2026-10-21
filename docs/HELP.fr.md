@@ -4017,6 +4017,21 @@ Si un fichier est introuvable, le clip reste dans le projet, dessiné en
 rouge, et ne joue pas : clic droit → **Retrouver le fichier...** pour
 l'indiquer de nouveau.
 
+**Figer en audio** (menu de la piste, aussi pour les pistes de notes) : la
+piste devient un clip audio dans une nouvelle piste « Nom (figée) »,
+calculé une seule fois tel qu'on l'entend en Solo (notes, instrument
+plugin ou SFZ, effets, NAM, volume et panoramique). La piste d'origine
+reste dans le morceau, coupée et avec ❄ sous son nom ; **Libérer** supprime
+la piste audio et la fait rejouer. Utile sur les ordinateurs lents : Play
+ne recalcule plus les pistes lourdes.
+
+**Cache sur disque** : les pistes traitées par les effets, les instruments
+plugin et le time-stretch sont enregistrés dans `<Projet>_audio/cache/` et
+réutilisés à la réouverture du projet, au lieu d'être refaits. Une
+modification (notes, clips, effets, fichiers) les fait recalculer ; le
+dossier ne dépasse pas 2 Go (les rendus utilisés le moins récemment sont
+supprimés) et peut être effacé à tout moment.
+
 ### Exporter
 
 - **Projet → Exporter → Mix audio (WAV)...** exporte le morceau tel qu'on

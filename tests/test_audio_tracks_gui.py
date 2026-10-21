@@ -908,3 +908,25 @@ def test_export_stems_from_the_file_menu(tmp_path, monkeypatch):
     folder = next((tmp_path / "esportate").iterdir())
     assert folder.name.endswith(" - tracce")
     assert [f.name for f in folder.iterdir()] == ["01 Voce (asciutta).wav"]
+
+
+def test_freeze_and_unfreeze_from_the_track_menu(tmp_path):
+    import time
+    from PySide6.QtWidgets import QMenu
+    w, t, clip, _item = _window_with_clip(tmp_path)
+    menu = QMenu()
+    action = w.add_freeze_action(menu, "Voce")
+    assert action.text() == "Congela in audio"
+    action.trigger()
+    deadline = time.time() + 20
+    while getattr(w, "_freeze_worker", None) is not None and time.time() < deadline:
+        _app.processEvents()
+        time.sleep(0.01)
+    assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
+    assert t.mute and t.frozen == "Voce (congelata)"
+    assert w.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela
+    assert w.add_freeze_action(QMenu(), "Voce").text().startswith("Scongela")
+    w.toggle_freeze("Voce")
+    assert [x.name for x in w.project.tracks] == ["Voce"] and not t.mute
+    w.undo()
+    assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
