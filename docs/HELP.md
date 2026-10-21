@@ -3643,6 +3643,13 @@ oppure **importando** file registrati con un altro programma.
   vengono saltate. Il risultato va in una nuova traccia oppure, con
   **Aggiungi alla traccia**, in una traccia di note esistente: dove c'e'
   gia' un box, quello nuovo va nello spazio libero piu' vicino.
+  **Per rifare la conversione** dopo una modifica all'audio (silenzi tolti,
+  quantizzazione, una ripresa nuova) scegli **Sostituisci il contenuto della
+  traccia**: i box e il testo della traccia di note si tolgono e al loro
+  posto vanno quelli nuovi (Ctrl+Z riporta quelli di prima). Il dialogo
+  propone gia' la traccia "Nome (note)" e, finche' SoundText resta aperto,
+  le scelte dell'ultima conversione della stessa traccia audio: di solito
+  basta **Converti**.
 - **Nell'editor classico** una traccia audio mostra, in sola lettura,
   l'elenco delle sue clip: le azioni sulla notazione (Genera, Suona con la
   tastiera, Importa MIDI, Congela accordi, Esporta MIDI) non valgono per le

@@ -3827,6 +3827,13 @@ programme.
   ignorés. Le résultat va dans une nouvelle piste ou, avec **Ajouter à la
   piste**, dans une piste de notes existante : là où il y a déjà un box, le
   nouveau va dans l'espace libre le plus proche.
+  **Pour refaire la conversion** après une modification de l'audio
+  (silences supprimés, quantification, nouvelle prise) choisissez
+  **Remplacer le contenu de la piste** : les box et le texte de la piste de
+  notes sont retirés et remplacés par les nouveaux (Ctrl+Z ramène les
+  précédents). La boîte de dialogue propose déjà la piste « Nom (notes) »
+  et, tant que SoundText reste ouvert, les choix de la dernière conversion
+  de la même piste audio : en général, **Convertir** suffit.
 - **Dans l'éditeur classique**, une piste audio affiche, en lecture seule,
   la liste de ses clips : les actions sur la notation (Générer, Jouer au
   clavier, Importer un MIDI, Figer les accords, Exporter en MIDI) ne

@@ -3739,6 +3739,13 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   omiten. El resultado va a una pista nueva o, con **Añadir a la pista**, a
   una pista de notas existente: donde ya hay un box, el nuevo va al espacio
   libre más cercano.
+  **Para rehacer la conversión** después de cambiar el audio (silencios
+  quitados, cuantización, una toma nueva) elige **Sustituir el contenido de
+  la pista**: los box y el texto de la pista de notas se quitan y en su
+  lugar van los nuevos (Ctrl+Z devuelve los anteriores). El diálogo ya
+  propone la pista "Nombre (notas)" y, mientras SoundText siga abierto, las
+  opciones de la última conversión de la misma pista de audio: normalmente
+  basta con **Convertir**.
 - **En el editor clásico** una pista de audio muestra, en solo lectura, la
   lista de sus clips: las acciones sobre la notación (Generar, Tocar con el
   teclado, Importar MIDI, Congelar acordes, Exportar MIDI) no valen para las

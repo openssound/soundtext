@@ -366,7 +366,9 @@ class AudioClipActions:
 
         def done(result):
             if not finish():
-                self._place_converted_boxes(track_name, destination, *result)
+                target = self._place_converted_boxes(track_name, destination, *result)
+                if target is not None:
+                    dlg.remember_choices(target)
 
         def failed(message):
             if not finish():
@@ -379,14 +381,15 @@ class AudioClipActions:
         worker.start()
 
     def _place_converted_boxes(self, source_name: str, destination, boxes, silent):
-        """I box della conversione nella traccia di destinazione (nuova o
-        esistente), ciascuno alla posizione della sua clip o, se li' c'e' gia'
-        qualcosa, nello spazio libero piu' vicino."""
+        """I box della conversione nella traccia di destinazione (nuova,
+        esistente, o esistente svuotata per rifare la conversione), ciascuno
+        alla posizione della sua clip o, se li' c'e' gia' qualcosa, nello
+        spazio libero piu' vicino. Il nome della traccia, o None."""
         project = self.host.project
         if not boxes:
             QMessageBox.information(self, tr("Converti la traccia in notazione"),
                                     tr("Nelle clip di '{name}' non ho riconosciuto niente da scrivere.", name=source_name))
-            return
+            return None
         kind, value = destination
         if kind == "new":
             existing = {t.name for t in project.tracks}
@@ -394,6 +397,10 @@ class AudioClipActions:
             while name in existing:
                 name, n = tr("{name} (note {n})", name=source_name, n=n), n + 1
             target = project.add_track(name, value, "")
+        elif kind == "replace":
+            target = project.get_track(value)
+            target.clips = []
+            target.text = ""
         else:
             target = project.get_track(value)
             self._wrap_free_text_in_box(target)
@@ -416,6 +423,7 @@ class AudioClipActions:
         if silent:
             message += " " + tr("Clip senza note riconosciute: {names}.", names=", ".join(silent))
         self.host.statusBar().showMessage(message, 8000)
+        return target.name
 
     def _set_clip_gain(self, track_name: str, clip: AudioClip):
         value, ok = QInputDialog.getDouble(

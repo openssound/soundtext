@@ -5,6 +5,12 @@ quantizzazione, dove mettere il risultato). La conversione la fa
 core.audio_track_notation.convert_audio_track, lanciata da
 gui.arrangement_view: una traccia SoundText con un box per clip, ciascuno
 alla posizione e con il nome della sua clip.
+
+Per rifare la conversione dopo una modifica all'audio ("riconvertire") c'e'
+la destinazione "Sostituisci il contenuto della traccia": il dialogo propone
+le scelte dell'ultima conversione della stessa traccia audio (ricordate
+finche' SoundText resta aperto) e, la prima volta, la traccia "Nome (note)"
+se esiste gia'.
 """
 
 from PySide6.QtWidgets import (
@@ -18,6 +24,9 @@ from core.i18n import tr
 from core.instruments import get_instrument, list_instrument_names
 from .quantize_options import QuantizeOptionsWidget
 from .audio_import_dialog import GRID_CHOICES, TERNARY_ENABLED_GRIDS, _min_freq_hz_for_instrument
+
+# per traccia audio: le scelte dell'ultima conversione (vedi remember_choices)
+_last_choices = {}
 
 MODES = (("melody", tr("Melodia")), ("drums", tr("Percussioni")), ("chords", tr("Accordi")))
 
@@ -81,19 +90,29 @@ class AudioTrackConvertDialog(QDialog):
         dest_form = QFormLayout()
         self.new_radio = QRadioButton(tr("Nuova traccia, strumento:"))
         self.existing_radio = QRadioButton(tr("Aggiungi alla traccia:"))
+        self.replace_radio = QRadioButton(tr("Sostituisci il contenuto della traccia:"))
         group = QButtonGroup(self)
         group.addButton(self.new_radio)
         group.addButton(self.existing_radio)
+        group.addButton(self.replace_radio)
         self.instrument_combo = QComboBox()
         self.instrument_combo.addItems(list_instrument_names())
         dest_form.addRow(self.new_radio, self.instrument_combo)
         self.target_combo = QComboBox()
         self.target_combo.addItems([t.name for t in project.tracks if not t.is_audio])
         dest_form.addRow(self.existing_radio, self.target_combo)
+        self.replace_combo = QComboBox()
+        self.replace_combo.addItems([t.name for t in project.tracks if not t.is_audio])
+        dest_form.addRow(self.replace_radio, self.replace_combo)
         self.new_radio.setChecked(True)
         self.existing_radio.setEnabled(self.target_combo.count() > 0)
+        self.replace_radio.setEnabled(self.replace_combo.count() > 0)
         self.existing_radio.setToolTip(tr("I box vanno dove sono le clip, o nello spazio libero piu' vicino."))
+        self.replace_radio.setToolTip(tr("Per rifare la conversione dopo una modifica all'audio: i box e il testo "
+                                         "della traccia si tolgono e al loro posto vanno quelli nuovi "
+                                         "(Ctrl+Z riporta quelli di prima)."))
         self.new_radio.toggled.connect(self._on_destination_changed)
+        self.replace_radio.toggled.connect(self._on_destination_changed)
         layout.addLayout(dest_form)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -104,7 +123,22 @@ class AudioTrackConvertDialog(QDialog):
         layout.addWidget(self.button_box)
 
         self._on_mode_changed()
+        self._restore_choices()
         self._on_destination_changed()
+
+    def _restore_choices(self):
+        """Le scelte dell'ultima conversione di questa traccia audio; senza,
+        la traccia "Nome (note)" se esiste (vedi docstring del modulo)."""
+        last = _last_choices.get(self.track.name, {})
+        if last:
+            self.mode_combo.setCurrentIndex(max(0, self.mode_combo.findData(last["mode"])))
+            self.voice_check.setChecked(last["voice"])
+            self.sevenths_check.setChecked(last["sevenths"])
+        target = last.get("target") or tr("{name} (note)", name=self.track.name)
+        index = self.replace_combo.findText(target)
+        if index >= 0:
+            self.replace_combo.setCurrentIndex(index)
+            self.replace_radio.setChecked(True)
 
     def _mode(self) -> str:
         return self.mode_combo.currentData()
@@ -133,6 +167,15 @@ class AudioTrackConvertDialog(QDialog):
     def _on_destination_changed(self):
         self.instrument_combo.setEnabled(self.new_radio.isChecked())
         self.target_combo.setEnabled(self.existing_radio.isChecked())
+        self.replace_combo.setEnabled(self.replace_radio.isChecked())
+
+    def remember_choices(self, target_name: str):
+        """Dopo la conversione: le scelte e la traccia in cui sono finiti i
+        box, proposte la prossima volta per questa traccia audio."""
+        _last_choices[self.track.name] = {
+            "mode": self._mode(), "voice": self.voice_check.isChecked(),
+            "sevenths": self.sevenths_check.isChecked(), "target": target_name,
+        }
 
     def accept(self):
         if self._mode() != "chords":
@@ -142,7 +185,10 @@ class AudioTrackConvertDialog(QDialog):
         super().accept()
 
     def destination(self):
-        """("new", strumento) o ("existing", nome della traccia)."""
+        """("new", strumento), ("existing", nome della traccia) o
+        ("replace", nome della traccia)."""
+        if self.replace_radio.isChecked():
+            return "replace", self.replace_combo.currentText()
         if self.existing_radio.isChecked():
             return "existing", self.target_combo.currentText()
         return "new", self.instrument_combo.currentText()

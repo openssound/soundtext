@@ -542,6 +542,36 @@ def test_convert_track_into_an_existing_track_uses_free_slots(tmp_path):
     assert w.project.find_track("Chitarra (note)") is None
 
 
+def test_reconvert_replaces_the_note_track_with_the_last_choices(tmp_path):
+    """Riconvertire dopo una modifica all'audio: il dialogo propone la
+    traccia "Nome (note)" e le scelte dell'ultima volta, e la sostituisce."""
+    import gui.audio_track_convert_dialog as convert_module
+    convert_module._last_choices.clear()
+    w, t = _chord_clip_window(tmp_path)
+    _run_track_conversion(w, "Chitarra", _chords_mode)
+    notes = w.project.get_track("Chitarra (note)")
+    notes.clips.append(Clip(name="Mio", text="4: c d e f", start_beat=60.0))   # aggiunto a mano
+    t = w.project.get_track("Chitarra")
+    t.audio_clips = [c for c in t.audio_clips if c.name == "Ritornello"]      # l'audio cambia
+    w._mark_dirty()
+    w.refresh_mixer()
+    seen = {}
+
+    def accept_as_proposed(dlg):
+        seen["mode"] = dlg.mode_combo.currentData()
+        seen["destination"] = dlg.destination()
+
+    _run_track_conversion(w, "Chitarra", accept_as_proposed)
+    assert seen == {"mode": "chords", "destination": ("replace", "Chitarra (note)")}
+    notes = w.project.get_track("Chitarra (note)")
+    assert [(c.name, c.start_beat) for c in notes.clips] == [("Ritornello", 32.0)]
+    assert notes.clips[0].text.startswith("4: 4C | 4Am | 4F | 4G")
+    assert [t.name for t in w.project.tracks].count("Chitarra (note)") == 1
+    w.undo()
+    assert [c.name for c in w.project.get_track("Chitarra (note)").clips] == ["Strofa", "Ritornello", "Mio"]
+    convert_module._last_choices.clear()
+
+
 def test_bass_dialog_can_follow_the_chords_of_an_audio_track(tmp_path):
     from gui.rhythm_generate_dialog import BassGenerateDialog, chord_source_tracks
     w, t = _chord_clip_window(tmp_path)
