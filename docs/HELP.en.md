@@ -3535,9 +3535,9 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   recorded in SoundText **follows the song tempo**: if you change the BPM it
   gets longer or shorter (time-stretch, without changing the pitch) and
   stays in time. An imported file instead lasts the same number of seconds;
-  right-click → **Follow the song tempo** to make it follow from then on
-  (the tempo where the clip starts counts: if the tempo changes in the
-  middle of the clip, the one at the start applies). **Speed
+  right-click → **Follow the song tempo** to make it follow from then on.
+  If the tempo changes inside the clip (for example after **Get the tempo
+  from the take**), each stretch follows the tempo of its own bar. **Speed
   (time-stretch)...** changes it by hand, in percent; the box shows the
   speed when it is not 100%. The first playback of a stretched clip takes a
   few seconds, then it stays in memory.

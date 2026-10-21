@@ -3634,9 +3634,9 @@ oppure **importando** file registrati con un altro programma.
   registrata in SoundText **segue il tempo del brano**: se cambi il BPM si
   allunga o si accorcia (time-stretch, senza cambiare l'intonazione) e resta
   a tempo. Un file importato invece dura gli stessi secondi; tasto destro →
-  **Segui il tempo del brano** per farlo seguire da li' in poi (vale il
-  tempo dove la clip comincia: se il tempo cambia a meta' clip, conta quello
-  all'inizio). **Velocita' (time-stretch)...** la cambia a mano, in
+  **Segui il tempo del brano** per farlo seguire da li' in poi. Se il tempo
+  cambia dentro la clip (per esempio dopo **Ricava il tempo dalla
+  ripresa**), ogni tratto segue il tempo della sua battuta. **Velocita' (time-stretch)...** la cambia a mano, in
   percentuale; il box mostra la velocita' quando non e' 100%. Il primo
   ascolto di una clip stirata richiede qualche secondo, poi resta in
   memoria.

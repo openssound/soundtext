@@ -3817,8 +3817,9 @@ programme.
   le BPM, elle s'allonge ou se raccourcit (time-stretch, sans changer la
   hauteur) et reste en mesure. Un fichier importé, lui, dure le même nombre
   de secondes ; clic droit → **Suivre le tempo du morceau** pour qu'il le
-  suive à partir de là (c'est le tempo au début du clip qui compte : s'il
-  change au milieu du clip, celui du début s'applique). **Vitesse
+  suive à partir de là. Si le tempo change à l'intérieur du clip (par
+  exemple après **Tirer le tempo de la prise**), chaque passage suit le
+  tempo de sa mesure. **Vitesse
   (time-stretch)...** la change à la main, en pourcentage ; le box montre
   la vitesse quand elle n'est pas à 100 %. La première écoute d'un clip
   étiré prend quelques secondes, puis il reste en mémoire.

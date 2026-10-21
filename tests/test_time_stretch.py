@@ -119,3 +119,39 @@ def test_free_take_warped_to_a_fixed_tempo(tmp_path):
     assert all(abs(b - 100) <= 0.3 for b in result.bar_tempos)
     assert result.first_beat == pytest.approx(2.4, abs=0.005)    # battuta 2 a 100 BPM
     assert max(abs(t - (2.4 + i * 0.6)) for i, t in enumerate(result.beats)) < 0.015
+
+
+def test_a_clip_follows_a_tempo_that_changes_inside_it(tmp_path):
+    from core.audio_slice import detect_attacks
+    from core.tempo_map import seconds_for_beats
+    clicks = np.zeros((8 * RATE, 1), np.float32)              # registrata a 120 BPM: un beat ogni 0,5 s
+    n = np.arange(int(0.03 * RATE))
+    for k in range(16):
+        clicks[k * RATE // 2:k * RATE // 2 + len(n), 0] = 0.8 * np.sin(2 * np.pi * 1000 * n / RATE) * np.exp(-n / 300)
+    path = str(tmp_path / "clicks.wav")
+    write_wav(path, clicks, RATE)
+    p = Project(tempo_bpm=120)
+    p.tempo_changes = [(1, 120), (3, 60)]                     # dalla battuta 3 (beat 8) a 60 BPM
+    clip = AudioClip("Click", path, 0.0, source_bpm=120.0)
+    p.add_audio_track("A").audio_clips.append(clip)
+    assert at.adapt_clips_to_tempo(p) == [clip]
+    assert clip.stretch == pytest.approx(1.5)                  # 4 s a 120 + 8 s a 60 = 12 s
+    tm = build_tempo_beat_map(p)
+    assert at.clip_duration_beats(clip, tm) == pytest.approx(16.0)
+    layer = at.build_audio_layers(p, p.tracks, tm)[0]
+    assert layer.segments == ((0.0, 4.0, 1.0), (4.0, 8.0, 2.0))
+    found = detect_attacks(_mix(p)[:, None], RATE)
+    expected = [seconds_for_beats(tm, k) for k in range(16)]   # 0, 0.5 ... 3.5, poi 4, 5 ... 11
+    assert len(found) >= 15
+    for t in found:
+        assert min(abs(t - e) for e in expected) < 0.012        # ogni click sul suo beat
+    assert max(found) == pytest.approx(11.0, abs=0.012)
+
+
+def test_a_constant_tempo_keeps_a_single_stretch(tmp_path):
+    p = Project(tempo_bpm=100)
+    clip = AudioClip("S", _sine(tmp_path), 0.0, source_bpm=120.0)
+    p.add_audio_track("A").audio_clips.append(clip)
+    at.adapt_clips_to_tempo(p)
+    assert clip.stretch == pytest.approx(1.2)
+    assert at.build_audio_layers(p, p.tracks, build_tempo_beat_map(p))[0].segments == ()

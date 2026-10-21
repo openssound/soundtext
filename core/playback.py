@@ -248,9 +248,11 @@ class _PersistentSynth:
     SoundFont ne' il probing dei driver audio che fluidsynth esegue alla
     costruzione del Synth se l'utente non riproduce mai nulla.
 
-    Quando non e' richiesto nessun override per-strumento, c'e' un solo
-    synth condiviso (self._synth) con un solo SoundFont caricato, come
-    nella versione originale. Quando invece uno o piu' strumenti hanno un
+    Ogni SoundFont ha il suo synth (self._override_synths), con quel solo
+    SoundFont caricato, creato la prima volta che serve e poi riusato:
+    anche quello generale, che prima finiva insieme agli altri in un synth
+    unico, e cambiandolo nelle Opzioni il suono restava quello caricato per
+    ultimo (vedi sotto). Quando inoltre uno o piu' strumenti hanno un
     SoundFont assegnato (core.settings.get_instrument_soundfont), il
     rendering NON puo' avvenire in un unico passaggio multi-canale: caricare
     piu' SoundFont nella STESSA istanza di synth e instradare i canali con
@@ -275,12 +277,9 @@ class _PersistentSynth:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._synth = None
-        self._font_ids: Dict[str, int] = {}
-        # Un synth DEDICATO per ciascun SoundFont usato come override
+        # Un synth DEDICATO per ciascun SoundFont, quello generale e quelli
         # per-strumento (un solo font ciascuno): vedi la docstring della
-        # classe per il perche' non basta instradare i canali in un unico
-        # synth condiviso con piu' font caricati.
+        # classe per il perche' non basta un unico synth con piu' font caricati.
         self._override_synths: Dict[str, object] = {}
 
     def _new_synth(self):
@@ -305,37 +304,20 @@ class _PersistentSynth:
         Playback -> Volume di sintesi (gain)... dopo aver salvato il nuovo
         default con core.settings.set_playback_gain."""
         with self._lock:
-            if self._synth is not None:
-                self._synth.set_gain(value)
             for synth in self._override_synths.values():
                 synth.set_gain(value)
 
-    def _ensure_font_loaded(self, soundfont: str) -> int:
-        """Carica soundfont sul synth condiviso self._synth (usato quando
-        non ci sono override attivi, o per il gruppo di canali 'di
-        default' del rendering multi-passata)."""
-        if self._synth is None:
-            self._synth = self._new_synth()
-        sfid = self._font_ids.get(soundfont)
-        if sfid is not None:
-            return sfid
-        # sfload ritorna -1 (senza sollevare eccezioni) se il file non e' un
-        # SoundFont valido/leggibile: non lo si mette in cache in quel caso,
-        # altrimenti un fallimento verrebbe scambiato per un caricamento
-        # riuscito e il rendering proseguirebbe silenziosamente senza preset
-        # (nessun suono) invece di far ripiegare il chiamante sul CLI
-        # fluidsynth.
-        with _suppress_native_stderr():
-            sfid = self._synth.sfload(soundfont)
-        if sfid == -1:
-            raise RuntimeError(tr("SoundFont non valido: {soundfont}", soundfont=soundfont))
-        self._font_ids[soundfont] = sfid
-        return sfid
+    def _ensure_font_loaded(self, soundfont: str):
+        """Il synth del SoundFont generale (usato quando non ci sono override
+        attivi, o per il gruppo di canali 'di default' del rendering
+        multi-passata): lo stesso, dedicato, degli override. Caricarlo in un
+        synth che ne ha gia' un altro non basterebbe: suonerebbe quello
+        caricato per ultimo (vedi la docstring della classe)."""
+        return self._ensure_override_synth(soundfont)
 
     def _ensure_override_synth(self, soundfont: str):
         """Synth dedicato con un SOLO SoundFont caricato (soundfont), pagato
-        una sola volta e poi riusato — mai scaricato, stesso principio del
-        synth condiviso di default."""
+        una sola volta e poi riusato — mai scaricato."""
         synth = self._override_synths.get(soundfont)
         if synth is not None:
             return synth
@@ -457,8 +439,7 @@ class _PersistentSynth:
         try:
             groups = []
             if default_channels:
-                self._ensure_font_loaded(soundfont)
-                groups.append((self._synth, default_channels))
+                groups.append((self._ensure_font_loaded(soundfont), default_channels))
             for path, chans in override_groups.items():
                 try:
                     synth = self._ensure_override_synth(path)
@@ -502,8 +483,8 @@ class _PersistentSynth:
                      channel_levels: Optional[dict] = None) -> bool:
         """Rendering di un file con una sola porta MIDI (16 canali)."""
         if not channel_overrides:
-            self._ensure_font_loaded(soundfont)
-            return self._render_group(self._synth, midi_path, wav_path, stop_check, reverb_room, channel_levels)
+            synth = self._ensure_font_loaded(soundfont)
+            return self._render_group(synth, midi_path, wav_path, stop_check, reverb_room, channel_levels)
         return self._render_multi(midi_path, wav_path, soundfont, stop_check, channel_overrides, reverb_room,
                                   channel_levels)
 

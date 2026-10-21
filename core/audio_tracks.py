@@ -640,6 +640,10 @@ class AudioLayer:
     # build_audio_layers): la dissolvenza in entrata ne tiene conto.
     head_skip: float = 0.0
     stretch: float = 1.0
+    # Una clip che segue un tempo che cambia al suo interno: ((da, a, stretch)
+    # in secondi della parte suonata del file), ogni tratto al tempo della sua
+    # battuta (vedi tempo_segments). Vuoto = 'stretch' uguale per tutta.
+    segments: tuple = ()
 
 
 def db_to_gain(db: float) -> float:
@@ -689,7 +693,88 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
 
 
 def _layer_stretch_key(layer: "AudioLayer", samplerate: int) -> tuple:
-    return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate)
+    return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate, layer.segments)
+
+
+SEGMENT_CROSSFADE = 0.005    # fra un tratto e l'altro di uno stretch a tratti
+
+
+def tempo_segments(clip: AudioClip, tempo_map, trim_start: float) -> tuple:
+    """I tratti di una clip che segue il tempo del brano (source_bpm > 0)
+    dove il tempo cambia dentro la clip: ((da, a, stretch), ...) in secondi
+    della parte suonata del file (che comincia a trim_start), ciascuno allo
+    stretch del tempo della sua battuta. () se il tempo non cambia (basta
+    lo stretch della clip)."""
+    if clip.source_bpm <= 0:
+        return ()
+    info = cached_wav_info(clip.file)
+    if info is None:
+        return ()
+    from .tempo_map import value_at_beat
+    per_second = clip.source_bpm / 60.0                     # beat del brano per secondo di file
+    length = info.seconds - trim_start - max(0.0, clip.trim_end)
+    if length <= 0:
+        return ()
+    first = clip.start_beat + (trim_start - max(0.0, clip.trim_start)) * per_second
+    last = first + length * per_second
+    cuts = [first] + [b for b, _v in tempo_map if first + 1e-6 < b < last - 1e-6] + [last]
+    if len(cuts) == 2:
+        return ()
+    out = []
+    for a, b in zip(cuts, cuts[1:]):
+        bpm = value_at_beat(tempo_map, a) or clip.source_bpm
+        stretch = max(MIN_STRETCH, min(MAX_STRETCH, clip.source_bpm / bpm))
+        out.append((round((a - first) / per_second, 6), round((b - first) / per_second, 6), round(stretch, 6)))
+    return tuple(out)
+
+
+def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Optional[tuple] = None) -> np.ndarray:
+    """samples stirati tratto per tratto (segments, vedi tempo_segments):
+    ogni tratto alla sua lunghezza esatta, uniti con una dissolvenza
+    incrociata di SEGMENT_CROSSFADE (ogni tratto sborda un poco nel
+    successivo, cosi' all'unione non c'e' un clic). In cache come stretched."""
+    if key is not None:
+        with _stretch_lock:
+            hit = _stretch_cache.get(key)
+            if hit is not None:
+                _stretch_cache.move_to_end(key)
+        if hit is not None:
+            return hit
+    pad = int(SEGMENT_CROSSFADE * rate)
+    pieces = []
+    for a, b, stretch in segments:
+        first, last = int(round(a * rate)), min(len(samples), int(round(b * rate)))
+        if last <= first:
+            continue
+        piece = stretched(samples[first:min(len(samples), last + pad)], rate, stretch)
+        exact = int(round((last - first) * stretch))
+        need = exact + pad
+        if len(piece) < need:
+            piece = np.concatenate([piece, np.zeros((need - len(piece), piece.shape[1]), np.float32)])
+        pieces.append((piece[:need], exact))
+    if not pieces:
+        return samples[:0]
+    total = sum(exact for _p, exact in pieces) + pad
+    out = np.zeros((total, samples.shape[1]), dtype=np.float32)
+    ramp = np.linspace(0.0, 1.0, pad, dtype=np.float32)[:, None] if pad else None
+    pos = 0
+    for k, (piece, exact) in enumerate(pieces):
+        piece = piece.astype(np.float32, copy=True)
+        if pad and k > 0:
+            piece[:pad] *= ramp                     # entra mentre il tratto prima esce
+        if pad and k < len(pieces) - 1:
+            piece[exact:exact + pad] *= ramp[::-1]
+        out[pos:pos + len(piece)] += piece
+        pos += exact
+    out = out[:pos]
+    if key is not None:
+        with _stretch_lock:
+            _stretch_cache[key] = out
+            total_bytes = sum(a.nbytes for a in _stretch_cache.values())
+            while total_bytes > _STRETCH_CACHE_MAX_BYTES and len(_stretch_cache) > 1:
+                _old, old = _stretch_cache.popitem(last=False)
+                total_bytes -= old.nbytes
+    return out
 
 
 def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SAMPLE_RATE,
@@ -700,7 +785,7 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
     quante ne ha calcolate."""
     done = 0
     for layer in layers:
-        if abs(layer.stretch - 1.0) <= 1e-6:
+        if abs(layer.stretch - 1.0) <= 1e-6 and not layer.segments:
             continue
         if stop_check and stop_check():
             break
@@ -717,7 +802,10 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
         first = int(round(layer.trim_start * samplerate))
         last = len(samples) - int(round(layer.trim_end * samplerate))
         if last > first:
-            stretched(samples[first:last], samplerate, layer.stretch, key=key)
+            if layer.segments:
+                stretched_segments(samples[first:last], samplerate, layer.segments, key=key)
+            else:
+                stretched(samples[first:last], samplerate, layer.stretch, key=key)
             done += 1
     return done
 
@@ -733,16 +821,26 @@ def _tracks_with_tempo_markers(project: Project) -> List[Track]:
 
 def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     """Le clip che seguono il tempo del brano (source_bpm > 0) prendono lo
-    stretch del tempo in vigore dove cominciano. Ritorna quelle cambiate."""
+    stretch che le fa durare, con la mappa del tempo di adesso, tante battute
+    quante ne occupavano al loro tempo: inizio e fine cadono sui beat giusti
+    anche se il tempo cambia dentro la clip (dentro, ogni tratto segue la sua
+    battuta: vedi tempo_segments). Ritorna quelle cambiate."""
     following = [c for t in project.tracks if t.is_audio for c in t.audio_clips if c.source_bpm > 0]
     if not following:
         return []
-    from .tempo_map import build_tempo_beat_map, value_at_beat
+    from .tempo_map import build_tempo_beat_map, seconds_for_beats, value_at_beat
     tempo_map = build_tempo_beat_map(project, tracks=_tracks_with_tempo_markers(project))
     changed = []
     for clip in following:
-        bpm = value_at_beat(tempo_map, clip.start_beat) or project.tempo_bpm
-        stretch = round(max(MIN_STRETCH, min(MAX_STRETCH, clip.source_bpm / bpm)), 6)
+        info = cached_wav_info(clip.file)
+        file_part = (info.seconds - max(0.0, clip.trim_start) - max(0.0, clip.trim_end)) if info else 0.0
+        if file_part > 0:
+            beats = file_part * clip.source_bpm / 60.0          # le battute che occupa al suo tempo
+            song = seconds_for_beats(tempo_map, clip.start_beat + beats) - seconds_for_beats(tempo_map, clip.start_beat)
+            ratio = song / file_part
+        else:
+            ratio = clip.source_bpm / (value_at_beat(tempo_map, clip.start_beat) or project.tempo_bpm)
+        stretch = round(max(MIN_STRETCH, min(MAX_STRETCH, ratio)), 6)
         if abs(stretch - clip.stretch) > 1e-6:
             clip.stretch = stretch
             changed.append(clip)
@@ -831,6 +929,7 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
                 trim_end=max(0.0, clip.trim_end), gain=db_to_gain(clip.gain_db) * track_gain,
                 pan=track.pan, fade_in=max(0.0, clip.fade_in), fade_out=max(0.0, clip.fade_out),
                 fade_shape=clip.fade_shape, head_skip=head_skip, stretch=stretch,
+                segments=tempo_segments(clip, tempo_map, trim_start),
             ))
     return layers
 
@@ -895,7 +994,9 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         part = samples[first:last]
         if len(part) == 0:
             continue
-        if abs(layer.stretch - 1.0) > 1e-6:
+        if layer.segments:
+            part = stretched_segments(part, samplerate, layer.segments, key=_layer_stretch_key(layer, samplerate))
+        elif abs(layer.stretch - 1.0) > 1e-6:
             part = stretched(part, samplerate, layer.stretch, key=_layer_stretch_key(layer, samplerate))
         part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
         if part.shape[1] == 1:

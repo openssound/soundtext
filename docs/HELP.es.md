@@ -3730,8 +3730,8 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   se alarga o se acorta (time-stretch, sin cambiar la afinación) y sigue a
   tempo. Un archivo importado en cambio dura los mismos segundos; clic
   derecho → **Seguir el tempo de la canción** para que lo siga a partir de
-  ahí (vale el tempo donde empieza el clip: si el tempo cambia a mitad del
-  clip, cuenta el del principio). **Velocidad (time-stretch)...** la cambia
+  ahí. Si el tempo cambia dentro del clip (por ejemplo después de **Obtener
+  el tempo de la toma**), cada tramo sigue el tempo de su compás. **Velocidad (time-stretch)...** la cambia
   a mano, en porcentaje; el box muestra la velocidad cuando no es 100%. La
   primera escucha de un clip estirado tarda unos segundos, luego queda en
   memoria.
