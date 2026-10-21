@@ -307,7 +307,7 @@ def test_split_and_precise_trim_from_the_box_menu(tmp_path):
 
 
 def test_convert_clip_to_notation_creates_a_new_track_aligned_with_the_clip(tmp_path, monkeypatch):
-    import gui.arrangement_view as av
+    import gui.arrangement_audio as av
     w, t, clip, item = _window_with_clip(tmp_path)
     t.input_profile = "chitarra"
     seen = {}
