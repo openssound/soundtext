@@ -33,6 +33,8 @@ class Clip:
 
 # Forme delle dissolvenze di una clip audio (AudioClip.fade_shape).
 FADE_SHAPES = ("linear", "equal")
+# Canale del file che una clip audio usa (AudioClip.channel).
+CLIP_CHANNELS = ("stereo", "left", "right", "mono")
 
 
 @dataclass(frozen=True)
@@ -80,6 +82,14 @@ class AudioClip:
     # brano, e lo stretch si ricalcola quando il tempo cambia
     # (core.audio_tracks.adapt_clips_to_tempo). 0 = durata fissa.
     source_bpm: float = 0.0
+    # Elaborazioni non distruttive (core.audio_tracks, applicate nel mix):
+    # trasposizione in semitoni (anche frazionari) senza cambiare la
+    # velocita', suono al contrario, fase invertita e canale del file usato
+    # ("stereo", "left", "right" o "mono" = somma dei due).
+    transpose: float = 0.0
+    reverse: bool = False
+    invert: bool = False
+    channel: str = "stereo"
 
 
 @dataclass

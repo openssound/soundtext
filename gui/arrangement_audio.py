@@ -43,6 +43,27 @@ class AudioClipActions:
                                         "(time-stretch) per restare a tempo."))
         speed_action = menu.addAction(tr("Velocita' (time-stretch)...")) if not missing else None
         trim_action = menu.addAction(tr("Taglio preciso (secondi)...")) if not missing else None
+        transpose_action = tuning_action = reverse_action = invert_action = None
+        channel_actions = {}
+        if not missing:
+            transpose_action = menu.addAction(tr("Trasponi...") if not clip.transpose else
+                                              tr("Trasponi ({semitones:+g} semitoni)...", semitones=clip.transpose))
+            tuning_action = menu.addAction(tr("Controlla l'accordatura..."))
+            reverse_action = menu.addAction(tr("Suona al contrario"))
+            reverse_action.setCheckable(True)
+            reverse_action.setChecked(clip.reverse)
+            invert_action = menu.addAction(tr("Inverti la fase"))
+            invert_action.setCheckable(True)
+            invert_action.setChecked(clip.invert)
+            info = audio_tracks.cached_wav_info(clip.file)
+            if info is not None and info.channels >= 2:
+                channel_menu = menu.addMenu(tr("Canale"))
+                for value, label in (("stereo", tr("Stereo")), ("left", tr("Solo sinistro")),
+                                     ("right", tr("Solo destro")), ("mono", tr("Mono (somma dei due)"))):
+                    action = channel_menu.addAction(label)
+                    action.setCheckable(True)
+                    action.setChecked(clip.channel == value)
+                    channel_actions[action] = value
         split_action = None
         if not missing and at_beat is not None and at_beat > clip.start_beat:
             split_action = menu.addAction(tr("Dividi qui (beat {at_beat:g})", at_beat=at_beat))
@@ -97,6 +118,20 @@ class AudioClipActions:
             self._edit_clip_speed(track_name, clip)
         elif trim_action is not None and chosen is trim_action:
             self._edit_clip_trim(track_name, clip)
+        elif transpose_action is not None and chosen is transpose_action:
+            self._transpose_clip(track_name, clip)
+        elif tuning_action is not None and chosen is tuning_action:
+            self.check_clip_tuning(track_name, clip)
+        elif reverse_action is not None and chosen is reverse_action:
+            clip.reverse = not clip.reverse
+            self.on_clip_changed(track_name)
+        elif invert_action is not None and chosen is invert_action:
+            clip.invert = not clip.invert
+            self.on_clip_changed(track_name)
+        elif chosen in channel_actions:
+            if clip.channel != channel_actions[chosen]:
+                clip.channel = channel_actions[chosen]
+                self.on_clip_changed(track_name)
         elif split_action is not None and chosen is split_action:
             self._split_clip(track_name, clip, at_beat)
         elif chosen is duplicate_action:
@@ -337,6 +372,40 @@ class AudioClipActions:
         self._run_track_conversion(track_name, [(dlg.destination(), options, default_octave)],
                                    on_placed=dlg.remember_choices)
 
+    def key_from_audio_track(self, track_name: str):
+        """La tonalita' del brano dagli accordi riconosciuti nella traccia
+        audio (core.audio_track_notation, core.key_detect): serve al giro
+        armonico e alla melodia. Chiede prima di cambiarla."""
+        from core.audio_track_notation import audio_track_chord_text
+        from core.key_detect import detect_key_of_text
+        from .worker import run_with_wait
+        project = self.host.project
+        track = project.get_track(track_name)
+        try:
+            text = run_with_wait(self, tr("Riconosco gli accordi di '{name}'...", name=track_name),
+                                 audio_track_chord_text, project, track)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Tonalita' dalla ripresa"), str(e))
+            return
+        key = detect_key_of_text(text, project.patterns) if text.strip() else None
+        if not key:
+            QMessageBox.information(self, tr("Tonalita' dalla ripresa"), tr(
+                "Nella traccia audio '{name}' non ho riconosciuto accordi: serve una parte che suoni accordi "
+                "(chitarra ritmica, pianoforte, un brano intero), non una melodia.", name=track_name))
+            return
+        if key == project.key:
+            QMessageBox.information(self, tr("Tonalita' dalla ripresa"), tr(
+                "La tonalita' riconosciuta in '{name}' e' {key}, quella gia' impostata.", name=track_name, key=key))
+            return
+        current = project.key or tr("non impostata")
+        answer = QMessageBox.question(self, tr("Tonalita' dalla ripresa"), tr(
+            "Dagli accordi di '{name}' la tonalita' e' {key}.\nImpostarla come tonalita' del brano "
+            "(ora: {current})?", name=track_name, key=key, current=current))
+        if answer == QMessageBox.Yes:
+            self.host.key_combo.setCurrentText(key)        # come scriverla a mano (_on_key_changed)
+            self.host.statusBar().showMessage(tr("Tonalita' del brano: {key} (da '{name}').",
+                                                 key=key, name=track_name), 6000)
+
     def reconvert_tracks(self, note_track_names):
         """Riconverti: rifa' la conversione di ogni traccia di note dalla sua
         traccia audio, con le scelte salvate (Track.conversion), senza
@@ -471,6 +540,51 @@ class AudioClipActions:
         if not ok or value == clip.gain_db:
             return
         clip.gain_db = value
+        self.on_clip_changed(track_name)
+
+    def _transpose_clip(self, track_name: str, clip: AudioClip):
+        """Trasposizione senza cambiare la velocita' (AudioClip.transpose):
+        anche frazionaria, per correggere una ripresa scordata."""
+        value, ok = QInputDialog.getDouble(
+            self, tr("Trasponi"),
+            tr("Semitoni (0 = originale, negativo = piu' basso; i decimali correggono "
+               "una ripresa scordata: 0,1 = 10 cent):"),
+            clip.transpose, -24.0, 24.0, 2, step=0.1)
+        if not ok or abs(value - clip.transpose) < 1e-6:
+            return
+        clip.transpose = round(value, 3)
+        self.on_clip_changed(track_name)
+
+    def check_clip_tuning(self, track_name: str, clip: AudioClip, after_recording: bool = False):
+        """Di quanto la clip e' sopra o sotto il La 440 (core.tuning); se lo
+        e' abbastanza da sentirsi, propone di correggerla tutta con la
+        trasposizione. Dopo una registrazione tace se la ripresa e' intonata
+        o non ha un'accordatura chiara (batteria)."""
+        from core import tuning
+        from .worker import run_with_wait
+        try:
+            offset = run_with_wait(self, tr("Controllo l'accordatura di '{name}'...", name=clip.name),
+                                   tuning.clip_tuning, clip)
+        except RuntimeError as e:
+            if not after_recording:
+                QMessageBox.warning(self, tr("Accordatura"), str(e))
+            return
+        if not tuning.detune_to_correct(offset):
+            if not after_recording:
+                QMessageBox.information(self, tr("Accordatura"), tr(
+                    "'{name}' e' intonata (La a 440 Hz).", name=clip.name) if offset is not None else tr(
+                    "In '{name}' non trovo un'accordatura chiara (serve una parte con delle note, "
+                    "non batteria o rumore).", name=clip.name))
+            return
+        cents = int(round(abs(offset) * 100))
+        where = tr("calante") if offset < 0 else tr("crescente")
+        answer = QMessageBox.question(self, tr("Ripresa scordata"), tr(
+            "'{name}' e' {where} di {cents} cent rispetto al La a 440 Hz.\n\nCorreggerla tutta? "
+            "(Trasponi {semitones:+.2f} semitoni: il file non cambia, si puo' annullare.)",
+            name=clip.name, where=where, cents=cents, semitones=-offset))
+        if answer != QMessageBox.Yes:
+            return
+        clip.transpose = round(clip.transpose - offset, 3)
         self.on_clip_changed(track_name)
 
     def _tempo_from_clip(self, track_name: str, clip: AudioClip):

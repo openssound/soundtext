@@ -19,7 +19,7 @@ import re
 import os
 from typing import Optional, List
 
-from .model import Project, Clip, AudioClip, AudioTake, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES
+from .model import Project, Clip, AudioClip, AudioTake, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES, CLIP_CHANNELS
 from .arrangement import flatten_clips_to_text
 from .notation import upgrade_midi_refs
 from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key, clamp_params
@@ -234,6 +234,12 @@ RE_AUDIO_MUTE = re.compile(r'(?<![\w=])mute(?![\w=])')
 # AudioClip.stretch e source_bpm).
 RE_AUDIO_STRETCH = re.compile(r'\bstretch\s*=\s*(\d+(?:\.\d+)?)')
 RE_AUDIO_BPM = re.compile(r'\bbpm\s*=\s*(\d+(?:\.\d+)?)')
+# Elaborazioni della clip (dalla 1.10): 'transpose=-0.3' in semitoni,
+# 'reverse', 'invert' e 'channel=left' (vedi AudioClip.transpose ...).
+RE_AUDIO_TRANSPOSE = re.compile(r'\btranspose\s*=\s*(-?\d+(?:\.\d+)?)')
+RE_AUDIO_REVERSE = re.compile(r'(?<![\w=])reverse(?![\w=])')
+RE_AUDIO_INVERT = re.compile(r'(?<![\w=])invert(?![\w=])')
+RE_AUDIO_CHANNEL = re.compile(r'\bchannel\s*=\s*(\w+)')
 # Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
 # ('take=N', da 1), poi una riga per ripresa:
 #   take "Ripresa 2" file="Voce ripresa 2.wav" delta=0.013
@@ -273,6 +279,14 @@ def _parse_audio_clip_body(name: str, start_beat: float, body: str,
     bpm = RE_AUDIO_BPM.search(rest)
     if bpm:
         clip.source_bpm = float(bpm.group(1))
+    tr = RE_AUDIO_TRANSPOSE.search(rest)
+    if tr:
+        clip.transpose = max(-24.0, min(24.0, float(tr.group(1))))
+    clip.reverse = RE_AUDIO_REVERSE.search(rest) is not None
+    clip.invert = RE_AUDIO_INVERT.search(rest) is not None
+    ch = RE_AUDIO_CHANNEL.search(rest)
+    if ch and ch.group(1) in CLIP_CHANNELS:
+        clip.channel = ch.group(1)
     if len(takes) > 1:
         active = RE_AUDIO_ACTIVE_TAKE.search(rest)
         index = int(active.group(1)) - 1 if active else 0
@@ -341,6 +355,14 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
         parts.append(f"stretch={round(clip.stretch, 6):g}")
     if clip.source_bpm:
         parts.append(f"bpm={round(clip.source_bpm, 3):g}")
+    if abs(clip.transpose) > 1e-6:
+        parts.append(f"transpose={round(clip.transpose, 3):g}")
+    if clip.reverse:
+        parts.append("reverse")
+    if clip.invert:
+        parts.append("invert")
+    if clip.channel != "stereo":
+        parts.append(f"channel={clip.channel}")
     if len(clip.takes) > 1:
         parts.append(f"take={clip.active_take + 1}")
     lines = [" ".join(parts)]

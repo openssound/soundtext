@@ -23,7 +23,7 @@ from core.audio_recording import (
     loop_clip, loop_pass_count, punch_clip, recorded_clip, save_take, take_preview,
 )
 
-from .theme import TEXT_DIM, WARN
+from .theme import GOOD, TEXT_DIM, WARN
 from .worker import Worker
 from core.i18n import tr
 
@@ -156,6 +156,13 @@ class AudioRecordDialog(QDialog):
         meter_row.addWidget(self.meter, 1)
         meter_row.addWidget(self.meter_db_label)
         form.addRow(tr("Livello:"), meter_row)
+
+        # Accordatore (core.tuning): nota e scarto in cent dall'ingresso,
+        # finche' non si registra
+        self.tuner_label = QLabel("—")
+        self.tuner_label.setToolTip(tr("La nota che arriva dall'ingresso e di quanti cent e' sopra (+) o "
+                                       "sotto (−) quella giusta, con il La a 440 Hz. Suona una nota sola."))
+        form.addRow(tr("Accordatore:"), self.tuner_label)
 
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("Normale"), "normal")
@@ -394,6 +401,7 @@ class AudioRecordDialog(QDialog):
             self.meter.push_peak(peak)
             self.meter_db_label.setText(
                 "CLIP!" if self.meter.clipping else f"{max(-60.0, level_to_db(peak)):.0f} dB")
+        self._update_tuner()
         if self._recorder is not None:
             elapsed = self._recorder.elapsed_seconds
             count_in = self._backing.count_in_seconds
@@ -408,6 +416,22 @@ class AudioRecordDialog(QDialog):
                                     n=int((elapsed - count_in) // loop) + 1), recording=True)
             else:
                 self._set_status(tr("● REC  {0}", self._mmss(elapsed - count_in)), recording=True)
+
+    def _update_tuner(self):
+        monitor = self._monitor if self._recorder is None else None
+        if monitor is None or not hasattr(monitor, "read_recent"):
+            self.tuner_label.setText("—")
+            self.tuner_label.setStyleSheet(f"color: {TEXT_DIM};")
+            return
+        from core import tuning
+        freq = tuning.block_pitch(monitor.read_recent(tuning.TUNER_BLOCK_SECONDS), monitor.samplerate)
+        if freq is None:
+            return                     # resta l'ultima nota letta (le note che si spengono)
+        name, cents = tuning.note_and_cents(freq)
+        sign = "+" if cents > 0 else "−" if cents < 0 else "±"
+        self.tuner_label.setText(tr("{note}  {sign}{cents} cent  ({hz:.1f} Hz)",
+                                    note=name, sign=sign, cents=abs(cents), hz=freq))
+        self.tuner_label.setStyleSheet(f"color: {GOOD if abs(cents) <= 5 else WARN};")
 
     # ------------------------------------------------------------ registrazione
 

@@ -3532,6 +3532,24 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   its peak reaches −1 dB.
 - **Mute clip** (right-click): the clip stays in place, drawn in grey, but
   does not play; the same entry turns it back on.
+- **Transpose...** (right-click): raises or lowers the clip by a few
+  semitones without changing its speed. Decimals are accepted (0.1 = 10
+  cents), to fix a slightly out-of-tune take.
+- **Check tuning...** (right-click): measures how many cents the clip is
+  above or below A = 440 Hz and, if it is audible, offers to correct all of
+  it with Transpose. The same check runs by itself after each recording,
+  and stays quiet if the take is in tune or is drums.
+- **Play in reverse** and **Invert phase** (right-click): the clip plays
+  from the end to the start, or with its phase flipped (for two microphones
+  on the same instrument that cancel each other). Splitting and trimming a
+  reversed clip follows what you hear.
+- **Channel** (right-click, stereo files only): **Left only**, **Right
+  only** or **Mono (sum of both)**, for example when the guitar only went
+  into input 1 of a stereo take.
+- **Song key from this track...** (the audio track's **⋯** menu):
+  recognizes the track's chords and offers the resulting key as the song
+  key, useful for the chord progression and the melody.
+  None of these entries touch the file, and Ctrl+Z undoes them.
 - **Convert to notation...** (right-click on a clip): turns the playing part
   of the clip into notes, with the same engine as "Import audio" (10bis),
   in a **new track** with the chosen instrument
@@ -3603,6 +3621,9 @@ recording dialog opens:
 - **Level**: the meter moves as soon as the dialog is open: adjust the gain
   on the audio interface so that the loudest parts reach around -12/-6 dB
   without lighting the red LED (clipping).
+- **Tuner**: below the meter, the note coming from the input and how many
+  cents it is above or below the right one (A = 440 Hz), in green when it is
+  within 5 cents. Play one note at a time.
 - **Start from**: current position, start of loop A (if set) or start of
   the song.
 - **Count-in** (0-4 bars of click before the song starts) and **Metronome
@@ -3691,6 +3712,11 @@ and does not play: right-click → **Locate file...** to point to it again.
   (audible tracks, audio included) to a 48 kHz / 24-bit WAV. A SoundFont is
   needed for tracks with notes; a song made only of audio tracks can be
   exported even without one.
+- **Project → Export → All tracks, one file each (stems)...** writes one
+  WAV for each unmuted track into a "Name - tracks" folder, with effects or
+  dry. They all start at the beginning of the song and have the same
+  length: in another program (or for another musician) they line up by
+  themselves.
 - **Track → Export this track → WAV...**, or **right-click on a track's name
   → Export WAV (this one only)...**, exports
   only that track to a WAV, with notation or audio, as it would sound in Solo

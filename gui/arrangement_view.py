@@ -1261,6 +1261,8 @@ class ArrangementView(AudioClipActions, QWidget):
                 reconvert_action = menu.addAction(tr("Riconverti le tracce collegate ({n})", n=len(linked)))
                 reconvert_action.setToolTip(", ".join(linked))
                 reconvert_action.setEnabled(bool(audible_clips(track)))
+            key_action = menu.addAction(tr("Tonalita' del brano da questa traccia..."))
+            key_action.setEnabled(bool(audible_clips(track)))
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
@@ -1277,6 +1279,8 @@ class ArrangementView(AudioClipActions, QWidget):
                 self.convert_track_to_notation(track_name)
             elif reconvert_action is not None and chosen is reconvert_action:
                 self.reconvert_tracks(linked)
+            elif chosen is key_action:
+                self.key_from_audio_track(track_name)
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:

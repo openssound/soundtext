@@ -625,6 +625,8 @@ class MixerMixin:
             message = tr("Ripresa '{name}' aggiunta alla traccia '{0}' (file: {file}).", track.name, name=clip.name,
                          file=clip.file)
         self.statusBar().showMessage(message, 6000)
+        if target is None and len(clip.takes) <= 1 and clip in track.audio_clips:
+            self.arrangement_view.check_clip_tuning(track.name, clip, after_recording=True)
 
     def remove_track(self):
         if not self.current_track_name:

@@ -636,11 +636,18 @@ class InputMonitor:
         self._stream = None
         self._peak = 0.0
         self._lock = threading.Lock()
+        # gli ultimi campioni (mono) per l'accordatore (core.tuning)
+        self._recent = np.zeros(0, dtype=np.float32)
+
+    RECENT_FRAMES = 8192
 
     def _callback(self, indata, frames, time_info, status):
-        peak = float(np.max(np.abs(indata[:, list(self.channels)]))) if frames else 0.0
+        part = indata[:, list(self.channels)]
+        peak = float(np.max(np.abs(part))) if frames else 0.0
+        mono = part.mean(axis=1).astype(np.float32) if frames else np.zeros(0, np.float32)
         with self._lock:
             self._peak = max(self._peak, peak)
+            self._recent = np.concatenate([self._recent, mono])[-self.RECENT_FRAMES:]
 
     def start(self):
         in_channels = max(self.channels) + 1
@@ -670,6 +677,17 @@ class InputMonitor:
         with self._lock:
             peak, self._peak = self._peak, 0.0
         return peak
+
+    @property
+    def samplerate(self) -> int:
+        rate = getattr(self._stream, "samplerate", None)
+        return int(rate) if rate else (self.fallback_rate or AUDIO_SAMPLE_RATE)
+
+    def read_recent(self, seconds: float) -> np.ndarray:
+        """Gli ultimi 'seconds' di ingresso, mono (per l'accordatore)."""
+        with self._lock:
+            recent = self._recent
+        return recent[-max(1, int(seconds * self.samplerate)):]
 
     def stop(self):
         if self._stream is not None:

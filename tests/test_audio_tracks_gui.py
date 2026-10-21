@@ -132,7 +132,9 @@ def test_audio_menus_offer_audio_actions_only(tmp_path):
     item = next(it for it in view.canvas._scene.items() if isinstance(it, AudioBoxItem))
     box = _menu_actions(lambda: view.show_box_menu(item, pos))
     assert "Guadagno clip (dB)..." in box
-    assert "Trasponi..." not in box and "Ritrova file..." not in box
+    # Trasponi c'e' anche per le clip audio (senza cambiare la velocita')
+    assert "Trasponi..." in box and "Ritrova file..." not in box
+    assert "Suona al contrario" in box and "Inverti la fase" in box
 
 
 def test_missing_file_box_offers_relink(tmp_path, monkeypatch):
@@ -859,3 +861,50 @@ def test_join_pieces_from_the_clip_menu(tmp_path):
     _app.processEvents()
     w.undo()
     assert len(w.project.get_track("Batteria").audio_clips) == n
+
+
+def test_check_tuning_offers_to_fix_a_detuned_clip(tmp_path, monkeypatch):
+    pytest.importorskip("pedalboard")
+    w = _window()
+    t = w.project.add_audio_track("Voce")
+    x = np.arange(2 * AUDIO_SAMPLE_RATE) / AUDIO_SAMPLE_RATE
+    path = str(tmp_path / "scordata.wav")
+    write_wav(path, (0.4 * np.sin(2 * np.pi * 432.0 * x)).reshape(-1, 1).astype(np.float32), AUDIO_SAMPLE_RATE)
+    clip = AudioClip("Scordata", path, 0.0)
+    t.audio_clips.append(clip)
+    w.refresh_mixer()
+    asked = []
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a[2]) or QMessageBox.Yes)
+    w.arrangement_view.check_clip_tuning("Voce", clip, after_recording=True)
+    assert "calante di 31 cent" in asked[0] or "calante di 32 cent" in asked[0]
+    assert clip.transpose == pytest.approx(0.318, abs=0.02)
+    # corretta, non si chiede piu' niente
+    w.arrangement_view.check_clip_tuning("Voce", clip, after_recording=True)
+    assert len(asked) == 1
+
+
+def test_song_key_from_the_chords_of_an_audio_track(tmp_path, monkeypatch):
+    import core.audio_track_notation as atn
+    w, t, clip, _item = _window_with_clip(tmp_path)
+    monkeypatch.setattr(atn, "audio_track_chord_text", lambda project, track: "4: G | D | Em | C | D | G")
+    asked = []
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a[2]) or QMessageBox.Yes)
+    w.arrangement_view.key_from_audio_track("Voce")
+    assert "G" in asked[0] and w.project.key == "G" and w.key_combo.currentText() == "G"
+
+
+def test_export_stems_from_the_file_menu(tmp_path, monkeypatch):
+    import time
+    w, t, clip, _item = _window_with_clip(tmp_path)
+    def press(box):
+        next(b for b in box.buttons() if b.text() == "Asciutte").click()
+    monkeypatch.setattr(QMessageBox, "exec", press)
+    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(tmp_path / "esportate"))
+    w.export_stems()
+    deadline = time.time() + 20
+    while w._export_wav_worker is not None and time.time() < deadline:
+        _app.processEvents()
+        time.sleep(0.01)
+    folder = next((tmp_path / "esportate").iterdir())
+    assert folder.name.endswith(" - tracce")
+    assert [f.name for f in folder.iterdir()] == ["01 Voce (asciutta).wav"]

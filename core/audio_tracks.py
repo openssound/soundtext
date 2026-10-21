@@ -464,7 +464,28 @@ def clip_file_seconds(clip: AudioClip) -> float:
     return info.seconds if info else 0.0
 
 
+@contextlib.contextmanager
+def _play_order_trims(*clips: AudioClip):
+    """Dentro il blocco i tagli delle clip al contrario sono nell'ordine in
+    cui si sentono (trim_start = quello che si salta all'inizio della clip,
+    cioe' la fine del file), come quelli di una clip normale."""
+    def swap():
+        for clip in clips:
+            if clip.reverse:
+                clip.trim_start, clip.trim_end = clip.trim_end, clip.trim_start
+    swap()
+    try:
+        yield
+    finally:
+        swap()
+
+
 def trim_clip_start_to_beat(clip: AudioClip, new_start_beat: float, tempo_map) -> None:
+    with _play_order_trims(clip):
+        _trim_clip_start_to_beat(clip, new_start_beat, tempo_map)
+
+
+def _trim_clip_start_to_beat(clip: AudioClip, new_start_beat: float, tempo_map) -> None:
     """Sposta l'inizio della clip a new_start_beat lasciando l'audio dov'e'
     nel tempo (si scopre o si nasconde l'inizio del file, come trascinando
     il bordo sinistro in un DAW). Trascinando a sinistra si puo' tornare
@@ -485,6 +506,11 @@ def trim_clip_start_to_beat(clip: AudioClip, new_start_beat: float, tempo_map) -
 
 def trim_clip_end_to_beat(clip: AudioClip, new_end_beat: float, tempo_map) -> None:
     """Fa finire la clip a new_end_beat (al massimo alla fine del file)."""
+    with _play_order_trims(clip):
+        _trim_clip_end_to_beat(clip, new_end_beat, tempo_map)
+
+
+def _trim_clip_end_to_beat(clip: AudioClip, new_end_beat: float, tempo_map) -> None:
     from .tempo_map import seconds_for_beats
     total = clip_file_seconds(clip)
     if total <= 0:
@@ -498,6 +524,14 @@ def split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioClip
     """Divide la clip a at_beat: clip diventa la prima parte e viene
     ritornata la seconda (stesso file, tagli diversi). None se at_beat non
     cade dentro la clip."""
+    with _play_order_trims(clip):
+        second = _split_clip(clip, at_beat, tempo_map)
+    if second is not None and second.reverse:
+        second.trim_start, second.trim_end = second.trim_end, second.trim_start
+    return second
+
+
+def _split_clip(clip: AudioClip, at_beat: float, tempo_map) -> Optional[AudioClip]:
     from .tempo_map import seconds_for_beats
     total = clip_file_seconds(clip)
     offset = seconds_for_beats(tempo_map, at_beat) - seconds_for_beats(tempo_map, clip.start_beat)
@@ -525,7 +559,7 @@ def clip_peak(clip: AudioClip) -> float:
         return 0.0
     first = int(round(max(0.0, clip.trim_start) * rate))
     last = len(samples) - int(round(max(0.0, clip.trim_end) * rate))
-    part = samples[first:max(first, last)]
+    part = select_channel(samples[first:max(first, last)], clip.channel)
     return float(np.abs(part).max()) if part.size else 0.0
 
 
@@ -549,6 +583,11 @@ def slip_clip_content(clip: AudioClip, delta_seconds: float) -> None:
     total = clip_file_seconds(clip)
     if total <= 0:
         return
+    with _play_order_trims(clip):
+        _slip(clip, delta_seconds)
+
+
+def _slip(clip: AudioClip, delta_seconds: float) -> None:
     delta = max(-clip.trim_start, min(delta_seconds / _stretch(clip), clip.trim_end))
     clip.trim_start = round(clip.trim_start + delta, 6)
     clip.trim_end = round(max(0.0, clip.trim_end - delta), 6)
@@ -556,12 +595,19 @@ def slip_clip_content(clip: AudioClip, delta_seconds: float) -> None:
 
 def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
     """Scrive in out_path solo la parte riprodotta della clip, con le sue
-    dissolvenze (per convertirla in notazione, vedi gui.audio_import_dialog)."""
+    dissolvenze ed elaborazioni (per convertirla in notazione, vedi
+    gui.audio_import_dialog)."""
     samples, rate = read_wav(clip.file)
-    first = int(round(max(0.0, clip.trim_start) * rate))
-    last = len(samples) - int(round(max(0.0, clip.trim_end) * rate))
-    part = stretched(samples[first:max(first, last)], rate, _stretch(clip))
+    trims = (clip.trim_end, clip.trim_start) if clip.reverse else (clip.trim_start, clip.trim_end)
+    layer = AudioLayer(path=clip.file, start_seconds=0.0, trim_start=max(0.0, trims[0]),
+                       trim_end=max(0.0, trims[1]), gain=1.0, pan=64, stretch=_stretch(clip),
+                       transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel)
+    part = _layer_part(layer, samples, rate)
+    if _layer_needs_stretch(layer):
+        part = stretched(part, rate, layer.stretch, semitones=layer.transpose)
     part = apply_fades(part, rate, clip.fade_in, clip.fade_out, clip.fade_shape)
+    if clip.invert:
+        part = -part
     write_wav(out_path, part, rate, bits=16)
 
 
@@ -611,6 +657,8 @@ def waveform_peaks(clip: AudioClip, buckets: int) -> Optional[np.ndarray]:
     for i in range(buckets):
         a, b = edges[i], max(edges[i + 1], edges[i] + 1)
         out[i] = part[a:min(b, len(part))].max() if a < len(part) else 0.0
+    if clip.reverse:
+        out = out[::-1].copy()
     play = clip_play_seconds(clip)
     if play > 0 and (clip.fade_in > 0 or clip.fade_out > 0):
         # inviluppo valutato al centro di ogni colonna
@@ -644,6 +692,12 @@ class AudioLayer:
     # in secondi della parte suonata del file), ogni tratto al tempo della sua
     # battuta (vedi tempo_segments). Vuoto = 'stretch' uguale per tutta.
     segments: tuple = ()
+    # Elaborazioni della clip (AudioClip.transpose, reverse, channel); la
+    # fase invertita e' gia' nel segno di 'gain'. Con reverse, trim_start e
+    # trim_end sono quelli del file rovesciato.
+    transpose: float = 0.0
+    reverse: bool = False
+    channel: str = "stereo"
 
 
 def db_to_gain(db: float) -> float:
@@ -661,12 +715,14 @@ _stretch_lock = threading.Lock()
 _STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
 
 
-def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tuple] = None) -> np.ndarray:
+def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tuple] = None,
+              semitones: float = 0.0) -> np.ndarray:
     """samples (frame, canali) allungati di 'stretch' (1.1 = 10% piu'
-    lenti) senza cambiare l'intonazione. Con 'key' il risultato resta in
-    memoria (le stesse clip si riascoltano spesso). Senza pedalboard si
-    ricampiona (cambia anche l'intonazione: meglio che non suonare)."""
-    if abs(stretch - 1.0) < 1e-6 or len(samples) == 0:
+    lenti) senza cambiare l'intonazione, e trasposti di 'semitones' senza
+    cambiare la durata. Con 'key' il risultato resta in memoria (le stesse
+    clip si riascoltano spesso). Senza pedalboard si ricampiona (cambia
+    anche l'intonazione: meglio che non suonare) e non si traspone."""
+    if (abs(stretch - 1.0) < 1e-6 and abs(semitones) < 1e-6) or len(samples) == 0:
         return samples
     if key is not None:
         with _stretch_lock:
@@ -678,9 +734,18 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
     x = np.ascontiguousarray(np.asarray(samples, dtype=np.float32).T)
     try:
         import pedalboard
-        y = pedalboard.time_stretch(x, float(rate), stretch_factor=1.0 / stretch).T
+        y = pedalboard.time_stretch(x, float(rate), stretch_factor=1.0 / stretch,
+                                    pitch_shift_in_semitones=float(semitones)).T
     except Exception:
         y = resample(samples, rate, int(round(rate / stretch))) if stretch > 0 else samples
+    if abs(semitones) > 1e-6:
+        # Rubber Band puo' sbagliare la lunghezza di qualche campione: la
+        # trasposizione non deve spostare quello che segue
+        exact = int(round(len(samples) * stretch))
+        if len(y) > exact:
+            y = y[:exact]
+        elif len(y) < exact:
+            y = np.concatenate([y, np.zeros((exact - len(y), y.shape[1]), dtype=np.float32)])
     y = np.ascontiguousarray(y, dtype=np.float32)
     if key is not None:
         with _stretch_lock:
@@ -693,7 +758,43 @@ def stretched(samples: np.ndarray, rate: int, stretch: float, key: Optional[tupl
 
 
 def _layer_stretch_key(layer: "AudioLayer", samplerate: int) -> tuple:
-    return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate, layer.segments)
+    return (_file_key(layer.path), layer.trim_start, layer.trim_end, layer.stretch, samplerate, layer.segments,
+            layer.transpose, layer.reverse, layer.channel)
+
+
+def select_channel(samples: np.ndarray, channel: str) -> np.ndarray:
+    """Il canale di un file usato da una clip (AudioClip.channel): "left" e
+    "right" uno solo, "mono" la media dei due; "stereo" com'e'. Un file
+    mono resta com'e'."""
+    if channel == "stereo" or samples.ndim < 2 or samples.shape[1] < 2:
+        return samples
+    if channel == "left":
+        return samples[:, :1]
+    if channel == "right":
+        return samples[:, 1:2]
+    return samples[:, :2].mean(axis=1, keepdims=True).astype(np.float32)
+
+
+def _layer_part(layer: "AudioLayer", samples: np.ndarray, samplerate: int) -> np.ndarray:
+    """La parte del file che il layer suona, prima di stretch e
+    dissolvenze: al contrario (i tagli del layer valgono gia' sul file
+    rovesciato, vedi build_audio_layers) e con il canale scelto."""
+    if layer.reverse:
+        samples = samples[::-1]
+    first = int(round(layer.trim_start * samplerate))
+    last = len(samples) - int(round(layer.trim_end * samplerate))
+    return select_channel(samples[first:max(first, last)], layer.channel)
+
+
+def _layer_needs_stretch(layer: "AudioLayer") -> bool:
+    return abs(layer.stretch - 1.0) > 1e-6 or abs(layer.transpose) > 1e-6 or bool(layer.segments)
+
+
+def _stretch_layer_part(layer: "AudioLayer", part: np.ndarray, samplerate: int) -> np.ndarray:
+    key = _layer_stretch_key(layer, samplerate)
+    if layer.segments:
+        return stretched_segments(part, samplerate, layer.segments, key=key, semitones=layer.transpose)
+    return stretched(part, samplerate, layer.stretch, key=key, semitones=layer.transpose)
 
 
 SEGMENT_CROSSFADE = 0.005    # fra un tratto e l'altro di uno stretch a tratti
@@ -728,7 +829,8 @@ def tempo_segments(clip: AudioClip, tempo_map, trim_start: float) -> tuple:
     return tuple(out)
 
 
-def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Optional[tuple] = None) -> np.ndarray:
+def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Optional[tuple] = None,
+                       semitones: float = 0.0) -> np.ndarray:
     """samples stirati tratto per tratto (segments, vedi tempo_segments):
     ogni tratto alla sua lunghezza esatta, uniti con una dissolvenza
     incrociata di SEGMENT_CROSSFADE (ogni tratto sborda un poco nel
@@ -746,7 +848,7 @@ def stretched_segments(samples: np.ndarray, rate: int, segments: tuple, key: Opt
         first, last = int(round(a * rate)), min(len(samples), int(round(b * rate)))
         if last <= first:
             continue
-        piece = stretched(samples[first:min(len(samples), last + pad)], rate, stretch)
+        piece = stretched(samples[first:min(len(samples), last + pad)], rate, stretch, semitones=semitones)
         exact = int(round((last - first) * stretch))
         need = exact + pad
         if len(piece) < need:
@@ -785,7 +887,7 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
     quante ne ha calcolate."""
     done = 0
     for layer in layers:
-        if abs(layer.stretch - 1.0) <= 1e-6 and not layer.segments:
+        if not _layer_needs_stretch(layer):
             continue
         if stop_check and stop_check():
             break
@@ -799,13 +901,9 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
             continue
         if rate != samplerate:
             continue
-        first = int(round(layer.trim_start * samplerate))
-        last = len(samples) - int(round(layer.trim_end * samplerate))
-        if last > first:
-            if layer.segments:
-                stretched_segments(samples[first:last], samplerate, layer.segments, key=key)
-            else:
-                stretched(samples[first:last], samplerate, layer.stretch, key=key)
+        part = _layer_part(layer, samples, samplerate)
+        if len(part):
+            _stretch_layer_part(layer, part, samplerate)
             done += 1
     return done
 
@@ -916,6 +1014,10 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
         for clip in track.audio_clips:
             if clip.muted or clip_play_seconds(clip) <= 0:
                 continue
+            if clip.reverse:
+                # al contrario: la clip suona il file rovesciato, dove i
+                # tagli si scambiano di posto
+                clip = dataclasses.replace(clip, trim_start=clip.trim_end, trim_end=clip.trim_start)
             start = seconds_for_beats(tempo_map, clip.start_beat) - offset_seconds
             trim_start = max(0.0, clip.trim_start)
             head_skip = 0.0
@@ -926,10 +1028,12 @@ def build_audio_layers(project: Project, tracks: List[Track], tempo_map,
                 start = 0.0
             layers.append(AudioLayer(
                 path=os.path.abspath(clip.file), start_seconds=start, trim_start=trim_start,
-                trim_end=max(0.0, clip.trim_end), gain=db_to_gain(clip.gain_db) * track_gain,
+                trim_end=max(0.0, clip.trim_end),
+                gain=db_to_gain(clip.gain_db) * track_gain * (-1.0 if clip.invert else 1.0),
                 pan=track.pan, fade_in=max(0.0, clip.fade_in), fade_out=max(0.0, clip.fade_out),
                 fade_shape=clip.fade_shape, head_skip=head_skip, stretch=stretch,
                 segments=tempo_segments(clip, tempo_map, trim_start),
+                transpose=clip.transpose, reverse=clip.reverse, channel=clip.channel,
             ))
     return layers
 
@@ -989,15 +1093,11 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
             continue
         if rate != samplerate:
             samples = resample(samples, rate, samplerate)
-        first = int(round(layer.trim_start * samplerate))
-        last = len(samples) - int(round(layer.trim_end * samplerate))
-        part = samples[first:last]
+        part = _layer_part(layer, samples, samplerate)
         if len(part) == 0:
             continue
-        if layer.segments:
-            part = stretched_segments(part, samplerate, layer.segments, key=_layer_stretch_key(layer, samplerate))
-        elif abs(layer.stretch - 1.0) > 1e-6:
-            part = stretched(part, samplerate, layer.stretch, key=_layer_stretch_key(layer, samplerate))
+        if _layer_needs_stretch(layer):
+            part = _stretch_layer_part(layer, part, samplerate)
         part = apply_fades(part, samplerate, layer.fade_in, layer.fade_out, layer.fade_shape, layer.head_skip)
         if part.shape[1] == 1:
             stereo = np.repeat(part, 2, axis=1)

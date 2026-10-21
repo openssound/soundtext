@@ -784,6 +784,48 @@ def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
     write_wav(out_path, mixed, rate, bits=24)
 
 
+def stem_tracks(project: Project) -> List[Track]:
+    """Le tracce da esportare come stem: quelle non silenziate (Mute) con
+    note o clip audio; Solo non conta."""
+    return [t for t in project.tracks if not t.mute
+            and (any(not c.muted for c in t.audio_clips) if t.is_audio else t.text.strip())]
+
+
+def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bool = False,
+                        progress=None) -> List[str]:
+    """Esporta in out_dir un WAV (48 kHz, 24 bit) per traccia, come "Esporta
+    WAV (solo questa)" (o asciutte con 'dry'): tutti dall'inizio del brano e
+    lunghi uguale, cosi' in un altro programma si allineano da soli. Le
+    tracce si renderizzano una alla volta (in memoria ce n'e' sempre una
+    sola). Ritorna i percorsi scritti; progress(fatte, totale)."""
+    import re
+    import numpy as np
+    from .audio_tracks import read_wav, write_wav
+    tracks = stem_tracks(project)
+    if not tracks:
+        raise RuntimeError(tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
+    os.makedirs(out_dir, exist_ok=True)
+    paths, lengths, longest = [], [], 0
+    for i, track in enumerate(tracks):
+        if stop_check and stop_check():
+            raise RuntimeError(tr("Esportazione annullata."))
+        mixed, rate = render_project_mix(project, stop_check, tracks=[track], dry=dry, allow_empty=True)
+        safe = re.sub(r'[\\/:*?"<>|]', "_", track.name).strip() or "traccia"
+        path = os.path.join(out_dir, f"{i + 1:02d} {safe}{' (asciutta)' if dry else ''}.wav")
+        write_wav(path, mixed, rate, bits=24)
+        paths.append(path)
+        lengths.append(len(mixed))
+        longest = max(longest, len(mixed))
+        if progress:
+            progress(i + 1, len(tracks))
+    for path, length in zip(paths, lengths):
+        if length < longest:                       # coda di silenzio fino alla fine del brano
+            samples, rate = read_wav(path)
+            pad = np.zeros((longest - length, samples.shape[1]), dtype=np.float32)
+            write_wav(path, np.concatenate([samples, pad]), rate, bits=24)
+    return paths
+
+
 def get_active_soundfont_info():
     """Ritorna (percorso_o_None, e'_configurato_manualmente) per mostrare
     all'utente quale SoundFont verra' usato in riproduzione."""

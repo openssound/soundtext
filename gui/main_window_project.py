@@ -646,6 +646,68 @@ class ProjectMixin:
         self._export_wav(tr("Esporta WAV della traccia"), os.path.join(start_dir, safe_name + ".wav"), [track],
                          tr("Traccia '{name}' esportata", name=track.name))
 
+    def export_stems(self):
+        """Tutte le tracce, un WAV per traccia (core.playback.render_stems_to_dir),
+        in una cartella scelta; con o senza effetti."""
+        from PySide6.QtWidgets import QDialog
+        from core.playback import render_stems_to_dir, stem_tracks
+        if not self._check_tracks_syntax():
+            return
+        tracks = stem_tracks(self.project)
+        if not tracks:
+            QMessageBox.information(self, tr("Esporta le tracce"),
+                                    tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
+            return
+        box = QMessageBox(QMessageBox.Question, tr("Esporta le tracce"), tr(
+            "{n} tracce, un file WAV ciascuna. Con gli effetti (come si sentono) o asciutte "
+            "(senza effetti, riverbero e pan, per mixarle altrove)?", n=len(tracks)), parent=self)
+        wet = box.addButton(tr("Con gli effetti"), QMessageBox.AcceptRole)
+        dry = box.addButton(tr("Asciutte"), QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(wet)
+        box.exec()
+        if box.clickedButton() not in (wet, dry):
+            return
+        dry_choice = box.clickedButton() is dry
+        start_dir = os.path.dirname(self._default_export_path(".wav"))
+        base = QFileDialog.getExistingDirectory(self, tr("Cartella in cui salvare le tracce"), start_dir,
+                                                options=file_dialog_options())
+        if not base:
+            return
+        name = re.sub(r'[\\/:*?"<>|]', "_", os.path.splitext(os.path.basename(self.current_path or ""))[0]
+                      or self.project.name).strip() or "brano"
+        out_dir = os.path.join(base, tr("{name} - tracce", name=name))
+
+        progress_dlg = QProgressDialog(tr("Rendering delle tracce..."), tr("Annulla"), 0, len(tracks), self)
+        progress_dlg.setWindowTitle(tr("Esporta le tracce"))
+        progress_dlg.setWindowModality(Qt.WindowModal)
+        progress_dlg.setMinimumDuration(0)
+        progress_dlg.setAutoClose(False)
+        cancelled = {"value": False}
+        worker = Worker(render_stems_to_dir, self.project, out_dir, stop_check=lambda: cancelled["value"],
+                        dry=dry_choice, progress=lambda done, total: worker.progress.emit(done),
+                        pass_progress=False)
+        self._export_wav_worker = worker
+
+        def handle_ok(paths):
+            worker.wait()
+            progress_dlg.close()
+            self._export_wav_worker = None
+            self.statusBar().showMessage(tr("{n} tracce esportate in {folder}", n=len(paths), folder=out_dir), 8000)
+
+        def handle_error(msg):
+            worker.wait()
+            progress_dlg.close()
+            self._export_wav_worker = None
+            if not cancelled["value"]:
+                QMessageBox.critical(self, tr("Errore esportazione audio"), msg)
+
+        worker.progress.connect(lambda done: progress_dlg.setValue(int(done)))
+        worker.finished_ok.connect(handle_ok)
+        worker.finished_error.connect(handle_error)
+        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
+        worker.start()
+
     def _export_wav(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False):
         """Chiede dove salvare e renderizza in un WAV, in un thread separato,
         le tracce udibili (tracks=None) o solo tracks (asciutte con 'dry')."""

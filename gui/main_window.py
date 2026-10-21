@@ -306,6 +306,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Mix audio (WAV)..."), self.export_mix_wav,
             tooltip=tr("Esporta il brano come si sente (tracce udibili, comprese le tracce audio) "
             "in un file WAV 48 kHz / 24 bit.")))
+        export_menu.addAction(self._action(
+            tr("Tutte le tracce, una per file (stem)..."), self.export_stems,
+            tooltip=tr("Un WAV per traccia (quelle non silenziate), tutti dall'inizio del brano e lunghi "
+                       "uguale: per mixare in un altro programma o mandare le parti a un altro musicista.")))
         export_menu.addAction(self._action(tr("MIDI..."), self.export_midi, "Ctrl+Shift+E",
                                             tr("Esporta l'intero ensemble (tracce udibili) in un file MIDI.")))
         export_menu.addSeparator()

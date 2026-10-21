@@ -3813,6 +3813,25 @@ programme.
   que sa crête atteigne −1 dB.
 - **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
   gris, mais ne joue pas ; la même entrée le réactive.
+- **Transposer...** (clic droit) : monte ou baisse le clip de quelques
+  demi-tons sans changer sa vitesse. Les décimales sont acceptées (0,1 = 10
+  cents), pour corriger une prise un peu désaccordée.
+- **Vérifier l'accordage...** (clic droit) : mesure de combien de cents le
+  clip est au-dessus ou en dessous du La à 440 Hz et, si cela s'entend,
+  propose de le corriger entièrement avec Transposer. La même vérification
+  se lance toute seule après chaque enregistrement, et reste muette si la
+  prise est juste ou si c'est de la batterie.
+- **Lire à l'envers** et **Inverser la phase** (clic droit) : le clip joue
+  de la fin au début, ou avec la phase inversée (pour deux micros sur le
+  même instrument qui s'annulent). Diviser et rogner un clip à l'envers
+  suit ce que l'on entend.
+- **Canal** (clic droit, fichiers stéréo seulement) : **Gauche seulement**,
+  **Droite seulement** ou **Mono (somme des deux)**, par exemple quand la
+  guitare n'est entrée que dans l'entrée 1 d'une prise stéréo.
+- **Tonalité du morceau depuis cette piste...** (menu **⋯** de la piste
+  audio) : reconnaît les accords de la piste et propose la tonalité qui en
+  résulte comme tonalité du morceau, utile pour la grille d'accords et la
+  mélodie. Aucune de ces entrées ne touche le fichier, et Ctrl+Z les annule.
 - **Convertir en notation...** (clic droit sur un clip) : transforme en
   notes la partie du clip qui joue, avec le même moteur qu'« Importer de
   l'audio » (10bis), dans une **nouvelle piste** avec
@@ -3889,6 +3908,10 @@ d'ici...** (part de ce point). La fenêtre d'enregistrement s'ouvre :
 - **Niveau** : l'indicateur bouge dès que la fenêtre est ouverte : réglez
   le gain sur la carte son pour que les passages les plus forts arrivent
   vers -12/-6 dB sans allumer le voyant rouge (saturation).
+- **Accordeur** : sous l'indicateur, la note qui arrive de l'entrée et de
+  combien de cents elle est au-dessus ou en dessous de la bonne (La à
+  440 Hz), en vert quand elle est juste à 5 cents près. Jouez une note à la
+  fois.
 - **Partir de** : position courante, début de la boucle A (si définie) ou
   début du morceau.
 - **Décompte** (0-4 mesures de clic avant le départ du morceau) et
@@ -3984,6 +4007,11 @@ l'indiquer de nouveau.
   l'entend (pistes audibles, audio compris) en WAV 48 kHz / 24 bits. Il
   faut un SoundFont pour les pistes avec des notes ; un morceau composé
   uniquement de pistes audio s'exporte même sans.
+- **Projet → Exporter → Toutes les pistes, un fichier chacune (stems)...**
+  écrit un WAV pour chaque piste non coupée dans un dossier « Nom -
+  pistes », avec les effets ou sèches. Elles commencent toutes au début du
+  morceau et ont la même longueur : dans un autre logiciel (ou chez un
+  autre musicien) elles s'alignent toutes seules.
 - **Piste → Exporter cette piste → WAV...**, ou **clic droit sur le nom d'une
   piste → Exporter en WAV (celle-ci seulement)...**, exporte en WAV seulement cette piste, avec notation ou
   audio, telle qu'on l'entendrait en Solo (le Solo/Mute des autres pistes ne

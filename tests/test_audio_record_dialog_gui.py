@@ -127,6 +127,17 @@ def test_meter_reads_the_monitor(tmp_path):
     dlg.reject()
 
 
+def test_tuner_shows_note_and_cents_from_the_monitor(tmp_path):
+    dlg, _t, streams = _dialog(tmp_path)
+    rate = dlg._monitor.samplerate
+    t = np.arange(int(0.2 * rate)) / rate
+    tone = (0.3 * np.sin(2 * np.pi * 432.0 * t)).astype(np.float32).reshape(-1, 1)
+    streams["monitor"].callback(np.repeat(tone, streams["monitor"].in_channels, axis=1), len(tone), None, None)
+    dlg._tick()
+    assert dlg.tuner_label.text().startswith("A4  −32 cent")
+    dlg.reject()
+
+
 def test_record_stop_keep_creates_an_aligned_clip(tmp_path):
     settings.set_input_latency_ms("Scarlett 2i2 (ALSA)", 0.0)
     dlg, track, streams = _dialog(tmp_path, track_profile="chitarra", track_channels="2",

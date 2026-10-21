@@ -3630,6 +3630,24 @@ oppure **importando** file registrati con un altro programma.
   clip perche' il suo picco arrivi a −1 dB.
 - **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
   grigio, ma non suona; si riattiva con la stessa voce.
+- **Trasponi...** (tasto destro): alza o abbassa la clip di qualche
+  semitono senza cambiarne la velocita'. Accetta i decimali (0,1 = 10 cent),
+  per correggere una ripresa un po' scordata.
+- **Controlla l'accordatura...** (tasto destro): misura di quanti cent la
+  clip e' sopra o sotto il La a 440 Hz e, se si sente, propone di
+  correggerla tutta con Trasponi. Lo stesso controllo parte da solo dopo
+  ogni registrazione, e tace se la ripresa e' intonata o se e' batteria.
+- **Suona al contrario** e **Inverti la fase** (tasto destro): la clip
+  suona dalla fine all'inizio, o con la fase rovesciata (per due microfoni
+  sullo stesso strumento che si cancellano a vicenda). Dividere e tagliare
+  una clip al contrario segue quello che si sente.
+- **Canale** (tasto destro, solo per i file stereo): **Solo sinistro**,
+  **Solo destro** o **Mono (somma dei due)**, per esempio quando la
+  chitarra e' entrata solo nell'ingresso 1 di una ripresa stereo.
+- **Tonalita' del brano da questa traccia...** (menu **⋯** della traccia
+  audio): riconosce gli accordi della traccia e propone la tonalita' che
+  ne viene come tonalita' del brano, utile al giro armonico e alla melodia.
+  Tutte queste voci non toccano il file e si annullano con Ctrl+Z.
 - **Converti in notazione...** (tasto destro su una clip): trasforma in note
   la parte che suona della clip, con lo stesso motore di "Importa audio"
   (10bis), in una **nuova traccia** con lo strumento scelto
@@ -3703,6 +3721,9 @@ qui...** (parte da quel punto). Si apre il dialogo di registrazione:
 - **Livello**: il misuratore si muove appena il dialogo e' aperto: regola
   il gain sulla scheda audio perche' le parti piu' forti arrivino verso
   -12/-6 dB senza accendere la spia rossa (saturazione).
+- **Accordatore**: sotto il misuratore, la nota che arriva dall'ingresso e
+  di quanti cent e' sopra o sotto quella giusta (La a 440 Hz), in verde
+  quando e' intonata entro 5 cent. Suona una nota alla volta.
 - **Parti da**: posizione corrente, inizio del loop A (se impostato) o
   inizio del brano.
 - **Conteggio** (0-4 battute di click prima che parta il brano) e
@@ -3794,6 +3815,11 @@ e non suona: tasto destro → **Ritrova file...** per indicarlo di nuovo.
   (tracce udibili, audio compreso) in un WAV 48 kHz / 24 bit. Serve un
   SoundFont per le tracce con note; un brano di sole tracce audio si esporta
   anche senza.
+- **Progetto → Esporta → Tutte le tracce, una per file (stem)...** scrive
+  un WAV per ogni traccia non silenziata in una cartella "Nome - tracce",
+  con gli effetti o asciutte. Partono tutte dall'inizio del brano e sono
+  lunghe uguale: in un altro programma (o da un altro musicista) si
+  allineano da sole.
 - **Traccia → Esporta questa traccia → WAV...**, o **tasto destro sul nome di
   una traccia → Esporta WAV (solo questa)...**, esporta in un WAV solo quella traccia, con notazione o audio, come si
   sentirebbe in Solo (Solo/Mute delle altre tracce non contano). Per le

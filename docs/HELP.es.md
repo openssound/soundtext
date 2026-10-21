@@ -3725,6 +3725,25 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   para que su pico llegue a −1 dB.
 - **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
   en gris, pero no suena; la misma opción lo vuelve a activar.
+- **Transponer...** (clic derecho): sube o baja el clip unos semitonos sin
+  cambiar su velocidad. Acepta decimales (0,1 = 10 cents), para corregir
+  una toma un poco desafinada.
+- **Comprobar la afinación...** (clic derecho): mide cuántos cents está el
+  clip por encima o por debajo del La a 440 Hz y, si se nota, propone
+  corregirlo entero con Transponer. La misma comprobación se hace sola
+  después de cada grabación, y no dice nada si la toma está afinada o es
+  batería.
+- **Reproducir al revés** e **Invertir la fase** (clic derecho): el clip
+  suena del final al principio, o con la fase invertida (para dos
+  micrófonos en el mismo instrumento que se cancelan). Dividir y recortar
+  un clip al revés sigue lo que se oye.
+- **Canal** (clic derecho, solo archivos estéreo): **Solo izquierdo**,
+  **Solo derecho** o **Mono (suma de los dos)**, por ejemplo cuando la
+  guitarra entró solo por la entrada 1 de una toma estéreo.
+- **Tonalidad de la canción desde esta pista...** (menú **⋯** de la pista
+  de audio): reconoce los acordes de la pista y propone la tonalidad que
+  resulta como tonalidad de la canción, útil para la progresión y la
+  melodía. Ninguna de estas opciones toca el archivo, y Ctrl+Z las deshace.
 - **Convertir en notación...** (clic derecho en un clip): convierte en notas
   la parte del clip que suena, con el mismo motor que «Importar audio»
   (10bis), en una **nueva pista** con el instrumento
@@ -3800,6 +3819,9 @@ ese punto). Se abre el diálogo de grabación:
 - **Nivel**: el medidor se mueve en cuanto se abre el diálogo: ajusta la
   ganancia en la interfaz de audio para que las partes más fuertes lleguen
   a unos -12/-6 dB sin encender el indicador rojo (saturación).
+- **Afinador**: debajo del medidor, la nota que llega de la entrada y
+  cuántos cents está por encima o por debajo de la correcta (La a 440 Hz),
+  en verde cuando está afinada dentro de 5 cents. Toca una nota cada vez.
 - **Empezar desde**: posición actual, inicio del bucle A (si está fijado) o
   inicio de la canción.
 - **Cuenta atrás** (0-4 compases de clic antes de que empiece la canción) y
@@ -3893,6 +3915,11 @@ archivo...** para indicarlo de nuevo.
   como suena (pistas audibles, audio incluido) a un WAV de 48 kHz / 24 bits.
   Hace falta un SoundFont para las pistas con notas; una canción hecha solo
   de pistas de audio se exporta también sin él.
+- **Proyecto → Exportar → Todas las pistas, una por archivo (stems)...**
+  escribe un WAV por cada pista no silenciada en una carpeta "Nombre -
+  pistas", con los efectos o secas. Todas empiezan al principio de la
+  canción y duran lo mismo: en otro programa (o para otro músico) se
+  alinean solas.
 - **Pista → Exportar esta pista → WAV...**, o **clic derecho en el nombre de
   una pista → Exportar WAV (solo esta)...**, exporta a un WAV solo esa pista, con notación o audio, tal como sonaría en
   Solo (el Solo/Mute de las demás pistas no cuenta). Para las pistas con
