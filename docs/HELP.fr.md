@@ -3827,7 +3827,8 @@ programme.
   montre son tempo mesure par mesure (moyenne, minimum, maximum et la
   courbe) ; choisissez la mesure où tombe le premier temps et **Appliquer
   le tempo** : le morceau prend un changement de tempo par mesure (ligne
-  `Tempo:` du fichier) et le clip se déplace pour que les temps tombent sur
+  `Tempo:` du fichier, avec une décimale, par exemple `101.4`) et le clip
+  se déplace pour que les temps tombent sur
   les temps du morceau. Après la prise, le tempo d'avant revient. Les notes
   écrites, le métronome, les générateurs et la conversion de la prise en
   notation suivent ce tempo. Le premier temps joué est pris comme début de

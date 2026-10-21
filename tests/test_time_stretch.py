@@ -116,6 +116,6 @@ def test_free_take_warped_to_a_fixed_tempo(tmp_path):
     assert pieces[1].stretch < 0.95 and pieces[-2].stretch > 1.05
     p.get_track("A").audio_clips = pieces
     result = analyze_beats(_mix(p)[:, None], RATE)
-    assert set(result.bar_tempos) == {100}
+    assert all(abs(b - 100) <= 0.3 for b in result.bar_tempos)
     assert result.first_beat == pytest.approx(2.4, abs=0.005)    # battuta 2 a 100 BPM
     assert max(abs(t - (2.4 + i * 0.6)) for i, t in enumerate(result.beats)) < 0.015

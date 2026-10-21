@@ -629,7 +629,7 @@ def test_tempo_from_take_sets_the_song_tempo_and_can_be_undone(tmp_path):
     finally:
         TempoFromTakeDialog.exec = original
     assert [b for b, _v in w.project.tempo_changes][:3] == [1, 3, 4]
-    assert w.project.tempo_changes[1][1] in range(90, 95)
+    assert 90 <= w.project.tempo_changes[1][1] <= 95            # con un decimale, dalla 2.9
     _app.processEvents()
     w.undo()
     assert w.project.tempo_changes == []

@@ -3545,7 +3545,8 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   play freely, without a click. SoundText finds the beat of the take and
   shows its tempo bar by bar (average, minimum, maximum and the curve);
   choose the bar the first beat falls on and **Apply the tempo**: the song
-  gets one tempo change per bar (the `Tempo:` line of the file) and the
+  gets one tempo change per bar (the `Tempo:` line of the file, with one
+  decimal, for example `101.4`) and the
   clip moves so that the beats fall on the song's beats. After the take
   the previous tempo comes back. The written notes, the metronome, the
   generators and the conversion of the take into notation follow that

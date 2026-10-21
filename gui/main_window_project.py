@@ -47,13 +47,15 @@ class ProjectMixin:
         self.project.tempo_bpm = value
         self._mark_dirty(merge_key="tempo")
         if any(t.audio_clips for t in self.project.tracks):
-            # L'audio non viene stirato (vedi core.audio_tracks): le clip
-            # restano al loro beat ma durano gli stessi secondi, quindi
-            # occupano piu' o meno beat e i loro box vanno ridisegnati.
+            # Le clip che seguono il tempo si sono gia' riadattate (time-stretch,
+            # in _mark_dirty); le altre restano al loro beat ma durano gli stessi
+            # secondi: in entrambi i casi i box vanno ridisegnati.
             self.arrangement_view.refresh()
-            self.statusBar().showMessage(
-                tr("Nota: le tracce audio non seguono il cambio di tempo (restano alla stessa "
-                "velocita', ancorate al beat in cui iniziano)."), 6000)
+            fixed = [c for t in self.project.tracks if t.is_audio for c in t.audio_clips if c.source_bpm <= 0]
+            if fixed:
+                self.statusBar().showMessage(
+                    tr("Nota: {n} clip audio non seguono il cambio di tempo (restano alla stessa velocita'); "
+                       "tasto destro su una clip → Segui il tempo del brano.", n=len(fixed)), 6000)
 
     def _on_metrica_changed(self, text):
         text = text.strip()
@@ -126,7 +128,7 @@ class ProjectMixin:
         for widget in widgets:
             widget.blockSignals(True)
         self.pickup_spin.setValue(self.project.pickup)
-        self.tempo_spin.setValue(self.project.tempo_bpm)
+        self.tempo_spin.setValue(round(self.project.tempo_bpm))
         self.metrica_combo.setCurrentText(self.project.time_sig)
         self.key_combo.setCurrentText(self.project.key)
         for widget in widgets:

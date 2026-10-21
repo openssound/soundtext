@@ -58,12 +58,14 @@ def test_accelerating_take_is_followed_bar_by_bar():
     assert a.bar_tempos[0] <= 93 and a.bar_tempos[-1] >= 107
 
 
-def test_integer_tempos_do_not_drift():
-    beats = [i * 60.0 / 101.4 for i in range(81)]           # 101,4 BPM: arrotondato a 101 si sfaserebbe
+def test_decimal_tempos_do_not_drift():
+    beats = [i * 60.0 / 101.43 for i in range(81)]          # 101,43 BPM: un decimale e la compensazione
     tempos = bar_tempos(beats, 4, 1.0)
-    assert set(tempos) <= {101, 102}
+    assert set(tempos) <= {101.4, 101.5}
     end = sum(60.0 * 4 / bpm for bpm in tempos)
-    assert end == pytest.approx(beats[-1], abs=0.03)
+    assert end == pytest.approx(beats[-1], abs=0.002)
+    assert bar_tempos([i * 0.6 for i in range(9)], 4, 1.0) == [100, 100]   # un tempo intero resta intero
+    assert all(isinstance(b, int) for b in bar_tempos([i * 0.6 for i in range(9)], 4, 1.0))
 
 
 def test_meters():
@@ -114,3 +116,29 @@ def test_conversion_follows_the_tempo_map(tmp_path):
     starts = [e.start for e in parse_track_text(boxes[0].text, {}) if e.kind in ("percussion", "block")]
     offset = 4.0 - clip.start_beat                                     # il primo battito e' a battuta 2
     assert starts[:8] == pytest.approx([offset + k for k in range(8)], abs=0.01)
+
+
+def test_decimal_tempos_are_saved_and_the_file_declares_2_9_only_when_needed():
+    from core.project_io import parse_project_text, project_to_text
+    p = Project(tempo_bpm=120)
+    p.add_track("Piano", "Piano", "4: c d e f")
+    assert project_to_text(p).startswith("ST: 2.8\n")                  # tempi interi: leggibile dalla 2.8
+    p.tempo_changes = [(1, 120), (3, 96.5), (5, 101.4)]
+    text = project_to_text(p)
+    assert text.startswith("ST: 2.9\n") and "Tempo: 1: 120, 3: 96.5, 5: 101.4" in text
+    back = parse_project_text(text)
+    assert back.tempo_changes == [(1, 120), (3, 96.5), (5, 101.4)] and isinstance(back.tempo_bpm, int)
+    single = Project(tempo_bpm=101.4)
+    assert "Tempo: 101.4 BPM" in project_to_text(single) and parse_project_text(project_to_text(single)).tempo_bpm == 101.4
+
+
+def test_tempo_from_the_take_writes_decimals(tmp_path):
+    times = [1.0 + i * 60.0 / 101.43 for i in range(33)]
+    path = str(tmp_path / "steady.wav")
+    write_wav(path, _hits(times, 2.0)[:, None], RATE)
+    p = Project(tempo_bpm=120)
+    clip = AudioClip("Ritmica", path, 0.0)
+    p.add_audio_track("Ritmica").audio_clips.append(clip)
+    a = pt.analyze_clip(p, clip)
+    pt.apply_performance_tempo(p, clip, a, 2)
+    assert {v for b, v in p.tempo_changes if 2 <= b < 10} <= {101.4, 101.5}

@@ -690,7 +690,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self.tempo_spin = QSpinBox()
         self.tempo_spin.setRange(20, 300)
-        self.tempo_spin.setValue(self.project.tempo_bpm)
+        self.tempo_spin.setValue(round(self.project.tempo_bpm))
         self.tempo_spin.setSuffix(" BPM")
         self.tempo_spin.setToolTip(tr("Tempo del progetto in battiti al minuto."))
         self.tempo_spin.valueChanged.connect(self._on_tempo_changed)

@@ -6,7 +6,6 @@ batteria che segue la ripresa (core.rhythm_generate.generate_drum_pattern,
 kick_accents): la cassa va sugli accenti forti e ricorrenti.
 """
 
-import bisect
 import threading
 from typing import Dict, List, Optional
 
@@ -50,7 +49,7 @@ def is_cached(project: Project, track: Track) -> bool:
 def _compute(project: Project, track: Track) -> Optional[List[float]]:
     from .audio_slice import detect_attack_strengths
     from .audio_track_notation import audible_clips
-    from .performance_tempo import bar_starts, clip_samples
+    from .performance_tempo import bar_at_beat, bar_starts, clip_samples
     from .tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map, seconds_for_beats
     tempo_map = build_tempo_beat_map(project)
     clips = audible_clips(track)
@@ -64,8 +63,10 @@ def _compute(project: Project, track: Track) -> Optional[List[float]]:
         start = seconds_for_beats(tempo_map, clip.start_beat)
         for t, strength in detect_attack_strengths(samples, rate, min_gap=0.06):
             beat = beat_at_elapsed_seconds(tempo_map, 0.0, start + t)
-            bar = max(0, bisect.bisect_right(starts, beat + 1e-9) - 1)   # la battuta che lo contiene (da 0)
-            pos = beat - starts[bar]
+            bar = bar_at_beat(project, beat + 1e-9, starts)     # quella che lo contiene; 0 = il levare
+            if bar < 1:
+                continue
+            pos = beat - starts[bar - 1]
             slot = int(round(pos * SLOTS_PER_QUARTER))
             if slot >= slots:
                 bar, slot = bar + 1, 0

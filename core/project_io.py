@@ -37,7 +37,7 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
     _TRACK_HDR_PATTERNS, VOLUME_MAX, _parse_bar_value_list, _si, _parse_kv_body,
     _convert_pan_to_0_127, _pan_0_127_to_normalized, _convert_volume, _parse_instrument_body,
     _parse_mixer_body, _notation_body_lines, _extract_named_blocks, _extract_box_blocks,
-    RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks,
+    RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks, parse_bpm,
     RE_KEY_LIST_HDR, RE_TITLE, RE_COMPOSER, RE_LYRICIST, parse_key_list,
 )
 
@@ -295,6 +295,20 @@ def _relative_clip_path(path: str, base_dir: Optional[str]) -> str:
     return path.replace(os.sep, "/")
 
 
+# La versione del linguaggio che un file usa davvero: la 2.9 ha portato solo
+# i BPM decimali nella riga Tempo:, quindi un brano a tempi interi si
+# dichiara 2.8 e resta leggibile, senza avvisi, dalle versioni precedenti.
+_DECIMAL_TEMPO_VERSION = (2, 9)
+_BASE_FILE_VERSION = (2, 8)
+
+
+def _file_language_version(project: Project) -> tuple:
+    tempos = [project.tempo_bpm] + [v for _b, v in project.tempo_changes]
+    if any(isinstance(v, float) and not float(v).is_integer() for v in tempos):
+        return _DECIMAL_TEMPO_VERSION
+    return _BASE_FILE_VERSION
+
+
 def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
     parts = [f'file="{_relative_clip_path(clip.file, base_dir)}"']
     if clip.trim_start or clip.trim_end:
@@ -438,7 +452,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         if m:
             if mode:
                 flush()
-            project.tempo_bpm = int(m.group(1))
+            project.tempo_bpm = parse_bpm(m.group(1))     # 96, o 101.4 dalla 2.9
             continue
 
         m = RE_METRICA_LIST_HDR.match(line)
@@ -619,7 +633,7 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     else:
         metrica_line = f"Metrica: {project.time_sig}"
     # la versione del linguaggio in cima (i lettori piu' vecchi la ignorano)
-    lines = ["ST: %d.%d" % LANGUAGE_VERSION]
+    lines = ["ST: %d.%d" % _file_language_version(project)]
     for label, value in (("Titolo", project.title), ("Autore", project.composer), ("Parole", project.lyricist)):
         if value:
             lines.append(f"{label}: {value}")

@@ -193,7 +193,7 @@ class AudioImportDialog(QDialog):
         tempo_row.addWidget(QLabel(tr("Tempo (BPM):")))
         self.tempo_spin = QSpinBox()
         self.tempo_spin.setRange(20, 300)
-        self.tempo_spin.setValue(self.project.tempo_bpm)
+        self.tempo_spin.setValue(round(self.project.tempo_bpm))
         self.tempo_spin.setToolTip(tr("Tempo del progetto: usato anche per quantizzare la registrazione."))
         self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
         tempo_row.addWidget(self.tempo_spin)

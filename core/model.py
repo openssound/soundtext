@@ -188,7 +188,7 @@ def copy_synth(dst: "Track", src: Optional["Track"]) -> "Track":
 @dataclass
 class Project:
     name: str = "Nuovo progetto"
-    tempo_bpm: int = 120
+    tempo_bpm: float = 120       # intero se lo e' (96), coi decimali dalla 2.9 del linguaggio (101.4)
     time_sig: str = "4/4"
     key: str = ""                # tonalita' del brano, es. "C", "Am", "F#" (vuota = non impostata)
     tracks: List[Track] = field(default_factory=list)
@@ -197,7 +197,7 @@ class Project:
     # Se vuoti, si usano semplicemente tempo_bpm/time_sig per l'intero brano
     # (comportamento originale, invariato). Se popolati, tempo_bpm/time_sig
     # continuano a rappresentare il valore alla battuta 1.
-    tempo_changes: List[tuple] = field(default_factory=list)     # [(bar:int, bpm:int), ...]
+    tempo_changes: List[tuple] = field(default_factory=list)     # [(bar:int, bpm), ...], bpm intero o decimale
     metrica_changes: List[tuple] = field(default_factory=list)    # [(bar:int, "N/D"), ...]
     master_volume: int = 100     # 0-200 (100 = guadagno originale/unita'), applicato sopra al volume di ogni traccia
     # Ambiente del riverbero del synth per tutto il brano (chiave di

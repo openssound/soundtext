@@ -42,6 +42,10 @@ def test_reset_inside_a_velocity_ramp_is_an_error():
 
 @pytest.fixture
 def library():
+    # SoundText registra la sua libreria midi/ quando lo si importa: va
+    # importato prima, o il test che lo importa dopo perde quella di prova
+    # (falliva lanciato da solo)
+    import core.project_io  # noqa: F401
     files = {"riff": "4: c", "take": "4: e", "take-2": "4: g", "solo-3": "4: a", "bass line": "4: d"}
 
     def resolver(name, midi_dir):
@@ -120,7 +124,8 @@ def test_saved_file_declares_the_version_and_the_pickup():
     from core.project_io import parse_project_text, project_to_text
     text = project_to_text(parse_project_text(ENGLISH))
     lines = text.splitlines()
-    assert lines[0] == "ST: %d.%d" % __import__("st_language").stfile.LANGUAGE_VERSION
+    # i tempi sono interi: il file si dichiara 2.8, leggibile senza avvisi dalle versioni prima della 2.9
+    assert lines[0] == "ST: 2.8"
     assert "Levare: 1" in lines and "Metrica: 3/4" in lines and "Strumento Viola2:" in text
     again = parse_project_text(text)
     assert again.pickup == 1.0 and again.get_track("Melodia").instrument.gm_program == 41

@@ -12,7 +12,8 @@ Metodo (classico, solo numpy, come in Ellis 2007):
      attacchi piu' forti, con una penalita' per gli intervalli lontani dal
      periodo medio (cosi' segue chi accelera e rallenta, ma non salta);
   4. battute: il primo battito della ripresa e' l'inizio di una battuta;
-     ogni battuta ha il suo tempo in BPM interi, scelti compensando gli
+     ogni battuta ha il suo tempo, con un decimale (la riga Tempo: li
+     accetta dalla 2.9 del linguaggio), scelto compensando gli
      arrotondamenti delle precedenti, cosi' i battiti non si allontanano
      da quelli suonati.
 """
@@ -120,7 +121,7 @@ class BeatAnalysis:
     beats: List[float]                    # secondi dei battiti, dal primo attacco all'ultimo
     beats_per_bar: int                    # battiti per battuta (quarti, o semiminime puntate in 6/8)
     beat_quarters: float                  # quarti per battito (1, o 1.5 nei tempi composti)
-    bar_tempos: List[int] = field(default_factory=list)   # BPM (in quarti) di ogni battuta
+    bar_tempos: list = field(default_factory=list)        # BPM (in quarti) di ogni battuta, 96 o 96.5
 
     @property
     def first_beat(self) -> float:
@@ -152,15 +153,27 @@ def meter_beats(time_sig: str) -> Tuple[int, float]:
     return max(1, int(round(quarters_per_bar / unit))), unit
 
 
-def bar_tempos(beats: List[float], beats_per_bar: int, beat_quarters: float) -> List[int]:
-    """Un tempo intero per battuta completa (piu' l'ultima incompleta se ha
-    almeno due battiti), scelto perche' la fine della battuta resti il piu'
-    vicino possibile al battito suonato: l'errore di arrotondamento di una
-    battuta si recupera nella successiva."""
-    out: List[int] = []
+# Decimali dei tempi per battuta: dalla 2.9 del linguaggio la riga Tempo:
+# accetta i BPM decimali. Un decimale basta (a 100 BPM uno scarto di 0,05
+# BPM sposta la fine della battuta di poco piu' di un millisecondo, e si
+# recupera nella battuta dopo); un tempo che e' intero resta intero.
+TEMPO_DECIMALS = 1
+
+
+def _bpm_value(exact: float):
+    bpm = round(max(20.0, min(400.0, exact)), TEMPO_DECIMALS)
+    return int(bpm) if float(bpm).is_integer() else bpm
+
+
+def bar_tempos(beats: List[float], beats_per_bar: int, beat_quarters: float) -> list:
+    """Un tempo per battuta completa (piu' l'ultima incompleta se ha almeno
+    due battiti), con TEMPO_DECIMALS decimali, scelto perche' la fine della
+    battuta resti il piu' vicino possibile al battito suonato: l'errore di
+    arrotondamento di una battuta si recupera nella successiva."""
+    out: list = []
     if len(beats) < 2:
         return out
-    t_grid = beats[0]                    # dove la mappa a BPM interi mette l'inizio della battuta
+    t_grid = beats[0]                    # dove la mappa arrotondata mette l'inizio della battuta
     i = 0
     while i + 1 < len(beats):
         j = min(i + beats_per_bar, len(beats) - 1)
@@ -169,8 +182,7 @@ def bar_tempos(beats: List[float], beats_per_bar: int, beat_quarters: float) -> 
             break
         target = beats[j]                # fine (vera) di questi 'count' battiti
         exact = 60.0 * beat_quarters * count / max(1e-6, target - t_grid)
-        bpm = int(round(exact))
-        bpm = max(20, min(400, bpm))
+        bpm = _bpm_value(exact)
         out.append(bpm)
         t_grid += 60.0 * beat_quarters * count / bpm
         i = j

@@ -6,44 +6,27 @@ della battuta scelta. Le note scritte dopo (generatori, conversione della
 ripresa in notazione) seguono la stessa mappa.
 """
 
-import bisect
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
 from . import audio_tracks
 from .beat_track import BeatAnalysis, analyze_beats, tempo_changes_for
 from .model import AudioClip, Project
+# inizio delle battute e battuta di un beat: nella libreria dalla 2.9
+from .tempo_map import bar_at_beat, bar_starts  # noqa: F401  (riesportate)
 
 
 def bar_start_beat(project: Project, bar: int) -> float:
-    """Il beat (quarti) in cui comincia la battuta 'bar' (da 1)."""
-    from .tempo_map import compute_bar_beat_offsets
-    offsets = compute_bar_beat_offsets(list(project.tempo_changes) + [(max(1, bar), 0)], project.metrica_changes,
-                                       project.time_sig, float(project.pickup or 0.0))
-    return offsets.get(max(1, bar), 0.0)
-
-
-def bar_starts(project: Project, until_beat: float) -> List[float]:
-    """L'inizio (in beat) di ogni battuta da 1 fino oltre until_beat:
-    bar_starts(...)[k] e' la battuta k + 1. Calcolato in una volta sola."""
-    from .tempo_map import compute_bar_beat_offsets
-    shortest = 0.5                                   # la battuta piu' corta possibile (1/8)
-    last = int(max(0.0, until_beat) / shortest) + 3
-    offsets = compute_bar_beat_offsets(list(project.tempo_changes) + [(last, 0)], project.metrica_changes,
-                                       project.time_sig, float(project.pickup or 0.0))
-    return [offsets.get(bar, 0.0) for bar in range(1, last + 1)]
-
-
-def bar_at_beat(project: Project, beat: float, starts: Optional[List[float]] = None) -> int:
-    """La battuta (da 1) che comincia piu' vicino a 'beat'. starts: le
-    battute gia' calcolate (bar_starts), per chi ne chiede tante."""
-    starts = starts if starts is not None and starts[-1] > beat else bar_starts(project, beat + 8.0)
-    i = bisect.bisect_right(starts, beat) - 1          # la battuta che contiene beat (da 0)
-    i = max(0, i)
-    if i + 1 < len(starts) and starts[i + 1] - beat < beat - starts[i]:
-        i += 1
-    return i + 1
+    """Il beat (quarti) in cui comincia davvero la battuta 'bar' (da 1),
+    dopo l'eventuale levare (vedi st_language.timing.bar_starts)."""
+    bar = max(1, bar)
+    until = bar * 8.0
+    starts = bar_starts(project, until)
+    while len(starts) < bar:                    # battute lunghe (es. 16/4): si guarda piu' avanti
+        until *= 2
+        starts = bar_starts(project, until)
+    return starts[bar - 1]
 
 
 def time_sig_at_bar(project: Project, bar: int) -> str:
@@ -75,7 +58,7 @@ def suggested_first_bar(project: Project, clip: AudioClip, analysis: Optional[Be
     tempo_map = build_tempo_beat_map(project)
     first = analysis.first_beat if analysis is not None else 0.0
     beat = beat_at_elapsed_seconds(tempo_map, 0.0, seconds_for_beats(tempo_map, clip.start_beat) + first)
-    return bar_at_beat(project, beat)
+    return max(1, bar_at_beat(project, beat, nearest=True))
 
 
 def apply_performance_tempo(project: Project, clip: AudioClip, analysis: BeatAnalysis, first_bar: int) -> int:

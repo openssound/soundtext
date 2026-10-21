@@ -3739,7 +3739,8 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   toca libre, sin clic. SoundText encuentra el pulso de la toma y muestra
   su tempo compás a compás (media, mínimo, máximo y la curva); elige el
   compás en el que cae el primer pulso y **Aplicar el tempo**: la canción
-  toma un cambio de tempo por compás (línea `Tempo:` del archivo) y el clip
+  toma un cambio de tempo por compás (línea `Tempo:` del archivo, con un
+  decimal, por ejemplo `101.4`) y el clip
   se mueve para que los pulsos caigan en los tiempos. Después de la toma
   vuelve el tempo de antes. Las notas escritas, el metrónomo, los
   generadores y la conversión de la toma en notación siguen ese tempo. El

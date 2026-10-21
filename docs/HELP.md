@@ -3644,7 +3644,8 @@ oppure **importando** file registrati con un altro programma.
   suona libero, senza click. SoundText trova il battito della ripresa e ne
   mostra il tempo battuta per battuta (media, minimo, massimo e la curva);
   scegli la battuta su cui cade il primo battito e **Applica il tempo**: il
-  brano prende un cambio di tempo per battuta (riga `Tempo:` del file) e la
+  brano prende un cambio di tempo per battuta (riga `Tempo:` del file, con un
+  decimale, per esempio `101.4`) e la
   clip si sposta perche' i battiti cadano sui beat. Dopo la ripresa torna il
   tempo di prima. Le note scritte, il metronomo, i generatori e la
   conversione in notazione della ripresa seguono quel tempo. Il primo

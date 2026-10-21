@@ -362,7 +362,7 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
     def _make_tempo_spin(self):
         spin = QSpinBox()
         spin.setRange(20, 300)
-        spin.setValue(self.project.tempo_bpm)
+        spin.setValue(round(self.project.tempo_bpm))
         spin.setToolTip(tr("Tempo del progetto: usato anche per quantizzare la registrazione."))
         spin.valueChanged.connect(self._on_tempo_changed)
         return spin
