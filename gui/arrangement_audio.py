@@ -61,6 +61,7 @@ class AudioClipActions:
         convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
         tempo_action = menu.addAction(tr("Ricava il tempo dalla ripresa...")) if not missing else None
         quantize_action = menu.addAction(tr("Quantizza l'audio...")) if not missing else None
+        silences_action = menu.addAction(tr("Rimuovi i silenzi...")) if not missing else None
         pieces = [] if missing else audio_tracks.connected_pieces(
             self.host.project.get_track(track_name).audio_clips, clip, self._tempo_map())
         join_action = menu.addAction(tr("Unisci i pezzi in una clip ({n})", n=len(pieces))) if len(pieces) > 1 else None
@@ -111,6 +112,8 @@ class AudioClipActions:
             self._tempo_from_clip(track_name, clip)
         elif quantize_action is not None and chosen is quantize_action:
             self._quantize_clip_audio(track_name, clip)
+        elif silences_action is not None and chosen is silences_action:
+            self._remove_clip_silences(track_name, clip)
         elif join_action is not None and chosen is join_action:
             self._join_pieces(track_name, pieces)
         elif relink_action is not None and chosen is relink_action:
@@ -457,6 +460,31 @@ class AudioClipActions:
         self.on_clip_changed(track_name)
         self.host.statusBar().showMessage(
             tr("Audio di '{name}' quantizzato: {n} pezzi.", name=clip.name, n=len(pieces)), 5000)
+
+    def _remove_clip_silences(self, track_name: str, clip: AudioClip):
+        """Rimuovi i silenzi: la clip divisa nei pezzi che suonano, ognuno
+        dove era (core.audio_silence), un solo Annulla per tutto."""
+        from PySide6.QtWidgets import QDialog
+        from core import audio_silence
+        from .remove_silences_dialog import RemoveSilencesDialog
+        from .worker import run_with_wait
+        try:
+            levels, total = run_with_wait(self, tr("Misuro il livello di '{name}'...", name=clip.name),
+                                          audio_silence.clip_levels_db, clip)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Rimuovi i silenzi"), str(e))
+            return
+        dlg = RemoveSilencesDialog(self, clip.name, levels, total)
+        self._remove_silences_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted:
+            return
+        pieces = audio_silence.remove_silences(self.host.project, clip, dlg.regions())
+        track = self.host.project.get_track(track_name)
+        index = track.audio_clips.index(clip)
+        track.audio_clips[index:index + 1] = pieces
+        self.on_clip_changed(track_name)
+        self.host.statusBar().showMessage(
+            tr("Silenzi di '{name}' rimossi: {n} pezzi.", name=clip.name, n=len(pieces)), 5000)
 
     def _join_pieces(self, track_name: str, pieces):
         """Unisci i pezzi in una clip: un file nuovo con il mix dei pezzi

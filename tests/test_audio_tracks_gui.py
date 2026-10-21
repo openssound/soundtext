@@ -726,6 +726,40 @@ def test_quantize_audio_from_the_clip_menu(tmp_path):
     assert len(w.project.get_track("Batteria").audio_clips) == 1
 
 
+def test_remove_silences_from_the_clip_menu(tmp_path):
+    from test_remove_silences import _take
+    from gui.remove_silences_dialog import RemoveSilencesDialog
+    _p, clip = _take(tmp_path)
+    w = _window()
+    w.project.tempo_bpm = 120
+    t = w.project.add_audio_track("Voce")
+    t.audio_clips.append(clip)
+    w.history.reset(w.project)
+    w.refresh_mixer()
+    view = w.arrangement_view
+    assert "Rimuovi i silenzi..." in _menu_actions(
+        lambda: view._show_audio_box_menu("Voce", clip, w.mapToGlobal(w.rect().center())))
+    seen = []
+
+    def choose(dlg):
+        seen.append(dlg.result_label.text())
+        dlg.min_silence_spin.setValue(100)           # anche lo 0,2 s fra la seconda e la terza frase
+        seen.append(dlg.result_label.text())
+        return RemoveSilencesDialog.Accepted
+
+    original = RemoveSilencesDialog.exec
+    RemoveSilencesDialog.exec = choose
+    try:
+        view._remove_clip_silences("Voce", clip)
+    finally:
+        RemoveSilencesDialog.exec = original
+    assert seen[0].startswith("2 pezzi") and seen[1].startswith("3 pezzi")
+    assert len(t.audio_clips) == 3
+    _app.processEvents()
+    w.undo()
+    assert len(w.project.get_track("Voce").audio_clips) == 1
+
+
 def test_join_pieces_from_the_clip_menu(tmp_path):
     from core import audio_slice
     from test_audio_slice import _sloppy

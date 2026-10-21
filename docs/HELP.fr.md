@@ -3786,6 +3786,15 @@ programme.
   finit sur le suivant, il est raccourci jusque-là, avec un fondu enchaîné
   bref ; là où un vide s'ouvre, il reste du silence. Le fichier ne change
   pas, et un seul Ctrl+Z annule tout.
+- **Supprimer les silences...** (clic droit) : pour une prise avec de
+  longues pauses (voix, solo). Là où le niveau reste sous le **Seuil**
+  (−45 dB) au moins pendant la durée choisie (300 ms), le clip est divisé
+  et la partie vide disparaît : plus de souffle, de respirations ni de
+  bruits entre une phrase et la suivante. Chaque morceau commence juste
+  avant son attaque (**Marge**, 50 ms) et reste là où il jouait. La boîte
+  de dialogue montre tout de suite combien de morceaux restent et combien
+  de secondes sont supprimées. Le fichier ne change pas, et un seul Ctrl+Z
+  annule tout.
 - **Réunir les morceaux en un clip (N)** (clic droit sur l'un des
   morceaux) : la quantification, le comping et le tempo fixe laissent
   beaucoup de box. Cette entrée met les morceaux voisins de la même prise

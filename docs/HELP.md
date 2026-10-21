@@ -3606,6 +3606,13 @@ oppure **importando** file registrati con un altro programma.
   successivo si accorcia fino a li', con una dissolvenza incrociata breve;
   dove si apre un vuoto resta silenzio. Il file non cambia, e un solo
   Ctrl+Z annulla tutto.
+- **Rimuovi i silenzi...** (tasto destro): per una ripresa con lunghe pause
+  (voce, assolo). Dove il livello resta sotto la **Soglia** (−45 dB) per
+  almeno la durata scelta (300 ms), la clip si divide e il pezzo vuoto
+  sparisce: niente fruscio, respiri o rumori fra una frase e l'altra. Ogni
+  pezzo comincia poco prima del suo attacco (**Margine**, 50 ms) e resta
+  dove suonava. Il dialogo mostra subito quanti pezzi restano e quanti
+  secondi si tolgono. Il file non cambia, e un solo Ctrl+Z annulla tutto.
 - **Unisci i pezzi in una clip (N)** (tasto destro su uno dei pezzi):
   quantizzazione, comping e tempo fisso lasciano tanti box. Questa voce
   mette i pezzi vicini della stessa ripresa in un file nuovo, che suona

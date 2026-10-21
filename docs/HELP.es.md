@@ -3699,6 +3699,14 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   del siguiente se acorta hasta ahí, con un fundido cruzado breve; donde se
   abre un hueco queda silencio. El archivo no cambia, y un solo Ctrl+Z lo
   deshace todo.
+- **Quitar silencios...** (clic derecho): para una toma con pausas largas
+  (voz, solo). Donde el nivel permanece por debajo del **Umbral** (−45 dB)
+  al menos durante el tiempo elegido (300 ms), el clip se divide y la parte
+  vacía desaparece: sin soplido, respiraciones ni ruidos entre una frase y
+  otra. Cada trozo empieza poco antes de su ataque (**Margen**, 50 ms) y se
+  queda donde sonaba. El diálogo muestra enseguida cuántos trozos quedan y
+  cuántos segundos se quitan. El archivo no cambia, y un solo Ctrl+Z lo
+  deshace todo.
 - **Unir los trozos en un clip (N)** (clic derecho en uno de los trozos):
   la cuantización, el comping y el tempo fijo dejan muchos box. Esta
   opción pone los trozos vecinos de la misma toma en un archivo nuevo que

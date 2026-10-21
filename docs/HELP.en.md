@@ -3508,6 +3508,14 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   quantisation"). Where a moved piece ends over the next one it is
   shortened up to there, with a short crossfade; where a gap opens there is
   silence. The file does not change, and a single Ctrl+Z undoes it all.
+- **Remove silences...** (right-click): for a take with long pauses (vocals,
+  solos). Where the level stays below the **Threshold** (−45 dB) for at
+  least the chosen duration (300 ms), the clip is split and the empty part
+  is removed: no hiss, breaths or noises between one phrase and the next.
+  Each piece starts just before its attack (**Margin**, 50 ms) and stays
+  where it played. The dialog immediately shows how many pieces remain and
+  how many seconds are removed. The file does not change, and a single
+  Ctrl+Z undoes everything.
 - **Join the pieces into one clip (N)** (right-click on one of the
   pieces): quantising, comping and fixed tempo leave many boxes. This
   entry puts the neighbouring pieces of the same take into a new file that
