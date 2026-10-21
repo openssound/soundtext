@@ -657,6 +657,14 @@ def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
     """Scrive in out_path solo la parte riprodotta della clip, con le sue
     dissolvenze ed elaborazioni (per convertirla in notazione, vedi
     gui.audio_import_dialog)."""
+    part, rate = clip_audio(clip)
+    write_wav(out_path, part, rate, bits=16)
+
+
+def clip_audio(clip: AudioClip, with_gain_curve: bool = False) -> Tuple[np.ndarray, int]:
+    """La parte riprodotta della clip in memoria (frame, canali), con
+    dissolvenze ed elaborazioni, in secondi del brano; con with_gain_curve
+    anche la curva del volume (l'editor della clip la mostra a parte)."""
     samples, rate = read_wav(clip.file)
     trims = (clip.trim_end, clip.trim_start) if clip.reverse else (clip.trim_start, clip.trim_end)
     layer = AudioLayer(path=clip.file, start_seconds=0.0, trim_start=max(0.0, trims[0]),
@@ -669,7 +677,9 @@ def extract_clip_audio(clip: AudioClip, out_path: str) -> None:
     part = apply_fades(part, rate, clip.fade_in, clip.fade_out, clip.fade_shape)
     if clip.invert:
         part = -part
-    write_wav(out_path, part, rate, bits=16)
+    if with_gain_curve and clip.gain_points:
+        part = apply_gain_curve(part, rate, clip.gain_points)
+    return part, rate
 
 
 # ---------------------------------------------------------------------------
@@ -1168,10 +1178,41 @@ def gain_curve_db(t: np.ndarray, points) -> np.ndarray:
 
 def apply_gain_curve(part: np.ndarray, rate: int, points, head_skip: float = 0.0) -> np.ndarray:
     """La curva del volume su 'part' (come apply_fades: senza i primi
-    head_skip secondi). Ritorna una copia (float32)."""
+    head_skip secondi). Al minimo (GAIN_CURVE_MIN_DB) e' silenzio. Ritorna
+    una copia (float32)."""
     t = head_skip + np.arange(len(part), dtype=np.float64) / rate
-    gains = np.power(10.0, gain_curve_db(t, points) / 20.0).astype(np.float32)
+    db = gain_curve_db(t, points)
+    gains = np.where(db <= GAIN_CURVE_MIN_DB + 1e-6, 0.0, np.power(10.0, db / 20.0)).astype(np.float32)
     return part.astype(np.float32, copy=False) * gains[:, None]
+
+
+RANGE_RAMP_SECONDS = 0.005     # rampa ai bordi di un tratto silenziato o attenuato
+
+
+def adjust_gain_range(points, start: float, end: float, change_db: Optional[float]) -> list:
+    """La curva del volume con il tratto [start, end] (secondi della parte
+    suonata) abbassato di change_db (None = silenziato), con rampe brevi ai
+    bordi: cosi' l'editor della clip silenzia o attenua un tratto senza
+    toccare il file. I punti dentro il tratto si spostano insieme."""
+    start, end = min(start, end), max(start, end)
+    if end - start <= 0:
+        return list(points)
+    ramp = min(RANGE_RAMP_SECONDS, (end - start) / 4)
+
+    def at(t):
+        return round(float(gain_curve_db(np.array([t]), points)[0]), 3) if points else 0.0
+
+    def changed(db):
+        return GAIN_CURVE_MIN_DB if change_db is None else max(GAIN_CURVE_MIN_DB, round(db - change_db, 3))
+
+    before, after = max(0.0, start - ramp), end + ramp
+    out = [(t, db) for t, db in points if t < before - 1e-6 or t > after + 1e-6]
+    out += [(round(before, 6), at(before)), (round(start, 6), changed(at(start)))]
+    out += [(t, changed(db)) for t, db in points if start + 1e-6 < t < end - 1e-6]
+    out += [(round(end, 6), changed(at(end))), (round(after, 6), at(after))]
+    if start <= 1e-6:                    # dall'inizio: niente rampa prima
+        out = [p for p in out if p[0] != round(before, 6) or p[1] == changed(at(start))]
+    return sorted(dict(out).items())
 
 
 def build_audio_layers(project: Project, tracks: List[Track], tempo_map,

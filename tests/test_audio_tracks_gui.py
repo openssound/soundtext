@@ -993,3 +993,36 @@ def test_convert_melody_and_chords_together(tmp_path):
     assert melody.conversion["mode"] == "melody" and chords.conversion["mode"] == "chords"
     assert chords.clips[0].text.startswith("4: 4C | 4Am | 4F | 4G")
     assert [c.start_beat for c in chords.clips] == [8.0, 32.0]
+
+
+def test_clip_editor_silences_attenuates_and_splits(tmp_path, monkeypatch):
+    from gui.clip_editor import ClipEditorDialog
+    w, t, clip, _item = _window_with_clip(tmp_path)               # 2 s dal beat 4
+    dlg = ClipEditorDialog(w.arrangement_view, "Voce", clip)
+    wave = dlg.wave
+    assert wave.total == pytest.approx(2.0, abs=1e-3)
+    for _ in range(30):                                            # fino al singolo campione
+        wave.zoom(0.5, 1.0)
+    assert (wave.view_end - wave.view_start) * AUDIO_SAMPLE_RATE == pytest.approx(64, abs=1)
+    wave.grab()
+    wave.show_all()
+    wave.grab()
+    assert not dlg.silence_btn.isEnabled()
+    wave.selection = (0.5, 1.0)
+    wave.selection_changed.emit()
+    dlg.silence_btn.click()
+    heard, rate = audio_tracks.clip_audio(clip, with_gain_curve=True)
+    assert np.abs(heard[int(0.6 * rate):int(0.9 * rate)]).max() == 0.0
+    assert np.abs(heard[int(0.2 * rate):int(0.4 * rate)]).max() > 0.4
+    dlg._restore()
+    assert clip.gain_points == []
+    import gui.clip_editor as ce
+    monkeypatch.setattr(ce.QInputDialog, "getDouble", staticmethod(lambda *a, **k: (6.0, True)))
+    dlg.attenuate_btn.click()
+    heard, rate = audio_tracks.clip_audio(clip, with_gain_curve=True)
+    assert np.abs(heard[int(0.6 * rate):int(0.9 * rate)]).max() == pytest.approx(0.5 * 10 ** (-6 / 20), abs=0.01)
+    wave.grab()
+    dlg.split_btn.click()
+    assert sorted(c.start_beat for c in w.project.get_track("Voce").audio_clips) == [4.0, 5.0, 6.0]
+    w.undo()
+    assert len(w.project.get_track("Voce").audio_clips) == 1

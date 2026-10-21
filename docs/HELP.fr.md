@@ -2763,6 +2763,28 @@ message renvoie à la grille d'accords).
 - **Intensité** : voir plus haut (aussi dans **Générer
   l'accompagnement/le riff**).
 
+**Jeu de l'instrument** (basse, et accompagnement pour guitare ou piano) :
+la guitare gratte les accords (vers le bas sur les temps, vers le haut et
+plus légers à contretemps, les cordes à quelques millisecondes d'écart) ;
+le piano utilise la pédale, changée à chaque accord ; la basse ajoute des
+notes fantômes étouffées avant les attaques sur le temps et quelques
+glissés vers la note de l'accord suivant.
+
+**Mélodie à partir des paroles...** (menu de la piste, instruments à une
+voix) : on écrit les paroles, une ligne par phrase, et naît une mélodie
+avec une note par syllabe sur les accords de la piste choisie, avec les
+accents des mots sur les temps forts et les syllabes déjà sous les notes
+(voir 2.13). Les mots sont coupés selon les règles de l'italien ; pour les
+couper à votre façon, écrivez des tirets (Ma-ri-a).
+
+**Composer → Arranger le morceau...** : à partir des sections de la piste
+d'accords (ses boîtes) batterie, basse et accompagnement en une seule
+passe, dans de nouvelles pistes avec une boîte par section. L'intensité
+vient du nom de la boîte : Intro sans batterie ni basse, Couplet léger,
+Pré-refrain et Pont en crescendo, Refrain plein, Fin légère avec le coup
+final ; le tableau du dialogue la change section par section. Chaque
+section finit par un break. Un seul Ctrl+Z supprime tout.
+
 **Jouer dans les silences de** (riffs et mélodies, quand le morceau a une
 piste audio) : la mélodie se tait là où la piste choisie chante et joue
 dans ses pauses (au moins une demi-seconde), comme un cuivre qui répond à
@@ -3877,6 +3899,13 @@ programme.
   tous. Entre deux points le volume change progressivement ; la forme
   d'onde le montre. Les points restent sur l'audio auquel ils se
   rapportent, même en rognant ou en divisant le clip.
+- **Éditeur du clip...** (clic droit) : une fenêtre avec la grande forme
+  d'onde. La molette zoome (jusqu'à l'échantillon), Maj+molette fait
+  défiler ; en glissant on choisit un passage, que l'on peut **écouter**,
+  **rendre muet**, **atténuer** de quelques dB, remettre comme avant
+  (**Supprimer les modifications du passage**) ou détacher du reste
+  (**Diviser aux bords du passage**). Rendre muet et atténuer écrivent la
+  courbe de volume : le fichier ne change pas et Ctrl+Z annule.
 - **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
   gris, mais ne joue pas ; la même entrée le réactive.
 - **Transposer...** (clic droit) : monte ou baisse le clip de quelques

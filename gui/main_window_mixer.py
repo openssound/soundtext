@@ -396,6 +396,39 @@ class MixerMixin:
         self.select_track(name)
         return track
 
+    def arrange_song(self):
+        """Arrangia il brano (gui.arrange_dialog, core.arrange): le parti in
+        tracce nuove, un box per sezione, con un solo passo da annullare."""
+        from core.arrangement import flatten_clips_to_text
+        from .arrange_dialog import ArrangeDialog, chord_tracks
+        if not chord_tracks(self.project):
+            QMessageBox.information(self, tr("Arrangia il brano"), tr(
+                "Serve una traccia con gli accordi divisi in box (Intro, Strofa, Ritornello...) nella Struttura "
+                "brano: per esempio con Genera giro armonico, un box per sezione."))
+            return
+        dlg = ArrangeDialog(self, self.project)
+        self._arrange_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted or not dlg.parts():
+            return
+        options = dlg.options()
+        made = []
+        for kind, base, instrument in (("drums", tr("Batteria"), "Drums"), ("bass", tr("Basso"), "Bass"),
+                                       ("comping", tr("Accompagnamento"), options.comping_instrument)):
+            clips = dlg.parts().get(kind)
+            if not clips:
+                continue
+            name = self._unique_track_name(base)
+            track = self.project.add_track(name, instrument, "")
+            track.clips = clips
+            track.text = flatten_clips_to_text(clips, self.project.patterns, track.instrument.default_octave,
+                                               meter=self.project.meter())
+            made.append(name)
+        if not self.arrangement_action.isChecked():
+            self.arrangement_action.setChecked(True)          # le parti sono box: si vedono nella Struttura
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.statusBar().showMessage(tr("Brano arrangiato: {tracks}.", tracks=", ".join(made)), 6000)
+
     def add_generated_track(self, kind: str):
         """Crea una traccia gia' generata (batteria, giro armonico, basso,
         accompagnamento/riff): prima il dialogo del generatore, la traccia

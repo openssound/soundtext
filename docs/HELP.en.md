@@ -2589,6 +2589,27 @@ track in the project with chords already written):
   (see above).
 - **Intensity**: see above (also in **Generate accompaniment/riff**).
 
+**Instrument playing style** (bass, and accompaniment for guitar or piano):
+the guitar strums the chords (down on the beats, up and lighter on the
+offbeats, the strings a few milliseconds apart); the piano uses the pedal,
+changed at each chord; the bass adds muted ghost notes before attacks on
+the beat and a few slides toward the note of the next chord.
+
+**Melody from lyrics...** (track menu, single-voice instruments): you write
+the words, one line per phrase, and a melody is born with one note per
+syllable on the chords of the chosen track, with the word stresses on the
+strong beats and the syllables already under the notes (see 2.13). Words
+are split with Italian rules; to split them your own way write hyphens
+(Ma-ri-a).
+
+**Compose → Arrange the song...**: from the sections of the chord track
+(its boxes) drums, bass and accompaniment in a single pass, in new tracks
+with one box per section. The intensity comes from the box name: Intro
+without drums or bass, Verse light, Pre-chorus and Bridge building, Chorus
+full, Ending light with the closing hit; the dialog's table changes it
+section by section. Each section ends with a fill. A single Ctrl+Z removes
+everything.
+
 **Play in the gaps of** (riffs and melodies, when the song has an audio
 track): the melody is silent where the chosen track sings and plays in
 its pauses (at least half a second), like a horn answering the voice.
@@ -3589,6 +3610,13 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   volume curve** removes them all. Between points the volume changes
   gradually; the waveform shows it. The points stay on the audio they
   refer to, also when trimming or splitting the clip.
+- **Clip editor...** (right-click): a window with the big waveform. The
+  wheel zooms (down to the single sample), Shift+wheel scrolls; dragging
+  chooses a stretch, which can be **listened to**, **silenced**,
+  **attenuated** by a few dB, put back as it was (**Remove the changes in
+  the stretch**) or cut off from the rest (**Split at the edges of the
+  stretch**). Silencing and attenuating write the volume curve: the file
+  does not change and Ctrl+Z undoes.
 - **Mute clip** (right-click): the clip stays in place, drawn in grey, but
   does not play; the same entry turns it back on.
 - **Transpose...** (right-click): raises or lowers the clip by a few

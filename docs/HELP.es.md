@@ -2704,6 +2704,28 @@ otra pista del proyecto con acordes ya escritos):
   segundo patrón (ver arriba).
 - **Intensidad**: ver arriba (también en **Generar acompañamiento/riff**).
 
+**Ejecución del instrumento** (bajo, y acompañamiento para guitarra o
+piano): la guitarra rasguea los acordes (hacia abajo en los tiempos, hacia
+arriba y más suave a contratiempo, las cuerdas con pocos milisegundos de
+diferencia); el piano usa el pedal, cambiado en cada acorde; el bajo añade
+notas fantasma apagadas antes de los ataques en el tiempo y algún slide
+hacia la nota del acorde siguiente.
+
+**Melodía a partir de la letra...** (menú de la pista, instrumentos a una
+voz): se escribe la letra, una línea por frase, y nace una melodía con una
+nota por sílaba sobre los acordes de la pista elegida, con los acentos de
+las palabras en los tiempos fuertes y las sílabas ya bajo las notas (ver
+2.13). Las palabras se dividen con las reglas del italiano; para dividirlas
+a tu manera escribe guiones (Ma-ri-a).
+
+**Componer → Arreglar la canción...**: a partir de las secciones de la
+pista de acordes (sus cajas) batería, bajo y acompañamiento en una sola
+pasada, en pistas nuevas con una caja por sección. La intensidad viene del
+nombre de la caja: Intro sin batería ni bajo, Estrofa ligera,
+Pre-estribillo y Puente en crescendo, Estribillo lleno, Final ligero con el
+golpe de cierre; la tabla del diálogo la cambia sección por sección. Cada
+sección termina con un redoble. Un solo Ctrl+Z lo quita todo.
+
 **Tocar en los silencios de** (riffs y melodías, cuando la canción tiene
 una pista de audio): la melodía calla donde canta la pista elegida y
 suena en sus pausas (al menos medio segundo), como un viento que responde
@@ -3788,6 +3810,13 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   y otro el volumen cambia gradualmente; la forma de onda lo muestra. Los
   puntos se quedan en el audio al que se refieren también al recortar o
   dividir el clip.
+- **Editor del clip...** (clic derecho): una ventana con la forma de onda
+  grande. La rueda hace zoom (hasta la muestra individual), Mayús+rueda
+  desplaza; arrastrando se elige un tramo, que se puede **escuchar**,
+  **silenciar**, **atenuar** unos dB, devolver a como estaba (**Quitar los
+  cambios del tramo**) o separar del resto (**Dividir en los bordes del
+  tramo**). Silenciar y atenuar escriben la curva de volumen: el archivo no
+  cambia y Ctrl+Z deshace.
 - **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
   en gris, pero no suena; la misma opción lo vuelve a activar.
 - **Transponer...** (clic derecho): sube o baja el clip unos semitonos sin

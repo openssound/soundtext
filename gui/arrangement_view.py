@@ -1483,6 +1483,8 @@ class ArrangementView(AudioClipActions, QWidget):
         if self._offers_melody(track_name, instrument):
             label = tr("Genera accompagnamento...") if instrument.polyphonic else tr("Genera riff/melodia...")
             generate_melody_action = menu.addAction(label)
+        lyrics_action = menu.addAction(tr("Melodia dal testo...")) \
+            if self._offers_melody(track_name, instrument) and not instrument.polyphonic else None
         if any(a is not None for a in (generate_drums_action, generate_bass_action,
                                         generate_progression_action, generate_melody_action)):
             menu.addSeparator()
@@ -1550,6 +1552,8 @@ class ArrangementView(AudioClipActions, QWidget):
             self._generate_progression_for_new_box(track_name)
         elif generate_melody_action is not None and chosen is generate_melody_action:
             self._generate_melody_for_new_box(track_name)
+        elif lyrics_action is not None and chosen is lyrics_action:
+            self._lyrics_melody_for_new_box(track_name)
         elif chosen is export_action:
             # Riusa la validazione/il dialogo di salvataggio gia' esistenti
             # (gui.main_window_mixer.export_selected_track_midi), che
@@ -1634,6 +1638,24 @@ class ArrangementView(AudioClipActions, QWidget):
             default_bars=4, track_name=track.name,
         )
         if dlg.exec() != MelodyGenerateDialog.Accepted:
+            return
+        self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
+
+    def _lyrics_melody_for_new_box(self, track_name: str):
+        """Melodia dal testo (gui.rhythm_generate_dialog.LyricsMelodyDialog)
+        in un box nuovo in coda alla traccia."""
+        from .rhythm_generate_dialog import LyricsMelodyDialog
+        track = self.host.project.get_track(track_name)
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
+        if not other_tracks:
+            return
+        instrument = track.instrument
+        dlg = LyricsMelodyDialog(self, self.host.project, track.instrument_name,
+                                 tr("nuovo box (traccia '{name}')", name=track.name), other_tracks,
+                                 instrument.default_octave, instrument.range_low, instrument.range_high,
+                                 track_name=track.name)
+        self._lyrics_dialog = dlg   # per i test
+        if dlg.exec() != LyricsMelodyDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
 

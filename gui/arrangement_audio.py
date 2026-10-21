@@ -34,6 +34,7 @@ class AudioClipActions:
         gain_action = menu.addAction(tr("Guadagno clip (dB)..."))
         normalize_action = menu.addAction(tr("Normalizza (picco a −1 dB)")) if not missing else None
         fade_action = menu.addAction(tr("Dissolvenze...")) if not missing else None
+        editor_action = menu.addAction(tr("Editor della clip...")) if not missing else None
         mute_action = menu.addAction(tr("Silenzia clip"))
         mute_action.setCheckable(True)
         mute_action.setChecked(clip.muted)
@@ -121,6 +122,8 @@ class AudioClipActions:
             self._set_clip_gain(track_name, clip)
         elif normalize_action is not None and chosen is normalize_action:
             self._normalize_clip(track_name, clip)
+        elif editor_action is not None and chosen is editor_action:
+            self.open_clip_editor(track_name, clip)
         elif fade_action is not None and chosen is fade_action:
             self._edit_clip_fades(track_name, clip)
         elif chosen is mute_action:
@@ -593,6 +596,18 @@ class AudioClipActions:
         db = round(float(audio_tracks.gain_curve_db(np.array([t]), clip.gain_points)[0]), 1)
         clip.gain_points = sorted([p for p in clip.gain_points if abs(p[0] - t) > 1e-3] + [(t, db)])
         self.on_clip_changed(track_name)
+
+    def open_clip_editor(self, track_name: str, clip: AudioClip):
+        """L'editor della clip (gui.clip_editor): forma d'onda grande, zoom,
+        silenziare, attenuare o dividere un tratto."""
+        from .clip_editor import ClipEditorDialog
+        try:
+            dlg = ClipEditorDialog(self, track_name, clip)
+        except (ValueError, OSError) as e:
+            QMessageBox.warning(self, tr("Editor della clip"), str(e))
+            return
+        self._clip_editor = dlg   # per i test
+        dlg.exec()
 
     def _harmonize_audio_clip(self, track_name: str, clip: AudioClip):
         """La melodia della clip (riconosciuta come in Converti in notazione,

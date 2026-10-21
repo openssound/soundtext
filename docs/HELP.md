@@ -2642,6 +2642,28 @@ un'altra traccia nel progetto con accordi già scritti):
   un secondo disegno (vedi sopra).
 - **Intensità**: vedi sopra (anche in **Genera accompagnamento/riff**).
 
+**Esecuzione dello strumento** (basso, e accompagnamento per chitarra o
+pianoforte): la chitarra suona gli accordi a pennate (in giu' sui tempi, in
+su e piu' leggere in levare, le corde a pochi millisecondi l'una
+dall'altra); il pianoforte usa il pedale, cambiato a ogni accordo; il basso
+aggiunge note fantasma stoppate prima degli attacchi sul tempo e qualche
+slide verso la nota dell'accordo dopo.
+
+**Melodia dal testo...** (menu della traccia, strumenti a una voce): si
+scrivono le parole, una riga per frase, e nasce una melodia con una nota per
+sillaba sugli accordi della traccia scelta, con gli accenti delle parole sui
+tempi forti e le sillabe gia' sotto le note (vedi 2.13). Le parole si
+dividono con le regole dell'italiano; per dividerle a modo proprio si
+scrivono i trattini (Ma-ri-a).
+
+**Componi → Arrangia il brano...**: dalle sezioni della traccia degli
+accordi (i suoi box) batteria, basso e accompagnamento in un passaggio, in
+tracce nuove con un box per sezione. L'intensita' viene dal nome del box:
+Intro senza batteria ne' basso, Strofa leggera, Pre-ritornello e Ponte in
+crescendo, Ritornello pieno, Finale leggero con il colpo di chiusura; la
+tabella del dialogo la fa cambiare sezione per sezione. Ogni sezione finisce
+con un fill. Un solo Ctrl+Z toglie tutto.
+
 **Suona nei silenzi di** (riff e melodie, quando il brano ha una traccia
 audio): la melodia tace dove canta la traccia scelta e suona nelle sue
 pause (almeno mezzo secondo), come un fiato che risponde alla voce.
@@ -3687,6 +3709,13 @@ oppure **importando** file registrati con un altro programma.
   **Togli la curva del volume** le toglie tutte. Fra un punto e l'altro il
   volume cambia gradualmente; la forma d'onda lo mostra. I punti restano
   sull'audio a cui si riferiscono anche tagliando o dividendo la clip.
+- **Editor della clip...** (tasto destro): una finestra con la forma d'onda
+  grande. La rotella fa lo zoom (fino al singolo campione), Shift+rotella
+  scorre; trascinando si sceglie un tratto, che si puo' **ascoltare**,
+  **silenziare**, **attenuare** di qualche dB, riportare com'era (**Togli
+  le modifiche nel tratto**) o staccare dal resto (**Dividi ai bordi del
+  tratto**). Silenziare e attenuare scrivono la curva del volume: il file
+  non cambia e Ctrl+Z annulla.
 - **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
   grigio, ma non suona; si riattiva con la stessa voce.
 - **Trasponi...** (tasto destro): alza o abbassa la clip di qualche

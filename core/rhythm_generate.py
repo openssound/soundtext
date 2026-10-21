@@ -979,7 +979,7 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
     grooves = [main] + (spec.get("alts") or DRUM_ALTS.get(style, []))
     fills = _style_fills(style)
     block = fill_every if fill_every > 0 else 4
-    section_ends = {b for b in section_fill_bars if 0 <= b < bars - 1}
+    section_ends = {b for b in section_fill_bars if 0 <= b < bars}
 
     def fill_at(idx: int) -> bool:
         return idx in section_ends or (fill_every > 0 and (idx + 1) % fill_every == 0 and idx != bars - 1)

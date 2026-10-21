@@ -452,6 +452,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             "botta e risposta, note guida, passaggio scalare, lick blues) che segue gli accordi gia' "
             "scritti in un'altra traccia del progetto, senza IA. Non per tracce percussive.")
         ))
+        compose_menu.addAction(self._action(
+            tr("Arrangia il brano..."), self.arrange_song,
+            tooltip=tr("Dalle sezioni della traccia degli accordi (i box Intro, Strofa, Ritornello...) batteria, "
+                       "basso e accompagnamento in un passaggio, con l'intensita' di ogni sezione, i fill a fine "
+                       "sezione e il finale.")))
         styles_menu = compose_menu.addMenu(tr("Stili dei generatori"))
         styles_menu.addAction(self._action(
             tr("Salva la traccia come stile..."), self.save_selected_track_as_style,
