@@ -13,6 +13,7 @@ from core.tempo_map import (
 )
 from core.i18n import tr
 from .file_dialogs import file_dialog_options
+from .tempo_spin import tempo_value
 
 TEXT_DIM_INVERT_BG = "#e8c96d"  # colore di sfondo per il token in esecuzione durante la riproduzione
 
@@ -644,9 +645,9 @@ class PlaybackMixin:
         differire da quello 'a riposo' del progetto se ci sono cambi di
         tempo/metrica), senza far scattare _on_tempo_changed/_on_metrica_changed
         (che altrimenti riscriverebbero il valore di battuta 1 del progetto)."""
-        if bpm is not None and self.tempo_spin.value() != round(bpm):
+        if bpm is not None and self.tempo_spin.bpm() != tempo_value(bpm):
             self.tempo_spin.blockSignals(True)
-            self.tempo_spin.setValue(round(bpm))      # il campo e' intero: un tempo decimale si mostra arrotondato
+            self.tempo_spin.setValue(bpm)
             self.tempo_spin.blockSignals(False)
         if time_sig is not None and self.metrica_combo.currentText() != time_sig:
             self.metrica_combo.blockSignals(True)

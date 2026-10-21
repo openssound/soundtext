@@ -20,6 +20,7 @@ from core.playback import PlaybackEngine
 from core import settings as app_settings
 
 from .voicing_picker import NotationEditor
+from .tempo_spin import TempoSpinBox
 from .highlighter import NotationHighlighter
 from .theme import ACCENT, ACCENT_DIM, BAD, TEXT_DIM, get_active_theme, palette_for, stylesheet_for, set_active_theme
 from .icons import icon
@@ -688,10 +689,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         song_layout.setContentsMargins(8, 2, 8, 2)
         song_layout.setSpacing(12)
 
-        self.tempo_spin = QSpinBox()
-        self.tempo_spin.setRange(20, 300)
-        self.tempo_spin.setValue(round(self.project.tempo_bpm))
-        self.tempo_spin.setSuffix(" BPM")
+        self.tempo_spin = TempoSpinBox()               # con un decimale (101,4), vedi gui.tempo_spin
+        self.tempo_spin.setValue(self.project.tempo_bpm)
         self.tempo_spin.setToolTip(tr("Tempo del progetto in battiti al minuto."))
         self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
 

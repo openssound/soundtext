@@ -572,6 +572,13 @@ positions (en temps) des mesures qui suivent la première sont calculées
 automatiquement en tenant compte de la métrique en vigueur dans chaque
 passage.
 
+Les tempos peuvent avoir une décimale (`Tempo: 101.4 BPM`, `Tempo: 1:
+96.5, 5: 101.4`), comme les marqueurs `tempo=72.5` ; le champ **Tempo** de
+la barre l'accepte aussi. Un morceau avec un tempo décimal est enregistré
+avec `ST: 2.9` en tête : SoundText 1.8.0 et antérieurs ne liraient pas
+cette ligne `Tempo:` (et le signalent à l'ouverture). Avec des tempos
+entiers seulement, le fichier reste `ST: 2.8`, lisible par toutes.
+
 **Barre d'avancement, surlignage et champs Tempo/Métrique pendant la
 lecture** : le fichier MIDI exporté, la barre d'avancement, le surlignage
 du token en cours dans l'éditeur et les champs **Tempo (BPM)** et

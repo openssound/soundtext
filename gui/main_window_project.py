@@ -44,7 +44,7 @@ class ProjectMixin:
     # ------------------------------------------------------------ progetto
 
     def _on_tempo_changed(self, value):
-        self.project.tempo_bpm = value
+        self.project.tempo_bpm = self.tempo_spin.bpm()     # intero se lo e', o con un decimale
         self._mark_dirty(merge_key="tempo")
         if any(t.audio_clips for t in self.project.tracks):
             # Le clip che seguono il tempo si sono gia' riadattate (time-stretch,
@@ -128,7 +128,7 @@ class ProjectMixin:
         for widget in widgets:
             widget.blockSignals(True)
         self.pickup_spin.setValue(self.project.pickup)
-        self.tempo_spin.setValue(round(self.project.tempo_bpm))
+        self.tempo_spin.setValue(self.project.tempo_bpm)
         self.metrica_combo.setCurrentText(self.project.time_sig)
         self.key_combo.setCurrentText(self.project.key)
         for widget in widgets:

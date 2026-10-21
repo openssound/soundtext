@@ -558,6 +558,13 @@ dalla battuta 8. Le posizioni (in beat) delle battute successive alla
 prima vengono calcolate automaticamente tenendo conto della metrica in
 vigore in ciascun tratto.
 
+I tempi possono avere un decimale (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
+101.4`), come i marcatori `tempo=72.5`; anche il campo **Tempo** della
+barra lo accetta (101,4). Un brano con un tempo decimale si salva con
+`ST: 2.9` in cima: SoundText 1.8.0 e precedenti non leggerebbero quella
+riga `Tempo:` (e lo segnalano all'apertura). Con i soli tempi interi il
+file resta `ST: 2.8`, leggibile da tutte.
+
 **Barra di avanzamento, evidenziazione e campi Tempo/Metrica durante la
 riproduzione**: il file MIDI esportato, la barra di avanzamento,
 l'evidenziazione del token in esecuzione nell'editor e i campi **Tempo

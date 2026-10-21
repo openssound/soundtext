@@ -559,6 +559,13 @@ BPM desde el compás 9; compás 4/4 desde el compás 1, 3/4 desde el compás 5,
 posteriores al primero se calculan automáticamente teniendo en cuenta el
 compás vigente en cada tramo.
 
+Los tempos pueden tener un decimal (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5,
+5: 101.4`), como los marcadores `tempo=72.5`; también el campo **Tempo** de
+la barra lo acepta. Una canción con un tempo decimal se guarda con
+`ST: 2.9` arriba: SoundText 1.8.0 y anteriores no leerían esa línea
+`Tempo:` (y lo avisan al abrirla). Con solo tempos enteros el archivo sigue
+siendo `ST: 2.8`, legible por todas.
+
 **Barra de progreso, resaltado y campos Tempo/Compás durante la
 reproducción**: el archivo MIDI exportado, la barra de progreso, el
 resaltado del token que está sonando en el editor y los campos **Tempo

@@ -90,5 +90,5 @@ jobs:
       - name: Esegui i test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest -q
+        run: python -m pytest -q -rs          # -rs: il motivo di ogni test saltato
 

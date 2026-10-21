@@ -545,6 +545,13 @@ time signature 4/4 from bar 1, 3/4 from bar 5, 4/4 from bar 8. The
 positions (in beats) of the bars after the first are computed automatically
 taking into account the time signature in force in each section.
 
+Tempos can have one decimal (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
+101.4`), like the `tempo=72.5` markers; the toolbar **Tempo** field accepts
+it too. A song with a decimal tempo is saved with `ST: 2.9` at the top:
+SoundText 1.8.0 and earlier would not read that `Tempo:` line (and warn when
+opening it). With whole tempos only the file stays `ST: 2.8`, readable by
+all of them.
+
 **Progress bar, highlighting and Tempo/Time sig. fields during playback**:
 the exported MIDI file, the progress bar, the highlighting of the token
 being played in the editor and the **Tempo (BPM)** and **Time sig.** fields
