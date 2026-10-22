@@ -919,6 +919,45 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
             options_row.addWidget(self.kick_combo)
 
 
+def voice_range_labels():
+    return [("soprano", tr("Soprano")), ("contralto", tr("Contralto")), ("tenore", tr("Tenore")),
+            ("basso", tr("Basso"))]
+
+
+def add_voice_combo(dialog, controls_row):
+    """La tessitura della melodia (core.melody_generate.VOICE_RANGES): quella
+    dello strumento o di una voce; scegliere una voce porta l'ottava al
+    centro della sua estensione."""
+    from core.melody_generate import voice_octave
+    controls_row.addSpacing(12)
+    controls_row.addWidget(QLabel(tr("Tessitura:")))
+    dialog.voice_combo = QComboBox()
+    dialog.voice_combo.addItem(tr("dello strumento"), None)
+    for value, label in voice_range_labels():
+        dialog.voice_combo.addItem(label, value)
+    dialog.voice_combo.setToolTip(tr(
+        "Per una melodia da cantare: le note restano nell'estensione della voce scelta (soprano Do4-La5, "
+        "contralto Fa3-Re5, tenore Do3-La4, basso Mi2-Re4) invece che in tutta quella dello strumento."))
+
+    def chosen():
+        voice = dialog.voice_combo.currentData()
+        if voice:
+            dialog.octave_spin.blockSignals(True)
+            dialog.octave_spin.setValue(voice_octave(voice))
+            dialog.octave_spin.blockSignals(False)
+        dialog._regenerate_preview()
+    dialog.voice_combo.currentIndexChanged.connect(chosen)
+    controls_row.addWidget(dialog.voice_combo)
+
+
+def voice_range(dialog):
+    """(low, high) della tessitura scelta, o None (quella dello strumento)."""
+    from core.melody_generate import VOICE_RANGES
+    combo = getattr(dialog, "voice_combo", None)
+    voice = combo.currentData() if combo is not None else None
+    return VOICE_RANGES[voice] if voice else None
+
+
 class MelodyGenerateDialog(_GeneratedTrackDialogBase):
     """Genera un accompagnamento (strumenti polifonici, vedi
     core.rhythm_generate.COMPING_STYLES) o una melodia/riff (strumenti
@@ -995,6 +1034,8 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         )
         self.variation_every_spin.valueChanged.connect(self._regenerate_preview)
         controls_row.addWidget(self.variation_every_spin)
+        if not self.polyphonic:
+            add_voice_combo(self, controls_row)
 
     def _generate_text(self, seed=None) -> str:
         chords, source_text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
@@ -1053,8 +1094,12 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         return section_repeats(self.project, self.project.find_track(name), 0.0)
 
     def _register(self):
-        """L'estensione usata: quella dello strumento, o ristretta per non
-        sovrapporsi alle altre parti (Lascia spazio alle altre parti)."""
+        """L'estensione usata: quella della voce scelta (Tessitura), quella
+        dello strumento, o ristretta per non sovrapporsi alle altre parti
+        (Lascia spazio alle altre parti)."""
+        voice = voice_range(self)
+        if voice:
+            return voice
         check = getattr(self, "space_check", None)
         if check is None or not check.isChecked():
             return self.range_low, self.range_high
@@ -1159,6 +1204,7 @@ class LyricsMelodyDialog(_GeneratedTrackDialogBase):
         self.octave_spin.setValue(self.default_octave)
         self.octave_spin.valueChanged.connect(self._regenerate_preview)
         controls_row.addWidget(self.octave_spin)
+        add_voice_combo(self, controls_row)
 
     def _build_options(self, options_row):
         from PySide6.QtWidgets import QPlainTextEdit
@@ -1182,8 +1228,9 @@ class LyricsMelodyDialog(_GeneratedTrackDialogBase):
                 key = detect_key_of_text(source_text, self.project.patterns)
             except (NotationError, ValueError):
                 key = None
+        low, high = voice_range(self) or (self.range_low, self.range_high)
         return lyrics_to_melody(self.lyrics_edit.toPlainText(), chords, key, self.octave_spin.value(),
-                                self.range_low, self.range_high, bar_beats=self.bar_beats,
+                                low, high, bar_beats=self.bar_beats,
                                 seed=seed if seed is not None else getattr(self, "_seed", None))
 
 

@@ -2610,6 +2610,28 @@ full, Ending light with the closing hit; the dialog's table changes it
 section by section. Each section ends with a fill. A single Ctrl+Z removes
 everything.
 
+A box named **Stop** silences every part for its length; a **Break**
+keeps a single ensemble hit on the first beat (cymbal and kick, the root,
+the chord). In the dialog:
+
+- **Ending with a long note and a held chord**: in the last bar the bass
+  holds the root of the last chord and the accompaniment holds the chord,
+  together with the drums' final hit. With **Rallentando** the tempo drops
+  by a quarter over the last one or two bars: one `tempo=` marker per beat
+  in the drums box (or the bass box, if there are no drums).
+- **Phrase crescendo**: the dynamics rise along each four-bar phrase, and
+  the first hit of each chorus gets an extra accent.
+- **Leave room for the melody of**: in bars where the chosen melody has
+  many notes (at least six in 4/4) the accompaniment plays only on the
+  first beat and halfway through the bar.
+- **Modulation**: the last chorus and the sections after it go up a
+  semitone or a tone; their chord boxes are transposed too.
+
+**Vocal range** (Generate riff/melody with a single-voice instrument,
+Melody from lyrics): Soprano (C4-A5), Alto (F3-D5), Tenor (C3-A4) or Bass
+(E2-D4) keep the melody within that voice's range instead of the whole
+range of the instrument, for a melody to be sung.
+
 **Play in the gaps of** (riffs and melodies, when the song has an audio
 track): the melody is silent where the chosen track sings and plays in
 its pauses (at least half a second), like a horn answering the voice.

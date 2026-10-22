@@ -2726,6 +2726,30 @@ Pre-estribillo y Puente en crescendo, Estribillo lleno, Final ligero con el
 golpe de cierre; la tabla del diálogo la cambia sección por sección. Cada
 sección termina con un redoble. Un solo Ctrl+Z lo quita todo.
 
+Una caja llamada **Stop** hace callar todas las partes durante su
+duración; un **Break** deja un solo golpe de conjunto en el primer tiempo
+(platillo y bombo, la fundamental, el acorde). En el diálogo:
+
+- **Final con nota larga y acorde sostenido**: en el último compás el bajo
+  sostiene la fundamental del último acorde y el acompañamiento sostiene
+  el acorde, junto con el golpe final de la batería. Con **Rallentando** el
+  tempo baja una cuarta parte en los últimos uno o dos compases: un
+  marcador `tempo=` por tiempo en la caja de la batería (o del bajo, si no
+  hay batería).
+- **Crescendo de frase**: la dinámica sube a lo largo de cada frase de
+  cuatro compases, y el primer golpe de cada estribillo tiene un acento
+  más.
+- **Dejar espacio a la melodía de**: en los compases en los que la melodía
+  elegida tiene muchas notas (al menos seis en 4/4) el acompañamiento toca
+  solo en el primer tiempo y a mitad de compás.
+- **Modulación**: el último estribillo y las secciones que lo siguen suben
+  medio tono o un tono; también se transponen sus cajas de acordes.
+
+**Tesitura** (Generar riff/melodía con un instrumento a una voz, Melodía a
+partir de la letra): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenor
+(Do3-La4) o Bajo (Mi2-Re4) mantienen la melodía en la extensión de esa voz
+en lugar de en toda la del instrumento, para una melodía que cantar.
+
 **Tocar en los silencios de** (riffs y melodías, cuando la canción tiene
 una pista de audio): la melodía calla donde canta la pista elegida y
 suena en sus pausas (al menos medio segundo), como un viento que responde

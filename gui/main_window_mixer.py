@@ -410,8 +410,17 @@ class MixerMixin:
         self._arrange_dialog = dlg   # per i test
         if dlg.exec() != QDialog.Accepted or not dlg.parts():
             return
-        options = dlg.options()
+        options = dlg.used_options()
         made = []
+        modulated = {(round(c.start_beat, 6), c.name): c.text for c in dlg.parts().get("chords") or []}
+        if modulated:
+            # la modulazione traspone anche i box degli accordi dall'ultimo ritornello
+            source = dlg.source_track()
+            for clip in source.clips:
+                clip.text = modulated.get((round(clip.start_beat, 6), clip.name), clip.text)
+            source.text = flatten_clips_to_text(source.clips, self.project.patterns,
+                                                source.instrument.default_octave, meter=self.project.meter())
+            self._reload_editor_from_track()
         for kind, base, instrument in (("drums", tr("Batteria"), "Drums"), ("bass", tr("Basso"), "Bass"),
                                        ("comping", tr("Accompagnamento"), options.comping_instrument)):
             clips = dlg.parts().get(kind)

@@ -2664,6 +2664,28 @@ crescendo, Ritornello pieno, Finale leggero con il colpo di chiusura; la
 tabella del dialogo la fa cambiare sezione per sezione. Ogni sezione finisce
 con un fill. Un solo Ctrl+Z toglie tutto.
 
+Un box chiamato **Stop** fa tacere tutte le parti per la sua durata; un
+**Break** lascia un solo colpo d'insieme sul primo tempo (piatto e cassa,
+la fondamentale, l'accordo). Nel dialogo:
+
+- **Finale con nota lunga e accordo tenuto**: nell'ultima battuta il basso
+  tiene la fondamentale dell'ultimo accordo e l'accompagnamento tiene
+  l'accordo, insieme al colpo finale della batteria. Con **Rallentando** il
+  tempo scende di un quarto nelle ultime una o due battute: un marcatore
+  `tempo=` per beat nel box della batteria (o del basso, se non c'e').
+- **Crescendo di frase**: la dinamica sale lungo ogni frase di quattro
+  battute, e il primo colpo di ogni ritornello ha un accento in piu'.
+- **Lascia spazio alla melodia di**: nelle battute in cui la melodia scelta
+  ha molte note (almeno sei in 4/4) l'accompagnamento suona solo sul primo
+  tempo e a meta' battuta.
+- **Modulazione**: l'ultimo ritornello e le sezioni dopo di lui salgono di
+  mezzo tono o di un tono; si traspongono anche i loro box degli accordi.
+
+**Tessitura** (Genera riff/melodia con uno strumento a una voce, Melodia
+dal testo): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenore (Do3-La4) o
+Basso (Mi2-Re4) tengono la melodia nell'estensione di quella voce invece
+che in tutta quella dello strumento, per una melodia da cantare.
+
 **Suona nei silenzi di** (riff e melodie, quando il brano ha una traccia
 audio): la melodia tace dove canta la traccia scelta e suona nelle sue
 pause (almeno mezzo secondo), come un fiato che risponde alla voce.

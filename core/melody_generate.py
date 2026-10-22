@@ -32,6 +32,22 @@ from .rhythm_generate import (
 )
 from .i18n import tr
 
+# Tessiture vocali (estensioni di un cantante di coro, MIDI): una melodia da
+# cantare sta qui invece che in tutta l'estensione dello strumento.
+VOICE_RANGES: Dict[str, Tuple[int, int]] = {
+    "soprano": (60, 81),     # Do4 - La5
+    "contralto": (53, 74),   # Fa3 - Re5
+    "tenore": (48, 69),      # Do3 - La4
+    "basso": (40, 62),       # Mi2 - Re4
+}
+
+
+def voice_octave(voice: str) -> int:
+    """L'ottava di partenza per una tessitura: quella del centro dell'estensione."""
+    low, high = VOICE_RANGES[voice]
+    return (low + high) // 2 // 12 - 1
+
+
 MAJOR_SCALE = (0, 2, 4, 5, 7, 9, 11)
 MINOR_SCALE = (0, 2, 3, 5, 7, 8, 10)
 

@@ -2785,6 +2785,31 @@ Pré-refrain et Pont en crescendo, Refrain plein, Fin légère avec le coup
 final ; le tableau du dialogue la change section par section. Chaque
 section finit par un break. Un seul Ctrl+Z supprime tout.
 
+Une boîte nommée **Stop** fait taire toutes les parties pendant sa durée ;
+un **Break** garde un seul coup d'ensemble sur le premier temps (cymbale et
+grosse caisse, la fondamentale, l'accord). Dans le dialogue :
+
+- **Fin avec note longue et accord tenu** : dans la dernière mesure la
+  basse tient la fondamentale du dernier accord et l'accompagnement tient
+  l'accord, avec le coup final de la batterie. Avec **Rallentando** le
+  tempo baisse d'un quart sur les une ou deux dernières mesures : un
+  marqueur `tempo=` par temps dans la boîte de la batterie (ou de la
+  basse, s'il n'y a pas de batterie).
+- **Crescendo de phrase** : la dynamique monte le long de chaque phrase de
+  quatre mesures, et le premier coup de chaque refrain a un accent de
+  plus.
+- **Laisser de la place à la mélodie de** : dans les mesures où la mélodie
+  choisie a beaucoup de notes (au moins six en 4/4) l'accompagnement ne
+  joue que sur le premier temps et à la moitié de la mesure.
+- **Modulation** : le dernier refrain et les sections qui le suivent
+  montent d'un demi-ton ou d'un ton ; leurs boîtes d'accords sont aussi
+  transposées.
+
+**Tessiture** (Générer riff/mélodie avec un instrument à une voix, Mélodie
+à partir des paroles) : Soprano (Do4-La5), Alto (Fa3-Ré5), Ténor (Do3-La4)
+ou Basse (Mi2-Ré4) gardent la mélodie dans l'étendue de cette voix au lieu
+de toute celle de l'instrument, pour une mélodie à chanter.
+
 **Jouer dans les silences de** (riffs et mélodies, quand le morceau a une
 piste audio) : la mélodie se tait là où la piste choisie chante et joue
 dans ses pauses (au moins une demi-seconde), comme un cuivre qui répond à
