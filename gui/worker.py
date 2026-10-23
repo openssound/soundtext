@@ -33,3 +33,33 @@ class Worker(QThread):
         except Exception as e:
             logging.getLogger(__name__).warning("Operazione in background fallita", exc_info=True)
             self.finished_error.emit(str(e))
+
+
+def run_with_wait(parent, label: str, func, *args, **kwargs):
+    """Esegue func(*args, **kwargs) in un Worker e ne ritorna il risultato,
+    lasciando che la finestra si ridisegni intanto (un'analisi di qualche
+    secondo non la blocca); dopo WAIT_DIALOG_MS mostra una finestra
+    d'attesa con 'label'. Un errore della funzione diventa RuntimeError con
+    il suo messaggio."""
+    from PySide6.QtCore import QEventLoop, Qt
+    from PySide6.QtWidgets import QProgressDialog
+    outcome = {}
+    loop = QEventLoop()
+    worker = Worker(func, *args, pass_progress=False, **kwargs)
+    worker.finished_ok.connect(lambda result: (outcome.__setitem__("ok", result), loop.quit()))
+    worker.finished_error.connect(lambda message: (outcome.__setitem__("error", message), loop.quit()))
+    dialog = QProgressDialog(label, None, 0, 0, parent)
+    dialog.setWindowModality(Qt.WindowModal)
+    dialog.setMinimumDuration(WAIT_DIALOG_MS)
+    dialog.setCancelButton(None)
+    worker.start()
+    if "ok" not in outcome and "error" not in outcome:
+        loop.exec()
+    worker.wait()
+    dialog.close()
+    if "error" in outcome:
+        raise RuntimeError(outcome["error"])
+    return outcome.get("ok")
+
+
+WAIT_DIALOG_MS = 400

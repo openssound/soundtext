@@ -28,6 +28,7 @@ from core.playback import PlaybackEngine
 from .worker import Worker
 from .highlighter import NotationHighlighter
 from .metronome_engine import MetronomeEngine
+from .quantize_options import QuantizeOptionsWidget
 from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
@@ -192,7 +193,7 @@ class AudioImportDialog(QDialog):
         tempo_row.addWidget(QLabel(tr("Tempo (BPM):")))
         self.tempo_spin = QSpinBox()
         self.tempo_spin.setRange(20, 300)
-        self.tempo_spin.setValue(self.project.tempo_bpm)
+        self.tempo_spin.setValue(round(self.project.tempo_bpm))
         self.tempo_spin.setToolTip(tr("Tempo del progetto: usato anche per quantizzare la registrazione."))
         self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
         tempo_row.addWidget(self.tempo_spin)
@@ -286,6 +287,10 @@ class AudioImportDialog(QDialog):
         options_row.addWidget(self.sevenths_check)
         options_row.addStretch(1)
         mode_layout.addLayout(options_row)
+        # forza, finestra, swing, pulizia: melodia e percussioni
+        self.quant_options = QuantizeOptionsWidget()
+        self.quant_options.changed.connect(self._schedule_conversion)
+        mode_layout.addWidget(self.quant_options)
         mode_layout.addLayout(voice_row)
 
         # parametri avanzati del pitch tracking: solo melodia (Opzioni -> Import audio)
@@ -353,6 +358,13 @@ class AudioImportDialog(QDialog):
         )
         self.preview_play_btn.clicked.connect(self._on_preview_play)
         preview_play_row.addWidget(self.preview_play_btn)
+        self.compare_combo = QComboBox()
+        self.compare_combo.addItem(tr("solo il risultato"), "result")
+        self.compare_combo.addItem(tr("prima l'audio, poi il risultato"), "sequence")
+        self.compare_combo.addItem(tr("audio e risultato insieme"), "together")
+        self.compare_combo.setToolTip(tr("Anteprima a confronto: l'audio di partenza e le note riconosciute, "
+                                         "una dopo l'altro o insieme, per sentire cosa e' rimasto fuori."))
+        preview_play_row.addWidget(self.compare_combo)
         self.preview_stop_btn = QPushButton(tr("■ Stop"))
         self.preview_stop_btn.clicked.connect(self._stop_preview_playback)
         preview_play_row.addWidget(self.preview_stop_btn)
@@ -492,6 +504,8 @@ class AudioImportDialog(QDialog):
         self.ternary_check.setEnabled(enable)
         if not enable:
             self.ternary_check.setChecked(False)
+        if hasattr(self, "quant_options"):
+            self.quant_options.set_grid(*self._selected_grid())
         self._schedule_conversion()
 
     # ------------------------------------------------------------ algoritmo pitch
@@ -505,6 +519,8 @@ class AudioImportDialog(QDialog):
                "quarto al tempo del brano: \"4: 4C | 2Am 2G | ...\".") if chords else
             tr("Colpi di batteria o beatbox, riconosciuti come kick, snare e hihat."))
         self.quant_widget.setVisible(not chords)
+        if hasattr(self, "quant_options"):
+            self.quant_options.setVisible(not chords)
         self.voice_source_check.setVisible(not chords)
         self.voice_source_check.setText(
             tr("Sto cantando (non lo strumento)") if melodic else tr("Sto facendo beatbox (non la batteria)"))
@@ -629,6 +645,7 @@ class AudioImportDialog(QDialog):
             align_to_first_note=self._from_mic and not self._recorded_with_metronome,
             chords=is_chords, sevenths=is_chords and self.sevenths_check.isChecked(),
             beats_per_bar=_beats_per_bar(self.project.time_sig),
+            quantize=self.quant_options.settings(),
             progress_callback=progress, pass_progress=False,
         )
         self._worker = worker
@@ -708,9 +725,29 @@ class AudioImportDialog(QDialog):
             return
         project = Project(name="preview", tempo_bpm=self.project.tempo_bpm)
         copy_synth(project.add_track("Anteprima", self.instrument_name, text), self.project.find_track(self.track_name))
+        mode = self.compare_combo.currentData()
+        if mode != "result" and self.source_path:
+            self._play_comparison(project, mode)
+            return
 
         self._preview_highlight.play(project, self.project.patterns, get_instrument(self.instrument_name).default_octave,
                                      midi_dir=self.midi_dir, only_audible=False)
+
+    def _play_comparison(self, project, mode: str):
+        """Anteprima a confronto (core.playback.comparison_buffer)."""
+        from core.audio_tracks import AUDIO_SAMPLE_RATE
+        from core.playback import comparison_buffer
+        from .worker import run_with_wait
+        self._stop_preview_playback()
+        try:
+            samples = run_with_wait(self, tr("Preparo il confronto..."), comparison_buffer,
+                                    project, self.source_path, mode)
+        except RuntimeError as e:
+            QMessageBox.warning(self, tr("Anteprima a confronto"), str(e))
+            return
+        if not self._preview_playback.play_buffer(samples, AUDIO_SAMPLE_RATE):
+            QMessageBox.information(self, tr("Anteprima a confronto"), tr(
+                "Il confronto richiede la riproduzione diretta (libreria sounddevice)."))
 
     def _stop_preview_playback(self):
         self._preview_highlight.stop()
@@ -737,6 +774,7 @@ class AudioImportDialog(QDialog):
         grid_denom, ternary = self._selected_grid()
         app_settings.set_last_quantization_grid(grid_denom)
         app_settings.set_last_quantization_ternary(ternary)
+        self.quant_options.remember()
         self._generated_text = text  # riflette le eventuali modifiche manuali, non solo il testo generato
         super().accept()
 

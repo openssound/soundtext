@@ -135,12 +135,18 @@ def _spectrogram(x: np.ndarray, progress: Optional[Callable[[float], None]] = No
 def _estimate_tuning(spec: np.ndarray, freqs: np.ndarray) -> float:
     """Scostamento dell'accordatura dal La 440, in semitoni (-0.5..0.5):
     media circolare della parte frazionaria della nota dei picchi forti."""
+    return tuning_and_strength(spec, freqs)[0]
+
+
+def tuning_and_strength(spec: np.ndarray, freqs: np.ndarray) -> Tuple[float, float]:
+    """(_estimate_tuning, quanto i picchi sono d'accordo fra loro: 0-1). Con
+    i picchi sparsi (rumore, batteria) l'accordatura non vuol dire niente."""
     band = (freqs >= FREQ_MIN) & (freqs <= FREQ_MAX)
     avg = spec[:, band].mean(axis=0)
     f = freqs[band]
     peaks = np.flatnonzero((avg[1:-1] > avg[:-2]) & (avg[1:-1] > avg[2:])) + 1
     if len(peaks) == 0:
-        return 0.0
+        return 0.0, 0.0
     strongest = peaks[np.argsort(avg[peaks])[-60:]]
     # posizione del picco piu' precisa con l'interpolazione parabolica
     a, b, c = avg[strongest - 1], avg[strongest], avg[strongest + 1]
@@ -149,8 +155,9 @@ def _estimate_tuning(spec: np.ndarray, freqs: np.ndarray) -> float:
     pitch = 69 + 12 * np.log2((f[strongest] + shift * step) / 440.0)
     angles = 2 * np.pi * (pitch - np.round(pitch))
     weights = avg[strongest]
-    mean = math.atan2(float((weights * np.sin(angles)).sum()), float((weights * np.cos(angles)).sum()))
-    return mean / (2 * np.pi)
+    sin, cos = float((weights * np.sin(angles)).sum()), float((weights * np.cos(angles)).sum())
+    total = float(weights.sum())
+    return math.atan2(sin, cos) / (2 * np.pi), (math.hypot(sin, cos) / total if total > 0 else 0.0)
 
 
 def _semitone_matrix(freqs: np.ndarray, lo: float, hi: float, tuning: float):

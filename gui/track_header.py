@@ -162,6 +162,8 @@ class TrackHeaderWidget(QFrame):
         if t.synth and not t.is_audio:
             from core.plugins import display_name
             subtitle = f"{display_name(t.synth)} ({'SFZ' if t.synth.startswith('sfz:') else 'plugin'})"
+        if t.frozen:
+            subtitle = tr("❄ congelata in '{audio}'", audio=t.frozen)
         self._set_elided(self.name_label, t.name)
         self._set_elided(self.instr_label, subtitle)
         for widget, value in ((self.mute_btn, t.mute), (self.solo_btn, t.solo)):

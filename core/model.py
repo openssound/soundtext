@@ -6,7 +6,7 @@ Volume/Pan) come richiesto dall'MVP (sezione 8).
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .instruments import InstrumentProfile, get_instrument
 from .notation import Pattern, parse_track_text, Event, Meter
@@ -31,6 +31,25 @@ class Clip:
     start_beat: float = 0.0     # posizione assoluta nella traccia, in beat (quarti)
 
 
+# Forme delle dissolvenze di una clip audio (AudioClip.fade_shape).
+FADE_SHAPES = ("linear", "equal")
+# Canale del file che una clip audio usa (AudioClip.channel).
+CLIP_CHANNELS = ("stereo", "left", "right", "mono")
+
+
+@dataclass(frozen=True)
+class AudioTake:
+    """Una ripresa alternativa di una clip audio (vedi AudioClip.takes e
+    core.audio_takes). delta: secondi fra il punto di questo file e quello
+    del file della ripresa attiva che suonano nello stesso istante (le
+    riprese hanno ciascuna il suo conteggio e il suo ritardo d'ingresso).
+    Immutabile: si cambia sostituendo la lista, cosi' le copie di una clip
+    (Duplica, Copia) non si condividono le modifiche."""
+    name: str
+    file: str                   # in memoria sempre assoluto, come AudioClip.file
+    delta: float = 0.0
+
+
 @dataclass
 class AudioClip:
     """Una clip di una traccia audio: un file audio (registrato altrove o
@@ -43,6 +62,46 @@ class AudioClip:
     trim_start: float = 0.0     # secondi del file saltati all'inizio
     trim_end: float = 0.0       # secondi del file saltati alla fine
     gain_db: float = 0.0
+    # Dissolvenze in entrata e in uscita (secondi della parte riprodotta) e
+    # loro forma: "linear" o "equal" (equal-power, senza calo a meta' in una
+    # dissolvenza incrociata). Sotto c'e' sempre una microdissolvenza di
+    # pochi millisecondi (core.audio_tracks.MICRO_FADE_SECONDS) contro i clic.
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+    fade_shape: str = "linear"
+    muted: bool = False         # la clip resta nel brano ma non suona
+    # Riprese multiple: tutte, compresa l'attiva (takes[active_take], con
+    # lo stesso file di 'file' e delta 0); vuota = una ripresa sola.
+    takes: List[AudioTake] = field(default_factory=list)
+    active_take: int = 0
+    # Time-stretch senza cambiare l'intonazione (core.audio_tracks): durata
+    # nel brano / durata nel file (1.1 = 10% piu' lenta). I tagli restano in
+    # secondi del file; le dissolvenze sono in secondi del brano.
+    stretch: float = 1.0
+    # Il BPM a cui la clip va a tempo: se > 0 la clip segue il tempo del
+    # brano, e lo stretch si ricalcola quando il tempo cambia
+    # (core.audio_tracks.adapt_clips_to_tempo). 0 = durata fissa.
+    source_bpm: float = 0.0
+    # Elaborazioni non distruttive (core.audio_tracks, applicate nel mix):
+    # trasposizione in semitoni (anche frazionari) senza cambiare la
+    # velocita', suono al contrario, fase invertita e canale del file usato
+    # ("stereo", "left", "right" o "mono" = somma dei due).
+    transpose: float = 0.0
+    reverse: bool = False
+    invert: bool = False
+    channel: str = "stereo"
+    # Ripeti in loop (core.audio_tracks.loop_repeats): la parte suonata si
+    # ripete fino a occupare loop_length beat dall'inizio della clip; 0 (o
+    # meno della parte stessa) = nessuna ripetizione.
+    loop_length: float = 0.0
+    # Curva del volume dentro la clip: [(secondi dall'inizio della parte
+    # suonata, nel brano; dB)], in ordine; fra un punto e l'altro il volume
+    # cambia in linea retta (in dB), prima del primo e dopo l'ultimo resta.
+    # Vuota = nessuna curva. Si somma al guadagno della clip.
+    gain_points: List[Tuple[float, float]] = field(default_factory=list)
+    # Correzione dell'intonazione (core.pitch_correct): forza 0-100%, 0 =
+    # spenta. La scala e' quella della tonalita' del brano.
+    pitch_correct: int = 0
 
 
 @dataclass
@@ -115,10 +174,18 @@ class Track:
     # canali della scheda audio ("1", "2", "1+2", ...).
     input_profile: str = ""
     input_channels: str = ""
+    # Solo tracce di note nate da "Converti la traccia in notazione": da
+    # quale traccia audio e con quali scelte (blocco "Conversione Nome:"
+    # del file, dalla 2.10; chiavi di st_language.stfile.parse_conversion_body),
+    # per rifarla con Riconverti. None se la traccia non viene da una conversione.
+    conversion: Optional[dict] = None
     # Lo strumento come lo definisce il brano (blocco "Strumento Nome:" del
     # file, vedi Project.instruments): se c'e', vale lui e non quello con lo
     # stesso nome registrato in locale, che puo' venire da un altro brano.
     instrument_def: Optional[InstrumentProfile] = field(default=None, repr=False, compare=False)
+    # Traccia congelata in audio (core.freeze): il nome della traccia audio
+    # che la suona al suo posto; questa resta, silenziata. "" = non congelata.
+    frozen: str = ""
 
     @property
     def is_audio(self) -> bool:
@@ -151,7 +218,7 @@ def copy_synth(dst: "Track", src: Optional["Track"]) -> "Track":
 @dataclass
 class Project:
     name: str = "Nuovo progetto"
-    tempo_bpm: int = 120
+    tempo_bpm: float = 120       # intero se lo e' (96), coi decimali dalla 2.9 del linguaggio (101.4)
     time_sig: str = "4/4"
     key: str = ""                # tonalita' del brano, es. "C", "Am", "F#" (vuota = non impostata)
     tracks: List[Track] = field(default_factory=list)
@@ -160,7 +227,7 @@ class Project:
     # Se vuoti, si usano semplicemente tempo_bpm/time_sig per l'intero brano
     # (comportamento originale, invariato). Se popolati, tempo_bpm/time_sig
     # continuano a rappresentare il valore alla battuta 1.
-    tempo_changes: List[tuple] = field(default_factory=list)     # [(bar:int, bpm:int), ...]
+    tempo_changes: List[tuple] = field(default_factory=list)     # [(bar:int, bpm), ...], bpm intero o decimale
     metrica_changes: List[tuple] = field(default_factory=list)    # [(bar:int, "N/D"), ...]
     master_volume: int = 100     # 0-200 (100 = guadagno originale/unita'), applicato sopra al volume di ogni traccia
     # Ambiente del riverbero del synth per tutto il brano (chiave di
@@ -207,6 +274,11 @@ class Project:
 
     def remove_track(self, name: str):
         self.tracks = [t for t in self.tracks if t.name != name]
+        for t in self.tracks:              # tracce di note convertite da quella tolta
+            if t.conversion and t.conversion.get("from") == name:
+                t.conversion = None
+            if t.frozen == name:           # tolta la sua versione congelata: torna a suonare
+                t.frozen, t.mute = "", False
 
     def get_track(self, name: str) -> Track:
         for t in self.tracks:
@@ -226,6 +298,11 @@ class Project:
         if track.is_audio:
             # Una traccia audio resta audio: qui si puo' solo rinominarla.
             track.name = new_name
+            for t in self.tracks:          # le tracce convertite (e congelate) la seguono
+                if t.conversion and t.conversion.get("from") == old_name:
+                    t.conversion = dict(t.conversion, **{"from": new_name})
+                if t.frozen == old_name:
+                    t.frozen = new_name
             return
         if new_instrument not in self.instruments:
             get_instrument(new_instrument)  # valida

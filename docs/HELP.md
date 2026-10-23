@@ -558,6 +558,13 @@ dalla battuta 8. Le posizioni (in beat) delle battute successive alla
 prima vengono calcolate automaticamente tenendo conto della metrica in
 vigore in ciascun tratto.
 
+I tempi possono avere un decimale (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
+101.4`), come i marcatori `tempo=72.5`; anche il campo **Tempo** della
+barra lo accetta (101,4). Un brano con un tempo decimale si salva con
+`ST: 2.9` in cima: SoundText 1.8.0 e precedenti non leggerebbero quella
+riga `Tempo:` (e lo segnalano all'apertura). Con i soli tempi interi il
+file resta `ST: 2.8`, leggibile da tutte.
+
 **Barra di avanzamento, evidenziazione e campi Tempo/Metrica durante la
 riproduzione**: il file MIDI esportato, la barra di avanzamento,
 l'evidenziazione del token in esecuzione nell'editor e i campi **Tempo
@@ -1590,6 +1597,12 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     traccia quando scende sotto la soglia, per togliere fruscio, ronzio e
     rumori tra una frase e l'altra nelle tracce audio registrate. Se taglia
     l'inizio o la fine delle note, abbassa la soglia o allunga il rilascio.
+  - **Riduzione rumore** (riduzione, soglia): toglie il fruscio costante
+    (ventola, amplificatore, preamplificatore) anche mentre si suona, al
+    contrario del noise gate. Lo impara da solo dal tratto piu' silenzioso
+    della traccia (non dai silenzi digitali fra una clip e l'altra): basta
+    che la ripresa abbia mezzo secondo di solo rumore, all'inizio o alla
+    fine. Preset Leggera, Fruscio, Forte.
   - **Volume** (guadagno, ±24 dB): alza o abbassa il livello e basta. Per
     esempio −6 dB (preset "Margine per il master") all'inizio della catena
     del master quando le tracce sommate superano 0 dB: compressore e
@@ -2241,6 +2254,20 @@ tasto destro sull'etichetta della traccia a sinistra.
   box. I richiami a pattern e file MIDI si trasportano con il suffisso:
   `%Giro` diventa `%Giro+2`, `&"Riff"+1` diventa `&"Riff"+3` (il pattern
   resta com'e', perche' lo possono usare anche altri).
+- **Riarmonizza...** (box di soli accordi): lo stesso arricchimento del
+  giro armonico generato, applicato a un giro gia' scritto. Il cursore
+  **Quanto ricco** va da 0 (il giro com'e') a settime e none, dominanti
+  secondarie e II-V verso l'accordo dopo, sostituti di tritono e iv minore;
+  **Altra versione** ne propone un'altra. Durate e pause restano, gli
+  accordi che non cambiano restano scritti com'erano.
+- **Armonizza la melodia...** (box con una melodia, o clip audio con una
+  parte a una voce): propone gli accordi in tre versioni, **Semplice** (I,
+  IV, V), **Diatonica** (tutti i gradi della tonalita') e **Ricca**
+  (settime, dominanti secondarie; **Altra versione** ne propone un'altra),
+  uno per battuta o per mezza battuta, nella tonalita' riconosciuta dalla
+  melodia (modificabile). Gli accordi vanno in una traccia nuova "Accordi
+  di Nome", con un box dove comincia la melodia; da li' si possono generare
+  basso e accompagnamento.
 - **Rinomina...**
 - **Duplica**: crea una copia sulla stessa traccia, subito dopo la fine
   del box originale (o nel primo spazio libero disponibile da lì).
@@ -2504,6 +2531,17 @@ percussiva selezionata):
 - **Finale sull'ultima battuta**: l'ultima battuta diventa un colpo di
   chiusura (crash e cassa sul primo tempo, poi silenzio), per terminare il
   brano o la sezione.
+- **Fill alla fine delle sezioni** (spuntato quando le altre tracce hanno
+  dei box): un fill completo nell'ultima battuta prima di ogni box delle
+  altre tracce (Strofa, Ritornello...) nella Struttura brano, e il crash
+  quando la sezione nuova comincia, oltre ai fill ogni N battute.
+- **Segui la ripresa** (c'e' quando il brano ha una traccia audio con delle
+  clip): SoundText ascolta il groove della ripresa (per ogni sedicesimo
+  della battuta, quanto spesso e quanto forte c'e' un colpo) e mette la
+  cassa anche sui suoi accenti forti e ricorrenti, lasciando il rullante
+  dov'e'. Il tempo e' quello del brano: per una ripresa suonata libera usa
+  prima **Ricava il tempo dalla ripresa...** sulla clip. Le battute
+  proposte coprono anche le clip audio.
 - **Intensità**: vedi sopra.
 
 **Componi → Genera nella traccia selezionata → Giro armonico...** (richiede uno
@@ -2575,6 +2613,12 @@ un'altra traccia nel progetto con accordi già scritti):
   MIDI; il blocco e' riconosciuto come accordo noto, altrimenti la
   fondamentale e' la nota piu' bassa). Una traccia fatta solo di note
   singole (melodia, arpeggi) non ha accordi da seguire.
+  Anche una **traccia audio** puo' dare gli accordi (in elenco come
+  "Nome (audio)"): una ripresa di chitarra ritmica o di pianoforte viene
+  analizzata la prima volta che la scegli (qualche secondo), con lo stesso
+  riconoscimento della modalita' Accordi dell'import audio, e gli accordi
+  di ogni clip stanno dove sta la clip. Vale anche per
+  **Accompagnamento o riff** e per la melodia, che ne ricava la tonalita'.
 - **Stile** (ognuno scrive la sua griglia ritmica: quarti, ottavi o, per lo
   shuffle, terzine di ottavo):
   - **Fondamentale**: ripete la tonica per tutta la durata dell'accordo.
@@ -2598,6 +2642,62 @@ un'altra traccia nel progetto con accordi già scritti):
   un secondo disegno (vedi sopra).
 - **Intensità**: vedi sopra (anche in **Genera accompagnamento/riff**).
 
+**Esecuzione dello strumento** (basso, e accompagnamento per chitarra o
+pianoforte): la chitarra suona gli accordi a pennate (in giu' sui tempi, in
+su e piu' leggere in levare, le corde a pochi millisecondi l'una
+dall'altra); il pianoforte usa il pedale, cambiato a ogni accordo; il basso
+aggiunge note fantasma stoppate prima degli attacchi sul tempo e qualche
+slide verso la nota dell'accordo dopo.
+
+**Melodia dal testo...** (menu della traccia, strumenti a una voce): si
+scrivono le parole, una riga per frase, e nasce una melodia con una nota per
+sillaba sugli accordi della traccia scelta, con gli accenti delle parole sui
+tempi forti e le sillabe gia' sotto le note (vedi 2.13). Le parole si
+dividono con le regole dell'italiano; per dividerle a modo proprio si
+scrivono i trattini (Ma-ri-a).
+
+**Componi → Arrangia il brano...**: dalle sezioni della traccia degli
+accordi (i suoi box) batteria, basso e accompagnamento in un passaggio, in
+tracce nuove con un box per sezione. L'intensita' viene dal nome del box:
+Intro senza batteria ne' basso, Strofa leggera, Pre-ritornello e Ponte in
+crescendo, Ritornello pieno, Finale leggero con il colpo di chiusura; la
+tabella del dialogo la fa cambiare sezione per sezione. Ogni sezione finisce
+con un fill. Un solo Ctrl+Z toglie tutto.
+
+Un box chiamato **Stop** fa tacere tutte le parti per la sua durata; un
+**Break** lascia un solo colpo d'insieme sul primo tempo (piatto e cassa,
+la fondamentale, l'accordo). Nel dialogo:
+
+- **Finale con nota lunga e accordo tenuto**: nell'ultima battuta il basso
+  tiene la fondamentale dell'ultimo accordo e l'accompagnamento tiene
+  l'accordo, insieme al colpo finale della batteria. Con **Rallentando** il
+  tempo scende di un quarto nelle ultime una o due battute: un marcatore
+  `tempo=` per beat nel box della batteria (o del basso, se non c'e').
+- **Crescendo di frase**: la dinamica sale lungo ogni frase di quattro
+  battute, e il primo colpo di ogni ritornello ha un accento in piu'.
+- **Lascia spazio alla melodia di**: nelle battute in cui la melodia scelta
+  ha molte note (almeno sei in 4/4) l'accompagnamento suona solo sul primo
+  tempo e a meta' battuta.
+- **Modulazione**: l'ultimo ritornello e le sezioni dopo di lui salgono di
+  mezzo tono o di un tono; si traspongono anche i loro box degli accordi.
+
+**Tessitura** (Genera riff/melodia con uno strumento a una voce, Melodia
+dal testo): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenore (Do3-La4) o
+Basso (Mi2-Re4) tengono la melodia nell'estensione di quella voce invece
+che in tutta quella dello strumento, per una melodia da cantare.
+
+**Suona nei silenzi di** (riff e melodie, quando il brano ha una traccia
+audio): la melodia tace dove canta la traccia scelta e suona nelle sue
+pause (almeno mezzo secondo), come un fiato che risponde alla voce.
+
+**Lascia spazio alle altre parti** (c'e' quando il brano ha gia' altre
+parti scritte): l'accompagnamento sta sopra il basso e sotto la melodia,
+la melodia sopra l'accompagnamento, invece di usare tutta l'estensione
+dello strumento; il suggerimento mostra le note usate. **Ritornello
+riconoscibile** (melodie a frasi): dove la traccia degli accordi ripete
+una sezione (due box "Ritornello", o due box uguali) la melodia torna
+uguale alla prima volta.
+
 In **Genera accompagnamento** c'è anche **Rivolti vicini** (spuntato di
 default): ogni accordo sceglie il rivolto più vicino al precedente
 (condotta delle voci), come farebbe un pianista — ad esempio Do-Mi-Sol,
@@ -2610,6 +2710,10 @@ troppo dal registro di partenza. Vale per gli accordi di almeno tre note
 - **Variazione ogni N accordi**: ogni N accordi usa un trattamento
   leggermente diverso dello stesso accordo (salto d'ottava, nota diversa...)
   invece di ripetere identico il disegno — 0 disattiva le variazioni.
+- **Segui la cassa di** (c'e' quando il brano ha una traccia di
+  batteria): gli attacchi del basso cadono sui colpi di cassa della traccia
+  scelta, con le note dello stile, cosi' basso e batteria suonano insieme.
+  All'inizio di ogni accordo c'e' sempre una nota.
 
 Entrambi mostrano un'anteprima modificabile a mano prima di confermare
 (come l'importazione audio, sezione 10bis), e il risultato viene accodato
@@ -2634,6 +2738,9 @@ un nuovo modello, che segue qualunque giro di accordi.
 
 **Da dove si salva** («Salva come stile del generatore...»):
 - tasto destro su un **box** nella vista Struttura brano;
+- tasto destro su una **clip audio** (una ripresa): prima la conversione in
+  note come in "Converti in notazione" (scegli **Drums** per uno stile di
+  batteria), poi lo stesso dialogo;
 - menu **Componi → Stili dei generatori → Salva la traccia come stile...** (tutta la traccia selezionata);
 - **Libreria MIDI** (menu Componi → Gestisci libreria MIDI): il pulsante
   sotto l'anteprima propone tutti i canali del file selezionato.
@@ -3176,6 +3283,22 @@ Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
   quantizzazione percepibile, restando comunque dentro la normale
   sintassi `N:`. L'ultima combinazione usata viene ricordata alla
   riapertura del dialogo.
+- **Regola la quantizzazione** (sotto la griglia, chiuso di base; c'e'
+  anche in "Suona con la tastiera" e in "Converti la traccia in
+  notazione"), per chi suona impreciso senza voler perdere il suo modo di
+  suonare:
+  - **Forza**: di quanto ogni nota si sposta verso la griglia (100% =
+    tutta, 50% = a meta' strada);
+  - **Finestra**: si correggono solo le note vicine alla griglia; quelle
+    piu' lontane (anticipi e ritardi voluti) restano dove sono;
+  - **Swing** (griglie da 1/8 e 1/16): la seconda suddivisione di ogni
+    coppia va piu' tardi, 66% = shuffle in terzine, cosi' un'esecuzione
+    swing non viene raddrizzata;
+  - **Scarta le note piu' corte di** e **Unisci le note uguali entro**:
+    tolgono le corde sfiorate e gli attacchi riconosciuti due volte.
+  Se le note non finiscono esattamente sulla griglia (forza o finestra
+  sotto il 100%, swing), il testo si scrive a 1/64, come con "Off". I
+  valori si ricordano come la griglia.
 - **Modalita' di analisi**: Melodica (pitch detection, per voce o
   strumenti che suonano una nota alla volta; per gli accordi c'e' la
   modalita' Accordi, qui sotto) oppure Percussiva (rilevamento transienti per
@@ -3253,6 +3376,10 @@ Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
   di confermare con "Inserisci nella traccia" — utile per verificare a orecchio la conversione
   (o una propria variante) prima di sostituire il contenuto della
   traccia/pattern.
+- **Confronto**: accanto ad "▶ Ascolta" si sceglie cosa sentire: **solo il
+  risultato**, **prima l'audio, poi il risultato** oppure **audio e
+  risultato insieme** (a meta' volume ciascuno), per sentire cosa la
+  conversione ha lasciato fuori.
 
 Nota sulla qualita' del riconoscimento: il rilevamento delle note melodiche
 segmenta l'audio con un rilevatore di attacchi dedicato (affidabile anche
@@ -3551,19 +3678,149 @@ oppure **importando** file registrati con un altro programma.
   **Dividi qui**: diventa due clip consecutive dello stesso file, che si
   possono spostare, tagliare o eliminare separatamente (per esempio per
   togliere un errore a meta' ripresa).
+- **Dissolvenze**: con il mouse sul box compaiono due maniglie bianche
+  agli angoli in alto; trascina quella di sinistra verso destra per la
+  dissolvenza in entrata, quella di destra verso sinistra per quella in
+  uscita. La forma d'onda e una curva scura mostrano l'effetto. Per valori
+  esatti e per la forma (**Lineare** o **Equal power**, senza calo di volume
+  a meta', adatta alle dissolvenze incrociate): tasto destro →
+  **Dissolvenze...**. Anche senza dissolvenze, ogni bordo di clip ha una
+  microdissolvenza di 5 ms che toglie il clic di un taglio a meta' di un
+  suono (anche nel punto di una divisione).
+- **Quantizza l'audio...** (tasto destro): per una ripresa suonata un po'
+  fuori tempo (batteria, chitarra ritmica). SoundText trova gli attacchi,
+  taglia la clip poco prima di ognuno e sposta i pezzi verso la griglia
+  scelta, con **Forza**, **Finestra** e **Swing** come per le note (vedi
+  "Regola la quantizzazione"). Dove un pezzo spostato finisce sopra il
+  successivo si accorcia fino a li', con una dissolvenza incrociata breve;
+  dove si apre un vuoto resta silenzio. Il file non cambia, e un solo
+  Ctrl+Z annulla tutto.
+- **Rimuovi i silenzi...** (tasto destro): per una ripresa con lunghe pause
+  (voce, assolo). Dove il livello resta sotto la **Soglia** (−45 dB) per
+  almeno la durata scelta (300 ms), la clip si divide e il pezzo vuoto
+  sparisce: niente fruscio, respiri o rumori fra una frase e l'altra. Ogni
+  pezzo comincia poco prima del suo attacco (**Margine**, 50 ms) e resta
+  dove suonava. Il dialogo mostra subito quanti pezzi restano e quanti
+  secondi si tolgono. Il file non cambia, e un solo Ctrl+Z annulla tutto.
+- **Unisci i pezzi in una clip (N)** (tasto destro su uno dei pezzi):
+  quantizzazione, comping e tempo fisso lasciano tanti box. Questa voce
+  mette i pezzi vicini della stessa ripresa in un file nuovo, che suona
+  esattamente come loro (dissolvenze, guadagno e time-stretch compresi),
+  al loro posto: la vista torna leggera. I file di partenza restano.
+- **Spostare il contenuto (slip)**: **Alt+trascina** il box per far
+  scorrere l'audio dentro la clip, lasciandone fermi inizio e lunghezza (per
+  esempio per allineare un attacco al beat dopo averla tagliata). Se il
+  desktop usa Alt+trascina per spostare le finestre (succede su alcuni
+  desktop Linux), usa **Ctrl+Alt+trascina**.
+- **Normalizza (picco a −1 dB)** (tasto destro): imposta il guadagno della
+  clip perche' il suo picco arrivi a −1 dB.
+- **Dissolvenza incrociata automatica**: dove una clip comincia prima che
+  la precedente della stessa traccia finisca, le due si incrociano per
+  tutta la sovrapposizione (a potenza costante), e la zona e' disegnata a
+  X. Vale per sovrapposizioni fino a 2 secondi: oltre, le due clip suonano
+  insieme (come con **Tienile entrambe** dopo una registrazione). Una
+  dissolvenza della clip piu' lunga resta la sua.
+- **Ripeti in loop**: **Ctrl+trascina il bordo destro** di una clip e la
+  clip si ripete fin dove arrivi (una linea segna ogni giro); trascinando
+  di nuovo il bordo destro si allunga o si accorcia la ripetizione. Dal
+  tasto destro: **Ripeti in loop...** (quante volte) e **Togli la
+  ripetizione**. Dividere una clip che si ripete toglie la ripetizione.
+- **Curva del volume** dentro la clip: **Ctrl+clic** sulla clip aggiunge un
+  punto (o tasto destro → **Curva del volume: punto qui**); trascina i punti
+  su e giu' (lo 0 dB si aggancia), **doppio clic** su un punto lo toglie,
+  **Togli la curva del volume** le toglie tutte. Fra un punto e l'altro il
+  volume cambia gradualmente; la forma d'onda lo mostra. I punti restano
+  sull'audio a cui si riferiscono anche tagliando o dividendo la clip.
+- **Editor della clip...** (tasto destro): una finestra con la forma d'onda
+  grande. La rotella fa lo zoom (fino al singolo campione), Shift+rotella
+  scorre; trascinando si sceglie un tratto, che si puo' **ascoltare**,
+  **silenziare**, **attenuare** di qualche dB, riportare com'era (**Togli
+  le modifiche nel tratto**) o staccare dal resto (**Dividi ai bordi del
+  tratto**). Silenziare e attenuare scrivono la curva del volume: il file
+  non cambia e Ctrl+Z annulla.
+- **Silenzia clip** (tasto destro): la clip resta al suo posto, disegnata in
+  grigio, ma non suona; si riattiva con la stessa voce.
+- **Trasponi...** (tasto destro): alza o abbassa la clip di qualche
+  semitono senza cambiarne la velocita'. Accetta i decimali (0,1 = 10 cent),
+  per correggere una ripresa un po' scordata.
+- **Controlla l'accordatura...** (tasto destro): misura di quanti cent la
+  clip e' sopra o sotto il La a 440 Hz e, se si sente, propone di
+  correggerla tutta con Trasponi. Lo stesso controllo parte da solo dopo
+  ogni registrazione, e tace se la ripresa e' intonata o se e' batteria.
+- **Suona al contrario** e **Inverti la fase** (tasto destro): la clip
+  suona dalla fine all'inizio, o con la fase rovesciata (per due microfoni
+  sullo stesso strumento che si cancellano a vicenda). Dividere e tagliare
+  una clip al contrario segue quello che si sente.
+- **Canale** (tasto destro, solo per i file stereo): **Solo sinistro**,
+  **Solo destro** o **Mono (somma dei due)**, per esempio quando la
+  chitarra e' entrata solo nell'ingresso 1 di una ripresa stereo.
+- **Correggi l'intonazione...** (tasto destro): ogni nota si avvicina alla
+  nota piu' vicina della scala del brano (Tonalita'; se non e' impostata,
+  stimata dalle note), di quanto dice la forza: 100% esattamente sulla
+  nota, 50% a meta' strada. Lavora nota per nota, quindi vibrato e
+  inflessioni restano. Il file non cambia; la prima volta la clip si
+  prepara per qualche secondo.
+- **Tonalita' del brano da questa traccia...** (menu **⋯** della traccia
+  audio): riconosce gli accordi della traccia e propone la tonalita' che
+  ne viene come tonalita' del brano, utile al giro armonico e alla melodia.
+  Tutte queste voci non toccano il file e si annullano con Ctrl+Z.
 - **Converti in notazione...** (tasto destro su una clip): trasforma in note
   la parte che suona della clip, con lo stesso motore di "Importa audio"
   (10bis), in una **nuova traccia** con lo strumento scelto
   (proposto in base a cosa hai registrato: chitarra, tastiera, voce) e un
   box che parte dove parte la clip. Funziona bene con parti monofoniche
   (voce, linea di chitarra o basso); la clip audio resta.
+- **Converti la traccia in notazione...** (menu **⋯** della traccia audio):
+  tutte le clip in una volta, con le stesse scelte (melodia, percussioni o
+  accordi, quantizzazione), in **una sola** traccia di note con un box per
+  clip, alla posizione della clip e con il suo nome. Le clip silenziate
+  vengono saltate. Il risultato va in una nuova traccia oppure, con
+  **Aggiungi alla traccia**, in una traccia di note esistente: dove c'e'
+  gia' un box, quello nuovo va nello spazio libero piu' vicino.
+  La nuova traccia di note **ricorda da quale traccia audio viene** e con
+  quali scelte (nel file, dalla versione 2.10 del formato). Dopo una
+  modifica all'audio (silenzi tolti, quantizzazione, una ripresa nuova)
+  basta **Riconverti da 'Nome'** dal menu **⋯** della traccia di note, o
+  **Riconverti le tracce collegate** da quello della traccia audio: la
+  conversione si rifa' con le stesse scelte e i box nuovi prendono il posto
+  dei vecchi (Ctrl+Z riporta quelli di prima, comprese le modifiche fatte a
+  mano). Per cambiare le scelte, riapri **Converti la traccia in
+  notazione...**: propone la traccia collegata con la destinazione
+  **Sostituisci il contenuto della traccia**. I box aggiunti con **Aggiungi
+  alla traccia** non creano il collegamento.
+- **Melodia e accordi insieme**: nella conversione della traccia, con
+  **Melodia** si puo' spuntare **Anche gli accordi, in un'altra traccia
+  nuova**: dalla stessa ripresa (voce e chitarra, un brano intero) escono
+  in un passaggio solo due tracce, la melodia e gli accordi.
 - **Nell'editor classico** una traccia audio mostra, in sola lettura,
   l'elenco delle sue clip: le azioni sulla notazione (Genera, Suona con la
   tastiera, Importa MIDI, Congela accordi, Esporta MIDI) non valgono per le
   tracce audio e lo spiegano con un messaggio.
-- **Tempo**: l'audio non viene stirato. Una clip resta ancorata al beat in
-  cui inizia ma dura sempre gli stessi secondi: se cambi il BPM dopo averla
-  posizionata, la barra di stato lo ricorda.
+- **Tempo**: una clip resta ancorata al beat in cui inizia. Una ripresa
+  registrata in SoundText **segue il tempo del brano**: se cambi il BPM si
+  allunga o si accorcia (time-stretch, senza cambiare l'intonazione) e resta
+  a tempo. Un file importato invece dura gli stessi secondi; tasto destro →
+  **Segui il tempo del brano** per farlo seguire da li' in poi. Se il tempo
+  cambia dentro la clip (per esempio dopo **Ricava il tempo dalla
+  ripresa**), ogni tratto segue il tempo della sua battuta. **Velocita' (time-stretch)...** la cambia a mano, in
+  percentuale; il box mostra la velocita' quando non e' 100%. Il primo
+  ascolto di una clip stirata richiede qualche secondo, poi resta in
+  memoria.
+- **Ricava il tempo dalla ripresa...** (tasto destro su una clip): per chi
+  suona libero, senza click. SoundText trova il battito della ripresa e ne
+  mostra il tempo battuta per battuta (media, minimo, massimo e la curva);
+  scegli la battuta su cui cade il primo battito e **Applica il tempo**: il
+  brano prende un cambio di tempo per battuta (riga `Tempo:` del file, con un
+  decimale, per esempio `101.4`) e la
+  clip si sposta perche' i battiti cadano sui beat. Dopo la ripresa torna il
+  tempo di prima. Le note scritte, il metronomo, i generatori e la
+  conversione in notazione della ripresa seguono quel tempo. Il primo
+  battito suonato e' preso come inizio di battuta; nelle metriche composte
+  (6/8, 12/8) il battito e' la semiminima puntata. In alternativa,
+  **Tempo fisso, la ripresa si adatta**: il brano resta al tempo scelto e
+  la ripresa si divide a ogni battuta, con ogni pezzo allungato o
+  accorciato per durare una battuta giusta (dissolvenze incrociate di
+  10 ms fra i pezzi).
 
 ### Registrare
 
@@ -3584,6 +3841,9 @@ qui...** (parte da quel punto). Si apre il dialogo di registrazione:
 - **Livello**: il misuratore si muove appena il dialogo e' aperto: regola
   il gain sulla scheda audio perche' le parti piu' forti arrivino verso
   -12/-6 dB senza accendere la spia rossa (saturazione).
+- **Accordatore**: sotto il misuratore, la nota che arriva dall'ingresso e
+  di quanti cent e' sopra o sotto quella giusta (La a 440 Hz), in verde
+  quando e' intonata entro 5 cent. Suona una nota alla volta.
 - **Parti da**: posizione corrente, inizio del loop A (se impostato) o
   inizio del brano.
 - **Conteggio** (0-4 battute di click prima che parta il brano) e
@@ -3605,7 +3865,39 @@ SoundFont solo tracce audio e metronomo), fa il conteggio e registra finche'
 non premi **■ Stop**. Il dialogo mostra durata e picco della ripresa (e
 avvisa se e' saturata): **Tieni la ripresa** la aggiunge alla traccia come
 clip al punto di partenza; **Registra** di nuovo la sostituisce. Se la
-ripresa si sovrappone a clip gia' presenti, SoundText chiede se eliminarle.
+ripresa si sovrappone a clip gia' presenti, SoundText chiede cosa farne:
+**Come nuova ripresa** (proposta: la clip tiene tutte le riprese e si sceglie
+dopo), **Sostituisci** (elimina le clip sotto) o **Tienile entrambe**
+(suonano insieme).
+
+**Modalita'** (con i punti A e B del loop impostati, menu **Riproduzione →
+Loop**):
+- **In loop fra A e B**: il tratto A-B si ripete senza fermarsi finche' non
+  premi Stop (il conteggio solo all'inizio). Si registra un file solo, e
+  ogni giro completo diventa una ripresa della stessa clip ("Giro 1",
+  "Giro 2"...); resta attivo l'ultimo. Un giro interrotto dallo Stop non
+  conta.
+- **Punch-in fra A e B**: il brano suona dal **pre-roll** (le battute
+  scelte prima di A), ma della ripresa si tiene solo il tratto A-B, con
+  dissolvenze brevi ai due capi. Va come nuova ripresa della clip che c'e'
+  li': la clip si divide in A e in B e solo quel tratto riceve la ripresa,
+  quindi l'originale resta sempre disponibile. La registrazione si ferma
+  da sola un secondo dopo B. Una ripresa normale piu' lunga della clip su
+  cui va la allunga (fino alla clip successiva).
+
+**Riprese di una clip**: una clip con piu' riprese mostra nel box quale
+suona (es. `[2/3]`); tasto destro → **Riprese** per sceglierne un'altra,
+**Comping...** o **Tieni solo la ripresa attiva** (i file delle altre
+restano nella cartella del progetto).
+
+**Comping**: la finestra mostra le riprese una sotto l'altra con la forma
+d'onda; trascinando su una ripresa la si usa in quel tratto (agganciandosi
+al sedicesimo; Shift: libero), un click la sceglie per tutto il tratto sotto
+il mouse. La riga **Comp** in cima mostra il risultato, **▶ Ascolta il
+comp** lo fa sentire. **Applica il comp** divide la clip nei tratti scelti,
+con una dissolvenza incrociata di 10 ms in ogni punto di cambio; ogni tratto
+tiene tutte le riprese, cosi' il comping si puo' rifare. Un solo Ctrl+Z lo
+annulla.
 
 Per sentirti mentre suoni usa il **monitoraggio diretto** della scheda audio
 (manopola o tasto "direct monitor"): e' senza ritardo. SoundText manda in
@@ -3637,12 +3929,31 @@ fine del file, `gain` il guadagno della clip in dB (entrambi facoltativi).
 Se un file non si trova piu' la clip resta nel progetto, disegnata in rosso,
 e non suona: tasto destro → **Ritrova file...** per indicarlo di nuovo.
 
+**Congela in audio** (menu della traccia, anche per le tracce di note): la
+traccia diventa una clip audio in una traccia nuova "Nome (congelata)",
+calcolata una volta sola come si sente in Solo (note, strumento plugin o
+SFZ, effetti, NAM, volume e pan). La traccia di partenza resta nel brano,
+silenziata e con ❄ sotto il nome; **Scongela** toglie la traccia audio e la
+fa tornare a suonare. Serve sui computer lenti: il Play non ricalcola piu'
+le tracce pesanti.
+
+**Cache su disco**: le tracce elaborate dagli effetti, gli strumenti plugin
+e il time-stretch si salvano in `<Progetto>_audio/cache/` e si riusano alla
+riapertura del progetto, invece di rifarli. Una modifica (note, clip,
+effetti, file) li fa ricalcolare; la cartella non supera 2 GB (si tolgono
+i rendering usati meno di recente) e si puo' cancellare quando si vuole.
+
 ### Esportare
 
 - **Progetto → Esporta → Mix audio (WAV)...** esporta il brano come si sente
   (tracce udibili, audio compreso) in un WAV 48 kHz / 24 bit. Serve un
   SoundFont per le tracce con note; un brano di sole tracce audio si esporta
   anche senza.
+- **Progetto → Esporta → Tutte le tracce, una per file (stem)...** scrive
+  un WAV per ogni traccia non silenziata in una cartella "Nome - tracce",
+  con gli effetti o asciutte. Partono tutte dall'inizio del brano e sono
+  lunghe uguale: in un altro programma (o da un altro musicista) si
+  allineano da sole.
 - **Traccia → Esporta questa traccia → WAV...**, o **tasto destro sul nome di
   una traccia → Esporta WAV (solo questa)...**, esporta in un WAV solo quella traccia, con notazione o audio, come si
   sentirebbe in Solo (Solo/Mute delle altre tracce non contano). Per le
@@ -3722,6 +4033,11 @@ dispositivo audio, quindi resta allineata a cio' che si sente.
   sezione appare come una fascia colorata sul righello della Struttura
   brano. Si puo' attivare, spostare o togliere il loop anche mentre il
   brano suona, senza interruzioni.
+- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%): rallenta il
+  brano senza cambiarne l'intonazione, per esercitarsi su un passaggio
+  (anche in loop); il metronomo segue. La prima volta a una velocita' nuova
+  il brano si prepara per qualche secondo. Non cambia ne' il brano ne'
+  l'esportazione.
 - Il loop richiede la riproduzione diretta descritta sopra
   (libreria FluidSynth + `sounddevice`): con i player di ripiego il brano non
   viene ripetuto, e un messaggio in barra di stato lo segnala.

@@ -248,9 +248,11 @@ class _PersistentSynth:
     SoundFont ne' il probing dei driver audio che fluidsynth esegue alla
     costruzione del Synth se l'utente non riproduce mai nulla.
 
-    Quando non e' richiesto nessun override per-strumento, c'e' un solo
-    synth condiviso (self._synth) con un solo SoundFont caricato, come
-    nella versione originale. Quando invece uno o piu' strumenti hanno un
+    Ogni SoundFont ha il suo synth (self._override_synths), con quel solo
+    SoundFont caricato, creato la prima volta che serve e poi riusato:
+    anche quello generale, che prima finiva insieme agli altri in un synth
+    unico, e cambiandolo nelle Opzioni il suono restava quello caricato per
+    ultimo (vedi sotto). Quando inoltre uno o piu' strumenti hanno un
     SoundFont assegnato (core.settings.get_instrument_soundfont), il
     rendering NON puo' avvenire in un unico passaggio multi-canale: caricare
     piu' SoundFont nella STESSA istanza di synth e instradare i canali con
@@ -275,12 +277,9 @@ class _PersistentSynth:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._synth = None
-        self._font_ids: Dict[str, int] = {}
-        # Un synth DEDICATO per ciascun SoundFont usato come override
+        # Un synth DEDICATO per ciascun SoundFont, quello generale e quelli
         # per-strumento (un solo font ciascuno): vedi la docstring della
-        # classe per il perche' non basta instradare i canali in un unico
-        # synth condiviso con piu' font caricati.
+        # classe per il perche' non basta un unico synth con piu' font caricati.
         self._override_synths: Dict[str, object] = {}
 
     def _new_synth(self):
@@ -305,37 +304,20 @@ class _PersistentSynth:
         Playback -> Volume di sintesi (gain)... dopo aver salvato il nuovo
         default con core.settings.set_playback_gain."""
         with self._lock:
-            if self._synth is not None:
-                self._synth.set_gain(value)
             for synth in self._override_synths.values():
                 synth.set_gain(value)
 
-    def _ensure_font_loaded(self, soundfont: str) -> int:
-        """Carica soundfont sul synth condiviso self._synth (usato quando
-        non ci sono override attivi, o per il gruppo di canali 'di
-        default' del rendering multi-passata)."""
-        if self._synth is None:
-            self._synth = self._new_synth()
-        sfid = self._font_ids.get(soundfont)
-        if sfid is not None:
-            return sfid
-        # sfload ritorna -1 (senza sollevare eccezioni) se il file non e' un
-        # SoundFont valido/leggibile: non lo si mette in cache in quel caso,
-        # altrimenti un fallimento verrebbe scambiato per un caricamento
-        # riuscito e il rendering proseguirebbe silenziosamente senza preset
-        # (nessun suono) invece di far ripiegare il chiamante sul CLI
-        # fluidsynth.
-        with _suppress_native_stderr():
-            sfid = self._synth.sfload(soundfont)
-        if sfid == -1:
-            raise RuntimeError(tr("SoundFont non valido: {soundfont}", soundfont=soundfont))
-        self._font_ids[soundfont] = sfid
-        return sfid
+    def _ensure_font_loaded(self, soundfont: str):
+        """Il synth del SoundFont generale (usato quando non ci sono override
+        attivi, o per il gruppo di canali 'di default' del rendering
+        multi-passata): lo stesso, dedicato, degli override. Caricarlo in un
+        synth che ne ha gia' un altro non basterebbe: suonerebbe quello
+        caricato per ultimo (vedi la docstring della classe)."""
+        return self._ensure_override_synth(soundfont)
 
     def _ensure_override_synth(self, soundfont: str):
         """Synth dedicato con un SOLO SoundFont caricato (soundfont), pagato
-        una sola volta e poi riusato — mai scaricato, stesso principio del
-        synth condiviso di default."""
+        una sola volta e poi riusato — mai scaricato."""
         synth = self._override_synths.get(soundfont)
         if synth is not None:
             return synth
@@ -457,8 +439,7 @@ class _PersistentSynth:
         try:
             groups = []
             if default_channels:
-                self._ensure_font_loaded(soundfont)
-                groups.append((self._synth, default_channels))
+                groups.append((self._ensure_font_loaded(soundfont), default_channels))
             for path, chans in override_groups.items():
                 try:
                     synth = self._ensure_override_synth(path)
@@ -502,8 +483,8 @@ class _PersistentSynth:
                      channel_levels: Optional[dict] = None) -> bool:
         """Rendering di un file con una sola porta MIDI (16 canali)."""
         if not channel_overrides:
-            self._ensure_font_loaded(soundfont)
-            return self._render_group(self._synth, midi_path, wav_path, stop_check, reverb_room, channel_levels)
+            synth = self._ensure_font_loaded(soundfont)
+            return self._render_group(synth, midi_path, wav_path, stop_check, reverb_room, channel_levels)
         return self._render_multi(midi_path, wav_path, soundfont, stop_check, channel_overrides, reverb_room,
                                   channel_levels)
 
@@ -801,6 +782,48 @@ def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
     from .audio_tracks import write_wav
     mixed, rate = render_project_mix(project, stop_check, tracks=tracks, dry=dry)
     write_wav(out_path, mixed, rate, bits=24)
+
+
+def stem_tracks(project: Project) -> List[Track]:
+    """Le tracce da esportare come stem: quelle non silenziate (Mute) con
+    note o clip audio; Solo non conta."""
+    return [t for t in project.tracks if not t.mute
+            and (any(not c.muted for c in t.audio_clips) if t.is_audio else t.text.strip())]
+
+
+def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bool = False,
+                        progress=None) -> List[str]:
+    """Esporta in out_dir un WAV (48 kHz, 24 bit) per traccia, come "Esporta
+    WAV (solo questa)" (o asciutte con 'dry'): tutti dall'inizio del brano e
+    lunghi uguale, cosi' in un altro programma si allineano da soli. Le
+    tracce si renderizzano una alla volta (in memoria ce n'e' sempre una
+    sola). Ritorna i percorsi scritti; progress(fatte, totale)."""
+    import re
+    import numpy as np
+    from .audio_tracks import read_wav, write_wav
+    tracks = stem_tracks(project)
+    if not tracks:
+        raise RuntimeError(tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
+    os.makedirs(out_dir, exist_ok=True)
+    paths, lengths, longest = [], [], 0
+    for i, track in enumerate(tracks):
+        if stop_check and stop_check():
+            raise RuntimeError(tr("Esportazione annullata."))
+        mixed, rate = render_project_mix(project, stop_check, tracks=[track], dry=dry, allow_empty=True)
+        safe = re.sub(r'[\\/:*?"<>|]', "_", track.name).strip() or "traccia"
+        path = os.path.join(out_dir, f"{i + 1:02d} {safe}{' (asciutta)' if dry else ''}.wav")
+        write_wav(path, mixed, rate, bits=24)
+        paths.append(path)
+        lengths.append(len(mixed))
+        longest = max(longest, len(mixed))
+        if progress:
+            progress(i + 1, len(tracks))
+    for path, length in zip(paths, lengths):
+        if length < longest:                       # coda di silenzio fino alla fine del brano
+            samples, rate = read_wav(path)
+            pad = np.zeros((longest - length, samples.shape[1]), dtype=np.float32)
+            write_wav(path, np.concatenate([samples, pad]), rate, bits=24)
+    return paths
 
 
 def get_active_soundfont_info():
@@ -1212,6 +1235,57 @@ def _cache_put(key: Optional[str], entry: tuple):
 _stream_available = None
 
 
+# Rallenta l'ascolto (PlaybackEngine.set_speed): velocita' possibili.
+MIN_SPEED = 0.5
+
+
+def slowed_entry(entry: tuple, speed: float) -> tuple:
+    """Il mix (int16 (frame, canali), frequenza) rallentato a 'speed' (0,5-1)
+    senza cambiare l'intonazione (Rubber Band, vedi audio_tracks.stretched).
+    Lento sui brani lunghi: chi lo chiama lo tiene in cache."""
+    import numpy as np
+    from .audio_tracks import stretched
+    samples, rate = entry
+    if speed >= 1.0 - 1e-6 or len(samples) == 0:
+        return entry
+    x = samples.astype(np.float32) / 32767.0
+    y = stretched(x, rate, 1.0 / speed)
+    return np.clip(np.round(y * 32767.0), -32768, 32767).astype(np.int16), rate
+
+
+COMPARE_MODES = ("result", "sequence", "together")
+COMPARE_GAP_SECONDS = 0.6
+
+
+def comparison_buffer(project: Project, audio_path: str, mode: str, stop_check=None):
+    """L'anteprima a confronto di una conversione in notazione: l'audio di
+    partenza (audio_path, anche mp3/m4a) e le note di 'project' renderizzate,
+    "sequence" uno dopo l'altro (con una breve pausa) o "together" insieme
+    (ciascuno a meta' volume, allineati all'inizio). float32 (frame, 2) a
+    48 kHz; solleva RuntimeError come render_project_mix."""
+    import numpy as np
+    from .audio_decode import read_audio
+    from .audio_tracks import AUDIO_SAMPLE_RATE, resample
+    notes, rate = render_project_mix(project, stop_check)
+    original, orig_rate = read_audio(audio_path)
+    original = np.asarray(original, dtype=np.float32)
+    if original.ndim == 1:
+        original = original[:, None]
+    if orig_rate != AUDIO_SAMPLE_RATE:
+        original = resample(original, orig_rate, AUDIO_SAMPLE_RATE)
+    original = np.repeat(original[:, :1], 2, axis=1) if original.shape[1] == 1 else original[:, :2]
+    if rate != AUDIO_SAMPLE_RATE:
+        notes = resample(notes, rate, AUDIO_SAMPLE_RATE)
+    if mode == "sequence":
+        gap = np.zeros((int(COMPARE_GAP_SECONDS * AUDIO_SAMPLE_RATE), 2), np.float32)
+        return np.concatenate([original, gap, notes]).astype(np.float32)
+    n = max(len(original), len(notes))
+    out = np.zeros((n, 2), np.float32)
+    out[:len(original)] += 0.5 * original
+    out[:len(notes)] += 0.5 * notes
+    return out
+
+
 def streaming_available() -> bool:
     """True se la riproduzione passa da core.audio_stream (partenza da un
     punto qualsiasi, loop, posizione esatta): serve la libreria FluidSynth per il
@@ -1348,6 +1422,15 @@ class PlaybackEngine:
         # i canali MIDI dal synth (un'uscita per canale), le tracce con effetti
         # e le tracce audio dai loro campioni.
         self.track_levels = None
+        # Rallenta l'ascolto (set_speed): la velocita' scelta e quella del
+        # buffer che sta suonando (la posizione si riporta al tempo del brano).
+        self.speed = 1.0
+        self._playing_speed = 1.0
+
+    def set_speed(self, speed: float):
+        """Velocita' d'ascolto da 0,5 a 1 (1 = normale), senza cambiare
+        l'intonazione; vale dalla prossima riproduzione, solo in streaming."""
+        self.speed = max(MIN_SPEED, min(1.0, float(speed)))
 
     def _levels_of(self, samples, rate):
         """Livelli (core.levels) del mix int16 che sta per suonare; None se
@@ -1372,7 +1455,7 @@ class PlaybackEngine:
         player = self._pcm_player
         if player is None or not player.is_active():
             return None
-        return player.position_frames() / float(player.samplerate)
+        return player.position_frames() / float(player.samplerate) * self._playing_speed
 
     def set_loop_seconds(self, loop: Optional[tuple]):
         """Cambia al volo la sezione in loop (inizio, fine) in secondi, o la
@@ -1380,8 +1463,8 @@ class PlaybackEngine:
         se non si e' in streaming."""
         player = self._pcm_player
         if player is not None:
-            player.set_loop(None if loop is None else
-                            (loop[0] * player.samplerate, loop[1] * player.samplerate))
+            scale = player.samplerate / self._playing_speed
+            player.set_loop(None if loop is None else (loop[0] * scale, loop[1] * scale))
 
     def is_playing(self) -> bool:
         # self._proc copre i backend a subprocess (CLI fluidsynth/timidity/
@@ -1572,14 +1655,32 @@ class PlaybackEngine:
             allora sul player esterno)."""
             samples, rate = entry
             self.master_levels = self._levels_of(samples, rate)
+            speed = self.speed if cache_key is not None else 1.0
+            if speed < 1.0 - 1e-6:
+                # Rallenta l'ascolto: il mix gia' pronto, rallentato una
+                # volta per velocita' (in cache)
+                slow_key = f"{cache_key}|speed{speed:.3f}"
+                slow = _cache_get(slow_key)
+                if slow is None:
+                    self._rendering = True
+                    try:
+                        slow = slowed_entry(entry, speed)
+                    finally:
+                        self._rendering = False
+                    _cache_put(slow_key, slow)
+                if self._play_token != my_token:
+                    return True
+                samples = slow[0]
+            scale = rate / speed
             player = audio_stream.PcmPlayer(samples, rate)
             player.set_loop(None if loop_seconds is None else
-                            (loop_seconds[0] * rate, loop_seconds[1] * rate))
+                            (loop_seconds[0] * scale, loop_seconds[1] * scale))
             with self._proc_lock:
                 if self._play_token != my_token:
                     return True
+                self._playing_speed = speed
                 try:
-                    player.start(start_seconds * rate)
+                    player.start(start_seconds * scale)
                 except Exception:
                     log.warning("Stream audio non avviabile: si usa il player esterno", exc_info=True)
                     return False
@@ -1885,6 +1986,28 @@ class PlaybackEngine:
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
         return self.backend_available()
+
+    def play_buffer(self, samples, samplerate: int, on_audio_started=None) -> bool:
+        """Suona una volta i campioni gia' pronti 'samples' (float32 (frame,
+        2)), per esempio l'anteprima a confronto di una conversione. False se
+        lo streaming audio non e' disponibile."""
+        import numpy as np
+        self.stop()
+        if not audio_stream.is_available() or len(samples) == 0:
+            return False
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
+        player = audio_stream.PcmPlayer(pcm, samplerate)
+        with self._proc_lock:
+            try:
+                player.start(0)
+            except Exception:
+                log.warning("Stream audio non avviabile per l'anteprima", exc_info=True)
+                return False
+            self._pcm_player = player
+            self._playing_speed = 1.0
+        if on_audio_started:
+            on_audio_started()
+        return True
 
     def play_loop_buffer(self, samples, samplerate: int, on_audio_started=None) -> bool:
         """Suona in loop, finche' non si chiama stop(), i campioni gia' pronti

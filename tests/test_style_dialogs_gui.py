@@ -240,6 +240,55 @@ def test_track_menu_and_box_menu_open_the_save_dialog(styles_file, monkeypatch):
     w.close()
 
 
+def test_audio_clip_menu_saves_a_style_from_the_take(styles_file, tmp_path, monkeypatch):
+    """Una ripresa di batteria: prima la conversione in note (strumento
+    Drums), poi lo stesso dialogo dei box, con la parte dal punto della clip."""
+    import numpy as np
+    import gui.arrangement_audio as audio_module
+    import gui.save_style_dialog as module
+    from PySide6.QtWidgets import QInputDialog
+    from core.audio_tracks import write_wav
+    from core.model import AudioClip
+    from gui.main_window import MainWindow
+    monkeypatch.setattr(module, "SaveStyleDialog", _FakeSaveDialog)
+    _FakeSaveDialog.seen = []
+    path = str(tmp_path / "groove.wav")
+    write_wav(path, np.zeros((44100, 1), np.float32), 44100)
+    w = MainWindow()
+    w.project.add_track("Piano", "Piano", "4: 4Am 4F")
+    clip = AudioClip("Groove", path, 4.0)
+    w.project.add_audio_track("Batteria").audio_clips.append(clip)
+    w.refresh_mixer()
+
+    class FakeImport:
+        Accepted = 1
+
+        def __init__(self, parent, project, instrument_name, context_label):
+            pass
+
+        def _set_source(self, path):
+            pass
+
+        def exec(self):
+            return 1
+
+        def result_text(self):
+            return "16: kick r hihat r snare r hihat r kick r hihat r snare r hihat r"
+
+    monkeypatch.setattr(audio_module, "AudioImportDialog", FakeImport)
+    monkeypatch.setattr(QInputDialog, "getItem", staticmethod(lambda *a, **k: ("Drums", True)))
+    w.arrangement_view._save_audio_clip_as_style("Batteria", clip)
+    (seen,) = _FakeSaveDialog.seen
+    source = seen["sources"][0]
+    assert source.label == "clip 'Groove'" and source.is_percussion and source.offset_beats == 4.0
+    assert source.text.startswith("16: kick") and seen["chords"] == ["Piano"]
+    # annullando la scelta dello strumento non si apre niente
+    monkeypatch.setattr(QInputDialog, "getItem", staticmethod(lambda *a, **k: ("", False)))
+    w.arrangement_view._save_audio_clip_as_style("Batteria", clip)
+    assert len(_FakeSaveDialog.seen) == 1
+    w.close()
+
+
 def test_midi_library_offers_every_channel(styles_file, tmp_path, monkeypatch):
     import gui.save_style_dialog as module
     from core import midi_library

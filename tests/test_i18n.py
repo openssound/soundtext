@@ -61,11 +61,11 @@ def test_translations_keep_placeholders_and_edges(code):
 
 def test_tr_translates_formats_and_falls_back():
     i18n.set_language("en")
-    assert tr("Esporta MIDI...") == "Export MIDI..."
+    assert tr("Esporta MIDI (solo questa)...") == "Export MIDI (this one only)..."
     assert tr("MIDI esportato: {path}", path="a.mid") == "MIDI exported: a.mid"
     assert tr("Testo che non e' nel catalogo {x}", x=1) == "Testo che non e' nel catalogo 1"
     i18n.set_language("it")
-    assert tr("Esporta MIDI...") == "Esporta MIDI..."
+    assert tr("Esporta MIDI (solo questa)...") == "Esporta MIDI (solo questa)..."
 
 
 def test_language_choice(monkeypatch):

@@ -16,17 +16,17 @@ import itertools
 import os
 import time
 
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen
+import numpy as np
+
+from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
-    QApplication,
     QFileDialog,
     QGraphicsItem,
     QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsView,
     QInputDialog,
-    QLabel,
     QMenu,
     QMessageBox,
     QToolButton,
@@ -41,7 +41,8 @@ from core.arrangement import (
     load_box_file,
     save_box_file,
 )
-from core import audio_tracks
+from core import audio_takes, audio_tracks
+from core.audio_track_notation import audible_clips
 from core.instruments import gm_family_for_program
 from core.model import AudioClip, Clip, Project
 from core.notation import bar_starts, validate_track_text
@@ -50,13 +51,15 @@ from core.project_io import ensure_songs_dir
 from core.rhythm_generate import project_has_chords, tracks_duration_beats
 from core.tempo_map import build_tempo_beat_map
 
+from .arrangement_audio import AudioClipActions
 from .audio_import_dialog import AudioImportDialog
 from .box_edit_dialog import BoxEditDialog
 from .box_transpose_dialog import BoxTransposeDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
 from .main_window_playback import TEXT_DIM_INVERT_BG
 from .rhythm_generate_dialog import (
-    BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, last_box_key,
+    BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, chord_source_tracks,
+    last_box_key,
     project_bar_beats,
 )
 from .theme import ACCENT, BORDER, TEXT_DIM, get_active_theme
@@ -94,6 +97,15 @@ EMPTY_AUDIO_ROW_HINT = tr("Doppio click per importare un file audio · ● per r
 FREE_TEXT_ROW_HINT = tr("Traccia scritta a testo (vista Testo) · doppio click per aggiungere un box")
 NO_TRACKS_HINT = tr("Nessuna traccia: comincia da \"+ Aggiungi traccia\" qui a sinistra")
 EDGE_GRAB_PX = 6            # bordo di un box audio che si afferra per tagliarlo
+FADE_HANDLE_PX = 7          # maniglia di una dissolvenza (angoli in alto di un box audio)
+FADE_GRAB_PX = 8            # distanza entro cui la maniglia si afferra
+MUTED_CLIP_COLOR = "#8a8a8a"
+MIN_DETAIL_PX = 8           # sotto questa larghezza un box audio e' solo il rettangolo
+# Curva del volume di una clip audio (AudioClip.gain_points): dB in cima e
+# in fondo al box, raggio dei punti e distanza entro cui si afferrano.
+CURVE_TOP_DB, CURVE_BOTTOM_DB = 6.0, -40.0
+CURVE_POINT_PX = 4
+CURVE_GRAB_PX = 7
 TRIM_SNAP_BEATS = 0.25      # passo del taglio col mouse (Shift = libero)
 
 
@@ -120,12 +132,13 @@ class BoxItem(QGraphicsRectItem):
         self.track_name = track_name
         self.clip = clip
         self._fixed_y = fixed_y
-        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable |
-                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
         self._dragging = False
         self._press_pos = None
         self._layout()
+        # dopo il primo posizionamento: quello non deve passare da itemChange
+        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable |
+                       QGraphicsItem.ItemSendsGeometryChanges)
 
     def _layout(self):
         instrument_name = self.view.host.project.get_track(self.track_name).instrument_name
@@ -235,9 +248,99 @@ class AudioBoxItem(BoxItem):
     (meno i tagli) alla posizione in cui si trova, con la forma d'onda.
     Si trascina come un box di notazione; i bordi si trascinano per
     tagliarne inizio e fine (l'audio resta dov'e' nel tempo, vedi
-    core.audio_tracks.trim_clip_start_to_beat); doppio click per rinominarlo."""
+    core.audio_tracks.trim_clip_start_to_beat); le maniglie agli angoli in
+    alto regolano le dissolvenze; Alt+trascina sposta il contenuto dentro la
+    clip (slip, vedi core.audio_tracks.slip_clip_content); doppio click per
+    rinominarlo."""
 
     _trim_edge = None
+    _fade_drag = None
+    _slip_from = None
+    _point_drag = None
+    _hover = False
+
+    # --- curva del volume -------------------------------------------------
+
+    def _db_to_y(self, db: float) -> float:
+        r = self.rect()
+        p = (CURVE_TOP_DB - max(CURVE_BOTTOM_DB, min(CURVE_TOP_DB, db))) / (CURVE_TOP_DB - CURVE_BOTTOM_DB)
+        return r.top() + 2 + p * (r.height() - 4)
+
+    def _y_to_db(self, y: float) -> float:
+        r = self.rect()
+        p = max(0.0, min(1.0, (y - r.top() - 2) / max(1.0, r.height() - 4)))
+        db = round(CURVE_TOP_DB - p * (CURVE_TOP_DB - CURVE_BOTTOM_DB), 1)
+        return 0.0 if abs(db) < 0.75 else db        # lo 0 dB si aggancia: un pixel vale quasi 1 dB
+
+    def _point_at(self, pos):
+        """Indice del punto della curva sotto il mouse, o None."""
+        pps = self._px_per_second()
+        if pps <= 0:
+            return None
+        for i, (t, db) in enumerate(self.clip.gain_points):
+            if abs(pos.x() - t * pps) <= CURVE_GRAB_PX and abs(pos.y() - self._db_to_y(db)) <= CURVE_GRAB_PX:
+                return i
+        return None
+
+    def add_curve_point(self, x: float, y: float) -> None:
+        """Un punto della curva a x (pixel dall'inizio del box, nel primo
+        giro) e all'altezza y (o, con y None, sulla curva com'e')."""
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0 or play <= 0:
+            return
+        t = round(max(0.0, min(play, (x % max(1.0, self._content_width())) / pps)), 3)
+        db = self._y_to_db(y) if y is not None else round(float(
+            audio_tracks.gain_curve_db(np.array([t]), self.clip.gain_points)[0]), 1)
+        points = [p for p in self.clip.gain_points if abs(p[0] - t) > 1e-3] + [(t, db)]
+        self.clip.gain_points = sorted(points)
+        self.update()
+
+    def _drag_point(self, pos):
+        i = self._point_drag
+        points = list(self.clip.gain_points)
+        pps = self._px_per_second()
+        lo = points[i - 1][0] + 0.001 if i > 0 else 0.0
+        hi = points[i + 1][0] - 0.001 if i + 1 < len(points) else audio_tracks.clip_play_seconds(self.clip)
+        t = round(max(lo, min(hi, pos.x() / pps)), 3) if pps > 0 else points[i][0]
+        points[i] = (t, self._y_to_db(pos.y()))
+        self.clip.gain_points = points
+        self.update()
+
+    def _content_width(self) -> float:
+        """La larghezza di un giro: tutto il box, salvo che la clip si
+        ripeta in loop."""
+        if self.clip.loop_length <= 0:
+            return self.rect().width()
+        beats = audio_tracks.clip_duration_beats(self.clip, self.view._tempo_map())
+        return min(self.rect().width(), beats * PX_PER_BEAT)
+
+    def _px_per_second(self) -> float:
+        play = audio_tracks.clip_play_seconds(self.clip)
+        return self._content_width() / play if play > 0 else 0.0
+
+    def _fade_handle_x(self, which: str) -> float:
+        pps = self._px_per_second()
+        if which == "in":
+            return min(self.rect().width(), self.clip.fade_in * pps)
+        return max(0.0, self.rect().width() - self.clip.fade_out * pps)
+
+    def _fade_handle_at(self, pos):
+        if getattr(self, "_missing", True) or pos.y() > FADE_GRAB_PX + 2:
+            return None
+        distances = [(abs(pos.x() - self._fade_handle_x(w)), w) for w in ("in", "out")]
+        distance, which = min(distances)
+        return which if distance <= FADE_GRAB_PX else None
+
+    def hoverEnterEvent(self, event):
+        self._hover = True
+        self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._hover = False
+        self.update()
+        super().hoverLeaveEvent(event)
 
     def _edge_at(self, x: float):
         if getattr(self, "_missing", True):
@@ -251,20 +354,87 @@ class AudioBoxItem(BoxItem):
         return None
 
     def hoverMoveEvent(self, event):
-        self.setCursor(Qt.SizeHorCursor if self._edge_at(event.pos().x()) else Qt.ArrowCursor)
+        if self._point_at(event.pos()) is not None:
+            self.setCursor(Qt.SizeAllCursor)
+        elif self._fade_handle_at(event.pos()):
+            self.setCursor(Qt.PointingHandCursor)
+        else:
+            self.setCursor(Qt.SizeHorCursor if self._edge_at(event.pos().x()) else Qt.ArrowCursor)
         super().hoverMoveEvent(event)
 
+    def _state(self):
+        c = self.clip
+        return (c.start_beat, c.trim_start, c.trim_end, c.fade_in, c.fade_out, c.loop_length,
+                tuple(c.gain_points))
+
     def mousePressEvent(self, event):
-        edge = self._edge_at(event.pos().x()) if event.button() == Qt.LeftButton else None
-        if edge is None:
+        left = event.button() == Qt.LeftButton
+        if left and not getattr(self, "_missing", True):
+            point = self._point_at(event.pos())
+            ctrl = bool(event.modifiers() & Qt.ControlModifier)
+            if point is not None or (ctrl and self._edge_at(event.pos().x()) is None
+                                     and self._fade_handle_at(event.pos()) is None):
+                self.view.select_box(self.track_name, self.clip)
+                self._before = self._state()
+                if point is None:                  # Ctrl+clic: un punto nuovo
+                    self.add_curve_point(event.pos().x(), event.pos().y())
+                    point = self._point_at(event.pos())
+                self._point_drag = point
+                event.accept()
+                return
+        fade = self._fade_handle_at(event.pos()) if left else None
+        slip = left and fade is None and bool(event.modifiers() & Qt.AltModifier) and not self._missing
+        edge = self._edge_at(event.pos().x()) if left and fade is None and not slip else None
+        if fade is None and not slip and edge is None:
             super().mousePressEvent(event)
             return
         self.view.select_box(self.track_name, self.clip)
-        self._trim_edge = edge
-        self._trim_before = (self.clip.start_beat, self.clip.trim_start, self.clip.trim_end)
+        self._before = self._state()
+        if fade is not None:
+            self._fade_drag = fade
+        elif slip:
+            self._slip_from = (event.scenePos().x(), self.clip.trim_start, self.clip.trim_end)
+            self.setCursor(Qt.ClosedHandCursor)
+        else:
+            self._trim_edge = edge
+            # Ctrl sul bordo destro (o una clip che gia' si ripete): ripeti in loop
+            self._loop_drag = edge == "right" and (bool(event.modifiers() & Qt.ControlModifier)
+                                                    or self.clip.loop_length > 0)
         event.accept()
 
+    def _drag_fade(self, x: float):
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0:
+            return
+        if self._fade_drag == "in":
+            seconds = max(0.0, min(x / pps, play - self.clip.fade_out))
+            self.clip.fade_in = round(seconds, 3)
+        else:
+            seconds = max(0.0, min((self.rect().width() - x) / pps, play - self.clip.fade_in))
+            self.clip.fade_out = round(seconds, 3)
+        self.update()
+
+    def _drag_slip(self, scene_x: float):
+        pps = self._px_per_second()
+        if pps <= 0:
+            return
+        start_x, trim_start, trim_end = self._slip_from
+        self.clip.trim_start, self.clip.trim_end = trim_start, trim_end
+        # verso destra il contenuto segue il mouse: si scopre audio piu' indietro nel file
+        audio_tracks.slip_clip_content(self.clip, -(scene_x - start_x) / pps)
+        self.update()
+
     def mouseMoveEvent(self, event):
+        if self._point_drag is not None:
+            self._drag_point(event.pos())
+            return
+        if self._fade_drag is not None:
+            self._drag_fade(event.pos().x())
+            return
+        if self._slip_from is not None:
+            self._drag_slip(event.scenePos().x())
+            return
         if self._trim_edge is None:
             super().mouseMoveEvent(event)
             return
@@ -274,6 +444,10 @@ class AudioBoxItem(BoxItem):
         tempo_map = self.view._tempo_map()
         if self._trim_edge == "left":
             audio_tracks.trim_clip_start_to_beat(self.clip, beat, tempo_map)
+        elif getattr(self, "_loop_drag", False):
+            span = beat - self.clip.start_beat
+            content = audio_tracks.clip_duration_beats(self.clip, tempo_map)
+            self.clip.loop_length = round(span, 6) if span > content + 1e-6 else 0.0
         else:
             audio_tracks.trim_clip_end_to_beat(self.clip, beat, tempo_map)
         self.prepareGeometryChange()
@@ -283,12 +457,20 @@ class AudioBoxItem(BoxItem):
         self.update()
 
     def mouseReleaseEvent(self, event):
-        if self._trim_edge is None:
+        if self._point_drag is not None:
+            self._point_drag = None
+            if self._state() != self._before:
+                self.view.on_clip_changed(self.track_name)
+            return
+        if self._trim_edge is None and self._fade_drag is None and self._slip_from is None:
             super().mouseReleaseEvent(event)
             return
-        self._trim_edge = None
+        if self._slip_from is not None:
+            self.unsetCursor()
+        self._trim_edge = self._fade_drag = self._slip_from = None
+        self._loop_drag = False
         self.view.canvas.set_drag_guide(None)
-        if (self.clip.start_beat, self.clip.trim_start, self.clip.trim_end) != self._trim_before:
+        if self._state() != self._before:
             self.view.on_clip_changed(self.track_name)
 
     def _layout(self):
@@ -296,7 +478,7 @@ class AudioBoxItem(BoxItem):
         width = max(6.0, duration * PX_PER_BEAT)
         self.setRect(0, 0, width, ROW_HEIGHT - 10)
         self._missing = audio_tracks.clip_is_missing(self.clip)
-        color = QColor("#d06060" if self._missing else AUDIO_TRACK_COLOR)
+        color = QColor("#d06060" if self._missing else MUTED_CLIP_COLOR if self.clip.muted else AUDIO_TRACK_COLOR)
         self.setBrush(QBrush(color))
         self.setPen(QPen(color.darker(140), 1))
         self.setPos(HEADER_WIDTH + self.clip.start_beat * PX_PER_BEAT, self._fixed_y)
@@ -305,41 +487,149 @@ class AudioBoxItem(BoxItem):
         else:
             seconds = audio_tracks.clip_play_seconds(self.clip)
             gain = tr(", gain {gain_db:+g} dB", gain_db=self.clip.gain_db) if self.clip.gain_db else ""
-            tip = (tr("{name}  ({seconds:.1f} s{gain})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), doppio click per rinominare, tasto destro per altre azioni.", name=self.clip.name, seconds=seconds, gain=gain, file=self.clip.file))
+            muted = tr(", silenziata") if self.clip.muted else ""
+            tip = (tr("{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.", name=self.clip.name, seconds=seconds, gain=gain, muted=muted, file=self.clip.file))
         self.setToolTip(tip)
 
+    def remove_point_at(self, pos) -> bool:
+        """Doppio clic su un punto della curva del volume: lo toglie."""
+        point = self._point_at(pos)
+        if point is None:
+            return False
+        del self.clip.gain_points[point]
+        self.view.on_clip_changed(self.track_name)
+        return True
+
     def mouseDoubleClickEvent(self, event):
-        self.view._rename_clip(self.track_name, self.clip)
+        if not self.remove_point_at(event.pos()):
+            self.view._rename_clip(self.track_name, self.clip)
+
+    _draw_cache = None
+
+    def _drawing(self, rect):
+        """Le linee della forma d'onda e le curve delle dissolvenze, pronte da
+        disegnare: si ricalcolano solo se cambiano la clip o la larghezza del
+        box (con centinaia di box, ricalcolarle a ogni ridisegno rendeva lo
+        scorrimento lento)."""
+        c = self.clip
+        content = self._content_width()
+        key = (rect.width(), rect.height(), c.file, c.trim_start, c.trim_end, c.stretch, c.fade_in, c.fade_out,
+               c.fade_shape, _canvas_colors()["box_text"], c.reverse, c.channel, content, tuple(c.gain_points))
+        if self._draw_cache is not None and self._draw_cache[0] == key:
+            return self._draw_cache[1]
+        lines, fades = [], []
+        buckets = max(1, min(4000, int(content / 2)))
+        peaks = audio_tracks.waveform_peaks(c, buckets)
+        if peaks is not None:
+            mid = rect.center().y()
+            half = rect.height() / 2 - 4
+            step = content / buckets
+            offset = 0.0
+            while offset < rect.width() - 0.5:         # un giro dopo l'altro se si ripete
+                for i, peak in enumerate(peaks):
+                    x = rect.left() + offset + (i + 0.5) * step
+                    if x > rect.right():
+                        break
+                    h = max(0.5, float(peak) * half)
+                    lines.append(QLineF(x, mid - h, x, mid + h))
+                if offset > 0:
+                    lines.append(QLineF(rect.left() + offset, rect.top() + 2, rect.left() + offset, rect.bottom() - 2))
+                offset += max(content, 1.0)
+        play = audio_tracks.clip_play_seconds(c)
+        for which, seconds in (("in", c.fade_in), ("out", c.fade_out)):
+            if seconds <= 0 or play <= 0:
+                continue
+            edge_x = rect.left() if which == "in" else rect.right()
+            handle_x = rect.left() + self._fade_handle_x(which)
+            steps = 24
+            t = np.linspace(0.0, seconds, steps + 1) if which == "in" else np.linspace(play - seconds, play, steps + 1)
+            gains = audio_tracks.fade_envelope_at(t, play, c.fade_in if which == "in" else 0.0,
+                                                  c.fade_out if which == "out" else 0.0, c.fade_shape)
+            xs = np.linspace(edge_x, handle_x, steps + 1) if which == "in" else np.linspace(handle_x, edge_x, steps + 1)
+            curve = [QPointF(float(x), rect.bottom() - float(g) * rect.height()) for x, g in zip(xs, gains)]
+            shade = QPolygonF([QPointF(float(xs[0]), rect.top())] + curve + [QPointF(float(xs[-1]), rect.top())])
+            fades.append((shade, QPolygonF(curve)))
+        self._draw_cache = (key, (lines, fades))
+        return lines, fades
+
+    def _paint_curve(self, painter, rect):
+        pps = self._px_per_second()
+        play = audio_tracks.clip_play_seconds(self.clip)
+        if pps <= 0 or play <= 0:
+            return
+        points = self.clip.gain_points
+        content = self._content_width()
+        color = QColor("#ffd54f")
+        offset = 0.0
+        while offset < rect.width() - 0.5:
+            xs = [0.0] + [t for t, _db in points] + [play]
+            dbs = audio_tracks.gain_curve_db(np.array(xs), points)
+            line = [QPointF(rect.left() + offset + min(content, t * pps), self._db_to_y(float(db)))
+                    for t, db in zip(xs, dbs)]
+            painter.setPen(QPen(color, 1.5))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPolyline(QPolygonF(line))
+            painter.setBrush(color)
+            for t, db in points:
+                painter.drawEllipse(QPointF(rect.left() + offset + t * pps, self._db_to_y(db)),
+                                    CURVE_POINT_PX, CURVE_POINT_PX)
+            offset += max(content, 1.0)
 
     def paint(self, painter, option, widget=None):
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
         rect = self.rect()
+        selected = self.clip is self.view.selected_clip
+        if rect.width() < MIN_DETAIL_PX:
+            # troppo stretto per forma d'onda ed etichetta: solo il box
+            if selected:
+                painter.setPen(QPen(QColor(ACCENT), 2))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(rect)
+            return
+        text_color = QColor(_canvas_colors()["box_text"])
         if not self._missing:
-            buckets = max(1, min(4000, int(rect.width() / 2)))
-            peaks = audio_tracks.waveform_peaks(self.clip, buckets)
-            if peaks is not None:
-                mid = rect.center().y()
-                half = rect.height() / 2 - 4
-                step = rect.width() / buckets
-                wave_color = QColor(_canvas_colors()["box_text"])
-                wave_color.setAlpha(150)
-                painter.setPen(QPen(wave_color, 1))
-                for i, peak in enumerate(peaks):
-                    x = rect.left() + (i + 0.5) * step
-                    h = max(0.5, float(peak) * half)
-                    painter.drawLine(QPointF(x, mid - h), QPointF(x, mid + h))
-        if self.clip is self.view.selected_clip:
+            lines, fades = self._drawing(rect)
+            wave_color = QColor(text_color)
+            wave_color.setAlpha(150)
+            painter.setPen(QPen(wave_color, 1))
+            painter.drawLines(lines)
+            for shade, curve in fades:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(0, 0, 0, 70))
+                painter.drawPolygon(shade)
+                painter.setPen(QPen(text_color, 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawPolyline(curve)
+            if self.clip.gain_points:
+                self._paint_curve(painter, rect)
+            if self._hover or selected:
+                painter.setPen(QPen(text_color, 1))
+                painter.setBrush(QColor("#ffffff"))
+                for which in ("in", "out"):
+                    x = rect.left() + self._fade_handle_x(which)
+                    x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
+                    painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
+        if selected:
             sel_pen = QPen(QColor(ACCENT))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
-        painter.setPen(QPen(QColor(_canvas_colors()["box_text"])))
+        painter.setPen(QPen(text_color))
         painter.setFont(QFont("Sans", 9, QFont.Bold))
-        label = tr("{name}  (file mancante)", name=self.clip.name) if self._missing else self.clip.name
-        painter.drawText(rect.adjusted(4, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
+        if self._missing:
+            label = tr("{name}  (file mancante)", name=self.clip.name)
+        elif self.clip.muted:
+            label = tr("{name}  (silenziata)", name=self.clip.name)
+        else:
+            label = self.clip.name
+        if audio_takes.has_takes(self.clip):
+            label += f"  [{self.clip.active_take + 1}/{len(self.clip.takes)}]"
+        if abs(self.clip.stretch - 1.0) > 1e-6:
+            label += f"  {round(100.0 / self.clip.stretch)}%"
+        painter.drawText(rect.adjusted(FADE_HANDLE_PX + 3, 2, -4, -2), Qt.AlignLeft | Qt.AlignTop | Qt.TextSingleLine, label)
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +833,8 @@ class ArrangementCanvas(QGraphicsView):
             return
         item = self._box_at(view_pos)
         if item is not None:
+            if isinstance(item, AudioBoxItem) and item.remove_point_at(item.mapFromScene(self.mapToScene(view_pos))):
+                return
             self.view.edit_box(item)
             return
         hit = self._track_and_beat_at(view_pos)
@@ -683,7 +975,7 @@ class ArrangementCanvas(QGraphicsView):
 # Widget pubblico, integrato nel QStackedWidget centrale di MainWindow
 # ---------------------------------------------------------------------------
 
-class ArrangementView(QWidget):
+class ArrangementView(AudioClipActions, QWidget):
     """host e' la MainWindow: si legge sempre host.project (sostituito per
     intero da nuovo/apri/importa) invece di tenerne una copia propria, e si
     usano host._mark_dirty()/host.statusBar() per restare coerenti col resto
@@ -787,7 +1079,11 @@ class ArrangementView(QWidget):
     def refresh(self):
         project = self.host.project
         scene = self.canvas._scene
-        scene.clear()
+        # I box delle clip che ci sono ancora si riusano (si aggiornano
+        # posizione, dimensioni e aspetto): ricrearli tutti a ogni modifica
+        # costava quasi un secondo con qualche centinaio di box (una ripresa
+        # quantizzata). Quelli delle clip sparite si tolgono alla fine.
+        old_items = {(id(it.clip), type(it)): it for it in scene.items() if isinstance(it, BoxItem)}
         self.canvas.row_ys = {}
 
         # Se il box selezionato non esiste piu' (eliminato, o la sua traccia
@@ -814,12 +1110,21 @@ class ArrangementView(QWidget):
         y = RULER_HEIGHT
         for t in project.tracks:
             self.canvas.row_ys[t.name] = y
-            for clip in t.clips:
-                item = BoxItem(self, t.name, clip, y + 5)
-                scene.addItem(item)
-            for clip in t.audio_clips:
-                scene.addItem(AudioBoxItem(self, t.name, clip, y + 5))
+            for cls, clips in ((BoxItem, t.clips), (AudioBoxItem, t.audio_clips)):
+                for clip in clips:
+                    item = old_items.pop((id(clip), cls), None)
+                    if item is not None and item.clip is clip:
+                        item.track_name = t.name
+                        item._fixed_y = y + 5
+                        item.prepareGeometryChange()
+                        item._layout()
+                        item.update()
+                    else:
+                        scene.addItem(cls(self, t.name, clip, y + 5))
             y += ROW_HEIGHT + ROW_GAP
+        for item in old_items.values():
+            scene.removeItem(item)
+        self._draw_crossfade_zones(scene)
 
         # spazio sotto l'ultima riga per il pulsante "Aggiungi traccia"
         scene_height = max(y + 50, RULER_HEIGHT + ROW_HEIGHT)
@@ -827,6 +1132,46 @@ class ArrangementView(QWidget):
         self.canvas.setBackgroundBrush(QColor(_canvas_colors()["bg"]))
         self._rebuild_headers()
         self.canvas.refresh_add_button_icon()
+
+    def _draw_crossfade_zones(self, scene):
+        """Le dissolvenze incrociate automatiche (core.audio_tracks.
+        auto_crossfades) disegnate a X sulla sovrapposizione delle clip."""
+        from PySide6.QtGui import QPainterPath
+        from PySide6.QtWidgets import QGraphicsPathItem
+        from core.tempo_map import beat_at_elapsed_seconds, seconds_for_beats
+        for item in getattr(self, "_xfade_items", []):
+            if item.scene() is scene:
+                scene.removeItem(item)
+        self._xfade_items = []
+        tempo_map = None
+        for t in self.host.project.tracks:
+            if not t.is_audio or len(t.audio_clips) < 2:
+                continue
+            if tempo_map is None:
+                tempo_map = self._tempo_map()
+            zones = audio_tracks.auto_crossfades(t.audio_clips, tempo_map)
+            top = self.canvas.row_ys.get(t.name, 0) + 5
+            for clip in t.audio_clips:
+                fade_in = zones.get(id(clip), (0.0, 0.0))[0]
+                if fade_in <= 0:
+                    continue
+                start_s = seconds_for_beats(tempo_map, clip.start_beat)
+                end_beat = beat_at_elapsed_seconds(tempo_map, 0.0, start_s + fade_in)
+                x0 = HEADER_WIDTH + clip.start_beat * PX_PER_BEAT
+                x1 = HEADER_WIDTH + end_beat * PX_PER_BEAT
+                bottom = top + ROW_HEIGHT - 10
+                path = QPainterPath()
+                path.moveTo(x0, top)
+                path.lineTo(x1, bottom)
+                path.moveTo(x0, bottom)
+                path.lineTo(x1, top)
+                item = QGraphicsPathItem(path)
+                item.setPen(QPen(QColor(ACCENT), 1.5))
+                item.setZValue(10)
+                item.setAcceptedMouseButtons(Qt.NoButton)
+                item.setToolTip(tr("Dissolvenza incrociata automatica ({ms} ms)", ms=int(round(fade_in * 1000))))
+                scene.addItem(item)
+                self._xfade_items.append(item)
 
     def _rebuild_headers(self):
         """Ricrea le testate delle tracce. Le vecchie si cancellano con
@@ -939,7 +1284,7 @@ class ArrangementView(QWidget):
         (alla posizione della clip, vedi core.audio_tracks) per un AudioClip."""
         project = self.host.project
         if isinstance(clip, AudioClip):
-            return audio_tracks.clip_duration_beats(clip, self._tempo_map())
+            return audio_tracks.clip_span_beats(clip, self._tempo_map())     # con la ripetizione in loop
         track = project.get_track(track_name)
         return clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
                                    start_beat=clip.start_beat, meter=project.meter())
@@ -1074,7 +1419,7 @@ class ArrangementView(QWidget):
         un'altra traccia ha gia' accordi da seguire: senza, il dialogo non
         avrebbe niente da generare."""
         return (not instrument.is_percussion and not self._is_bass_instrument(instrument)
-                and project_has_chords(self.host.project, exclude_track_name=track_name))
+                and project_has_chords(self.host.project, exclude_track_name=track_name, audio=True))
 
     def _select_track_from_header(self, track_name: str):
         self.select_box(None, None)
@@ -1087,9 +1432,22 @@ class ArrangementView(QWidget):
             menu = QMenu(self)
             record_action = menu.addAction(tr("● Registra..."))
             import_action = menu.addAction(tr("Importa file audio..."))
+            convert_action = menu.addAction(tr("Converti la traccia in notazione..."))
+            convert_action.setEnabled(bool(audible_clips(track)))
+            from core.audio_track_notation import converted_from
+            linked = [t.name for t in converted_from(self.host.project, track_name)]
+            reconvert_action = None
+            if linked:
+                reconvert_action = menu.addAction(tr("Riconverti le tracce collegate ({n})", n=len(linked)))
+                reconvert_action.setToolTip(", ".join(linked))
+                reconvert_action.setEnabled(bool(audible_clips(track)))
+            key_action = menu.addAction(tr("Tonalita' del brano da questa traccia..."))
+            key_action.setEnabled(bool(audible_clips(track)))
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
+            if hasattr(self.host, "add_freeze_action"):
+                self.host.add_freeze_action(menu, track_name)
             export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
             export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
             menu.addSeparator()
@@ -1099,6 +1457,12 @@ class ArrangementView(QWidget):
                 self.host.record_into_audio_track(track_name)
             elif chosen is import_action:
                 self.import_audio_clip(track_name, self.end_of_track_beat(track_name))
+            elif chosen is convert_action:
+                self.convert_track_to_notation(track_name)
+            elif reconvert_action is not None and chosen is reconvert_action:
+                self.reconvert_tracks(linked)
+            elif chosen is key_action:
+                self.key_from_audio_track(track_name)
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:
@@ -1119,16 +1483,27 @@ class ArrangementView(QWidget):
         if self._offers_melody(track_name, instrument):
             label = tr("Genera accompagnamento...") if instrument.polyphonic else tr("Genera riff/melodia...")
             generate_melody_action = menu.addAction(label)
+        lyrics_action = menu.addAction(tr("Melodia dal testo...")) \
+            if self._offers_melody(track_name, instrument) and not instrument.polyphonic else None
         if any(a is not None for a in (generate_drums_action, generate_bass_action,
                                         generate_progression_action, generate_melody_action)):
             menu.addSeparator()
         keyboard_action = menu.addAction(tr("Suona con la tastiera..."))
         import_midi_action = menu.addAction(tr("Importa MIDI..."))
         import_audio_action = menu.addAction(tr("Importa audio → note..."))
+        from core.project_io import linked_conversion
+        conversion = linked_conversion(self.host.project, track)
+        reconvert_action = None
+        if conversion:
+            reconvert_action = menu.addAction(tr("Riconverti da '{name}'", name=conversion["from"]))
+            reconvert_action.setToolTip(tr("Rifa' la conversione dalla traccia audio con le stesse scelte: "
+                                           "il contenuto della traccia viene sostituito (Ctrl+Z lo riporta)."))
         menu.addSeparator()
         edit_action = menu.addAction(tr("Nome e strumento..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
         synth_params_action = menu.addAction(tr("Parametri dello strumento plugin...")) if track.synth else None
+        if hasattr(self.host, "add_freeze_action"):
+            self.host.add_freeze_action(menu, track_name)
         export_action = menu.addAction(tr("Esporta MIDI (solo questa)..."))
         export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
         export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
@@ -1154,6 +1529,9 @@ class ArrangementView(QWidget):
              import_midi_action: self.host.import_midi_into_selected_track,
              import_audio_action: self.host.import_audio_into_selected_track}[chosen]()
             return
+        if reconvert_action is not None and chosen is reconvert_action:
+            self.reconvert_tracks([track_name])
+            return
         if chosen is edit_action:
             self.host._open_edit_dialog_for(track_name)
             return
@@ -1174,6 +1552,8 @@ class ArrangementView(QWidget):
             self._generate_progression_for_new_box(track_name)
         elif generate_melody_action is not None and chosen is generate_melody_action:
             self._generate_melody_for_new_box(track_name)
+        elif lyrics_action is not None and chosen is lyrics_action:
+            self._lyrics_melody_for_new_box(track_name)
         elif chosen is export_action:
             # Riusa la validazione/il dialogo di salvataggio gia' esistenti
             # (gui.main_window_mixer.export_selected_track_midi), che
@@ -1218,15 +1598,14 @@ class ArrangementView(QWidget):
             return
         dlg = DrumGenerateDialog(self, project=self.host.project, instrument_name=track.instrument_name,
                                   context_label=tr("nuovo box (traccia '{name}')", name=track.name), default_bars=4,
-                                  track_name=track.name)
+                                  track_name=track.name, start_beat=self.end_of_track_beat(track_name))
         if dlg.exec() != DrumGenerateDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
 
     def _generate_bass_for_new_box(self, track_name: str):
         track = self.host.project.get_track(track_name)
-        other_tracks = [(t.name, t.text) for t in self.host.project.tracks
-                        if t.name != track_name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -1235,15 +1614,14 @@ class ArrangementView(QWidget):
             return
         dlg = BassGenerateDialog(self, project=self.host.project, instrument_name=track.instrument_name,
                                   context_label=tr("nuovo box (traccia '{name}')", name=track.name), other_tracks=other_tracks,
-                                  track_name=track.name)
+                                  track_name=track.name, start_beat=self.end_of_track_beat(track_name))
         if dlg.exec() != BassGenerateDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
 
     def _generate_melody_for_new_box(self, track_name: str):
         track = self.host.project.get_track(track_name)
-        other_tracks = [(t.name, t.text) for t in self.host.project.tracks
-                        if t.name != track_name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -1260,6 +1638,24 @@ class ArrangementView(QWidget):
             default_bars=4, track_name=track.name,
         )
         if dlg.exec() != MelodyGenerateDialog.Accepted:
+            return
+        self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
+
+    def _lyrics_melody_for_new_box(self, track_name: str):
+        """Melodia dal testo (gui.rhythm_generate_dialog.LyricsMelodyDialog)
+        in un box nuovo in coda alla traccia."""
+        from .rhythm_generate_dialog import LyricsMelodyDialog
+        track = self.host.project.get_track(track_name)
+        other_tracks = chord_source_tracks(self.host.project, exclude_track_name=track_name)
+        if not other_tracks:
+            return
+        instrument = track.instrument
+        dlg = LyricsMelodyDialog(self, self.host.project, track.instrument_name,
+                                 tr("nuovo box (traccia '{name}')", name=track.name), other_tracks,
+                                 instrument.default_octave, instrument.range_low, instrument.range_high,
+                                 track_name=track.name)
+        self._lyrics_dialog = dlg   # per i test
+        if dlg.exec() != LyricsMelodyDialog.Accepted:
             return
         self._create_box_from_recorded_text(track_name, self.end_of_track_beat(track_name), dlg.result_text())
 
@@ -1290,6 +1686,18 @@ class ArrangementView(QWidget):
         play_action = menu.addAction(tr("▶ Play"))
         stop_action = menu.addAction(tr("■ Stop"))
         transpose_action = menu.addAction(tr("Trasponi..."))
+        from .reharmonize_dialog import can_reharmonize
+        reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
+            if can_reharmonize(clip.text, self.host.project.patterns) else None
+        harmonize_action = None
+        if reharmonize_action is None and not self.host.project.get_track(track_name).instrument.is_percussion:
+            from core.harmonize import melody_notes
+            try:
+                has_melody = bool(melody_notes(clip.text, self.host.project.patterns))
+            except Exception:          # testo non valido: niente da armonizzare
+                has_melody = False
+            if has_melody:
+                harmonize_action = menu.addAction(tr("Armonizza la melodia..."))
         rename_action = menu.addAction(tr("Rinomina..."))
         duplicate_action = menu.addAction(tr("Duplica"))
         menu.addSeparator()
@@ -1311,6 +1719,10 @@ class ArrangementView(QWidget):
             self._stop_preview()
         elif chosen is transpose_action:
             self._transpose_clip(track_name, clip)
+        elif reharmonize_action is not None and chosen is reharmonize_action:
+            self.reharmonize_clip(track_name, clip)
+        elif harmonize_action is not None and chosen is harmonize_action:
+            self.harmonize_melody(clip.name, clip.text, clip.start_beat)
         elif chosen is rename_action:
             self._rename_clip(track_name, clip)
         elif chosen is duplicate_action:
@@ -1331,6 +1743,30 @@ class ArrangementView(QWidget):
             track.clips.remove(clip)
             self.on_clip_changed(track_name)
 
+    def harmonize_melody(self, source_name: str, text: str, start_beat: float):
+        """Armonizza una melodia (gui.harmonize_dialog): gli accordi vanno in
+        una traccia nuova, con un box dove comincia la melodia."""
+        from .harmonize_dialog import HarmonizeDialog, add_harmony_track
+        dlg = HarmonizeDialog(self, self.host.project, text, source_name)
+        self._harmonize_dialog = dlg   # per i test
+        if dlg.exec() != HarmonizeDialog.Accepted or not dlg.result_text():
+            return
+        name = add_harmony_track(self, source_name, dlg.result_text(), start_beat)
+        if hasattr(self.host, "statusBar"):
+            self.host.statusBar().showMessage(tr("Accordi nella traccia nuova '{name}'.", name=name), 6000)
+
+    def reharmonize_clip(self, track_name: str, clip: Clip):
+        """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il
+        risultato prende il posto del testo del box (si annulla con Ctrl+Z)."""
+        from .reharmonize_dialog import ReharmonizeDialog
+        dlg = ReharmonizeDialog(self, self.host.project, clip.text, clip.name)
+        self._reharmonize_dialog = dlg   # per i test
+        if dlg.exec() != ReharmonizeDialog.Accepted or not dlg.result_text():
+            return
+        if dlg.result_text() != clip.text:
+            clip.text = dlg.result_text()
+            self.on_clip_changed(track_name)
+
     def _save_clip_as_style(self, track_name: str, clip: Clip):
         """Salva come stile del generatore il contenuto di un box (vedi
         gui.save_style_dialog): gli accordi si leggono dalle altre tracce,
@@ -1343,72 +1779,6 @@ class ArrangementView(QWidget):
                               meter=project.time_sig)
         if dlg.exec() == SaveStyleDialog.Accepted and dlg.saved_style() and hasattr(self.host, "statusBar"):
             self.host.statusBar().showMessage(tr("Stile «{0}» salvato fra gli stili personali.", dlg.saved_style()[1]), 4000)
-
-    def _show_audio_box_menu(self, track_name: str, clip: AudioClip, global_pos, at_beat=None):
-        missing = audio_tracks.clip_is_missing(clip)
-        menu = QMenu(self)
-        play_action = menu.addAction(tr("▶ Play"))
-        stop_action = menu.addAction(tr("■ Stop"))
-        rename_action = menu.addAction(tr("Rinomina..."))
-        gain_action = menu.addAction(tr("Guadagno clip (dB)..."))
-        trim_action = menu.addAction(tr("Taglio preciso (secondi)...")) if not missing else None
-        split_action = None
-        if not missing and at_beat is not None and at_beat > clip.start_beat:
-            split_action = menu.addAction(tr("Dividi qui (beat {at_beat:g})", at_beat=at_beat))
-        duplicate_action = menu.addAction(tr("Duplica"))
-        convert_action = menu.addAction(tr("Converti in notazione...")) if not missing else None
-        relink_action = menu.addAction(tr("Ritrova file...")) if missing else None
-        menu.addSeparator()
-        cut_action = menu.addAction(tr("Taglia"))
-        copy_action = menu.addAction(tr("Copia"))
-        paste_action = menu.addAction(tr("Incolla qui")) if isinstance(self._clipboard, AudioClip) else None
-        menu.addSeparator()
-        delete_action = menu.addAction(tr("Elimina"))
-
-        chosen = menu.exec(global_pos)
-        track = self.host.project.get_track(track_name)
-        if chosen is play_action:
-            self._play_clip(track_name, clip)
-        elif chosen is stop_action:
-            self._stop_preview()
-        elif chosen is rename_action:
-            self._rename_clip(track_name, clip)
-        elif chosen is gain_action:
-            self._set_clip_gain(track_name, clip)
-        elif trim_action is not None and chosen is trim_action:
-            self._edit_clip_trim(track_name, clip)
-        elif split_action is not None and chosen is split_action:
-            self._split_clip(track_name, clip, at_beat)
-        elif chosen is duplicate_action:
-            self._duplicate_clip(track_name, clip)
-        elif convert_action is not None and chosen is convert_action:
-            self._convert_clip_to_notation(track_name, clip)
-        elif relink_action is not None and chosen is relink_action:
-            self._relink_clip(track_name, clip)
-        elif chosen is cut_action:
-            self._clipboard = dataclasses.replace(clip)
-            track.audio_clips.remove(clip)
-            self.on_clip_changed(track_name)
-        elif chosen is copy_action:
-            self._clipboard = dataclasses.replace(clip)
-        elif paste_action is not None and chosen is paste_action:
-            self.paste_at(track_name, clip.start_beat)
-        elif chosen is delete_action:
-            track.audio_clips.remove(clip)
-            self.on_clip_changed(track_name)
-
-    def _show_audio_empty_menu(self, track_name: str, beat: float, global_pos):
-        menu = QMenu(self)
-        record_action = menu.addAction(tr("● Registra da qui..."))
-        import_action = menu.addAction(tr("Importa file audio qui..."))
-        paste_action = menu.addAction(tr("Incolla qui")) if isinstance(self._clipboard, AudioClip) else None
-        chosen = menu.exec(global_pos)
-        if chosen is record_action:
-            self.host.record_into_audio_track(track_name, start_beat=beat)
-        elif chosen is import_action:
-            self.import_audio_clip(track_name, beat)
-        elif paste_action is not None and chosen is paste_action:
-            self.paste_at(track_name, beat)
 
     def show_empty_menu(self, track_name: str, beat: float, global_pos):
         track = self.host.project.get_track(track_name)
@@ -1686,161 +2056,6 @@ class ArrangementView(QWidget):
         self._wrap_free_text_in_box(track)
         new_clip.start_beat = _snap(self.resolve_free_slot(track_name, new_clip, beat))
         (track.audio_clips if track.is_audio else track.clips).append(new_clip)
-        self.on_clip_changed(track_name)
-
-    # ------------------------------------------------------------ clip audio
-
-    def _pick_audio_file(self, title: str):
-        patterns = " ".join(f"*{ext}" for ext in audio_tracks.AUDIO_FILE_EXTENSIONS)
-        path, _ = QFileDialog.getOpenFileName(self, title, "", tr("Audio ({patterns});;Tutti i file (*)", patterns=patterns),
-                                              options=file_dialog_options())
-        return path or None
-
-    def _import_audio_file(self, src_path: str):
-        """Copia/converte src_path nella cartella audio del progetto (vedi
-        core.audio_tracks.import_audio_file); None (dopo averlo detto
-        all'utente) se non si riesce."""
-        error = None
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            dest_dir = audio_tracks.target_audio_dir(getattr(self.host, "current_path", None))
-            path = audio_tracks.import_audio_file(src_path, dest_dir)
-        except (RuntimeError, OSError, ValueError) as e:
-            path, error = None, str(e)
-        finally:
-            QApplication.restoreOverrideCursor()
-        if error:
-            QMessageBox.critical(self, tr("Importazione audio non riuscita"), error)
-        return path
-
-    def import_audio_clip(self, track_name: str, beat: float):
-        """Sceglie un file audio e lo aggiunge come clip alla traccia audio
-        track_name, a partire da beat (o dal primo posto libero dopo)."""
-        src = self._pick_audio_file(tr("Importa file audio"))
-        if not src:
-            return
-        path = self._import_audio_file(src)
-        if not path:
-            return
-        name = os.path.splitext(os.path.basename(src))[0]
-        clip = AudioClip(name=name, file=path, start_beat=beat)
-        clip.start_beat = _snap(self.resolve_free_slot(track_name, clip, beat))
-        self.host.project.get_track(track_name).audio_clips.append(clip)
-        self.on_clip_changed(track_name)
-        self.host.statusBar().showMessage(
-            tr("Clip '{name}' aggiunta alla traccia '{track_name}' (file: {path}).", name=name, track_name=track_name, path=path), 6000)
-
-    def _relink_clip(self, track_name: str, clip: AudioClip):
-        src = self._pick_audio_file(tr("Ritrova il file di '{name}'", name=clip.name))
-        if not src:
-            return
-        path = self._import_audio_file(src)
-        if not path:
-            return
-        clip.file = path
-        self.on_clip_changed(track_name)
-
-    def _split_clip(self, track_name: str, clip: AudioClip, at_beat: float):
-        second = audio_tracks.split_clip(clip, at_beat, self._tempo_map())
-        if second is None:
-            self.host.statusBar().showMessage(tr("Il punto scelto e' troppo vicino ai bordi della clip."), 4000)
-            return
-        self.host.project.get_track(track_name).audio_clips.append(second)
-        self.on_clip_changed(track_name)
-
-    def _edit_clip_trim(self, track_name: str, clip: AudioClip):
-        """Taglio di inizio e fine in secondi, per chi preferisce i numeri al
-        mouse: come trascinando i bordi, l'audio resta dov'e' nel tempo."""
-        from PySide6.QtWidgets import QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout
-        total = audio_tracks.clip_file_seconds(clip)
-        dlg = QDialog(self)
-        dlg.setWindowTitle(tr("Taglio — {name}", name=clip.name))
-        form = QFormLayout(dlg)
-        form.addRow(QLabel(tr("Durata del file: {total:.3f} s", total=total)))
-        spins = []
-        for label, value in ((tr("Salta all'inizio (s):"), clip.trim_start), (tr("Salta alla fine (s):"), clip.trim_end)):
-            spin = QDoubleSpinBox()
-            spin.setDecimals(3)
-            spin.setSingleStep(0.01)
-            spin.setRange(0.0, max(0.0, total - audio_tracks.MIN_CLIP_SECONDS))
-            spin.setValue(value)
-            form.addRow(label, spin)
-            spins.append(spin)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        form.addRow(buttons)
-        self._trim_dialog = dlg   # per i test
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._apply_clip_trim(track_name, clip, spins[0].value(), spins[1].value())
-
-    def _apply_clip_trim(self, track_name: str, clip: AudioClip, trim_start: float, trim_end: float):
-        from core.tempo_map import beat_at_elapsed_seconds, seconds_for_beats
-        tempo_map = self._tempo_map()
-        before = (clip.start_beat, clip.trim_start, clip.trim_end)
-        clip.trim_end = 0.0
-        start_s = seconds_for_beats(tempo_map, clip.start_beat) + (trim_start - clip.trim_start)
-        if start_s < 0:
-            trim_start -= start_s   # la clip non puo' iniziare prima del brano
-            start_s = 0.0
-        audio_tracks.trim_clip_start_to_beat(clip, beat_at_elapsed_seconds(tempo_map, 0.0, start_s), tempo_map)
-        total = audio_tracks.clip_file_seconds(clip)
-        clip.trim_end = round(max(0.0, min(trim_end, total - clip.trim_start - audio_tracks.MIN_CLIP_SECONDS)), 6)
-        if (clip.start_beat, clip.trim_start, clip.trim_end) != before:
-            self.on_clip_changed(track_name)
-
-    def _convert_clip_to_notation(self, track_name: str, clip: AudioClip):
-        """Converte la parte riprodotta della clip in notazione (stesso
-        motore di 'Importa audio', vedi gui.audio_import_dialog) in una nuova
-        traccia, con un box che parte dove parte la clip."""
-        import tempfile
-        from core.instruments import list_instrument_names
-        track = self.host.project.get_track(track_name)
-        names = list_instrument_names()
-        preferred = {"chitarra": "Guitar", "tastiera": "Piano", "voce": "Trumpet"}.get(track.input_profile, "Piano")
-        instrument, ok = QInputDialog.getItem(
-            self, tr("Converti in notazione"), tr("Strumento della nuova traccia:"), names,
-            names.index(preferred) if preferred in names else 0, False)
-        if not ok:
-            return
-        fd, tmp = tempfile.mkstemp(suffix=".wav", prefix="soundtext_clip_")
-        os.close(fd)
-        try:
-            audio_tracks.extract_clip_audio(clip, tmp)
-            dlg = AudioImportDialog(self, project=self.host.project, instrument_name=instrument,
-                                     context_label=tr("clip '{name}' (traccia '{track_name}')", name=clip.name, track_name=track_name))
-            dlg._set_source(tmp)
-            accepted = dlg.exec() == AudioImportDialog.Accepted
-            text = dlg.result_text() if accepted else None
-        finally:
-            if os.path.exists(tmp):
-                os.remove(tmp)
-        self.host._sync_tempo_metrica_fields()
-        if not text:
-            return
-        project = self.host.project
-        existing = {t.name for t in project.tracks}
-        name, n = f"{clip.name} (note)", 2
-        while name in existing:
-            name, n = tr("{name} (note {n})", name=clip.name, n=n), n + 1
-        new_track = project.add_track(name, instrument, "")
-        new_track.clips = [Clip(name=clip.name, text=text, start_beat=clip.start_beat)]
-        new_track.text = flatten_clips_to_text(new_track.clips, project.patterns, new_track.instrument.default_octave,
-                                              meter=project.meter())
-        self.host._mark_dirty()
-        self.host.refresh_mixer()
-        self.host.select_track(name)
-        self.host.statusBar().showMessage(
-            tr("Clip '{name}' convertita in notazione nella nuova traccia '{0}'.", name, name=clip.name), 6000)
-
-    def _set_clip_gain(self, track_name: str, clip: AudioClip):
-        value, ok = QInputDialog.getDouble(
-            self, tr("Guadagno clip"), tr("Guadagno in dB (0 = originale, negativo = piu' piano):"),
-            clip.gain_db, -48.0, 24.0, 1)
-        if not ok or value == clip.gain_db:
-            return
-        clip.gain_db = value
         self.on_clip_changed(track_name)
 
     def _export_clip(self, clip: Clip):

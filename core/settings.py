@@ -409,3 +409,19 @@ def set_audio_pitch_params(params: dict):
     else:
         _cache.pop("audio_pitch_params", None)
     _save()
+
+
+def get_quantize_settings() -> dict:
+    """Quantizzazione regolabile scelta l'ultima volta (forza, finestra,
+    swing, pulizia: vedi core.audio_quantize.QuantizeSettings e
+    gui.quantize_options): solo i valori cambiati; vuoto = quella di sempre."""
+    return dict(_load().get("quantize_settings", {}))
+
+
+def set_quantize_settings(values: dict):
+    _load()
+    if values:
+        _cache["quantize_settings"] = dict(values)
+    else:
+        _cache.pop("quantize_settings", None)
+    _save()

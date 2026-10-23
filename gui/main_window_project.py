@@ -6,6 +6,7 @@ import time
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
 
+from core import disk_cache
 from core.model import Project
 from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
@@ -44,16 +45,18 @@ class ProjectMixin:
     # ------------------------------------------------------------ progetto
 
     def _on_tempo_changed(self, value):
-        self.project.tempo_bpm = value
+        self.project.tempo_bpm = self.tempo_spin.bpm()     # intero se lo e', o con un decimale
         self._mark_dirty(merge_key="tempo")
         if any(t.audio_clips for t in self.project.tracks):
-            # L'audio non viene stirato (vedi core.audio_tracks): le clip
-            # restano al loro beat ma durano gli stessi secondi, quindi
-            # occupano piu' o meno beat e i loro box vanno ridisegnati.
+            # Le clip che seguono il tempo si sono gia' riadattate (time-stretch,
+            # in _mark_dirty); le altre restano al loro beat ma durano gli stessi
+            # secondi: in entrambi i casi i box vanno ridisegnati.
             self.arrangement_view.refresh()
-            self.statusBar().showMessage(
-                tr("Nota: le tracce audio non seguono il cambio di tempo (restano alla stessa "
-                "velocita', ancorate al beat in cui iniziano)."), 6000)
+            fixed = [c for t in self.project.tracks if t.is_audio for c in t.audio_clips if c.source_bpm <= 0]
+            if fixed:
+                self.statusBar().showMessage(
+                    tr("Nota: {n} clip audio non seguono il cambio di tempo (restano alla stessa velocita'); "
+                       "tasto destro su una clip → Segui il tempo del brano.", n=len(fixed)), 6000)
 
     def _on_metrica_changed(self, text):
         text = text.strip()
@@ -152,6 +155,7 @@ class ProjectMixin:
         self.schedule_playback_prepare()
         set_session_instruments(project.instruments)
         self.current_path = path
+        disk_cache.set_project(path)       # i rendering salvati accanto al progetto
         self.current_track_name = None
         # Il progetto appena sostituito e' per definizione "a riposo": non ci
         # sono ancora modifiche da salvare rispetto a questo stato (vedi
@@ -292,6 +296,7 @@ class ProjectMixin:
             QMessageBox.critical(self, tr("Errore di salvataggio"), tr("Impossibile salvare '{path}':\n{e}", path=path, e=e))
             return
         self.current_path = path
+        disk_cache.set_project(path)
         # Come al caricamento (load_project_file), il nome del progetto e' il
         # nome del file: cosi' le esportazioni successive lo propongono.
         self.project.name = os.path.splitext(os.path.basename(path))[0]
@@ -643,6 +648,139 @@ class ProjectMixin:
             return
         self._export_wav(tr("Esporta WAV della traccia"), os.path.join(start_dir, safe_name + ".wav"), [track],
                          tr("Traccia '{name}' esportata", name=track.name))
+
+    def export_stems(self):
+        """Tutte le tracce, un WAV per traccia (core.playback.render_stems_to_dir),
+        in una cartella scelta; con o senza effetti."""
+        from PySide6.QtWidgets import QDialog
+        from core.playback import render_stems_to_dir, stem_tracks
+        if not self._check_tracks_syntax():
+            return
+        tracks = stem_tracks(self.project)
+        if not tracks:
+            QMessageBox.information(self, tr("Esporta le tracce"),
+                                    tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
+            return
+        box = QMessageBox(QMessageBox.Question, tr("Esporta le tracce"), tr(
+            "{n} tracce, un file WAV ciascuna. Con gli effetti (come si sentono) o asciutte "
+            "(senza effetti, riverbero e pan, per mixarle altrove)?", n=len(tracks)), parent=self)
+        wet = box.addButton(tr("Con gli effetti"), QMessageBox.AcceptRole)
+        dry = box.addButton(tr("Asciutte"), QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(wet)
+        box.exec()
+        if box.clickedButton() not in (wet, dry):
+            return
+        dry_choice = box.clickedButton() is dry
+        start_dir = os.path.dirname(self._default_export_path(".wav"))
+        base = QFileDialog.getExistingDirectory(self, tr("Cartella in cui salvare le tracce"), start_dir,
+                                                options=file_dialog_options())
+        if not base:
+            return
+        name = re.sub(r'[\\/:*?"<>|]', "_", os.path.splitext(os.path.basename(self.current_path or ""))[0]
+                      or self.project.name).strip() or "brano"
+        out_dir = os.path.join(base, tr("{name} - tracce", name=name))
+
+        progress_dlg = QProgressDialog(tr("Rendering delle tracce..."), tr("Annulla"), 0, len(tracks), self)
+        progress_dlg.setWindowTitle(tr("Esporta le tracce"))
+        progress_dlg.setWindowModality(Qt.WindowModal)
+        progress_dlg.setMinimumDuration(0)
+        progress_dlg.setAutoClose(False)
+        cancelled = {"value": False}
+        worker = Worker(render_stems_to_dir, self.project, out_dir, stop_check=lambda: cancelled["value"],
+                        dry=dry_choice, progress=lambda done, total: worker.progress.emit(done),
+                        pass_progress=False)
+        self._export_wav_worker = worker
+
+        def handle_ok(paths):
+            worker.wait()
+            progress_dlg.close()
+            self._export_wav_worker = None
+            self.statusBar().showMessage(tr("{n} tracce esportate in {folder}", n=len(paths), folder=out_dir), 8000)
+
+        def handle_error(msg):
+            worker.wait()
+            progress_dlg.close()
+            self._export_wav_worker = None
+            if not cancelled["value"]:
+                QMessageBox.critical(self, tr("Errore esportazione audio"), msg)
+
+        worker.progress.connect(lambda done: progress_dlg.setValue(int(done)))
+        worker.finished_ok.connect(handle_ok)
+        worker.finished_error.connect(handle_error)
+        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
+        worker.start()
+
+    def add_freeze_action(self, menu, track_name: str):
+        """Nel menu di una traccia: Congela in audio, o Scongela se lo e'
+        gia'. Niente per la traccia audio che ne suona un'altra congelata."""
+        from core import freeze
+        project = self.project
+        track = project.get_track(track_name)
+        if any(t.frozen == track_name for t in project.tracks):
+            return None
+        if freeze.is_frozen(project, track):
+            action = menu.addAction(tr("Scongela (torna a '{name}')", name=track.name))
+            action.setToolTip(tr("Toglie la traccia audio congelata e la traccia torna a suonare com'era."))
+        else:
+            action = menu.addAction(tr("Congela in audio"))
+            action.setToolTip(tr("La traccia diventa una clip audio, calcolata una volta sola (note, strumento, "
+                                 "effetti): il computer lavora meno. La traccia resta, silenziata; "
+                                 "Scongela la fa tornare."))
+        action.triggered.connect(lambda _checked=False: self.toggle_freeze(track_name))
+        return action
+
+    def toggle_freeze(self, track_name: str):
+        """Congela in audio (in un thread, annullabile) o scongela la traccia."""
+        from core import freeze
+        from core.audio_tracks import target_audio_dir
+        track = self.project.get_track(track_name)
+        if freeze.is_frozen(self.project, track):
+            removed = freeze.unfreeze(self.project, track)
+            self._mark_dirty()
+            self.refresh_mixer()
+            self.statusBar().showMessage(tr("'{name}' scongelata: suona di nuovo dalle sue note ed effetti.",
+                                            name=track.name) if removed else
+                                         tr("'{name}' scongelata.", name=track.name), 6000)
+            return
+        if not track.is_audio:
+            ok, msg = validate_track_text(track.text, self.project.patterns)
+            if not ok:
+                QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile congelare:\n{msg}", msg=msg))
+                return
+        progress_dlg = QProgressDialog(tr("Congelo '{name}' in audio...", name=track.name), tr("Annulla"), 0, 0, self)
+        progress_dlg.setWindowTitle(tr("Congela in audio"))
+        progress_dlg.setWindowModality(Qt.WindowModal)
+        progress_dlg.setMinimumDuration(0)
+        progress_dlg.setAutoClose(False)
+        cancelled = {"value": False}
+        worker = Worker(freeze.render_frozen_audio, self.project, track, target_audio_dir(self.current_path),
+                        stop_check=lambda: cancelled["value"], pass_progress=False)
+        self._freeze_worker = worker
+
+        def handle_ok(path):
+            worker.wait()
+            progress_dlg.close()
+            self._freeze_worker = None
+            if self.project.find_track(track_name) is not track:
+                return                     # la traccia e' sparita intanto
+            audio = freeze.apply_freeze(self.project, track, path)
+            self._mark_dirty()
+            self.refresh_mixer()
+            self.statusBar().showMessage(tr("'{name}' congelata in audio nella traccia '{audio}'.",
+                                            name=track.name, audio=audio.name), 6000)
+
+        def handle_error(msg):
+            worker.wait()
+            progress_dlg.close()
+            self._freeze_worker = None
+            if not cancelled["value"]:
+                QMessageBox.critical(self, tr("Congela in audio"), msg)
+
+        worker.finished_ok.connect(handle_ok)
+        worker.finished_error.connect(handle_error)
+        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
+        worker.start()
 
     def _export_wav(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False):
         """Chiede dove salvare e renderizza in un WAV, in un thread separato,

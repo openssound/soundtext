@@ -19,7 +19,7 @@ import re
 import os
 from typing import Optional, List
 
-from .model import Project, Clip, AudioClip, AUDIO_INSTRUMENT_NAME, Effect
+from .model import Project, Clip, AudioClip, AudioTake, AUDIO_INSTRUMENT_NAME, Effect, FADE_SHAPES, CLIP_CHANNELS
 from .arrangement import flatten_clips_to_text
 from .notation import upgrade_midi_refs
 from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key, clamp_params
@@ -37,8 +37,9 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
     _TRACK_HDR_PATTERNS, VOLUME_MAX, _parse_bar_value_list, _si, _parse_kv_body,
     _convert_pan_to_0_127, _pan_0_127_to_normalized, _convert_volume, _parse_instrument_body,
     _parse_mixer_body, _notation_body_lines, _extract_named_blocks, _extract_box_blocks,
-    RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks,
+    RE_ST_VERSION, RE_PICKUP, LANGUAGE_VERSION, parse_pickup, format_pickup, instrument_blocks, parse_bpm,
     RE_KEY_LIST_HDR, RE_TITLE, RE_COMPOSER, RE_LYRICIST, parse_key_list,
+    RE_CONVERSION_HDR, conversion_blocks, parse_conversion_body, conversion_body_text,
 )
 
 
@@ -222,37 +223,181 @@ def _prepare_embedded_instruments(text: str) -> List[str]:
     return newly_registered
 
 
+# Chiavi delle clip audio aggiunte da SoundText dopo trim= e gain= (le
+# regex di quelle stanno in st_language.stfile): dissolvenze 'fade=entrata,
+# uscita' in secondi, loro forma 'fade_shape=equal' e 'mute'. Scritte solo
+# se diverse dal valore di base; una versione vecchia le ignora.
+RE_AUDIO_FADE = re.compile(r'\bfade\s*=\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)')
+RE_AUDIO_FADE_SHAPE = re.compile(r'\bfade_shape\s*=\s*(\w+)')
+RE_AUDIO_MUTE = re.compile(r'(?<![\w=])mute(?![\w=])')
+# Time-stretch 'stretch=1.05' e tempo da seguire 'bpm=96' (vedi
+# AudioClip.stretch e source_bpm).
+RE_AUDIO_STRETCH = re.compile(r'\bstretch\s*=\s*(\d+(?:\.\d+)?)')
+RE_AUDIO_BPM = re.compile(r'\bbpm\s*=\s*(\d+(?:\.\d+)?)')
+# Elaborazioni della clip (dalla 1.10): 'transpose=-0.3' in semitoni,
+# 'reverse', 'invert' e 'channel=left' (vedi AudioClip.transpose ...).
+RE_AUDIO_TRANSPOSE = re.compile(r'\btranspose\s*=\s*(-?\d+(?:\.\d+)?)')
+RE_AUDIO_REVERSE = re.compile(r'(?<![\w=])reverse(?![\w=])')
+RE_AUDIO_INVERT = re.compile(r'(?<![\w=])invert(?![\w=])')
+RE_AUDIO_CHANNEL = re.compile(r'\bchannel\s*=\s*(\w+)')
+# Ripeti in loop: 'loop=8', la lunghezza in beat della ripetizione.
+RE_AUDIO_LOOP = re.compile(r'\bloop\s*=\s*(\d+(?:\.\d+)?)')
+# Correzione dell'intonazione: 'pitch_correct=60' (forza in %).
+RE_AUDIO_PITCH_CORRECT = re.compile(r'\bpitch_correct\s*=\s*(\d+)')
+# Curva del volume: 'gain_points=0:0,2.5:-6' (secondi:dB).
+RE_AUDIO_GAIN_POINTS = re.compile(r'\bgain_points\s*=\s*((?:\d+(?:\.\d+)?:-?\d+(?:\.\d+)?,?)+)')
+# Riprese multiple (core.audio_takes): sulla riga principale quale e' attiva
+# ('take=N', da 1), poi una riga per ripresa:
+#   take "Ripresa 2" file="Voce ripresa 2.wav" delta=0.013
+# Una versione vecchia legge la riga principale (la ripresa attiva) e
+# ignora le altre.
+RE_AUDIO_ACTIVE_TAKE = re.compile(r'(?<![\w"])take\s*=\s*(\d+)')
+RE_AUDIO_TAKE = re.compile(r'(?<![\w=])take\s+"([^"]*)"\s+file\s*=\s*"([^"]*)"\s+delta\s*=\s*(-?\d+(?:\.\d+)?)')
+_RE_QUOTED = re.compile(r'"[^"]*"')
+# Traccia congelata in audio (core.freeze), nel suo blocco Mixer:
+# 'congelata: "Nome della traccia audio"'. Una versione vecchia la ignora e
+# trova la traccia silenziata: suona la versione congelata, come qui.
+RE_MIXER_FROZEN = re.compile(r'\bcongelata\s*[:=]\s*"([^"]*)"')
+
+
 def _parse_audio_clip_body(name: str, start_beat: float, body: str,
                            base_dir: Optional[str]) -> Optional[AudioClip]:
     m = RE_AUDIO_FILE.search(body)
     if not m or not m.group(1).strip():
         return None
-    path = m.group(1).strip().replace("/", os.sep)
-    if base_dir and not os.path.isabs(path):
-        path = os.path.normpath(os.path.join(base_dir, path))
-    clip = AudioClip(name=name, file=path, start_beat=start_beat)
+    clip = AudioClip(name=name, file=_clip_file_path(m.group(1), base_dir), start_beat=start_beat)
     t = RE_AUDIO_TRIM.search(body)
     if t:
         clip.trim_start, clip.trim_end = float(t.group(1)), float(t.group(2))
     g = RE_AUDIO_GAIN.search(body)
     if g:
         clip.gain_db = float(g.group(1))
+    takes = [AudioTake(take_name, _clip_file_path(take_file, base_dir), float(delta))
+             for take_name, take_file, delta in RE_AUDIO_TAKE.findall(body)]
+    body = RE_AUDIO_TAKE.sub("", body)
+    rest = _RE_QUOTED.sub('""', body)   # un percorso o un nome con "fade=" o "mute" non conta
+    f = RE_AUDIO_FADE.search(rest)
+    if f:
+        clip.fade_in, clip.fade_out = float(f.group(1)), float(f.group(2))
+    shape = RE_AUDIO_FADE_SHAPE.search(rest)
+    if shape and shape.group(1) in FADE_SHAPES:
+        clip.fade_shape = shape.group(1)
+    clip.muted = RE_AUDIO_MUTE.search(rest) is not None
+    st = RE_AUDIO_STRETCH.search(rest)
+    if st and float(st.group(1)) > 0:
+        clip.stretch = float(st.group(1))
+    bpm = RE_AUDIO_BPM.search(rest)
+    if bpm:
+        clip.source_bpm = float(bpm.group(1))
+    tr = RE_AUDIO_TRANSPOSE.search(rest)
+    if tr:
+        clip.transpose = max(-24.0, min(24.0, float(tr.group(1))))
+    clip.reverse = RE_AUDIO_REVERSE.search(rest) is not None
+    clip.invert = RE_AUDIO_INVERT.search(rest) is not None
+    ch = RE_AUDIO_CHANNEL.search(rest)
+    if ch and ch.group(1) in CLIP_CHANNELS:
+        clip.channel = ch.group(1)
+    lp = RE_AUDIO_LOOP.search(rest)
+    if lp:
+        clip.loop_length = float(lp.group(1))
+    pc = RE_AUDIO_PITCH_CORRECT.search(rest)
+    if pc:
+        clip.pitch_correct = max(0, min(100, int(pc.group(1))))
+    gp = RE_AUDIO_GAIN_POINTS.search(rest)
+    if gp:
+        points = [tuple(float(v) for v in item.split(":")) for item in gp.group(1).split(",") if item]
+        clip.gain_points = sorted(points)
+    if len(takes) > 1:
+        active = RE_AUDIO_ACTIVE_TAKE.search(rest)
+        index = int(active.group(1)) - 1 if active else 0
+        clip.takes, clip.active_take = takes, max(0, min(len(takes) - 1, index))
     return clip
 
 
-def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
-    path = clip.file
+def _clip_file_path(path: str, base_dir: Optional[str]) -> str:
+    path = path.strip().replace("/", os.sep)
+    if base_dir and not os.path.isabs(path):
+        path = os.path.normpath(os.path.join(base_dir, path))
+    return path
+
+
+def _relative_clip_path(path: str, base_dir: Optional[str]) -> str:
     if base_dir:
         try:
             path = os.path.relpath(os.path.abspath(path), os.path.abspath(base_dir))
         except ValueError:   # Windows: dischi diversi, resta assoluto
             pass
-    parts = [f'file="{path.replace(os.sep, "/")}"']
+    return path.replace(os.sep, "/")
+
+
+# La versione del linguaggio che un file usa davvero: la 2.9 ha portato solo
+# i BPM decimali nella riga Tempo:, quindi un brano a tempi interi si
+# dichiara 2.8 e resta leggibile, senza avvisi, dalle versioni precedenti.
+_DECIMAL_TEMPO_VERSION = (2, 9)
+_BASE_FILE_VERSION = (2, 8)
+# Il blocco "Conversione Nome:" (traccia di note nata da una traccia audio)
+# c'e' dalla 2.10: solo i file che ne hanno uno lo dichiarano.
+_CONVERSION_VERSION = (2, 10)
+
+
+def linked_conversion(project: Project, track) -> Optional[dict]:
+    """Le scelte della conversione da cui e' nata la traccia di note, se la
+    traccia audio da cui viene c'e' ancora; altrimenti None."""
+    conversion = getattr(track, "conversion", None)
+    if not conversion or track.is_audio:
+        return None
+    source = project.find_track(conversion.get("from"))
+    return conversion if source is not None and source.is_audio else None
+
+
+def _file_language_version(project: Project) -> tuple:
+    if any(linked_conversion(project, t) for t in project.tracks):
+        return _CONVERSION_VERSION
+    tempos = [project.tempo_bpm] + [v for _b, v in project.tempo_changes]
+    if any(isinstance(v, float) and not float(v).is_integer() for v in tempos):
+        return _DECIMAL_TEMPO_VERSION
+    return _BASE_FILE_VERSION
+
+
+def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
+    parts = [f'file="{_relative_clip_path(clip.file, base_dir)}"']
     if clip.trim_start or clip.trim_end:
         parts.append(f"trim={round(clip.trim_start, 4):g},{round(clip.trim_end, 4):g}")
     if clip.gain_db:
         parts.append(f"gain={round(clip.gain_db, 2):g}")
-    return " ".join(parts)
+    if clip.fade_in or clip.fade_out:
+        parts.append(f"fade={round(clip.fade_in, 4):g},{round(clip.fade_out, 4):g}")
+    if clip.fade_shape != "linear":
+        parts.append(f"fade_shape={clip.fade_shape}")
+    if clip.muted:
+        parts.append("mute")
+    if abs(clip.stretch - 1.0) > 1e-6:
+        parts.append(f"stretch={round(clip.stretch, 6):g}")
+    if clip.source_bpm:
+        parts.append(f"bpm={round(clip.source_bpm, 3):g}")
+    if abs(clip.transpose) > 1e-6:
+        parts.append(f"transpose={round(clip.transpose, 3):g}")
+    if clip.reverse:
+        parts.append("reverse")
+    if clip.invert:
+        parts.append("invert")
+    if clip.channel != "stereo":
+        parts.append(f"channel={clip.channel}")
+    if clip.loop_length > 0:
+        parts.append(f"loop={round(clip.loop_length, 4):g}")
+    if clip.pitch_correct:
+        parts.append(f"pitch_correct={clip.pitch_correct}")
+    if clip.gain_points:
+        parts.append("gain_points=" + ",".join(f"{round(t, 4):g}:{round(db, 2):g}" for t, db in clip.gain_points))
+    if len(clip.takes) > 1:
+        parts.append(f"take={clip.active_take + 1}")
+    lines = [" ".join(parts)]
+    if len(clip.takes) > 1:
+        for take in clip.takes:
+            name = take.name.replace('"', "'")
+            lines.append(f'take "{name}" file="{_relative_clip_path(take.file, base_dir)}" '
+                         f'delta={round(take.delta, 6):g}')
+    return "\n  ".join(lines)
 
 
 def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Optional[str] = None) -> Project:
@@ -269,6 +414,10 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         name: _parse_mixer_body(body)
         for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR)
     }
+    for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR):
+        frozen = RE_MIXER_FROZEN.search(body)
+        if frozen and name in track_mixer_overrides:
+            track_mixer_overrides[name]["frozen"] = frozen.group(1)
     track_effects = {
         name: _parse_effects_body(body, base_dir)
         for name, body in _extract_named_blocks(text.splitlines(), RE_EFFECTS_HDR)
@@ -329,6 +478,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
                     track.reverb = overrides["reverb"]
                 if "chorus" in overrides:
                     track.chorus = overrides["chorus"]
+                track.frozen = overrides.get("frozen", "")
             if current_name in track_effects:
                 track.effects = track_effects[current_name]
             if current_name in track_synths and track_synths[current_name][0]:
@@ -371,7 +521,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         if m:
             if mode:
                 flush()
-            project.tempo_bpm = int(m.group(1))
+            project.tempo_bpm = parse_bpm(m.group(1))     # 96, o 101.4 dalla 2.9
             continue
 
         m = RE_METRICA_LIST_HDR.match(line)
@@ -461,6 +611,13 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
             mode, current_name = "effects", m.group(1)   # gia' letto nella pre-scansione
             continue
 
+        m = RE_CONVERSION_HDR.match(line)
+        if m:
+            if mode:
+                flush()
+            mode, current_name = "effects", m.group(1)   # letto a parte, vedi _read_conversions
+            continue
+
         m = RE_BOX_HDR.match(line)
         if m:
             if mode:
@@ -535,8 +692,25 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         if t.clips:
             t.text = flatten_clips_to_text(t.clips, project.patterns, t.instrument.default_octave,
                                            meter=project.meter())
+    _read_conversions(project, lines)
 
     return project
+
+
+def _read_conversions(project: Project, lines) -> None:
+    """I blocchi "Conversione Nome:" (2.10) sulle tracce di note. Come in
+    st_language.song: si ignorano quelli di una traccia che non c'e' o e'
+    audio, quelli il cui da= non e' una traccia audio e i doppioni (gli
+    avvisi li da' "st-language check"); un valore non valido vale il
+    predefinito."""
+    for name, body, _line in conversion_blocks(lines):
+        track = project.find_track(name)
+        if track is None or track.is_audio or track.conversion is not None:
+            continue
+        conversion, _problems = parse_conversion_body(body)
+        source = project.find_track(conversion["from"])
+        if source is not None and source.is_audio:
+            track.conversion = conversion
 
 
 def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
@@ -552,7 +726,7 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     else:
         metrica_line = f"Metrica: {project.time_sig}"
     # la versione del linguaggio in cima (i lettori piu' vecchi la ignorano)
-    lines = ["ST: %d.%d" % LANGUAGE_VERSION]
+    lines = ["ST: %d.%d" % _file_language_version(project)]
     for label, value in (("Titolo", project.title), ("Autore", project.composer), ("Parole", project.lyricist)):
         if value:
             lines.append(f"{label}: {value}")
@@ -614,6 +788,15 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
             lines.extend(_notation_body_lines(t.text))
         lines.append("")
 
+    # Da quale traccia audio e' nata una traccia di note (2.10): solo se
+    # quella traccia audio c'e' ancora, vedi linked_conversion.
+    for t in project.tracks:
+        conversion = linked_conversion(project, t)
+        if conversion:
+            lines.append(f"Conversione {t.name}:")
+            lines.append("  " + conversion_body_text(conversion))
+            lines.append("")
+
     for name, pat in project.patterns.items():
         lines.append(f"Pattern %{name}:")
         lines.append("  " + " ".join(pat.tokens))
@@ -624,9 +807,11 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     # impostazioni tutte di default non generano alcun blocco, per non
     # appesantire inutilmente i file piu' semplici.
     for t in project.tracks:
-        if t.volume != 100 or t.pan != 64 or t.mute or t.solo or t.reverb or t.chorus:
+        frozen = t.frozen if project.find_track(t.frozen) is not None else ""
+        if t.volume != 100 or t.pan != 64 or t.mute or t.solo or t.reverb or t.chorus or frozen:
             lines.append(f"Mixer {t.name}:")
             sends = (f" riverbero: {t.reverb}" if t.reverb else "") + (f" chorus: {t.chorus}" if t.chorus else "")
+            sends += f' congelata: "{frozen}"' if frozen else ""
             lines.append(
                 f"  volume: {t.volume} pan: {_pan_0_127_to_normalized(t.pan)} "
                 f"mute: {'si' if t.mute else 'no'} solo: {'si' if t.solo else 'no'}{sends}"

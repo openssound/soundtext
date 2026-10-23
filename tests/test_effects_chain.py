@@ -822,7 +822,8 @@ def test_dry_export_leaves_out_effects_sends_pan_and_master(tmp_path):
     assert (plain.pan, plain.effects, plain.reverb, plain.chorus) == (64, [], 0, 0)
     assert len(wet) > len(dry)                                          # la coda del delay c'e' solo con effetti
     assert np.allclose(dry[:, 0], dry[:, 1])                            # pan al centro
-    assert np.abs(dry[:RATE, 0] - _tone(1.0, 330)[:, 0]).max() < 0.02   # il suono registrato, cosi' com'e'
+    edge = int(0.005 * RATE)                                            # microdissolvenza ai bordi della clip
+    assert np.abs(dry[edge:RATE - edge, 0] - _tone(1.0, 330)[edge:-edge, 0]).max() < 0.02  # il suono registrato, cosi' com'e'
     out = str(tmp_path / "asciutto.wav")
     render_project_mix_to_wav(p, out, tracks=[gtr], dry=True)
     samples, rate = read_wav(out)

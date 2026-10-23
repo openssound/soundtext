@@ -21,7 +21,8 @@ from .selection_actions import handle_selection_context_menu
 from .audio_import_dialog import AudioImportDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
 from .rhythm_generate_dialog import (
-    DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, last_box_key,
+    DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, chord_source_tracks,
+    last_box_key,
 )
 from .theme import GOOD, BAD, WARN
 from core.i18n import tr
@@ -363,7 +364,7 @@ class MixerMixin:
         menu.addSection(tr("Genera una traccia"))
         menu.addAction(tr("Batteria..."), lambda: self.add_generated_track("drums"))
         menu.addAction(tr("Giro armonico..."), lambda: self.add_generated_track("progression"))
-        has_chords = project_has_chords(self.project)
+        has_chords = project_has_chords(self.project, audio=True)
         for kind, label in (("bass", tr("Basso dagli accordi...")), ("melody", tr("Accompagnamento o riff..."))):
             action = menu.addAction(label if has_chords else tr("{label}  (serve un giro di accordi)", label=label),
                                     lambda k=kind: self.add_generated_track(k))
@@ -395,6 +396,48 @@ class MixerMixin:
         self.select_track(name)
         return track
 
+    def arrange_song(self):
+        """Arrangia il brano (gui.arrange_dialog, core.arrange): le parti in
+        tracce nuove, un box per sezione, con un solo passo da annullare."""
+        from core.arrangement import flatten_clips_to_text
+        from .arrange_dialog import ArrangeDialog, chord_tracks
+        if not chord_tracks(self.project):
+            QMessageBox.information(self, tr("Arrangia il brano"), tr(
+                "Serve una traccia con gli accordi divisi in box (Intro, Strofa, Ritornello...) nella Struttura "
+                "brano: per esempio con Genera giro armonico, un box per sezione."))
+            return
+        dlg = ArrangeDialog(self, self.project)
+        self._arrange_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted or not dlg.parts():
+            return
+        options = dlg.used_options()
+        made = []
+        modulated = {(round(c.start_beat, 6), c.name): c.text for c in dlg.parts().get("chords") or []}
+        if modulated:
+            # la modulazione traspone anche i box degli accordi dall'ultimo ritornello
+            source = dlg.source_track()
+            for clip in source.clips:
+                clip.text = modulated.get((round(clip.start_beat, 6), clip.name), clip.text)
+            source.text = flatten_clips_to_text(source.clips, self.project.patterns,
+                                                source.instrument.default_octave, meter=self.project.meter())
+            self._reload_editor_from_track()
+        for kind, base, instrument in (("drums", tr("Batteria"), "Drums"), ("bass", tr("Basso"), "Bass"),
+                                       ("comping", tr("Accompagnamento"), options.comping_instrument)):
+            clips = dlg.parts().get(kind)
+            if not clips:
+                continue
+            name = self._unique_track_name(base)
+            track = self.project.add_track(name, instrument, "")
+            track.clips = clips
+            track.text = flatten_clips_to_text(clips, self.project.patterns, track.instrument.default_octave,
+                                               meter=self.project.meter())
+            made.append(name)
+        if not self.arrangement_action.isChecked():
+            self.arrangement_action.setChecked(True)          # le parti sono box: si vedono nella Struttura
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.statusBar().showMessage(tr("Brano arrangiato: {tracks}.", tracks=", ".join(made)), 6000)
+
     def add_generated_track(self, kind: str):
         """Crea una traccia gia' generata (batteria, giro armonico, basso,
         accompagnamento/riff): prima il dialogo del generatore, la traccia
@@ -403,7 +446,7 @@ class MixerMixin:
         from .rhythm_generate_dialog import project_bar_beats
         other_beats = tracks_duration_beats(self.project)
         bar_beats = project_bar_beats(self.project)
-        other_tracks = [(t.name, t.text) for t in self.project.tracks if not t.is_audio]
+        other_tracks = chord_source_tracks(self.project)
         if kind == "drums":
             instrument, base, box = "Drums", "Batteria", "Groove"
         elif kind == "progression":
@@ -425,7 +468,7 @@ class MixerMixin:
         if kind == "drums":
             dlg = DrumGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
                                      default_bars=math.ceil(other_beats / bar_beats) if other_beats > 0 else 8,
-                                     track_name=name)
+                                     track_name=name, start_beat=0.0)
         elif kind == "progression":
             dlg = ChordProgressionDialog(self, project=self.project, instrument_name=instrument,
                                          context_label=context,
@@ -433,7 +476,8 @@ class MixerMixin:
                                          track_name=name)
         elif kind == "bass":
             dlg = BassGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
-                                     other_tracks=other_tracks, min_total_beats=other_beats, track_name=name)
+                                     other_tracks=other_tracks, min_total_beats=other_beats, track_name=name,
+                                     start_beat=0.0)
         else:
             instr = get_instrument(instrument)
             dlg = MelodyGenerateDialog(
@@ -498,6 +542,7 @@ class MixerMixin:
             if self.project.get_track(track_name).synth:
                 actions[menu.addAction(tr("Parametri dello strumento plugin..."))] = \
                     lambda: self.edit_track_synth(track_name)
+        self.add_freeze_action(menu, track_name)
         actions[menu.addAction(tr("Esporta MIDI (solo questa)..."))] = self.export_selected_track_midi
         actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.export_track_wav(track_name)
         actions[menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))] = \
@@ -565,30 +610,67 @@ class MixerMixin:
         dlg = self._make_record_dialog(track, options, target_audio_dir(self.current_path))
         if dlg.exec() != QDialog.Accepted or dlg.result_clip() is None:
             return
-        self._add_recorded_clip(track, dlg.result_clip(), dlg.input_profile(), dlg.input_channels_spec())
+        mode = dlg.result_mode() if hasattr(dlg, "result_mode") else "normal"
+        self._add_recorded_clip(track, dlg.result_clip(), dlg.input_profile(), dlg.input_channels_spec(), mode)
 
     def _make_record_dialog(self, track, options, target_dir):
         from .audio_record_dialog import AudioRecordDialog
-        return AudioRecordDialog(self, self.project, track, options, target_dir)
+        a, b = getattr(self, "_loop_a_beat", None), getattr(self, "_loop_b_beat", None)
+        region = (a, b) if a is not None and b is not None else None
+        return AudioRecordDialog(self, self.project, track, options, target_dir, loop_region=region)
 
-    def _add_recorded_clip(self, track, clip, input_profile, input_channels):
+    def _ask_overlap_choice(self, track_name: str, count: int) -> str:
+        """Cosa fare di una ripresa che si sovrappone a delle clip: "take"
+        (nuova ripresa della clip, si sceglie poi quale tenere), "replace"
+        (eliminarle) o "both" (tenerle tutte, suonano insieme)."""
+        box = QMessageBox(QMessageBox.Question, tr("Ripresa sovrapposta"),
+                          tr("La nuova ripresa si sovrappone a {0} clip della traccia '{name}'.", count, name=track_name),
+                          parent=self)
+        take = box.addButton(tr("Come nuova ripresa"), QMessageBox.AcceptRole)
+        replace = box.addButton(tr("Sostituisci"), QMessageBox.DestructiveRole)
+        box.addButton(tr("Tienile entrambe"), QMessageBox.RejectRole)
+        box.setDefaultButton(take)
+        box.setInformativeText(tr("Come nuova ripresa: la clip tiene tutte le riprese (tasto destro → "
+                                  "Riprese) e si puo' fare il comping. Tienile entrambe: suoneranno insieme."))
+        box.exec()
+        clicked = box.clickedButton()
+        return "take" if clicked is take else "replace" if clicked is replace else "both"
+
+    def _add_recorded_clip(self, track, clip, input_profile, input_channels, mode: str = "normal"):
+        """La ripresa tenuta nella traccia. In loop e in punch-in va come
+        nuova ripresa della clip su cui cade (core.audio_takes); una ripresa
+        normale sovrapposta a delle clip chiede cosa farne."""
+        from core.audio_takes import add_recording_as_take
         track.input_profile, track.input_channels = input_profile, input_channels
         view = self.arrangement_view
         end = clip.start_beat + view.clip_length_beats(track.name, clip)
         overlapped = [c for c in track.audio_clips
                       if c.start_beat < end and c.start_beat + view.clip_length_beats(track.name, c) > clip.start_beat]
+        choice = "both"
         if overlapped:
-            reply = QMessageBox.question(
-                self, tr("Ripresa sovrapposta"),
-                tr("La nuova ripresa si sovrappone a {0} clip della traccia '{name}'.\nEliminarle e tenere solo la nuova? (No = le tiene tutte: suoneranno insieme)", len(overlapped), name=track.name))
-            if reply == QMessageBox.Yes:
-                track.audio_clips = [c for c in track.audio_clips if c not in overlapped]
-        track.audio_clips.append(clip)
+            choice = "take" if mode in ("loop", "punch") else self._ask_overlap_choice(track.name, len(overlapped))
+        target = None
+        if choice == "take":
+            target = add_recording_as_take(track.audio_clips, clip, view._tempo_map())
+        elif choice == "replace":
+            track.audio_clips = [c for c in track.audio_clips if c not in overlapped]
+        if target is None:
+            track.audio_clips.append(clip)
         self._mark_dirty()
         self.refresh_mixer()
         self.select_track(track.name)
-        self.statusBar().showMessage(
-            tr("Ripresa '{name}' aggiunta alla traccia '{0}' (file: {file}).", track.name, name=clip.name, file=clip.file), 6000)
+        if target is not None:
+            message = tr("Ripresa '{name}' aggiunta come ripresa {n} della clip '{clip}' (tasto destro → Riprese).",
+                         name=clip.name, n=target.active_take + 1, clip=target.name)
+        elif len(clip.takes) > 1:
+            message = tr("Registrazione in loop: {n} riprese nella clip '{name}' (tasto destro → Riprese).",
+                         n=len(clip.takes), name=clip.name)
+        else:
+            message = tr("Ripresa '{name}' aggiunta alla traccia '{0}' (file: {file}).", track.name, name=clip.name,
+                         file=clip.file)
+        self.statusBar().showMessage(message, 6000)
+        if target is None and len(clip.takes) <= 1 and clip in track.audio_clips:
+            self.arrangement_view.check_clip_tuning(track.name, clip, after_recording=True)
 
     def remove_track(self):
         if not self.current_track_name:
@@ -923,8 +1005,7 @@ class MixerMixin:
         track = self.project.get_track(self.current_track_name)
         if self._reject_audio_track(track, tr("la generazione del basso")):
             return
-        other_tracks = [(t.name, t.text) for t in self.project.tracks
-                        if t.name != track.name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
         if not other_tracks:
             QMessageBox.information(
                 self, tr("Nessuna traccia sorgente"),
@@ -985,7 +1066,7 @@ class MixerMixin:
                 tr("La traccia '{name}' usa lo strumento '{instrument_name}', percussivo.\nUsa 'Genera batteria...' invece: qui le note sono altezze, non hanno senso su una traccia percussiva.", name=track.name, instrument_name=track.instrument_name)
             )
             return
-        if not project_has_chords(self.project, exclude_track_name=track.name):
+        if not project_has_chords(self.project, exclude_track_name=track.name, audio=True):
             QMessageBox.information(
                 self, tr("Nessun giro di accordi"),
                 tr("L'accompagnamento e il riff seguono gli accordi di un'altra traccia, ma nel brano "
@@ -993,8 +1074,7 @@ class MixerMixin:
                 "(Traccia → Genera giro armonico in questa traccia...).")
             )
             return
-        other_tracks = [(t.name, t.text) for t in self.project.tracks
-                        if t.name != track.name and not t.is_audio]
+        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
         other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
         dlg = MelodyGenerateDialog(
             self, project=self.project, instrument_name=track.instrument_name,

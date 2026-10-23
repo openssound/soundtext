@@ -8,10 +8,10 @@ import os
 import sys
 
 APP_NAME = "SoundText"
-APP_VERSION = "1.7.4"
+APP_VERSION = "1.11.0"
 # Pagina per sostenere il progetto (donazioni), aperta da Aiuto -> Sostieni
 # SoundText...; vuota = la voce non c'e'.
-SUPPORT_URL = ""
+SUPPORT_URL = "https://ko-fi.com/openssound"
 
 
 def get_app_root() -> str:

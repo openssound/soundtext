@@ -221,6 +221,16 @@ EFFECT_KINDS: Dict[str, dict] = {
                     "Chitarra": {"soglia": -45, "rapporto": 10, "attacco": 2, "rilascio": 80},
                     "Batteria": {"soglia": -35, "rapporto": 20, "attacco": 1, "rilascio": 60}},
     },
+    "riduzione_rumore": {
+        # Fruscio costante (ventola, amplificatore) imparato dal tratto piu'
+        # silenzioso della traccia e tolto per sottrazione spettrale (core.denoise).
+        "label": "Riduzione rumore", "family": "Dinamica",
+        "params": [EffectParam("riduzione", "Riduzione", 0, 30, 12, "dB", 1),
+                   EffectParam("soglia", "Soglia", 0, 20, 6, "dB", 0.5)],
+        "presets": {"Leggera": {"riduzione": 8, "soglia": 4},
+                    "Fruscio": {"riduzione": 12, "soglia": 6},
+                    "Forte": {"riduzione": 20, "soglia": 9}},
+    },
     "volume": {
         # solo guadagno: per lasciare margine prima del master o di un ampli
         # (il volume della traccia invece scala la velocity delle note)
@@ -1156,6 +1166,9 @@ def _plugins(effect, bpm: float = 120.0) -> list:
                 pb.Gain(gain_db=p["tetto"])]
     if kind == "volume":
         return [pb.Gain(gain_db=p["guadagno"])]
+    if kind == "riduzione_rumore":
+        from .denoise import reduce_noise
+        return [lambda x, rate, red=p["riduzione"], thr=p["soglia"]: reduce_noise(x, rate, red, thr)]
     if kind == "noise_gate":
         return [pb.NoiseGate(threshold_db=p["soglia"], ratio=p["rapporto"],
                              attack_ms=p["attacco"], release_ms=p["rilascio"])]

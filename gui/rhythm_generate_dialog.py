@@ -31,6 +31,7 @@ from core.playback import PlaybackEngine
 
 from core.rhythm_generate import (
     DRUM_STYLES, BASS_STYLES, COMPING_STYLES, RIFF_STYLES, PROGRESSION_STYLES, generate_drum_pattern,
+    section_end_bars, track_end_beat, kick_beats_of_track, fit_register, part_registers,
     extract_chords_from_track, generate_bass_from_chords, generate_melodic_line,
     generate_chord_progression, parse_key, drum_styles_for_meter, meter_beats, INTENSITIES,
     Variability, splice_bars, MELODY_STYLES,
@@ -42,6 +43,48 @@ from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
 from core.i18n import tr
+
+def chord_source_tracks(project: Project, exclude_track_name: Optional[str] = None) -> list:
+    """Le sorgenti di accordi per basso, accompagnamento e melodia:
+    [(etichetta, sorgente)], dove la sorgente e' il testo di una traccia di
+    note o, per una traccia audio con delle clip, un
+    core.audio_track_notation.AudioChordSource (accordi riconosciuti dal
+    suono, solo quando la si sceglie). Le tracce audio vengono dopo."""
+    from core.audio_track_notation import AudioChordSource, audio_tracks_with_clips
+    sources = [(t.name, t.text) for t in project.tracks if not t.is_audio and t.name != exclude_track_name]
+    sources += [(tr("{name} (audio)", name=t.name), AudioChordSource(project, t))
+                for t in audio_tracks_with_clips(project, exclude_track_name)]
+    return sources
+
+
+def _chords_of_source(dialog, name: str, source):
+    """(accordi [ChordSpan], testo da cui stimare la tonalita') della
+    sorgente scelta. Una traccia audio si analizza la prima volta (qualche
+    secondo, con il cursore d'attesa), poi resta in memoria. ValueError con
+    il motivo se non ci sono accordi da seguire."""
+    if isinstance(source, str):
+        chords = extract_chords_from_track(source, dialog.project.patterns, midi_dir=None)
+        if not chords:
+            raise ValueError(
+                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=name)
+            )
+        return chords, source
+    from .worker import run_with_wait
+    try:
+        if source.is_ready():
+            chords = source.chords()
+        else:                              # la prima volta: qualche secondo, senza bloccare la finestra
+            chords = run_with_wait(dialog, tr("Riconosco gli accordi della traccia audio '{name}'...",
+                                              name=source.name), source.chords)
+        text = source.text()
+    except (RuntimeError, OSError) as e:
+        raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=source.name, error=e))
+    if not chords:
+        raise ValueError(
+            tr("Nella traccia audio '{name}' non ho riconosciuto accordi: serve una parte che suoni "
+               "accordi (chitarra ritmica, pianoforte, un brano intero), non una melodia.", name=source.name))
+    return chords, text
+
 
 DRUM_STYLE_LABELS = [
     ("rock", "Rock"),
@@ -487,7 +530,37 @@ class _GeneratedTrackDialogBase(QDialog):
         text = self._generate_text()
         for first, last, seed in self._overrides:
             text = splice_bars(text, self._generate_text(seed=seed), first, last, self.bar_beats)
-        return text
+        return self._performed(text)
+
+    def _add_performance_check(self, options_row):
+        """"Esecuzione dello strumento" (core.performance_style) se lo
+        strumento di destinazione ne ha una: chitarra, pianoforte, basso."""
+        from core.instruments import get_instrument
+        from core.performance_style import style_for
+        try:
+            self._performance_style = style_for(get_instrument(self.instrument_name))
+        except ValueError:
+            self._performance_style = None
+        if self._performance_style is None:
+            return
+        tips = {"guitar": tr("Gli accordi si suonano a pennate: in giu' sui tempi, in su (piu' leggere) in levare, "
+                             "con le corde che partono a pochi millisecondi l'una dall'altra."),
+                "piano": tr("Pedale di risonanza, cambiato a ogni accordo nuovo."),
+                "bass": tr("Note fantasma stoppate prima degli attacchi sul tempo e qualche slide verso la nota "
+                           "dell'accordo dopo.")}
+        options_row.addSpacing(12)
+        self.performance_check = QCheckBox(tr("Esecuzione dello strumento"))
+        self.performance_check.setToolTip(tips[self._performance_style])
+        self.performance_check.toggled.connect(self._regenerate_preview)
+        options_row.addWidget(self.performance_check)
+
+    def _performed(self, text: str) -> str:
+        check = getattr(self, "performance_check", None)
+        if check is None or not check.isChecked():
+            return text
+        from core.performance_style import perform
+        return perform(text, self._performance_style, seed=getattr(self, "_seed", None),
+                       patterns=self.project.patterns)
 
     def _regenerate_bars(self):
         first, last = self.regen_from_spin.value(), self.regen_to_spin.value()
@@ -601,7 +674,13 @@ class _GeneratedTrackDialogBase(QDialog):
 
 
 class DrumGenerateDialog(_GeneratedTrackDialogBase):
-    def __init__(self, parent, project, instrument_name, context_label, default_bars=8, track_name=None):
+    def __init__(self, parent, project, instrument_name, context_label, default_bars=8, track_name=None,
+                 start_beat=None):
+        # Dove andra' la parte generata (per i fill di fine sezione); None =
+        # in coda al testo gia' scritto della traccia.
+        if start_beat is None:
+            start_beat = track_end_beat(project, project.find_track(track_name) if track_name else None)
+        self.start_beat = start_beat
         # Preimpostato (dal chiamante, vedi gui.main_window_mixer) al numero
         # di battute che copre l'estensione delle altre tracce gia' scritte
         # nel progetto, cosi' la batteria generata le copre per intero di
@@ -662,28 +741,81 @@ class DrumGenerateDialog(_GeneratedTrackDialogBase):
             "come fa un batterista alla fine delle frasi. Senza spunta: sempre fill completi."))
         self.phrase_fills_check.toggled.connect(self._regenerate_preview)
         options_row.addWidget(self.phrase_fills_check)
+        self.section_fills_check = QCheckBox(tr("Fill alla fine delle sezioni"))
+        has_sections = bool(self._section_ends(256))
+        self.section_fills_check.setChecked(has_sections)
+        self.section_fills_check.setEnabled(has_sections)
+        self.section_fills_check.setToolTip(
+            tr("Un fill completo nell'ultima battuta prima di ogni box delle altre tracce (Strofa, "
+               "Ritornello...) nella Struttura brano, e il crash quando la sezione nuova comincia.")
+            if has_sections else tr("Le altre tracce non hanno box che dividano il brano in sezioni."))
+        self.section_fills_check.toggled.connect(self._regenerate_preview)
+        options_row.addWidget(self.section_fills_check)
         self.ending_check = QCheckBox(tr("Finale sull'ultima battuta"))
         self.ending_check.setToolTip(tr("Chiude la parte con un colpo di piatto e cassa sul primo tempo "
                                      "dell'ultima battuta, poi silenzio."))
         self.ending_check.toggled.connect(self._regenerate_preview)
         options_row.addWidget(self.ending_check)
+        from core.audio_track_notation import audio_tracks_with_clips
+        self._groove_tracks = audio_tracks_with_clips(self.project, self.track_name)
+        if self._groove_tracks:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Segui la ripresa:")))
+            self.groove_combo = QComboBox()
+            self.groove_combo.addItem(tr("nessuna"), None)
+            for track in self._groove_tracks:
+                self.groove_combo.addItem(track.name, track.name)
+            self.groove_combo.setToolTip(tr(
+                "La cassa va anche dove la ripresa ha gli accenti forti e ricorrenti (il groove, sedicesimo "
+                "per sedicesimo). Il tempo e' gia' quello del brano: per una ripresa suonata libera usa prima "
+                "Ricava il tempo dalla ripresa."))
+            self.groove_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.groove_combo)
+
+    def _groove(self):
+        """Il groove della ripresa scelta (core.groove), o None."""
+        combo = getattr(self, "groove_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return None
+        from core import groove
+        from .worker import run_with_wait
+        track = self.project.get_track(name)
+        try:
+            if groove.is_cached(self.project, track):
+                return groove.groove_of_track(self.project, track)
+            return run_with_wait(self, tr("Ascolto il groove di '{name}'...", name=name),
+                                 groove.groove_of_track, self.project, track)
+        except (RuntimeError, OSError, ValueError) as e:
+            raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
+
+    def _section_ends(self, bars: int) -> list:
+        return section_end_bars(self.project, self.start_beat, bars, project_bar_beats(self.project),
+                                exclude_track_name=self.track_name)
 
     def _generate_text(self, seed=None) -> str:
         style = self.style_combo.currentData()
-        return generate_drum_pattern(style, bars=self.bars_spin.value(), fill_every=self.fill_every_spin.value(),
+        bars = self.bars_spin.value()
+        sections = self._section_ends(bars) if self.section_fills_check.isChecked() else []
+        return generate_drum_pattern(style, bars=bars, fill_every=self.fill_every_spin.value(),
                                      intensity=self._intensity(),
                                      phrase_fills=self.phrase_fills_check.isChecked(),
-                                     ending=self.ending_check.isChecked(),
-                                     **self._variation_kwargs(seed))
+                                     ending=self.ending_check.isChecked(), kick_accents=self._groove(),
+                                     section_fill_bars=sections, **self._variation_kwargs(seed))
 
 
 class BassGenerateDialog(_GeneratedTrackDialogBase):
-    """other_tracks: [(nome, testo), ...] - le tracce da cui si puo' leggere
-    la sequenza di accordi da seguire (tutte tranne quella di destinazione)."""
+    """other_tracks: [(nome, sorgente), ...] - le tracce da cui si puo'
+    leggere la sequenza di accordi da seguire (tutte tranne quella di
+    destinazione, vedi chord_source_tracks): la sorgente e' il testo di una
+    traccia di note o una traccia audio (AudioChordSource)."""
 
     def __init__(self, parent, project, instrument_name, context_label, other_tracks,
-                 min_total_beats=0.0, default_bars=None, track_name=None):
+                 min_total_beats=0.0, default_bars=None, track_name=None, start_beat=None):
         self.other_tracks = other_tracks
+        if start_beat is None:
+            start_beat = track_end_beat(project, project.find_track(track_name) if track_name else None)
+        self.start_beat = start_beat
         # Le battute sono un controllo esplicito del dialogo (vedi
         # _build_controls, come in DrumGenerateDialog): il chiamante puo'
         # preimpostarle direttamente (default_bars, es. per un nuovo box
@@ -747,19 +879,22 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
         controls_row.addWidget(self.variation_every_spin)
 
     def _generate_text(self, seed=None) -> str:
-        source_name, source_text = self.other_tracks[self.source_combo.currentIndex()]
-        chords = extract_chords_from_track(source_text, self.project.patterns, midi_dir=None)
-        if not chords:
-            raise ValueError(
-                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=source_name)
-            )
+        chords, _text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
         style = self.style_combo.currentData()
         return generate_bass_from_chords(
             chords, style, octave=self.octave_spin.value(),
             variation_every=self.variation_every_spin.value(),
             min_total_beats=self.bars_spin.value() * self.bar_beats, bar_beats=self.bar_beats,
-            intensity=self._intensity(), **self._variation_kwargs(seed),
+            intensity=self._intensity(), kick_beats=self._kick_beats(), **self._variation_kwargs(seed),
         )
+
+    def _kick_beats(self):
+        """I colpi di cassa della traccia di batteria scelta, o None."""
+        combo = getattr(self, "kick_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return None
+        return kick_beats_of_track(self.project, self.project.get_track(name), self.start_beat) or None
 
     def _build_options(self, options_row):
         self._add_intensity_combo(
@@ -767,6 +902,60 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
             tr("Leggera: restano le note sul 1 e sul 3 (piu' lunghe), per strofe e intro.\n"
             "Piena: accordi con l'ottava sopra, basso che sale d'ottava a fine accordo.\n"
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
+        self._add_performance_check(options_row)
+        drums = [t for t in self.project.tracks
+                 if not t.is_audio and t.name != self.track_name and t.instrument.is_percussion and t.text.strip()]
+        if drums:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Segui la cassa di:")))
+            self.kick_combo = QComboBox()
+            self.kick_combo.addItem(tr("nessuna"), None)
+            for track in drums:
+                self.kick_combo.addItem(track.name, track.name)
+            self.kick_combo.setToolTip(tr(
+                "Gli attacchi del basso cadono sui colpi di cassa della traccia di batteria scelta, con le note "
+                "dello stile: basso e batteria suonano insieme. All'inizio di ogni accordo c'e' sempre una nota."))
+            self.kick_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.kick_combo)
+
+
+def voice_range_labels():
+    return [("soprano", tr("Soprano")), ("contralto", tr("Contralto")), ("tenore", tr("Tenore")),
+            ("basso", tr("Basso"))]
+
+
+def add_voice_combo(dialog, controls_row):
+    """La tessitura della melodia (core.melody_generate.VOICE_RANGES): quella
+    dello strumento o di una voce; scegliere una voce porta l'ottava al
+    centro della sua estensione."""
+    from core.melody_generate import voice_octave
+    controls_row.addSpacing(12)
+    controls_row.addWidget(QLabel(tr("Tessitura:")))
+    dialog.voice_combo = QComboBox()
+    dialog.voice_combo.addItem(tr("dello strumento"), None)
+    for value, label in voice_range_labels():
+        dialog.voice_combo.addItem(label, value)
+    dialog.voice_combo.setToolTip(tr(
+        "Per una melodia da cantare: le note restano nell'estensione della voce scelta (soprano Do4-La5, "
+        "contralto Fa3-Re5, tenore Do3-La4, basso Mi2-Re4) invece che in tutta quella dello strumento."))
+
+    def chosen():
+        voice = dialog.voice_combo.currentData()
+        if voice:
+            dialog.octave_spin.blockSignals(True)
+            dialog.octave_spin.setValue(voice_octave(voice))
+            dialog.octave_spin.blockSignals(False)
+        dialog._regenerate_preview()
+    dialog.voice_combo.currentIndexChanged.connect(chosen)
+    controls_row.addWidget(dialog.voice_combo)
+
+
+def voice_range(dialog):
+    """(low, high) della tessitura scelta, o None (quella dello strumento)."""
+    from core.melody_generate import VOICE_RANGES
+    combo = getattr(dialog, "voice_combo", None)
+    voice = combo.currentData() if combo is not None else None
+    return VOICE_RANGES[voice] if voice else None
 
 
 class MelodyGenerateDialog(_GeneratedTrackDialogBase):
@@ -845,26 +1034,76 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         )
         self.variation_every_spin.valueChanged.connect(self._regenerate_preview)
         controls_row.addWidget(self.variation_every_spin)
+        if not self.polyphonic:
+            add_voice_combo(self, controls_row)
 
     def _generate_text(self, seed=None) -> str:
-        source_name, source_text = self.other_tracks[self.source_combo.currentIndex()]
-        chords = extract_chords_from_track(source_text, self.project.patterns, midi_dir=None)
-        if not chords:
-            raise ValueError(
-                tr("La traccia '{source_name}' non contiene accordi da seguire: servono accordi scritti come simbolo (es. Cmaj7) o blocchi [...] di almeno due note; note singole (melodie, arpeggi) non bastano.", source_name=source_name)
-            )
+        chords, source_text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
         style = self.style_combo.currentData()
         is_melody = style in MELODY_STYLES
         self.variation_every_spin.setEnabled(not is_melody)   # le melodie a frasi hanno la loro forma
-        return generate_melodic_line(
+        range_low, range_high = self._register()
+        text = generate_melodic_line(
             chords, style, octave=self.octave_spin.value(),
-            range_low=self.range_low, range_high=self.range_high, polyphonic=self.polyphonic,
+            range_low=range_low, range_high=range_high, polyphonic=self.polyphonic,
             variation_every=self.variation_every_spin.value(),
             min_total_beats=self.bars_spin.value() * self.bar_beats, bar_beats=self.bar_beats,
             intensity=self._intensity(), voice_leading=self._voice_leading(),
             key=self._melody_key(source_text) if is_melody else None, meter=self.project.time_sig,
-            **self._variation_kwargs(seed),
+            repeats=self._repeats() if is_melody else (), **self._variation_kwargs(seed),
         )
+        regions = self._voice_regions()
+        if regions:
+            from core.melody_generate import rest_where
+            text = rest_where(text, regions, self.project.patterns)
+        return text
+
+    def _voice_regions(self):
+        """Dove canta la traccia audio scelta in "Suona nei silenzi di"
+        (core.melody_generate.voice_regions), o []."""
+        combo = getattr(self, "gaps_combo", None)
+        name = combo.currentData() if combo is not None else None
+        if not name:
+            return []
+        cached = getattr(self, "_voice_cache", None)
+        if cached is not None and cached[0] == name:
+            return cached[1]
+        from core.melody_generate import voice_regions
+        from .worker import run_with_wait
+        try:
+            regions = run_with_wait(self, tr("Ascolto dove canta '{name}'...", name=name),
+                                    voice_regions, self.project, self.project.get_track(name))
+        except RuntimeError as e:
+            raise ValueError(tr("Non riesco ad analizzare la traccia audio '{name}': {error}", name=name, error=e))
+        self._voice_cache = (name, regions)
+        return regions
+
+    def _repeats(self):
+        """Le sezioni che tornano nella traccia degli accordi scelta, dove la
+        melodia si ripete (Ritornello riconoscibile)."""
+        check = getattr(self, "repeat_check", None)
+        if check is not None:
+            check.setEnabled(bool(self._source_repeats()))
+        if check is None or not check.isChecked():
+            return ()
+        return self._source_repeats()
+
+    def _source_repeats(self):
+        from core.melody_generate import section_repeats
+        name = self.other_tracks[self.source_combo.currentIndex()][0]
+        return section_repeats(self.project, self.project.find_track(name), 0.0)
+
+    def _register(self):
+        """L'estensione usata: quella della voce scelta (Tessitura), quella
+        dello strumento, o ristretta per non sovrapporsi alle altre parti
+        (Lascia spazio alle altre parti)."""
+        voice = voice_range(self)
+        if voice:
+            return voice
+        check = getattr(self, "space_check", None)
+        if check is None or not check.isChecked():
+            return self.range_low, self.range_high
+        return fit_register(self.range_low, self.range_high, self.polyphonic, self._registers)
 
     def _melody_key(self, source_text: str):
         """Tonalita' della melodia: quella del progetto, o quella riconosciuta
@@ -887,6 +1126,47 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
             "Piena: accordi con l'ottava sopra, basso che sale d'ottava a fine accordo.\n"
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
         if self.polyphonic:
+            self._add_performance_check(options_row)
+        self._registers = part_registers(self.project, exclude_track_name=self.track_name)
+        if fit_register(self.range_low, self.range_high, self.polyphonic, self._registers) != \
+                (self.range_low, self.range_high):
+            from core.chords import midi_to_token
+            low, high = fit_register(self.range_low, self.range_high, self.polyphonic, self._registers)
+            options_row.addSpacing(12)
+            self.space_check = QCheckBox(tr("Lascia spazio alle altre parti"))
+            self.space_check.setChecked(True)
+            notes = {"low": midi_to_token(low), "high": midi_to_token(high)}
+            self.space_check.setToolTip(
+                tr("L'accompagnamento sta sopra il basso e sotto la melodia gia' scritti: note da {low} a "
+                   "{high} invece di tutta l'estensione dello strumento.", **notes) if self.polyphonic else
+                tr("La melodia sta sopra l'accompagnamento gia' scritto: note da {low} a {high} invece di "
+                   "tutta l'estensione dello strumento.", **notes))
+            self.space_check.toggled.connect(self._regenerate_preview)
+            options_row.addWidget(self.space_check)
+        from core.audio_track_notation import audio_tracks_with_clips
+        voices = audio_tracks_with_clips(self.project, self.track_name) if not self.polyphonic else []
+        if voices:
+            options_row.addSpacing(12)
+            options_row.addWidget(QLabel(tr("Suona nei silenzi di:")))
+            self.gaps_combo = QComboBox()
+            self.gaps_combo.addItem(tr("nessuna"), None)
+            for track in voices:
+                self.gaps_combo.addItem(track.name, track.name)
+            self.gaps_combo.setToolTip(tr(
+                "La melodia tace dove canta (o suona) la traccia audio scelta e riempie le sue pause, "
+                "come un fiato che risponde alla voce. Le pause brevi (meno di mezzo secondo) non contano."))
+            self.gaps_combo.currentIndexChanged.connect(self._regenerate_preview)
+            options_row.addWidget(self.gaps_combo)
+        if not self.polyphonic:
+            options_row.addSpacing(12)
+            self.repeat_check = QCheckBox(tr("Ritornello riconoscibile"))
+            self.repeat_check.setChecked(True)
+            self.repeat_check.setToolTip(tr(
+                "Solo per le melodie a frasi: dove la traccia degli accordi ripete una sezione (box con lo "
+                "stesso nome, come due Ritornelli, o con lo stesso contenuto) la melodia torna uguale."))
+            self.repeat_check.toggled.connect(self._regenerate_preview)
+            options_row.addWidget(self.repeat_check)
+        if self.polyphonic:
             options_row.addSpacing(12)
             self.voice_leading_check = QCheckBox(tr("Rivolti vicini"))
             self.voice_leading_check.setChecked(True)
@@ -896,6 +1176,62 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
                 "e saltare da una posizione all'altra."))
             self.voice_leading_check.toggled.connect(self._regenerate_preview)
             options_row.addWidget(self.voice_leading_check)
+
+
+class LyricsMelodyDialog(_GeneratedTrackDialogBase):
+    """Melodia dal testo (core.lyrics_melody): le parole, una riga per
+    frase, diventano una melodia con una nota per sillaba sugli accordi di
+    un'altra traccia, con le sillabe gia' scritte sotto le note."""
+
+    def __init__(self, parent, project, instrument_name, context_label, other_tracks,
+                 default_octave, range_low, range_high, track_name=None):
+        self.other_tracks = other_tracks
+        self.default_octave = default_octave
+        self.range_low, self.range_high = range_low, range_high
+        super().__init__(parent, project, instrument_name, context_label, tr("Melodia dal testo"), track_name)
+
+    def _build_controls(self, controls_row):
+        controls_row.addWidget(QLabel(tr("Accordi da:")))
+        self.source_combo = QComboBox()
+        for name, _text in self.other_tracks:
+            self.source_combo.addItem(name)
+        self.source_combo.currentIndexChanged.connect(self._regenerate_preview)
+        controls_row.addWidget(self.source_combo)
+        controls_row.addSpacing(12)
+        controls_row.addWidget(QLabel(tr("Ottava:")))
+        self.octave_spin = QSpinBox()
+        self.octave_spin.setRange(0, 8)
+        self.octave_spin.setValue(self.default_octave)
+        self.octave_spin.valueChanged.connect(self._regenerate_preview)
+        controls_row.addWidget(self.octave_spin)
+        add_voice_combo(self, controls_row)
+
+    def _build_options(self, options_row):
+        from PySide6.QtWidgets import QPlainTextEdit
+        self.lyrics_edit = QPlainTextEdit()
+        self.lyrics_edit.setPlaceholderText(tr("Le parole, una riga per frase. Per dividere una parola "
+                                               "a modo tuo usa i trattini: Ma-ri-a."))
+        self.lyrics_edit.setMaximumHeight(110)
+        self.lyrics_edit.setToolTip(tr(
+            "Una nota per sillaba, con gli accenti delle parole sui tempi forti; ogni riga e' una frase di due "
+            "battute (quattro se e' lunga). Le sillabe si dividono con le regole dell'italiano e l'accento cade "
+            "sulla penultima, salvo una vocale accentata (citta')."))
+        self.lyrics_edit.textChanged.connect(self._regenerate_preview)
+        options_row.addWidget(self.lyrics_edit, 1)
+
+    def _generate_text(self, seed=None) -> str:
+        from core.lyrics_melody import lyrics_to_melody
+        chords, source_text = _chords_of_source(self, *self.other_tracks[self.source_combo.currentIndex()])
+        key = self.project.key or None
+        if not key:
+            try:
+                key = detect_key_of_text(source_text, self.project.patterns)
+            except (NotationError, ValueError):
+                key = None
+        low, high = voice_range(self) or (self.range_low, self.range_high)
+        return lyrics_to_melody(self.lyrics_edit.toPlainText(), chords, key, self.octave_spin.value(),
+                                low, high, bar_beats=self.bar_beats,
+                                seed=seed if seed is not None else getattr(self, "_seed", None))
 
 
 def last_box_key(project, track) -> Optional[str]:

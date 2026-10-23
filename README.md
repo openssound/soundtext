@@ -236,6 +236,21 @@ installazione per Debian/Ubuntu, Arch/CachyOS, Fedora e openSUSE.
   l'analisi sulle caratteristiche acustiche della voce umana invece che
   su quelle dello strumento di destinazione.
 
+- **Tracce audio**: voce, chitarra o tastiera registrate dalla scheda audio
+  mentre suona il brano (conteggio, metronomo, compensazione della
+  latenza), o file importati, come clip nella vista Struttura brano. Il
+  file non viene mai modificato: tagli, divisione, dissolvenze con le
+  maniglie (e microdissolvenza automatica contro i clic), Normalizza,
+  Silenzia, spostamento del contenuto (slip) sono parametri della clip.
+  **Riprese multiple** con comping tratto per tratto, **registrazione in
+  loop** fra A e B (ogni giro una ripresa) e **punch-in**. **Tempo dalla
+  ripresa**: il battito di una parte suonata senza click diventa la mappa
+  del tempo del brano, oppure la ripresa si adatta a un tempo fisso;
+  **time-stretch** senza cambiare l'intonazione, con le clip che seguono
+  il tempo del brano; **Quantizza l'audio** agli attacchi. Una traccia
+  audio si converte tutta in notazione e da' gli accordi a basso,
+  accompagnamento e melodia; la batteria generata ne segue il groove.
+
 Non implementato in questa prima versione (indicato nel documento come fase
 successiva o fuori standard MVP): importazione via OMR da spartiti
 tradizionali.
@@ -393,6 +408,14 @@ soundtext/
     audio_percussion.py              transient detection per tracce percussive
     audio_dsp.py                      analisi audio in numpy (attacchi SuperFlux, pitch YIN)
     audio_import.py                   pipeline completa import audio -> notazione
+    audio_tracks.py                   clip delle tracce audio: file, mix, dissolvenze, time-stretch
+    audio_recording.py                registrazione nella traccia audio (base, loop, punch-in)
+    audio_takes.py                    riprese multiple di una clip e comping
+    audio_track_notation.py           traccia audio -> notazione, accordi dall'audio
+    audio_slice.py                    attacchi di una clip e quantizzazione dell'audio
+    beat_track.py                     battito di una ripresa suonata senza click
+    performance_tempo.py              mappa del tempo dalla ripresa, tempo fisso
+    groove.py                         groove di una ripresa per la batteria
     midi_input.py                      tastiera MIDI esterna (mido + python-rtmidi)
   gui/
     main_window.py     finestra principale (editor, menu, toolbar); le sue parti in
@@ -408,6 +431,12 @@ soundtext/
     instrument_dialog.py gestione strumenti personalizzati (selezione GM per nome)
     midi_library_dialog.py gestione libreria MIDI (sottocartelle incluse)
     audio_import_dialog.py registrazione/caricamento audio + quantizzazione
+    audio_record_dialog.py registrazione nella traccia audio (normale, loop, punch-in)
+    comping_dialog.py     comping delle riprese di una clip
+    audio_track_convert_dialog.py converti la traccia audio in notazione
+    tempo_from_take_dialog.py tempo dalla ripresa
+    audio_quantize_dialog.py quantizza l'audio di una clip
+    quantize_options.py   forza, finestra, swing e pulizia della quantizzazione
     voicing_picker.py       menu di scelta voicing su doppio click sugli accordi
     help_dialog.py       guida utente integrata
     highlighter.py         evidenziazione sintattica (basata sul tokenizer reale)

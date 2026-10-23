@@ -20,6 +20,7 @@ from core.playback import PlaybackEngine
 from core import settings as app_settings
 
 from .voicing_picker import NotationEditor
+from .tempo_spin import TempoSpinBox
 from .highlighter import NotationHighlighter
 from .theme import ACCENT, ACCENT_DIM, BAD, TEXT_DIM, get_active_theme, palette_for, stylesheet_for, set_active_theme
 from .icons import icon
@@ -305,6 +306,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Mix audio (WAV)..."), self.export_mix_wav,
             tooltip=tr("Esporta il brano come si sente (tracce udibili, comprese le tracce audio) "
             "in un file WAV 48 kHz / 24 bit.")))
+        export_menu.addAction(self._action(
+            tr("Tutte le tracce, una per file (stem)..."), self.export_stems,
+            tooltip=tr("Un WAV per traccia (quelle non silenziate), tutti dall'inizio del brano e lunghi "
+                       "uguale: per mixare in un altro programma o mandare le parti a un altro musicista.")))
         export_menu.addAction(self._action(tr("MIDI..."), self.export_midi, "Ctrl+Shift+E",
                                             tr("Esporta l'intero ensemble (tracce udibili) in un file MIDI.")))
         export_menu.addSeparator()
@@ -447,6 +452,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             "botta e risposta, note guida, passaggio scalare, lick blues) che segue gli accordi gia' "
             "scritti in un'altra traccia del progetto, senza IA. Non per tracce percussive.")
         ))
+        compose_menu.addAction(self._action(
+            tr("Arrangia il brano..."), self.arrange_song,
+            tooltip=tr("Dalle sezioni della traccia degli accordi (i box Intro, Strofa, Ritornello...) batteria, "
+                       "basso e accompagnamento in un passaggio, con l'intensita' di ogni sezione, i fill a fine "
+                       "sezione e il finale.")))
         styles_menu = compose_menu.addMenu(tr("Stili dei generatori"))
         styles_menu.addAction(self._action(
             tr("Salva la traccia come stile..."), self.save_selected_track_as_style,
@@ -678,6 +688,16 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.metronome_checkbox.toggled.connect(self._on_metronome_toggled)
         toolbar.addWidget(self.metronome_checkbox)
 
+        # Rallenta l'ascolto (per esercitarsi, anche con il loop A-B)
+        self.speed_combo = QComboBox()
+        for percent in (100, 90, 80, 75, 70, 60, 50):
+            self.speed_combo.addItem(f"{percent}%", percent / 100.0)
+        self.speed_combo.setToolTip(tr("Velocita' d'ascolto: rallenta il brano senza cambiarne l'intonazione, "
+                                       "per esercitarsi (anche con il loop A-B). Non cambia il brano ne' "
+                                       "l'esportazione."))
+        self.speed_combo.currentIndexChanged.connect(self._on_speed_changed)
+        toolbar.addWidget(self.speed_combo)
+
         toolbar.addSeparator()
 
         # --- Brano: tempo, metrica, tonalita' ------------------------------
@@ -688,10 +708,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         song_layout.setContentsMargins(8, 2, 8, 2)
         song_layout.setSpacing(12)
 
-        self.tempo_spin = QSpinBox()
-        self.tempo_spin.setRange(20, 300)
+        self.tempo_spin = TempoSpinBox()               # con un decimale (101,4), vedi gui.tempo_spin
         self.tempo_spin.setValue(self.project.tempo_bpm)
-        self.tempo_spin.setSuffix(" BPM")
         self.tempo_spin.setToolTip(tr("Tempo del progetto in battiti al minuto."))
         self.tempo_spin.valueChanged.connect(self._on_tempo_changed)
 
@@ -938,6 +956,14 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         traccia, trascinamento di uno slider)."""
         self._dirty = True
         self._autosave_generation += 1
+        if not self._restoring_history:
+            # le clip audio che seguono il tempo del brano si riadattano
+            # (time-stretch) prima che la modifica entri nella cronologia
+            from core.audio_tracks import adapt_clips_to_tempo
+            if adapt_clips_to_tempo(self.project) and hasattr(self, "arrangement_view"):
+                # al giro dopo, come in ArrangementView.on_clip_changed: un box puo'
+                # essere ancora in mezzo alla gestione di un evento
+                QTimer.singleShot(0, self.arrangement_view.refresh)
         self._forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:

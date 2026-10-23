@@ -545,6 +545,13 @@ time signature 4/4 from bar 1, 3/4 from bar 5, 4/4 from bar 8. The
 positions (in beats) of the bars after the first are computed automatically
 taking into account the time signature in force in each section.
 
+Tempos can have one decimal (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
+101.4`), like the `tempo=72.5` markers; the toolbar **Tempo** field accepts
+it too. A song with a decimal tempo is saved with `ST: 2.9` at the top:
+SoundText 1.8.0 and earlier would not read that `Tempo:` line (and warn when
+opening it). With whole tempos only the file stays `ST: 2.8`, readable by
+all of them.
+
 **Progress bar, highlighting and Tempo/Time sig. fields during playback**:
 the exported MIDI file, the progress bar, the highlighting of the token
 being played in the editor and the **Tempo (BPM)** and **Time sig.** fields
@@ -1559,6 +1566,12 @@ effects, divided by family in the **+ Effect** menu:
     when it drops below the threshold, to remove hiss, hum and noises
     between phrases in recorded audio tracks. If it cuts the start or the end
     of the notes, lower the threshold or lengthen the release.
+  - **Noise reduction** (reduction, threshold): removes constant hiss
+    (fan, amplifier, preamp) even while playing, unlike the noise gate. It
+    learns it by itself from the quietest stretch of the track (not from
+    the digital silence between clips): the take just needs half a second
+    of noise alone, at the start or at the end. Presets Light, Hiss,
+    Strong.
   - **Volume** (gain, ±24 dB): just raises or lowers the level. For
     example −6 dB (preset "Headroom for the master") at the start of the
     master chain when the summed tracks go over 0 dB: compressor and
@@ -2195,6 +2208,20 @@ the track label on the left.
   anchor `bar=N`, **▶ Play** plays it from its place in the song, so the
   anchor reaches the right bar (the same holds for **▶ Play** on a
   selection).
+- **Reharmonize...** (boxes with chords only): the same enrichment as the
+  generated chord progression, applied to a progression already written.
+  The **How rich** slider goes from 0 (the progression as it is) to
+  sevenths and ninths, secondary dominants and II-V toward the next chord,
+  tritone substitutes and minor iv; **Another version** offers another one.
+  Durations and rests stay, and the chords that do not change stay written
+  as they were.
+- **Harmonize the melody...** (a box with a melody, or an audio clip with a
+  single-voice part): proposes chords in three versions, **Simple** (I, IV,
+  V), **Diatonic** (all degrees of the key) and **Rich** (sevenths,
+  secondary dominants; **Another version** offers another one), one per
+  bar or per half bar, in the key recognized from the melody (editable).
+  The chords go into a new track "Chords of Name", with a box where the
+  melody starts; from there bass and accompaniment can be generated.
 - **Rename...**
 - **Duplicate**: creates a copy on the same track, right after the end of
   the original box (or in the first free space available from there).
@@ -2453,6 +2480,17 @@ track):
   full.
 - **Ending on the last bar**: the last bar becomes a closing hit (crash and
   kick on the first beat, then silence), to end the song or the section.
+- **Fills at the end of sections** (checked when the other tracks have
+  boxes): a full fill in the last bar before each box of the other tracks
+  (Verse, Chorus...) in the Song structure, and the crash when the new
+  section starts, on top of the fills every N bars.
+- **Follow the take** (present when the song has an audio track with
+  clips): SoundText listens to the groove of the take (for each sixteenth
+  of the bar, how often and how loud there is a hit) and also puts the kick
+  on its strong, recurring accents, leaving the snare where it is. The
+  tempo is the song's: for a take played freely use **Get the tempo from the
+  take...** on the clip first. The suggested bars also cover the audio
+  clips.
 - **Intensity**: see above.
 
 **Compose → Generate into the selected track → Chord progression...** (requires a
@@ -2522,6 +2560,12 @@ track in the project with chords already written):
   block is recognised as a known chord, otherwise the root is the lowest
   note). A track made only of single notes (melody, arpeggios) has no chords
   to follow.
+  An **audio track** can provide the chords too (listed as "Name (audio)"):
+  a take of rhythm guitar or piano is analysed the first time you choose it
+  (a few seconds), with the same recognition as the Chords mode of audio
+  import, and the chords of each clip sit where the clip sits. This also
+  works for **Accompaniment or riff** and for the melody, which takes its
+  key from them.
 - **Style** (each one writes its own rhythmic grid: quarters, eighths or,
   for the shuffle, eighth-note triplets):
   - **Root**: repeats the root for the whole length of the chord.
@@ -2545,6 +2589,61 @@ track in the project with chords already written):
   (see above).
 - **Intensity**: see above (also in **Generate accompaniment/riff**).
 
+**Instrument playing style** (bass, and accompaniment for guitar or piano):
+the guitar strums the chords (down on the beats, up and lighter on the
+offbeats, the strings a few milliseconds apart); the piano uses the pedal,
+changed at each chord; the bass adds muted ghost notes before attacks on
+the beat and a few slides toward the note of the next chord.
+
+**Melody from lyrics...** (track menu, single-voice instruments): you write
+the words, one line per phrase, and a melody is born with one note per
+syllable on the chords of the chosen track, with the word stresses on the
+strong beats and the syllables already under the notes (see 2.13). Words
+are split with Italian rules; to split them your own way write hyphens
+(Ma-ri-a).
+
+**Compose → Arrange the song...**: from the sections of the chord track
+(its boxes) drums, bass and accompaniment in a single pass, in new tracks
+with one box per section. The intensity comes from the box name: Intro
+without drums or bass, Verse light, Pre-chorus and Bridge building, Chorus
+full, Ending light with the closing hit; the dialog's table changes it
+section by section. Each section ends with a fill. A single Ctrl+Z removes
+everything.
+
+A box named **Stop** silences every part for its length; a **Break**
+keeps a single ensemble hit on the first beat (cymbal and kick, the root,
+the chord). In the dialog:
+
+- **Ending with a long note and a held chord**: in the last bar the bass
+  holds the root of the last chord and the accompaniment holds the chord,
+  together with the drums' final hit. With **Rallentando** the tempo drops
+  by a quarter over the last one or two bars: one `tempo=` marker per beat
+  in the drums box (or the bass box, if there are no drums).
+- **Phrase crescendo**: the dynamics rise along each four-bar phrase, and
+  the first hit of each chorus gets an extra accent.
+- **Leave room for the melody of**: in bars where the chosen melody has
+  many notes (at least six in 4/4) the accompaniment plays only on the
+  first beat and halfway through the bar.
+- **Modulation**: the last chorus and the sections after it go up a
+  semitone or a tone; their chord boxes are transposed too.
+
+**Vocal range** (Generate riff/melody with a single-voice instrument,
+Melody from lyrics): Soprano (C4-A5), Alto (F3-D5), Tenor (C3-A4) or Bass
+(E2-D4) keep the melody within that voice's range instead of the whole
+range of the instrument, for a melody to be sung.
+
+**Play in the gaps of** (riffs and melodies, when the song has an audio
+track): the melody is silent where the chosen track sings and plays in
+its pauses (at least half a second), like a horn answering the voice.
+
+**Leave room for the other parts** (shown when the song already has other
+written parts): the accompaniment stays above the bass and below the
+melody, the melody above the accompaniment, instead of using the
+instrument's whole range; the tooltip shows the notes used.
+**Recognizable chorus** (phrase melodies): where the chord track repeats a
+section (two "Chorus" boxes, or two identical boxes) the melody comes back
+the same as the first time.
+
 **Generate accompaniment** also has **Close inversions** (checked by
 default): each chord chooses the inversion closest to the previous one
 (voice leading), as a pianist would — for example C-E-G, then C-F-A, then
@@ -2557,6 +2656,10 @@ two-note chords, which already have their own pattern).
 - **Variation every N chords**: every N chords uses a slightly different
   treatment of the same chord (octave jump, different note...) instead of
   repeating the pattern identically — 0 disables variations.
+- **Follow the kick of** (shown when the song has a drum track): the bass
+  attacks fall on the kick hits of the chosen track, with the style's
+  notes, so bass and drums play together. There is always a note at the
+  start of each chord.
 
 Both show a preview that can be edited by hand before confirming (like the
 audio import, section 10bis), and the result is appended to the content
@@ -2581,6 +2684,9 @@ which follows any chord progression.
 
 **Where to save from** ("Save as generator style..."):
 - right-click a **box** in the Song structure view;
+- right-click an **audio clip** (a take): first the conversion to notes, as
+  in "Convert to notation" (choose **Drums** for a drum style), then the
+  same dialog;
 - the **Compose → Generator styles → Save the track as a style...** menu (the whole selected track);
 - the **MIDI library** (menu Compose → Manage MIDI library): the
   button below the preview offers all the channels of the selected file.
@@ -3099,6 +3205,21 @@ track): converts a musical idea captured via microphone or audio file
   fine grid (1/64), below the perceptible quantisation threshold, while
   still staying within the normal `N:` syntax. The last combination used is
   remembered when the dialog is reopened.
+- **Adjust the quantisation** (below the grid, closed by default; also in
+  "Play with the keyboard" and in "Convert the track to notation"), for
+  those who play imprecisely without wanting to lose their way of playing:
+  - **Strength**: how far each note moves towards the grid (100% = all the
+    way, 50% = halfway);
+  - **Window**: only the notes close to the grid are corrected; the
+    farther ones (intentional early and late notes) stay where they are;
+  - **Swing** (1/8 and 1/16 grids): the second subdivision of each pair
+    comes later, 66% = triplet shuffle, so a swing performance is not
+    straightened out;
+  - **Drop notes shorter than** and **Merge equal notes within**: remove
+    brushed strings and attacks recognised twice.
+  If the notes do not end up exactly on the grid (strength or window below
+  100%, swing), the text is written in 1/64, as with "Off". The values are
+  remembered like the grid.
 - **Analysis mode**: Melodic (pitch detection, for voice or instruments
   playing one note at a time; for chords there is the Chords mode, below) or Percussive
   (transient detection for drums/beatbox, automatically classified as
@@ -3175,6 +3296,9 @@ or Chords, with only the options of that mode below), **2. Audio**
   content of the preview with the target instrument before confirming with
   "Insert into the track" — useful to check the conversion (or your own variant) by ear before
   replacing the content of the track/pattern.
+- **Comparison**: next to "▶ Listen" you choose what to hear: **result
+  only**, **first the audio, then the result** or **audio and result
+  together** (half volume each), to hear what the conversion left out.
 
 Note on recognition quality: melodic note detection segments the audio with
 a dedicated onset detector (reliable even in the low register and on the
@@ -3458,19 +3582,144 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   here**: it becomes two consecutive clips of the same file, which can be
   moved, trimmed or deleted separately (for example to remove a mistake in
   the middle of a take).
+- **Fades**: with the mouse over the box two white handles appear at the
+  top corners; drag the left one to the right for the fade in, the right
+  one to the left for the fade out. The waveform and a dark curve show the
+  effect. For exact values and for the shape (**Linear** or **Equal
+  power**, with no volume dip in the middle, suited to crossfades):
+  right-click → **Fades...**. Even without fades, every clip edge has a
+  5 ms micro-fade that removes the click of a cut in the middle of a sound
+  (also at a split point).
+- **Quantise the audio...** (right-click): for a take played a little out
+  of time (drums, rhythm guitar). SoundText finds the attacks, cuts the clip
+  just before each one and moves the pieces towards the chosen grid, with
+  **Strength**, **Window** and **Swing** as for notes (see "Adjust the
+  quantisation"). Where a moved piece ends over the next one it is
+  shortened up to there, with a short crossfade; where a gap opens there is
+  silence. The file does not change, and a single Ctrl+Z undoes it all.
+- **Remove silences...** (right-click): for a take with long pauses (vocals,
+  solos). Where the level stays below the **Threshold** (−45 dB) for at
+  least the chosen duration (300 ms), the clip is split and the empty part
+  is removed: no hiss, breaths or noises between one phrase and the next.
+  Each piece starts just before its attack (**Margin**, 50 ms) and stays
+  where it played. The dialog immediately shows how many pieces remain and
+  how many seconds are removed. The file does not change, and a single
+  Ctrl+Z undoes everything.
+- **Join the pieces into one clip (N)** (right-click on one of the
+  pieces): quantising, comping and fixed tempo leave many boxes. This
+  entry puts the neighbouring pieces of the same take into a new file that
+  sounds exactly like them (fades, gain and time-stretch included), in
+  their place: the view gets light again. The original files stay.
+- **Moving the content (slip)**: **Alt+drag** the box to slide the audio
+  inside the clip, keeping its start and length (for example to line up an
+  attack with the beat after trimming it). If the desktop uses Alt+drag to
+  move windows (some Linux desktops do), use **Ctrl+Alt+drag**.
+- **Normalize (peak at −1 dB)** (right-click): sets the clip gain so that
+  its peak reaches −1 dB.
+- **Automatic crossfade**: where a clip starts before the previous one on
+  the same track ends, the two cross over the whole overlap (equal power),
+  and the zone is drawn as an X. It applies to overlaps up to 2 seconds:
+  beyond that the two clips play together (as with **Keep both** after a
+  recording). A longer fade of the clip stays its own.
+- **Loop**: **Ctrl+drag the right edge** of a clip and the clip repeats as
+  far as you go (a line marks each round); dragging the right edge again
+  lengthens or shortens the repetition. From the right-click menu:
+  **Loop...** (how many times) and **Remove the loop**. Splitting a looped
+  clip removes the loop.
+- **Volume curve** inside the clip: **Ctrl+click** on the clip adds a point
+  (or right-click → **Volume curve: point here**); drag the points up and
+  down (0 dB snaps), **double-click** a point to remove it, **Remove the
+  volume curve** removes them all. Between points the volume changes
+  gradually; the waveform shows it. The points stay on the audio they
+  refer to, also when trimming or splitting the clip.
+- **Clip editor...** (right-click): a window with the big waveform. The
+  wheel zooms (down to the single sample), Shift+wheel scrolls; dragging
+  chooses a stretch, which can be **listened to**, **silenced**,
+  **attenuated** by a few dB, put back as it was (**Remove the changes in
+  the stretch**) or cut off from the rest (**Split at the edges of the
+  stretch**). Silencing and attenuating write the volume curve: the file
+  does not change and Ctrl+Z undoes.
+- **Mute clip** (right-click): the clip stays in place, drawn in grey, but
+  does not play; the same entry turns it back on.
+- **Transpose...** (right-click): raises or lowers the clip by a few
+  semitones without changing its speed. Decimals are accepted (0.1 = 10
+  cents), to fix a slightly out-of-tune take.
+- **Check tuning...** (right-click): measures how many cents the clip is
+  above or below A = 440 Hz and, if it is audible, offers to correct all of
+  it with Transpose. The same check runs by itself after each recording,
+  and stays quiet if the take is in tune or is drums.
+- **Play in reverse** and **Invert phase** (right-click): the clip plays
+  from the end to the start, or with its phase flipped (for two microphones
+  on the same instrument that cancel each other). Splitting and trimming a
+  reversed clip follows what you hear.
+- **Channel** (right-click, stereo files only): **Left only**, **Right
+  only** or **Mono (sum of both)**, for example when the guitar only went
+  into input 1 of a stereo take.
+- **Correct the pitch...** (right-click): each note moves toward the
+  nearest note of the song's scale (Key; if not set, estimated from the
+  notes), as much as the strength says: 100% exactly on the note, 50%
+  halfway. It works note by note, so vibrato and inflections stay. The
+  file does not change; the first time the clip takes a few seconds to
+  prepare.
+- **Song key from this track...** (the audio track's **⋯** menu):
+  recognizes the track's chords and offers the resulting key as the song
+  key, useful for the chord progression and the melody.
+  None of these entries touch the file, and Ctrl+Z undoes them.
 - **Convert to notation...** (right-click on a clip): turns the playing part
   of the clip into notes, with the same engine as "Import audio" (10bis),
   in a **new track** with the chosen instrument
   (suggested according to what you recorded: guitar, keyboard, voice) and a
   box starting where the clip starts. It works well with monophonic parts
   (voice, guitar or bass line); the audio clip remains.
+- **Convert the track to notation...** (**⋯** menu of the audio track): all
+  the clips at once, with the same choices (melody, percussion or chords,
+  quantization), into **a single** note track with one box per clip, at the
+  clip's position and with its name. Muted clips are skipped. The result
+  goes into a new track or, with **Add to the track**, into an existing
+  note track: where there is already a box, the new one goes into the
+  nearest free space.
+  The new note track **remembers which audio track it comes from** and
+  with which choices (in the file, since version 2.10 of the format). After
+  changing the audio (silences removed, quantization, a new take) just use
+  **Reconvert from 'Name'** in the note track's **⋯** menu, or **Reconvert
+  the linked tracks** in the audio track's menu: the conversion is redone
+  with the same choices and the new boxes replace the old ones (Ctrl+Z
+  brings back the previous ones, manual edits included). To change the
+  choices, reopen **Convert the track to notation...**: it proposes the linked
+  track with the destination **Replace the contents of the track**. Boxes
+  added with **Add to the track** do not create the link.
+- **Melody and chords together**: in the track conversion, with
+  **Melody** you can check **The chords too, in another new track**: from
+  the same take (voice and guitar, a whole song) two tracks come out in a
+  single pass, the melody and the chords.
 - **In the classic editor** an audio track shows, read-only, the list of
   its clips: the notation actions (Generate, Play with the keyboard, Import
   MIDI, Freeze chords, Export MIDI) do not apply to audio tracks and say so
   with a message.
-- **Tempo**: audio is not stretched. A clip stays anchored to the beat on
-  which it starts but always lasts the same number of seconds: if you change
-  the BPM after placing it, the status bar reminds you.
+- **Tempo**: a clip stays anchored to the beat on which it starts. A take
+  recorded in SoundText **follows the song tempo**: if you change the BPM it
+  gets longer or shorter (time-stretch, without changing the pitch) and
+  stays in time. An imported file instead lasts the same number of seconds;
+  right-click → **Follow the song tempo** to make it follow from then on.
+  If the tempo changes inside the clip (for example after **Get the tempo
+  from the take**), each stretch follows the tempo of its own bar. **Speed
+  (time-stretch)...** changes it by hand, in percent; the box shows the
+  speed when it is not 100%. The first playback of a stretched clip takes a
+  few seconds, then it stays in memory.
+- **Get the tempo from the take...** (right-click on a clip): for those who
+  play freely, without a click. SoundText finds the beat of the take and
+  shows its tempo bar by bar (average, minimum, maximum and the curve);
+  choose the bar the first beat falls on and **Apply the tempo**: the song
+  gets one tempo change per bar (the `Tempo:` line of the file, with one
+  decimal, for example `101.4`) and the
+  clip moves so that the beats fall on the song's beats. After the take
+  the previous tempo comes back. The written notes, the metronome, the
+  generators and the conversion of the take into notation follow that
+  tempo. The first beat played is taken as the start of a bar; in compound
+  meters (6/8, 12/8) the beat is the dotted quarter. Alternatively, **Fixed
+  tempo, the take adapts**: the song stays at the chosen tempo and the take
+  is split at every bar, with each piece stretched or shortened to last
+  exactly one bar (10 ms crossfades between the pieces).
 
 ### Recording
 
@@ -3491,6 +3740,9 @@ recording dialog opens:
 - **Level**: the meter moves as soon as the dialog is open: adjust the gain
   on the audio interface so that the loudest parts reach around -12/-6 dB
   without lighting the red LED (clipping).
+- **Tuner**: below the meter, the note coming from the input and how many
+  cents it is above or below the right one (A = 440 Hz), in green when it is
+  within 5 cents. Play one note at a time.
 - **Start from**: current position, start of loop A (if set) or start of
   the song.
 - **Count-in** (0-4 bars of click before the song starts) and **Metronome
@@ -3512,7 +3764,36 @@ SoundFont, only audio tracks and metronome), does the count-in and records
 until you press **■ Stop**. The dialog shows the length and peak of the take
 (and warns if it clipped): **Keep the take** adds it to the track as a clip
 at the starting point; **Record** again replaces it. If the take overlaps
-clips already there, SoundText asks whether to delete them.
+clips already there, SoundText asks what to do: **As a new take**
+(suggested: the clip keeps all the takes and you choose later), **Replace**
+(deletes the clips below) or **Keep both** (they play together).
+
+**Mode** (with the loop points A and B set, **Playback → Loop** menu):
+- **Looping between A and B**: the A-B section repeats without stopping
+  until you press Stop (count-in only at the start). A single file is
+  recorded, and each complete pass becomes a take of the same clip
+  ("Pass 1", "Pass 2"...); the last one stays active. A pass interrupted by
+  Stop does not count.
+- **Punch-in between A and B**: the song plays from the **pre-roll** (the
+  chosen bars before A), but only the A-B section of the recording is kept,
+  with short fades at both ends. It goes as a new take of the clip that is
+  there: the clip is split at A and at B and only that section receives the
+  take, so the original is always still available. The recording stops by
+  itself one second after B. A normal take longer than the clip it goes on
+  extends it (up to the next clip).
+
+**Takes of a clip**: a clip with several takes shows in its box which one
+plays (e.g. `[2/3]`); right-click → **Takes** to choose another one,
+**Comping...** or **Keep only the active take** (the files of the others
+stay in the project folder).
+
+**Comping**: the window shows the takes one below the other with their
+waveform; dragging over a take uses it in that section (snapping to the
+sixteenth; Shift: free), a click chooses it for the whole section under the
+mouse. The **Comp** row at the top shows the result, **▶ Listen to the
+comp** plays it. **Apply the comp** splits the clip into the chosen
+sections, with a 10 ms crossfade at each change point; each section keeps
+all the takes, so the comping can be redone. A single Ctrl+Z undoes it.
 
 To hear yourself while playing use the audio interface's **direct
 monitoring** (knob or "direct monitor" button): it has no delay. SoundText
@@ -3544,12 +3825,30 @@ at the end of the file, `gain` the clip gain in dB (both optional). If a
 file can no longer be found the clip stays in the project, drawn in red,
 and does not play: right-click → **Locate file...** to point to it again.
 
+**Freeze to audio** (track menu, note tracks too): the track becomes an
+audio clip in a new track "Name (frozen)", computed only once as it sounds
+in Solo (notes, plugin or SFZ instrument, effects, NAM, volume and pan).
+The original track stays in the song, muted and with ❄ under its name;
+**Unfreeze** removes the audio track and makes it play again. Useful on
+slow computers: Play no longer recomputes the heavy tracks.
+
+**Disk cache**: tracks processed by effects, plugin instruments and
+time-stretch are saved in `<Project>_audio/cache/` and reused when the
+project is opened again, instead of being redone. A change (notes, clips,
+effects, files) makes them recompute; the folder stays under 2 GB (the
+least recently used renders are removed) and can be deleted at any time.
+
 ### Exporting
 
 - **Project → Export → Audio mix (WAV)...** exports the song as it sounds
   (audible tracks, audio included) to a 48 kHz / 24-bit WAV. A SoundFont is
   needed for tracks with notes; a song made only of audio tracks can be
   exported even without one.
+- **Project → Export → All tracks, one file each (stems)...** writes one
+  WAV for each unmuted track into a "Name - tracks" folder, with effects or
+  dry. They all start at the beginning of the song and have the same
+  length: in another program (or for another musician) they line up by
+  themselves.
 - **Track → Export this track → WAV...**, or **right-click on a track's name
   → Export WAV (this one only)...**, exports
   only that track to a WAV, with notation or audio, as it would sound in Solo
@@ -3627,6 +3926,10 @@ so it stays aligned with what you hear.
   appears as a coloured band on the Song structure ruler. You can turn on,
   move or remove the loop even while the song is playing, without
   interruptions.
+- **Playback speed** (drop-down in the toolbar, 100%-50%): slows the song
+  down without changing its pitch, to practice a passage (also in a loop);
+  the metronome follows. The first time at a new speed the song takes a
+  few seconds to prepare. It changes neither the song nor the export.
 - The loop requires the direct playback described above (FluidSynth library +
   `sounddevice`): with the fallback players the song is not repeated, and a
   message in the status bar says so.

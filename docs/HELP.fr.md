@@ -572,6 +572,13 @@ positions (en temps) des mesures qui suivent la première sont calculées
 automatiquement en tenant compte de la métrique en vigueur dans chaque
 passage.
 
+Les tempos peuvent avoir une décimale (`Tempo: 101.4 BPM`, `Tempo: 1:
+96.5, 5: 101.4`), comme les marqueurs `tempo=72.5` ; le champ **Tempo** de
+la barre l'accepte aussi. Un morceau avec un tempo décimal est enregistré
+avec `ST: 2.9` en tête : SoundText 1.8.0 et antérieurs ne liraient pas
+cette ligne `Tempo:` (et le signalent à l'ouverture). Avec des tempos
+entiers seulement, le fichier reste `ST: 2.8`, lisible par toutes.
+
 **Barre d'avancement, surlignage et champs Tempo/Métrique pendant la
 lecture** : le fichier MIDI exporté, la barre d'avancement, le surlignage
 du token en cours dans l'éditeur et les champs **Tempo (BPM)** et
@@ -1655,6 +1662,12 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     ronflement et bruits entre les phrases dans les pistes audio
     enregistrées. S'il coupe le début ou la fin des notes, baissez le seuil
     ou allongez le relâchement.
+  - **Réduction de bruit** (réduction, seuil) : supprime le souffle
+    constant (ventilateur, ampli, préampli) même pendant le jeu,
+    contrairement au noise gate. Elle l'apprend toute seule dans le passage
+    le plus silencieux de la piste (pas dans les silences numériques entre
+    les clips) : il suffit que la prise ait une demi-seconde de bruit seul,
+    au début ou à la fin. Presets Légère, Souffle, Forte.
   - **Volume** (gain, ±24 dB) : monte ou baisse simplement le niveau. Par
     exemple −6 dB (préréglage « Marge pour le master ») au début de la
     chaîne du master quand la somme des pistes dépasse 0 dB : le
@@ -2337,6 +2350,21 @@ clic droit sur l'étiquette de la piste à gauche.
   utilise une ancre de mesure `bar=N`, **▶ Play** le joue depuis sa place
   dans le morceau, pour que l'ancre mène à la bonne mesure (de même pour
   **▶ Play** sur une sélection).
+- **Réharmoniser...** (boîtes d'accords seulement) : le même
+  enrichissement que la grille d'accords générée, appliqué à une grille déjà
+  écrite. Le curseur **Richesse** va de 0 (la grille telle quelle) aux
+  septièmes et neuvièmes, dominantes secondaires et II-V vers l'accord
+  suivant, substitutions tritoniques et iv mineur ; **Autre version** en
+  propose une autre. Durées et silences restent, et les accords qui ne
+  changent pas restent écrits comme avant.
+- **Harmoniser la mélodie...** (une boîte avec une mélodie, ou un clip audio
+  avec une partie à une voix) : propose les accords en trois versions,
+  **Simple** (I, IV, V), **Diatonique** (tous les degrés de la tonalité)
+  et **Riche** (septièmes, dominantes secondaires ; **Autre version** en
+  propose une autre), un par mesure ou par demi-mesure, dans la tonalité
+  reconnue dans la mélodie (modifiable). Les accords vont dans une
+  nouvelle piste « Accords de Nom », avec une boîte là où commence la
+  mélodie ; de là on peut générer basse et accompagnement.
 - **Renommer...**
 - **Dupliquer** : crée une copie sur la même piste, juste après la fin du
   box d'origine (ou dans le premier espace libre disponible à partir de là).
@@ -2614,6 +2642,19 @@ percussion sélectionnée) :
 - **Final sur la dernière mesure** : la dernière mesure devient un coup de
   conclusion (crash et grosse caisse sur le premier temps, puis silence),
   pour terminer le morceau ou la section.
+- **Breaks à la fin des sections** (coché quand les autres pistes ont des
+  boîtes) : un break complet dans la dernière mesure avant chaque boîte des
+  autres pistes (Couplet, Refrain...) dans la Structure du morceau, et la
+  crash quand la nouvelle section commence, en plus des breaks toutes les N
+  mesures.
+- **Suivre la prise** (présent quand le morceau a une piste audio avec des
+  clips) : SoundText écoute le groove de la prise (pour chaque double
+  croche de la mesure, à quelle fréquence et avec quelle force il y a un
+  coup) et met aussi la grosse caisse sur ses accents forts et récurrents,
+  en laissant la caisse claire où elle est. Le tempo est celui du morceau :
+  pour une prise jouée librement, utilisez d'abord **Tirer le tempo de la
+  prise...** sur le clip. Les mesures proposées couvrent aussi les clips
+  audio.
 - **Intensité** : voir plus haut.
 
 **Composer → Générer dans la piste sélectionnée → Grille d'accords...** (nécessite un
@@ -2688,6 +2729,12 @@ message renvoie à la grille d'accords).
   l'import MIDI ; le bloc est reconnu comme accord connu, sinon la
   fondamentale est la note la plus grave). Une piste faite seulement de
   notes seules (mélodie, arpèges) n'a pas d'accords à suivre.
+  Une **piste audio** peut aussi donner les accords (dans la liste comme
+  « Nom (audio) ») : une prise de guitare rythmique ou de piano est
+  analysée la première fois que vous la choisissez (quelques secondes),
+  avec la même reconnaissance que le mode Accords de l'import audio, et les
+  accords de chaque clip sont là où est le clip. Cela vaut aussi pour
+  **Accompagnement ou riff** et pour la mélodie, qui en tire la tonalité.
 - **Style** (chacun écrit sa propre grille rythmique : noires, croches ou,
   pour le shuffle, triolets de croches) :
   - **Fondamentale** : répète la tonique pendant toute la durée de l'accord.
@@ -2716,6 +2763,66 @@ message renvoie à la grille d'accords).
 - **Intensité** : voir plus haut (aussi dans **Générer
   l'accompagnement/le riff**).
 
+**Jeu de l'instrument** (basse, et accompagnement pour guitare ou piano) :
+la guitare gratte les accords (vers le bas sur les temps, vers le haut et
+plus légers à contretemps, les cordes à quelques millisecondes d'écart) ;
+le piano utilise la pédale, changée à chaque accord ; la basse ajoute des
+notes fantômes étouffées avant les attaques sur le temps et quelques
+glissés vers la note de l'accord suivant.
+
+**Mélodie à partir des paroles...** (menu de la piste, instruments à une
+voix) : on écrit les paroles, une ligne par phrase, et naît une mélodie
+avec une note par syllabe sur les accords de la piste choisie, avec les
+accents des mots sur les temps forts et les syllabes déjà sous les notes
+(voir 2.13). Les mots sont coupés selon les règles de l'italien ; pour les
+couper à votre façon, écrivez des tirets (Ma-ri-a).
+
+**Composer → Arranger le morceau...** : à partir des sections de la piste
+d'accords (ses boîtes) batterie, basse et accompagnement en une seule
+passe, dans de nouvelles pistes avec une boîte par section. L'intensité
+vient du nom de la boîte : Intro sans batterie ni basse, Couplet léger,
+Pré-refrain et Pont en crescendo, Refrain plein, Fin légère avec le coup
+final ; le tableau du dialogue la change section par section. Chaque
+section finit par un break. Un seul Ctrl+Z supprime tout.
+
+Une boîte nommée **Stop** fait taire toutes les parties pendant sa durée ;
+un **Break** garde un seul coup d'ensemble sur le premier temps (cymbale et
+grosse caisse, la fondamentale, l'accord). Dans le dialogue :
+
+- **Fin avec note longue et accord tenu** : dans la dernière mesure la
+  basse tient la fondamentale du dernier accord et l'accompagnement tient
+  l'accord, avec le coup final de la batterie. Avec **Rallentando** le
+  tempo baisse d'un quart sur les une ou deux dernières mesures : un
+  marqueur `tempo=` par temps dans la boîte de la batterie (ou de la
+  basse, s'il n'y a pas de batterie).
+- **Crescendo de phrase** : la dynamique monte le long de chaque phrase de
+  quatre mesures, et le premier coup de chaque refrain a un accent de
+  plus.
+- **Laisser de la place à la mélodie de** : dans les mesures où la mélodie
+  choisie a beaucoup de notes (au moins six en 4/4) l'accompagnement ne
+  joue que sur le premier temps et à la moitié de la mesure.
+- **Modulation** : le dernier refrain et les sections qui le suivent
+  montent d'un demi-ton ou d'un ton ; leurs boîtes d'accords sont aussi
+  transposées.
+
+**Tessiture** (Générer riff/mélodie avec un instrument à une voix, Mélodie
+à partir des paroles) : Soprano (Do4-La5), Alto (Fa3-Ré5), Ténor (Do3-La4)
+ou Basse (Mi2-Ré4) gardent la mélodie dans l'étendue de cette voix au lieu
+de toute celle de l'instrument, pour une mélodie à chanter.
+
+**Jouer dans les silences de** (riffs et mélodies, quand le morceau a une
+piste audio) : la mélodie se tait là où la piste choisie chante et joue
+dans ses pauses (au moins une demi-seconde), comme un cuivre qui répond à
+la voix.
+
+**Laisser de la place aux autres parties** (présent quand le morceau a déjà
+d'autres parties écrites) : l'accompagnement reste au-dessus de la basse
+et sous la mélodie, la mélodie au-dessus de l'accompagnement, au lieu
+d'utiliser toute l'étendue de l'instrument ; l'infobulle montre les notes
+utilisées. **Refrain reconnaissable** (mélodies en phrases) : là où la
+piste d'accords répète une section (deux boîtes « Refrain », ou deux
+boîtes identiques) la mélodie revient identique à la première fois.
+
 Dans **Générer l'accompagnement** il y a aussi **Renversements proches**
 (coché par défaut) : chaque accord choisit le renversement le plus proche
 du précédent (conduite des voix), comme le ferait un pianiste — par exemple
@@ -2730,6 +2837,10 @@ motif).
   traitement légèrement différent du même accord (saut d'octave, note
   différente...) au lieu de répéter le motif à l'identique — 0 désactive
   les variations.
+- **Suivre la grosse caisse de** (présent quand le morceau a une piste de
+  batterie) : les attaques de la basse tombent sur les coups de grosse
+  caisse de la piste choisie, avec les notes du style : basse et batterie
+  jouent ensemble. Au début de chaque accord il y a toujours une note.
 
 Les deux affichent un aperçu modifiable à la main avant de confirmer (comme
 l'import audio, section 10bis), et le résultat est ajouté à la suite du
@@ -2755,6 +2866,9 @@ d'accords.
 
 **D'où l'enregistrer** (« Enregistrer comme style du générateur... ») :
 - clic droit sur un **box** dans la vue Structure du morceau ;
+- clic droit sur un **clip audio** (une prise) : d'abord la conversion en
+  notes comme dans « Convertir en notation » (choisissez **Drums** pour un
+  style de batterie), puis la même boîte de dialogue ;
 - menu **Composer → Styles des générateurs → Enregistrer la piste comme style...** (toute la piste sélectionnée) ;
 - **Bibliothèque MIDI** (menu Composer → Gérer la bibliothèque
   MIDI) : le bouton sous l'aperçu propose tous les canaux du fichier
@@ -3322,6 +3436,23 @@ facultative.
   quantification perceptible, tout en restant dans la syntaxe normale
   `N:`. La dernière combinaison utilisée est mémorisée à la réouverture de
   la fenêtre.
+- **Régler la quantification** (sous la grille, fermé par défaut ; aussi
+  dans « Jouer au clavier » et dans « Convertir la piste en
+  notation »), pour qui joue de façon imprécise sans vouloir perdre sa
+  manière de jouer :
+  - **Force** : de combien chaque note se déplace vers la grille (100 % =
+    entièrement, 50 % = à mi-chemin) ;
+  - **Fenêtre** : seules les notes proches de la grille sont corrigées ;
+    les plus éloignées (avances et retards voulus) restent où elles sont ;
+  - **Swing** (grilles de 1/8 et 1/16) : la seconde subdivision de chaque
+    paire arrive plus tard, 66 % = shuffle en triolets, ainsi une
+    interprétation swing n'est pas redressée ;
+  - **Écarter les notes plus courtes que** et **Fusionner les notes
+    identiques à moins de** : suppriment les cordes effleurées et les
+    attaques reconnues deux fois.
+  Si les notes ne tombent pas exactement sur la grille (force ou fenêtre
+  sous 100 %, swing), le texte s'écrit en 1/64, comme avec « Off ». Les
+  valeurs sont mémorisées comme la grille.
 - **Mode d'analyse** : Mélodique (détection de hauteur, pour la voix ou les
   instruments qui jouent une note à la fois ; pour les accords il y a le
   mode Accords, ci-dessous) ou Percussive (détection des transitoires pour batterie/
@@ -3410,6 +3541,10 @@ mode), **2. Audio** (enregistrement ou fichier, tempo et mesure) et
   « Insérer dans la piste » —
   utile pour vérifier à l'oreille la conversion (ou votre propre variante)
   avant de remplacer le contenu de la piste/du pattern.
+- **Comparaison** : à côté de « ▶ Écouter » on choisit quoi entendre :
+  **résultat seulement**, **d'abord l'audio, puis le résultat** ou
+  **audio et résultat ensemble** (chacun à mi-volume), pour entendre ce
+  que la conversion a laissé de côté.
 
 Note sur la qualité de la reconnaissance : la détection des notes
 mélodiques segmente l'audio avec un détecteur d'attaques dédié (fiable même
@@ -3731,6 +3866,98 @@ programme.
   ici** : il devient deux clips consécutifs du même fichier, qu'on peut
   déplacer, couper ou supprimer séparément (par exemple pour enlever une
   erreur au milieu d'une prise).
+- **Fondus** : avec la souris sur le clip, deux poignées blanches
+  apparaissent aux coins supérieurs ; faites glisser celle de gauche vers la
+  droite pour le fondu d'entrée, celle de droite vers la gauche pour le
+  fondu de sortie. La forme d'onde et une courbe sombre montrent l'effet.
+  Pour des valeurs exactes et pour la forme (**Linéaire** ou **Puissance
+  constante**, sans baisse de volume au milieu, adaptée aux fondus
+  enchaînés) : clic droit → **Fondus...**. Même sans fondus, chaque bord de
+  clip a un micro-fondu de 5 ms qui supprime le clic d'une coupe au milieu
+  d'un son (aussi au point d'une division).
+- **Quantifier l'audio...** (clic droit) : pour une prise jouée un peu
+  hors du temps (batterie, guitare rythmique). SoundText trouve les
+  attaques, coupe le clip juste avant chacune et déplace les morceaux vers
+  la grille choisie, avec **Force**, **Fenêtre** et **Swing** comme pour
+  les notes (voir « Régler la quantification »). Là où un morceau déplacé
+  finit sur le suivant, il est raccourci jusque-là, avec un fondu enchaîné
+  bref ; là où un vide s'ouvre, il reste du silence. Le fichier ne change
+  pas, et un seul Ctrl+Z annule tout.
+- **Supprimer les silences...** (clic droit) : pour une prise avec de
+  longues pauses (voix, solo). Là où le niveau reste sous le **Seuil**
+  (−45 dB) au moins pendant la durée choisie (300 ms), le clip est divisé
+  et la partie vide disparaît : plus de souffle, de respirations ni de
+  bruits entre une phrase et la suivante. Chaque morceau commence juste
+  avant son attaque (**Marge**, 50 ms) et reste là où il jouait. La boîte
+  de dialogue montre tout de suite combien de morceaux restent et combien
+  de secondes sont supprimées. Le fichier ne change pas, et un seul Ctrl+Z
+  annule tout.
+- **Réunir les morceaux en un clip (N)** (clic droit sur l'un des
+  morceaux) : la quantification, le comping et le tempo fixe laissent
+  beaucoup de box. Cette entrée met les morceaux voisins de la même prise
+  dans un nouveau fichier qui sonne exactement comme eux (fondus, gain et
+  time-stretch compris), à leur place : la vue redevient légère. Les
+  fichiers de départ restent.
+- **Déplacer le contenu (slip)** : **Alt+glisser** le clip pour faire
+  défiler l'audio à l'intérieur, en gardant son début et sa longueur (par
+  exemple pour caler une attaque sur le temps après l'avoir coupé). Si le
+  bureau utilise Alt+glisser pour déplacer les fenêtres (c'est le cas sur
+  certains bureaux Linux), utilisez **Ctrl+Alt+glisser**.
+- **Normaliser (crête à −1 dB)** (clic droit) : règle le gain du clip pour
+  que sa crête atteigne −1 dB.
+- **Fondu enchaîné automatique** : là où un clip commence avant que le
+  précédent de la même piste se termine, les deux se croisent sur tout le
+  chevauchement (à puissance constante), et la zone est dessinée en X.
+  Cela vaut pour les chevauchements jusqu'à 2 secondes : au-delà, les deux
+  clips jouent ensemble (comme avec **Garder les deux** après un
+  enregistrement). Un fondu plus long du clip reste le sien.
+- **Répéter en boucle** : **Ctrl+glisser le bord droit** d'un clip et le
+  clip se répète jusqu'où vous allez (une ligne marque chaque tour) ; en
+  glissant de nouveau le bord droit, la répétition s'allonge ou se
+  raccourcit. Par clic droit : **Répéter en boucle...** (combien de fois)
+  et **Supprimer la répétition**. Diviser un clip qui se répète supprime
+  la répétition.
+- **Courbe de volume** dans le clip : **Ctrl+clic** sur le clip ajoute un
+  point (ou clic droit → **Courbe de volume : point ici**) ; faites glisser
+  les points vers le haut ou le bas (le 0 dB s'aimante), un **double clic**
+  sur un point le supprime, **Supprimer la courbe de volume** les supprime
+  tous. Entre deux points le volume change progressivement ; la forme
+  d'onde le montre. Les points restent sur l'audio auquel ils se
+  rapportent, même en rognant ou en divisant le clip.
+- **Éditeur du clip...** (clic droit) : une fenêtre avec la grande forme
+  d'onde. La molette zoome (jusqu'à l'échantillon), Maj+molette fait
+  défiler ; en glissant on choisit un passage, que l'on peut **écouter**,
+  **rendre muet**, **atténuer** de quelques dB, remettre comme avant
+  (**Supprimer les modifications du passage**) ou détacher du reste
+  (**Diviser aux bords du passage**). Rendre muet et atténuer écrivent la
+  courbe de volume : le fichier ne change pas et Ctrl+Z annule.
+- **Couper le clip** (clic droit) : le clip reste à sa place, dessiné en
+  gris, mais ne joue pas ; la même entrée le réactive.
+- **Transposer...** (clic droit) : monte ou baisse le clip de quelques
+  demi-tons sans changer sa vitesse. Les décimales sont acceptées (0,1 = 10
+  cents), pour corriger une prise un peu désaccordée.
+- **Vérifier l'accordage...** (clic droit) : mesure de combien de cents le
+  clip est au-dessus ou en dessous du La à 440 Hz et, si cela s'entend,
+  propose de le corriger entièrement avec Transposer. La même vérification
+  se lance toute seule après chaque enregistrement, et reste muette si la
+  prise est juste ou si c'est de la batterie.
+- **Lire à l'envers** et **Inverser la phase** (clic droit) : le clip joue
+  de la fin au début, ou avec la phase inversée (pour deux micros sur le
+  même instrument qui s'annulent). Diviser et rogner un clip à l'envers
+  suit ce que l'on entend.
+- **Canal** (clic droit, fichiers stéréo seulement) : **Gauche seulement**,
+  **Droite seulement** ou **Mono (somme des deux)**, par exemple quand la
+  guitare n'est entrée que dans l'entrée 1 d'une prise stéréo.
+- **Corriger la justesse...** (clic droit) : chaque note se rapproche de
+  la note la plus proche de la gamme du morceau (Tonalité ; si elle n'est
+  pas définie, estimée d'après les notes), autant que l'indique la force :
+  100 % exactement sur la note, 50 % à mi-chemin. Le travail se fait note
+  par note, donc vibrato et inflexions restent. Le fichier ne change pas ;
+  la première fois, le clip met quelques secondes à se préparer.
+- **Tonalité du morceau depuis cette piste...** (menu **⋯** de la piste
+  audio) : reconnaît les accords de la piste et propose la tonalité qui en
+  résulte comme tonalité du morceau, utile pour la grille d'accords et la
+  mélodie. Aucune de ces entrées ne touche le fichier, et Ctrl+Z les annule.
 - **Convertir en notation...** (clic droit sur un clip) : transforme en
   notes la partie du clip qui joue, avec le même moteur qu'« Importer de
   l'audio » (10bis), dans une **nouvelle piste** avec
@@ -3738,13 +3965,58 @@ programme.
   clavier, voix) et un box qui commence là où commence le clip. Cela
   fonctionne bien avec les parties monophoniques (voix, ligne de guitare
   ou de basse) ; le clip audio reste.
+- **Convertir la piste en notation...** (menu **⋯** de la piste audio) :
+  tous les clips d'un coup, avec les mêmes choix (mélodie, percussions ou
+  accords, quantification), dans **une seule** piste de notes avec un box
+  par clip, à la position du clip et avec son nom. Les clips coupés sont
+  ignorés. Le résultat va dans une nouvelle piste ou, avec **Ajouter à la
+  piste**, dans une piste de notes existante : là où il y a déjà un box, le
+  nouveau va dans l'espace libre le plus proche.
+  La nouvelle piste de notes **se souvient de la piste audio d'où elle
+  vient** et des choix faits (dans le fichier, depuis la version 2.10 du
+  format). Après une modification de l'audio (silences supprimés,
+  quantification, nouvelle prise), il suffit de **Reconvertir depuis
+  'Nom'** dans le menu **⋯** de la piste de notes, ou de **Reconvertir les
+  pistes liées** dans celui de la piste audio : la conversion est refaite
+  avec les mêmes choix et les nouveaux box remplacent les anciens (Ctrl+Z
+  ramène les précédents, modifications manuelles comprises). Pour changer
+  les choix, rouvrez **Convertir la piste en notation...** : elle propose
+  la piste liée avec la destination **Remplacer le contenu de la piste**.
+  Les box ajoutés avec **Ajouter à la piste** ne créent pas le lien.
+- **Mélodie et accords ensemble** : dans la conversion de la piste, avec
+  **Mélodie** on peut cocher **Les accords aussi, dans une autre nouvelle
+  piste** : de la même prise (voix et guitare, un morceau entier) sortent
+  en une seule passe deux pistes, la mélodie et les accords.
 - **Dans l'éditeur classique**, une piste audio affiche, en lecture seule,
   la liste de ses clips : les actions sur la notation (Générer, Jouer au
   clavier, Importer un MIDI, Figer les accords, Exporter en MIDI) ne
   s'appliquent pas aux pistes audio et l'expliquent par un message.
-- **Tempo** : l'audio n'est pas étiré. Un clip reste ancré au temps où il
-  commence mais dure toujours le même nombre de secondes : si vous changez
-  le BPM après l'avoir placé, la barre d'état vous le rappelle.
+- **Tempo** : un clip reste ancré au temps où il commence. Une prise
+  enregistrée dans SoundText **suit le tempo du morceau** : si vous changez
+  le BPM, elle s'allonge ou se raccourcit (time-stretch, sans changer la
+  hauteur) et reste en mesure. Un fichier importé, lui, dure le même nombre
+  de secondes ; clic droit → **Suivre le tempo du morceau** pour qu'il le
+  suive à partir de là. Si le tempo change à l'intérieur du clip (par
+  exemple après **Tirer le tempo de la prise**), chaque passage suit le
+  tempo de sa mesure. **Vitesse
+  (time-stretch)...** la change à la main, en pourcentage ; le box montre
+  la vitesse quand elle n'est pas à 100 %. La première écoute d'un clip
+  étiré prend quelques secondes, puis il reste en mémoire.
+- **Tirer le tempo de la prise...** (clic droit sur un clip) : pour qui
+  joue librement, sans clic. SoundText trouve le temps de la prise et
+  montre son tempo mesure par mesure (moyenne, minimum, maximum et la
+  courbe) ; choisissez la mesure où tombe le premier temps et **Appliquer
+  le tempo** : le morceau prend un changement de tempo par mesure (ligne
+  `Tempo:` du fichier, avec une décimale, par exemple `101.4`) et le clip
+  se déplace pour que les temps tombent sur
+  les temps du morceau. Après la prise, le tempo d'avant revient. Les notes
+  écrites, le métronome, les générateurs et la conversion de la prise en
+  notation suivent ce tempo. Le premier temps joué est pris comme début de
+  mesure ; dans les mesures composées (6/8, 12/8) le temps est la noire
+  pointée. Sinon, **Tempo fixe, la prise s'adapte** : le morceau reste au
+  tempo choisi et la prise est divisée à chaque mesure, chaque morceau
+  étant allongé ou raccourci pour durer exactement une mesure (fondus
+  enchaînés de 10 ms entre les morceaux).
 
 ### Enregistrer
 
@@ -3766,6 +4038,10 @@ d'ici...** (part de ce point). La fenêtre d'enregistrement s'ouvre :
 - **Niveau** : l'indicateur bouge dès que la fenêtre est ouverte : réglez
   le gain sur la carte son pour que les passages les plus forts arrivent
   vers -12/-6 dB sans allumer le voyant rouge (saturation).
+- **Accordeur** : sous l'indicateur, la note qui arrive de l'entrée et de
+  combien de cents elle est au-dessus ou en dessous de la bonne (La à
+  440 Hz), en vert quand elle est juste à 5 cents près. Jouez une note à la
+  fois.
 - **Partir de** : position courante, début de la boucle A (si définie) ou
   début du morceau.
 - **Décompte** (0-4 mesures de clic avant le départ du morceau) et
@@ -3788,7 +4064,40 @@ décompte et enregistre jusqu'à ce que vous appuyiez sur **■ Stop**. La
 fenêtre affiche la durée et la crête de la prise (et avertit si elle a
 saturé) : **Garder la prise** l'ajoute à la piste comme clip au point de
 départ ; **Enregistrer** de nouveau la remplace. Si la prise chevauche des
-clips déjà présents, SoundText demande s'il faut les supprimer.
+clips déjà présents, SoundText demande quoi en faire : **Comme nouvelle
+prise** (proposé : le clip garde toutes les prises et on choisit ensuite),
+**Remplacer** (supprime les clips en dessous) ou **Garder les deux** (elles
+jouent ensemble).
+
+**Mode** (avec les points A et B de la boucle placés, menu **Lecture →
+Boucle**) :
+- **En boucle entre A et B** : le passage A-B se répète sans s'arrêter
+  jusqu'à ce que vous appuyiez sur Stop (le décompte seulement au début).
+  Un seul fichier est enregistré, et chaque tour complet devient une prise
+  du même clip (« Tour 1 », « Tour 2 »...) ; le dernier reste actif. Un
+  tour interrompu par le Stop ne compte pas.
+- **Punch-in entre A et B** : le morceau joue depuis le **pre-roll** (les
+  mesures choisies avant A), mais de l'enregistrement on ne garde que le
+  passage A-B, avec de courts fondus aux deux bouts. Il va comme nouvelle
+  prise du clip qui s'y trouve : le clip est divisé en A et en B et seul ce
+  passage reçoit la prise, donc l'original reste toujours disponible.
+  L'enregistrement s'arrête tout seul une seconde après B. Une prise
+  normale plus longue que le clip sur lequel elle va l'allonge (jusqu'au
+  clip suivant).
+
+**Prises d'un clip** : un clip avec plusieurs prises montre dans son box
+laquelle joue (ex. `[2/3]`) ; clic droit → **Prises** pour en choisir une
+autre, **Comping...** ou **Garder seulement la prise active** (les fichiers
+des autres restent dans le dossier du projet).
+
+**Comping** : la fenêtre montre les prises l'une sous l'autre avec leur
+forme d'onde ; en faisant glisser sur une prise on l'utilise dans ce
+passage (aimantation à la double croche ; Maj : libre), un clic la choisit
+pour tout le passage sous la souris. La ligne **Comp** en haut montre le
+résultat, **▶ Écouter le comp** le fait entendre. **Appliquer le comp**
+divise le clip dans les passages choisis, avec un fondu enchaîné de 10 ms à
+chaque changement ; chaque passage garde toutes les prises, donc le comping
+peut être refait. Un seul Ctrl+Z l'annule.
 
 Pour vous entendre pendant que vous jouez, utilisez le **monitoring
 direct** de la carte son (bouton ou touche « direct monitor ») : il est
@@ -3822,12 +4131,32 @@ Si un fichier est introuvable, le clip reste dans le projet, dessiné en
 rouge, et ne joue pas : clic droit → **Retrouver le fichier...** pour
 l'indiquer de nouveau.
 
+**Figer en audio** (menu de la piste, aussi pour les pistes de notes) : la
+piste devient un clip audio dans une nouvelle piste « Nom (figée) »,
+calculé une seule fois tel qu'on l'entend en Solo (notes, instrument
+plugin ou SFZ, effets, NAM, volume et panoramique). La piste d'origine
+reste dans le morceau, coupée et avec ❄ sous son nom ; **Libérer** supprime
+la piste audio et la fait rejouer. Utile sur les ordinateurs lents : Play
+ne recalcule plus les pistes lourdes.
+
+**Cache sur disque** : les pistes traitées par les effets, les instruments
+plugin et le time-stretch sont enregistrés dans `<Projet>_audio/cache/` et
+réutilisés à la réouverture du projet, au lieu d'être refaits. Une
+modification (notes, clips, effets, fichiers) les fait recalculer ; le
+dossier ne dépasse pas 2 Go (les rendus utilisés le moins récemment sont
+supprimés) et peut être effacé à tout moment.
+
 ### Exporter
 
 - **Projet → Exporter → Mix audio (WAV)...** exporte le morceau tel qu'on
   l'entend (pistes audibles, audio compris) en WAV 48 kHz / 24 bits. Il
   faut un SoundFont pour les pistes avec des notes ; un morceau composé
   uniquement de pistes audio s'exporte même sans.
+- **Projet → Exporter → Toutes les pistes, un fichier chacune (stems)...**
+  écrit un WAV pour chaque piste non coupée dans un dossier « Nom -
+  pistes », avec les effets ou sèches. Elles commencent toutes au début du
+  morceau et ont la même longueur : dans un autre logiciel (ou chez un
+  autre musicien) elles s'alignent toutes seules.
 - **Piste → Exporter cette piste → WAV...**, ou **clic droit sur le nom d'une
   piste → Exporter en WAV (celle-ci seulement)...**, exporte en WAV seulement cette piste, avec notation ou
   audio, telle qu'on l'entendrait en Solo (le Solo/Mute des autres pistes ne
@@ -3911,6 +4240,11 @@ qu'on entend.
   boucle** les remet à zéro. La section apparaît comme une bande colorée
   sur la règle de la Structure du morceau. On peut activer, déplacer ou
   retirer la boucle même pendant que le morceau joue, sans interruption.
+- **Vitesse d'écoute** (menu déroulant dans la barre, 100 %-50 %) :
+  ralentit le morceau sans changer sa hauteur, pour travailler un passage
+  (aussi en boucle) ; le métronome suit. La première fois à une nouvelle
+  vitesse, le morceau met quelques secondes à se préparer. Ne change ni le
+  morceau ni l'exportation.
 - La boucle nécessite la lecture directe décrite plus haut (bibliothèque
   FluidSynth + `sounddevice`) : avec les lecteurs de repli le morceau n'est pas
   répété, et un message dans la barre d'état le signale.

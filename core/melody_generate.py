@@ -32,6 +32,22 @@ from .rhythm_generate import (
 )
 from .i18n import tr
 
+# Tessiture vocali (estensioni di un cantante di coro, MIDI): una melodia da
+# cantare sta qui invece che in tutta l'estensione dello strumento.
+VOICE_RANGES: Dict[str, Tuple[int, int]] = {
+    "soprano": (60, 81),     # Do4 - La5
+    "contralto": (53, 74),   # Fa3 - Re5
+    "tenore": (48, 69),      # Do3 - La4
+    "basso": (40, 62),       # Mi2 - Re4
+}
+
+
+def voice_octave(voice: str) -> int:
+    """L'ottava di partenza per una tessitura: quella del centro dell'estensione."""
+    low, high = VOICE_RANGES[voice]
+    return (low + high) // 2 // 12 - 1
+
+
 MAJOR_SCALE = (0, 2, 4, 5, 7, 9, 11)
 MINOR_SCALE = (0, 2, 3, 5, 7, 8, 10)
 
@@ -301,11 +317,13 @@ def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str) 
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
-                           intensity: str = "normal") -> str:
+                           intensity: str = "normal", repeats=()) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
-    [range_low, range_high]. 'style' e' uno di MELODY_STYLES. Solleva
+    [range_low, range_high]. 'style' e' uno di MELODY_STYLES. 'repeats'
+    (vedi section_repeats): le sezioni che tornano, dove la melodia torna
+    uguale a quella della prima volta (un ritornello riconoscibile). Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -406,7 +424,57 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         if pitches:
             prev2, prev = (pitches[-2] if len(pitches) > 1 else prev), pitches[-1]
 
+    notes = _apply_repeats(notes, repeats)
     return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng)
+
+
+def _apply_repeats(notes, repeats):
+    """Le note delle sezioni che tornano rimpiazzate da quelle della prima
+    volta: [(inizio, fine, inizio della sezione da ripetere)] in beat."""
+    for start, end, source in sorted(repeats):
+        length = end - start
+        if length <= 0 or source >= start:
+            continue
+        copied = [(t - source + start, min(d, end - (t - source + start)), p, b)
+                  for t, d, p, b in notes if source - 1e-6 <= t < source + length - 1e-6]
+        kept = [n for n in notes if not start - 1e-6 <= n[0] < end - 1e-6]
+        # la nota prima della sezione non deve suonarci sopra
+        kept = [(t, min(d, start - t) if t < start < t + d else d, p, b) for t, d, p, b in kept]
+        notes = sorted(kept + copied)
+    return notes
+
+
+def section_repeats(project, track, part_start: float = 0.0) -> List[Tuple[float, float, float]]:
+    """Le sezioni della traccia (i suoi box nella Struttura brano) che
+    ripetono una sezione precedente: stesso nome (senza numeri o "copia")
+    o stesso contenuto. [(inizio, fine, inizio della prima volta)] in beat
+    contati da part_start (dove comincia la parte generata)."""
+    import re
+    from .arrangement import clip_duration_beats
+    if track is None or track.is_audio or not track.clips:
+        return []
+
+    def name_key(name):
+        name = re.sub(r"\s*\((?:copia|\d+)\)\s*$", "", name.strip().lower())
+        return re.sub(r"\s*\d+$", "", name)
+
+    seen_names: Dict[str, float] = {}
+    seen_texts: Dict[str, float] = {}
+    out = []
+    for clip in sorted(track.clips, key=lambda c: c.start_beat):
+        length = clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
+                                     start_beat=clip.start_beat, meter=project.meter())
+        key, text = name_key(clip.name), " ".join(clip.text.split())
+        first = seen_names.get(key) if key else None
+        if first is None:
+            first = seen_texts.get(text)
+        if first is not None and length > 0:
+            out.append((clip.start_beat - part_start, clip.start_beat + length - part_start, first - part_start))
+        else:
+            if key:
+                seen_names.setdefault(key, clip.start_beat)
+            seen_texts.setdefault(text, clip.start_beat)
+    return [r for r in out if r[2] >= 0]
 
 
 def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: random.Random) -> str:
@@ -433,4 +501,77 @@ def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: rando
         mult = max(1, round(duration / 0.5))
         tokens.append((f"{mult}" if mult > 1 else "") + _note_token(pitch % 12, pitch // 12 - 1))
         t = start + mult * 0.5
+    return " ".join(tokens)
+
+
+# ---------------------------------------------------------------------------
+# Melodia nei silenzi della voce
+# ---------------------------------------------------------------------------
+
+VOICE_MIN_SILENCE = 0.5      # secondi: una pausa piu' corta della voce non lascia spazio
+
+
+def voice_regions(project, track) -> List[Tuple[float, float]]:
+    """Dove la traccia audio suona (canta), [(beat d'inizio, beat di fine)]
+    del brano: lo stesso rilevamento di "Rimuovi i silenzi" (core.audio_silence),
+    con pause di almeno VOICE_MIN_SILENCE."""
+    from .audio_silence import clip_levels_db, sound_regions
+    from .audio_track_notation import audible_clips
+    from .tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map, seconds_for_beats
+    tempo_map = build_tempo_beat_map(project)
+    out = []
+    for clip in audible_clips(track):
+        levels, total = clip_levels_db(clip)
+        start_s = seconds_for_beats(tempo_map, clip.start_beat)
+        for a, b in sound_regions(levels, total, min_silence=VOICE_MIN_SILENCE, pre_roll=0.0):
+            out.append((beat_at_elapsed_seconds(tempo_map, 0.0, start_s + a),
+                        beat_at_elapsed_seconds(tempo_map, 0.0, start_s + b)))
+    return sorted(out)
+
+
+def _grid_unit(text: str) -> Optional[float]:
+    import re
+    m = re.match(r"\s*(\d+)(T?):", text)
+    if not m:
+        return None
+    unit = 4.0 / int(m.group(1))
+    return unit * 2.0 / 3.0 if m.group(2) else unit
+
+
+def rest_where(text: str, regions, patterns=None, min_overlap: float = 0.25) -> str:
+    """Il testo generato con una pausa al posto di ogni nota (o accordo)
+    che cade per almeno 'min_overlap' della sua durata dentro 'regions'
+    (beat, vedi voice_regions): la melodia suona nei silenzi della voce.
+    Se il testo non ha una griglia sola, lo lascia com'e'."""
+    from .notation import parse_track_text
+    unit = _grid_unit(text)
+    if unit is None or not regions:
+        return text
+    header = text.split()[0]
+    tokens = [header]
+    velocity = None
+    for ev in parse_track_text(text, patterns or {}):
+        mult = ev.duration / unit
+        if abs(mult - round(mult)) > 1e-6 or round(mult) < 1:
+            return text
+        mult = int(round(mult))
+        prefix = f"{mult}" if mult > 1 else ""
+        body = None
+        if ev.kind in ("note", "block"):
+            overlap = sum(max(0.0, min(b, ev.start + ev.duration) - max(a, ev.start)) for a, b in regions)
+            if overlap < min_overlap * ev.duration:
+                if ev.kind == "note":
+                    body = f"{ev.letter}*{ev.octave}"
+                else:
+                    body = "[" + " ".join(f"{it['letter']}*{it['octave']}" for it in ev.items
+                                          if it.get("kind") == "note") + "]"
+        elif ev.kind != "rest":
+            return text                       # altro (accordi per sigla, percussioni): non si tocca
+        if body is None:
+            tokens.append(f"{prefix}r")
+            continue
+        if ev.velocity != velocity:
+            tokens.append(f"{ev.velocity}@")
+            velocity = ev.velocity
+        tokens.append(prefix + body)
     return " ".join(tokens)

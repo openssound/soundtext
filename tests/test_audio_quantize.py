@@ -122,3 +122,70 @@ if __name__ == "__main__":
         passed += 1
         print(f"OK  {t.__name__}")
     print(f"\n{passed}/{len(tests)} test superati.")
+
+
+# --------------------------------------------------------------- quantizzazione regolabile
+
+from core.audio_quantize import AudioEvent as _Ev, QuantizeSettings, clean_events, events_to_tokens as _tokens
+from core.notation import parse_track_text
+
+
+def _starts(tokens, default_octave=4):
+    """Gli inizi (in beat) delle note del testo generato."""
+    return [round(e.start, 4) for e in parse_track_text(" ".join(tokens), {}, default_octave=default_octave)
+            if e.kind in ("note", "block", "perc")]
+
+
+def test_default_settings_give_the_same_result_as_before():
+    events = _melodic_events()
+    assert _tokens(events, 120, 16, settings=QuantizeSettings()) == _tokens(events, 120, 16)
+
+
+def test_strength_moves_notes_part_of_the_way_on_the_fine_grid():
+    # a 120 BPM 1 beat = 0,5 s: la seconda nota e' 0,25 beat in ritardo sul 2
+    events = [_Ev(0.0, 0.4, 100, 60), _Ev(0.625, 0.9, 100, 62)]
+    assert _starts(_tokens(events, 120, 4)) == [0.0, 1.0]
+    half = _tokens(events, 120, 4, settings=QuantizeSettings(strength=0.5))
+    assert half[0] == "64:" and _starts(half) == [0.0, 1.125]
+    none = _tokens(events, 120, 4, settings=QuantizeSettings(strength=0.0))
+    assert _starts(none) == [0.0, 1.25]
+
+
+def test_window_leaves_the_far_notes_alone():
+    events = [_Ev(0.03, 0.2, 100, 60), _Ev(0.6, 0.8, 100, 62)]      # 0,06 e 0,2 beat dalla griglia di 1/4
+    narrow = _tokens(events, 120, 4, settings=QuantizeSettings(window=0.25))   # entro 1/8 di beat
+    assert _starts(narrow) == [0.0, 1.1875]                          # la seconda resta (arrotondata a 1/64)
+
+
+def test_swing_moves_the_second_eighth_of_each_pair():
+    events = [_Ev(i * 0.25, i * 0.25 + 0.2, 100, 60 + i) for i in range(4)]   # ottavi dritti
+    swung = _tokens(events, 120, 8, settings=QuantizeSettings(swing=0.66))
+    assert _starts(swung) == [0.0, 0.6875, 1.0, 1.6875]                # 0,66 arrotondato a 1/64
+    triplets = _tokens(events, 120, 8, ternary=True, settings=QuantizeSettings(swing=0.66))
+    assert triplets == _tokens(events, 120, 8, ternary=True)          # sulle terzine lo swing non vale
+
+
+def test_cleanup_drops_short_notes_and_merges_repeated_ones():
+    events = [_Ev(0.0, 0.2, 100, 60), _Ev(0.21, 0.4, 90, 60), _Ev(0.5, 0.52, 100, 64), _Ev(0.6, 0.9, 100, 62)]
+    cleaned = clean_events(events, min_note_sec=0.04, merge_gap_sec=0.03)
+    assert [(e.start_sec, e.end_sec, e.midi_pitch) for e in cleaned] == [(0.0, 0.4, 60), (0.6, 0.9, 62)]
+    assert events[0].end_sec == 0.2                                   # gli originali non cambiano
+    kept = clean_events(events, merge_gap_sec=0.005)                   # pausa piu' lunga: restano due
+    assert [e.midi_pitch for e in kept] == [60, 60, 64, 62]
+
+
+def test_adjusted_text_is_always_valid():
+    events = _melodic_events()
+    for s in (QuantizeSettings(strength=0.3), QuantizeSettings(window=0.5, swing=0.6),
+              QuantizeSettings(min_note_sec=0.05, merge_gap_sec=0.05)):
+        for grid, ternary in ((16, False), (8, True), (4, False)):
+            text = " ".join(_tokens(events, 97, grid, ternary=ternary, settings=s, monophonic=True))
+            assert validate_track_text(text, {})[0], (s, grid, ternary, text)
+
+
+def test_a_note_starting_while_the_previous_still_sounds_is_kept():
+    # legato: la prima nota finisce dopo l'inizio della seconda (1/16 a 120 BPM = 0,125 s)
+    events = [_Ev(0.0, 0.45, 100, 60), _Ev(0.25, 0.5, 100, 62)]
+    tokens = _tokens(events, 120, 16)
+    assert _starts(tokens) == [0.0, 0.5]
+    assert tokens[2:] == ["2c*4", "2d*4"]                         # la prima si accorcia fino alla seconda

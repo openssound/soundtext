@@ -559,6 +559,13 @@ BPM desde el compás 9; compás 4/4 desde el compás 1, 3/4 desde el compás 5,
 posteriores al primero se calculan automáticamente teniendo en cuenta el
 compás vigente en cada tramo.
 
+Los tempos pueden tener un decimal (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5,
+5: 101.4`), como los marcadores `tempo=72.5`; también el campo **Tempo** de
+la barra lo acepta. Una canción con un tempo decimal se guarda con
+`ST: 2.9` arriba: SoundText 1.8.0 y anteriores no leerían esa línea
+`Tempo:` (y lo avisan al abrirla). Con solo tempos enteros el archivo sigue
+siendo `ST: 2.8`, legible por todas.
+
 **Barra de progreso, resaltado y campos Tempo/Compás durante la
 reproducción**: el archivo MIDI exportado, la barra de progreso, el
 resaltado del token que está sonando en el editor y los campos **Tempo
@@ -1621,6 +1628,12 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     entre una frase y otra en las pistas de audio grabadas. Si corta el
     principio o el final de las notas, baja el umbral o alarga la
     liberación.
+  - **Reducción de ruido** (reducción, umbral): quita el soplido constante
+    (ventilador, amplificador, previo) incluso mientras se toca, al
+    contrario que la puerta de ruido. Lo aprende sola del tramo más
+    silencioso de la pista (no de los silencios digitales entre clips):
+    basta que la toma tenga medio segundo de solo ruido, al principio o al
+    final. Presets Ligera, Soplido, Fuerte.
   - **Volumen** (ganancia, ±24 dB): solo sube o baja el nivel. Por
     ejemplo −6 dB (preajuste «Margen para el máster») al principio de la
     cadena del máster cuando la suma de las pistas supera 0 dB: el
@@ -2288,6 +2301,20 @@ derecho en la etiqueta de la pista a la izquierda.
   compás `bar=N`, **▶ Play** lo toca desde su lugar en la canción, para que
   el ancla lleve al compás correcto (lo mismo vale para **▶ Play** sobre
   una selección).
+- **Rearmonizar...** (cajas solo de acordes): el mismo enriquecimiento de
+  la progresión generada, aplicado a una progresión ya escrita. El cursor
+  **Cuánto rico** va de 0 (la progresión tal cual) a séptimas y novenas,
+  dominantes secundarias y II-V hacia el acorde siguiente, sustitutos de
+  tritono y iv menor; **Otra versión** propone otra. Duraciones y silencios
+  se mantienen, y los acordes que no cambian quedan escritos como estaban.
+- **Armonizar la melodía...** (una caja con una melodía, o un clip de
+  audio con una parte a una voz): propone los acordes en tres versiones,
+  **Sencilla** (I, IV, V), **Diatónica** (todos los grados de la
+  tonalidad) y **Rica** (séptimas, dominantes secundarias; **Otra
+  versión** propone otra), uno por compás o por medio compás, en la
+  tonalidad reconocida en la melodía (modificable). Los acordes van a una
+  pista nueva "Acordes de Nombre", con una caja donde empieza la melodía;
+  desde ahí se pueden generar bajo y acompañamiento.
 - **Cambiar nombre...**
 - **Duplicar**: crea una copia en la misma pista, justo después del final
   del box original (o en el primer espacio libre disponible a partir de
@@ -2558,6 +2585,20 @@ percusión seleccionada):
 - **Final en el último compás**: el último compás se convierte en un golpe
   de cierre (crash y bombo en el primer tiempo, luego silencio), para
   terminar la canción o la sección.
+  de cierre (crash y bombo en el primer tiempo, luego silencio), para
+  terminar la canción o la sección.
+- **Redobles al final de las secciones** (marcado cuando las otras pistas
+  tienen cajas): un redoble completo en el último compás antes de cada caja
+  de las otras pistas (Estrofa, Estribillo...) en la Estructura de la
+  canción, y el crash cuando empieza la nueva sección, además de los
+  redobles cada N compases.
+- **Seguir la toma** (aparece cuando la canción tiene una pista de audio
+  con clips): SoundText escucha el groove de la toma (para cada
+  semicorchea del compás, con qué frecuencia y con qué fuerza hay un golpe)
+  y pone el bombo también en sus acentos fuertes y recurrentes, dejando la
+  caja donde está. El tempo es el de la canción: para una toma tocada libre
+  usa antes **Obtener el tempo de la toma...** en el clip. Los compases
+  propuestos cubren también los clips de audio.
 - **Intensidad**: ver arriba.
 
 **Componer → Generar en la pista seleccionada → Progresión de acordes...** (requiere un
@@ -2631,6 +2672,12 @@ otra pista del proyecto con acordes ya escritos):
   importación MIDI; el bloque se reconoce como acorde conocido; si no, la
   fundamental es la nota más grave). Una pista hecha solo de notas sueltas
   (melodía, arpegios) no tiene acordes que seguir.
+  También una **pista de audio** puede dar los acordes (en la lista como
+  "Nombre (audio)"): una toma de guitarra rítmica o de piano se analiza la
+  primera vez que la eliges (unos segundos), con el mismo reconocimiento
+  que el modo Acordes de la importación de audio, y los acordes de cada clip
+  están donde está el clip. Vale también para **Acompañamiento o riff** y
+  para la melodía, que saca de ellos la tonalidad.
 - **Estilo** (cada uno escribe su propia rejilla rítmica: negras, corcheas
   o, para el shuffle, tresillos de corchea):
   - **Fundamental**: repite la tónica durante toda la duración del acorde.
@@ -2657,6 +2704,65 @@ otra pista del proyecto con acordes ya escritos):
   segundo patrón (ver arriba).
 - **Intensidad**: ver arriba (también en **Generar acompañamiento/riff**).
 
+**Ejecución del instrumento** (bajo, y acompañamiento para guitarra o
+piano): la guitarra rasguea los acordes (hacia abajo en los tiempos, hacia
+arriba y más suave a contratiempo, las cuerdas con pocos milisegundos de
+diferencia); el piano usa el pedal, cambiado en cada acorde; el bajo añade
+notas fantasma apagadas antes de los ataques en el tiempo y algún slide
+hacia la nota del acorde siguiente.
+
+**Melodía a partir de la letra...** (menú de la pista, instrumentos a una
+voz): se escribe la letra, una línea por frase, y nace una melodía con una
+nota por sílaba sobre los acordes de la pista elegida, con los acentos de
+las palabras en los tiempos fuertes y las sílabas ya bajo las notas (ver
+2.13). Las palabras se dividen con las reglas del italiano; para dividirlas
+a tu manera escribe guiones (Ma-ri-a).
+
+**Componer → Arreglar la canción...**: a partir de las secciones de la
+pista de acordes (sus cajas) batería, bajo y acompañamiento en una sola
+pasada, en pistas nuevas con una caja por sección. La intensidad viene del
+nombre de la caja: Intro sin batería ni bajo, Estrofa ligera,
+Pre-estribillo y Puente en crescendo, Estribillo lleno, Final ligero con el
+golpe de cierre; la tabla del diálogo la cambia sección por sección. Cada
+sección termina con un redoble. Un solo Ctrl+Z lo quita todo.
+
+Una caja llamada **Stop** hace callar todas las partes durante su
+duración; un **Break** deja un solo golpe de conjunto en el primer tiempo
+(platillo y bombo, la fundamental, el acorde). En el diálogo:
+
+- **Final con nota larga y acorde sostenido**: en el último compás el bajo
+  sostiene la fundamental del último acorde y el acompañamiento sostiene
+  el acorde, junto con el golpe final de la batería. Con **Rallentando** el
+  tempo baja una cuarta parte en los últimos uno o dos compases: un
+  marcador `tempo=` por tiempo en la caja de la batería (o del bajo, si no
+  hay batería).
+- **Crescendo de frase**: la dinámica sube a lo largo de cada frase de
+  cuatro compases, y el primer golpe de cada estribillo tiene un acento
+  más.
+- **Dejar espacio a la melodía de**: en los compases en los que la melodía
+  elegida tiene muchas notas (al menos seis en 4/4) el acompañamiento toca
+  solo en el primer tiempo y a mitad de compás.
+- **Modulación**: el último estribillo y las secciones que lo siguen suben
+  medio tono o un tono; también se transponen sus cajas de acordes.
+
+**Tesitura** (Generar riff/melodía con un instrumento a una voz, Melodía a
+partir de la letra): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenor
+(Do3-La4) o Bajo (Mi2-Re4) mantienen la melodía en la extensión de esa voz
+en lugar de en toda la del instrumento, para una melodía que cantar.
+
+**Tocar en los silencios de** (riffs y melodías, cuando la canción tiene
+una pista de audio): la melodía calla donde canta la pista elegida y
+suena en sus pausas (al menos medio segundo), como un viento que responde
+a la voz.
+
+**Dejar espacio a las otras partes** (aparece cuando la canción ya tiene
+otras partes escritas): el acompañamiento se queda por encima del bajo y
+por debajo de la melodía, la melodía por encima del acompañamiento, en
+lugar de usar toda la extensión del instrumento; la ayuda muestra las
+notas usadas. **Estribillo reconocible** (melodías por frases): donde la
+pista de acordes repite una sección (dos cajas "Estribillo", o dos cajas
+iguales) la melodía vuelve igual que la primera vez.
+
 En **Generar acompañamiento** también está **Inversiones cercanas**
 (marcado por defecto): cada acorde elige la inversión más cercana a la
 anterior (conducción de voces), como haría un pianista — por ejemplo
@@ -2669,6 +2775,10 @@ tres notas (no para arpegios ni bicordes, que ya tienen su propio patrón).
 - **Variación cada N acordes**: cada N acordes usa un tratamiento
   ligeramente distinto del mismo acorde (salto de octava, nota distinta...)
   en lugar de repetir idéntico el patrón — 0 desactiva las variaciones.
+- **Seguir el bombo de** (aparece cuando la canción tiene una pista de
+  batería): los ataques del bajo caen en los golpes de bombo de la pista
+  elegida, con las notas del estilo, así bajo y batería tocan juntos. Al
+  inicio de cada acorde siempre hay una nota.
 
 Los dos muestran una vista previa editable a mano antes de confirmar (como
 la importación de audio, sección 10bis), y el resultado se añade a
@@ -2695,6 +2805,9 @@ acordes.
 
 **Desde dónde se guarda** («Guardar como estilo del generador...»):
 - clic derecho en un **box** en la vista Estructura de la canción;
+- clic derecho en un **clip de audio** (una toma): primero la conversión a
+  notas como en «Convertir en notación» (elige **Drums** para un estilo de
+  batería), luego el mismo diálogo;
 - menú **Componer → Estilos de los generadores → Guardar la pista como estilo...** (toda la pista seleccionada);
 - **Biblioteca MIDI** (menú Componer → Gestionar biblioteca MIDI):
   el botón debajo de la vista previa ofrece todos los canales del archivo
@@ -3253,6 +3366,23 @@ opcional.
   internamente una rejilla muy fina (1/64), por debajo del umbral de
   cuantización perceptible, sin salir de la sintaxis normal `N:`. La última
   combinación usada se recuerda al volver a abrir el diálogo.
+- **Ajustar la cuantización** (debajo de la rejilla, cerrado por defecto;
+  también en «Tocar con el teclado» y en «Convertir la pista en
+  notación»), para quien toca impreciso sin querer perder su manera de
+  tocar:
+  - **Fuerza**: cuánto se mueve cada nota hacia la rejilla (100% = del
+    todo, 50% = a mitad de camino);
+  - **Ventana**: solo se corrigen las notas cercanas a la rejilla; las más
+    lejanas (adelantos y retrasos intencionados) se quedan donde están;
+  - **Swing** (rejillas de 1/8 y 1/16): la segunda subdivisión de cada par
+    va más tarde, 66% = shuffle en tresillos, así una interpretación swing
+    no se endereza;
+  - **Descartar las notas más cortas que** y **Unir las notas iguales
+    dentro de**: quitan las cuerdas rozadas y los ataques reconocidos dos
+    veces.
+  Si las notas no acaban exactamente en la rejilla (fuerza o ventana por
+  debajo del 100%, swing), el texto se escribe en 1/64, como con «Off». Los
+  valores se recuerdan como la rejilla.
 - **Modo de análisis**: Melódica (detección de altura, para la voz o
   instrumentos que tocan una nota cada vez; para los acordes está el modo
   Acordes, más abajo) o
@@ -3337,6 +3467,10 @@ Acordes, con debajo solo las opciones de ese modo), **2. Audio**
   contenido actual de la vista previa con el instrumento de destino antes
   de confirmar con «Insertar en la pista» — útil para comprobar de oído la conversión (o tu
   propia variante) antes de sustituir el contenido de la pista/del pattern.
+- **Comparación**: junto a «▶ Escuchar» se elige qué oír: **solo el
+  resultado**, **primero el audio, luego el resultado** o **audio y
+  resultado juntos** (cada uno a medio volumen), para oír qué ha dejado
+  fuera la conversión.
 
 Nota sobre la calidad del reconocimiento: la detección de las notas
 melódicas segmenta el audio con un detector de ataques específico (fiable
@@ -3643,6 +3777,97 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   aquí**: se convierte en dos clips consecutivos del mismo archivo, que se
   pueden mover, recortar o eliminar por separado (por ejemplo para quitar un
   error en mitad de una toma).
+- **Fundidos**: con el ratón sobre el clip aparecen dos tiradores blancos
+  en las esquinas superiores; arrastra el izquierdo hacia la derecha para el
+  fundido de entrada y el derecho hacia la izquierda para el de salida. La
+  forma de onda y una curva oscura muestran el efecto. Para valores exactos
+  y para la forma (**Lineal** o **Potencia constante**, sin bajada de
+  volumen a la mitad, adecuada para fundidos cruzados): clic derecho →
+  **Fundidos...**. Incluso sin fundidos, cada borde de clip tiene un
+  microfundido de 5 ms que quita el clic de un corte en mitad de un sonido
+  (también en el punto de una división).
+- **Cuantizar el audio...** (clic derecho): para una toma tocada un poco
+  fuera de tiempo (batería, guitarra rítmica). SoundText encuentra los
+  ataques, corta el clip justo antes de cada uno y mueve los trozos hacia la
+  rejilla elegida, con **Fuerza**, **Ventana** y **Swing** como para las
+  notas (ver «Ajustar la cuantización»). Donde un trozo movido acaba encima
+  del siguiente se acorta hasta ahí, con un fundido cruzado breve; donde se
+  abre un hueco queda silencio. El archivo no cambia, y un solo Ctrl+Z lo
+  deshace todo.
+- **Quitar silencios...** (clic derecho): para una toma con pausas largas
+  (voz, solo). Donde el nivel permanece por debajo del **Umbral** (−45 dB)
+  al menos durante el tiempo elegido (300 ms), el clip se divide y la parte
+  vacía desaparece: sin soplido, respiraciones ni ruidos entre una frase y
+  otra. Cada trozo empieza poco antes de su ataque (**Margen**, 50 ms) y se
+  queda donde sonaba. El diálogo muestra enseguida cuántos trozos quedan y
+  cuántos segundos se quitan. El archivo no cambia, y un solo Ctrl+Z lo
+  deshace todo.
+- **Unir los trozos en un clip (N)** (clic derecho en uno de los trozos):
+  la cuantización, el comping y el tempo fijo dejan muchos box. Esta
+  opción pone los trozos vecinos de la misma toma en un archivo nuevo que
+  suena exactamente como ellos (fundidos, ganancia y time-stretch
+  incluidos), en su lugar: la vista vuelve a ser ligera. Los archivos de
+  partida se quedan.
+- **Mover el contenido (slip)**: **Alt+arrastrar** el clip para desplazar el
+  audio dentro de él, manteniendo su inicio y su duración (por ejemplo para
+  alinear un ataque con el pulso después de recortarlo). Si el escritorio
+  usa Alt+arrastrar para mover las ventanas (pasa en algunos escritorios
+  Linux), usa **Ctrl+Alt+arrastrar**.
+- **Normalizar (pico a −1 dB)** (clic derecho): ajusta la ganancia del clip
+  para que su pico llegue a −1 dB.
+- **Fundido cruzado automático**: donde un clip empieza antes de que
+  termine el anterior de la misma pista, los dos se cruzan durante toda la
+  superposición (a potencia constante), y la zona se dibuja con una X. Vale
+  para superposiciones de hasta 2 segundos: más allá los dos clips suenan
+  juntos (como con **Conservar ambas** tras una grabación). Un fundido del
+  clip más largo sigue siendo el suyo.
+- **Repetir en bucle**: **Ctrl+arrastrar el borde derecho** de un clip y el
+  clip se repite hasta donde llegues (una línea marca cada vuelta);
+  arrastrando de nuevo el borde derecho se alarga o se acorta la
+  repetición. Con clic derecho: **Repetir en bucle...** (cuántas veces) y
+  **Quitar la repetición**. Dividir un clip que se repite quita la
+  repetición.
+- **Curva de volumen** dentro del clip: **Ctrl+clic** en el clip añade un
+  punto (o clic derecho → **Curva de volumen: punto aquí**); arrastra los
+  puntos arriba y abajo (el 0 dB se engancha), **doble clic** en un punto
+  lo quita, **Quitar la curva de volumen** los quita todos. Entre un punto
+  y otro el volumen cambia gradualmente; la forma de onda lo muestra. Los
+  puntos se quedan en el audio al que se refieren también al recortar o
+  dividir el clip.
+- **Editor del clip...** (clic derecho): una ventana con la forma de onda
+  grande. La rueda hace zoom (hasta la muestra individual), Mayús+rueda
+  desplaza; arrastrando se elige un tramo, que se puede **escuchar**,
+  **silenciar**, **atenuar** unos dB, devolver a como estaba (**Quitar los
+  cambios del tramo**) o separar del resto (**Dividir en los bordes del
+  tramo**). Silenciar y atenuar escriben la curva de volumen: el archivo no
+  cambia y Ctrl+Z deshace.
+- **Silenciar clip** (clic derecho): el clip se queda en su sitio, dibujado
+  en gris, pero no suena; la misma opción lo vuelve a activar.
+- **Transponer...** (clic derecho): sube o baja el clip unos semitonos sin
+  cambiar su velocidad. Acepta decimales (0,1 = 10 cents), para corregir
+  una toma un poco desafinada.
+- **Comprobar la afinación...** (clic derecho): mide cuántos cents está el
+  clip por encima o por debajo del La a 440 Hz y, si se nota, propone
+  corregirlo entero con Transponer. La misma comprobación se hace sola
+  después de cada grabación, y no dice nada si la toma está afinada o es
+  batería.
+- **Reproducir al revés** e **Invertir la fase** (clic derecho): el clip
+  suena del final al principio, o con la fase invertida (para dos
+  micrófonos en el mismo instrumento que se cancelan). Dividir y recortar
+  un clip al revés sigue lo que se oye.
+- **Canal** (clic derecho, solo archivos estéreo): **Solo izquierdo**,
+  **Solo derecho** o **Mono (suma de los dos)**, por ejemplo cuando la
+  guitarra entró solo por la entrada 1 de una toma estéreo.
+- **Corregir la afinación...** (clic derecho): cada nota se acerca a la
+  nota más cercana de la escala de la canción (Tonalidad; si no está
+  establecida, estimada a partir de las notas), tanto como dice la
+  fuerza: 100% exactamente en la nota, 50% a medio camino. Trabaja nota
+  por nota, así que el vibrato y las inflexiones se mantienen. El archivo
+  no cambia; la primera vez el clip tarda unos segundos en prepararse.
+- **Tonalidad de la canción desde esta pista...** (menú **⋯** de la pista
+  de audio): reconoce los acordes de la pista y propone la tonalidad que
+  resulta como tonalidad de la canción, útil para la progresión y la
+  melodía. Ninguna de estas opciones toca el archivo, y Ctrl+Z las deshace.
 - **Convertir en notación...** (clic derecho en un clip): convierte en notas
   la parte del clip que suena, con el mismo motor que «Importar audio»
   (10bis), en una **nueva pista** con el instrumento
@@ -3650,13 +3875,57 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   un box que empieza donde empieza el clip. Funciona bien con partes
   monofónicas (voz, línea de guitarra o de bajo); el clip de audio se
   mantiene.
+- **Convertir la pista en notación...** (menú **⋯** de la pista de audio):
+  todos los clips a la vez, con las mismas opciones (melodía, percusión o
+  acordes, cuantización), en **una sola** pista de notas con un box por
+  clip, en la posición del clip y con su nombre. Los clips silenciados se
+  omiten. El resultado va a una pista nueva o, con **Añadir a la pista**, a
+  una pista de notas existente: donde ya hay un box, el nuevo va al espacio
+  libre más cercano.
+  La nueva pista de notas **recuerda de qué pista de audio viene** y con
+  qué opciones (en el archivo, desde la versión 2.10 del formato). Después
+  de cambiar el audio (silencios quitados, cuantización, una toma nueva)
+  basta con **Reconvertir desde 'Nombre'** en el menú **⋯** de la pista de
+  notas, o **Reconvertir las pistas vinculadas** en el de la pista de
+  audio: la conversión se rehace con las mismas opciones y los box nuevos
+  sustituyen a los viejos (Ctrl+Z devuelve los anteriores, con los cambios
+  hechos a mano). Para cambiar las opciones, vuelve a abrir **Convertir la
+  pista en notación...**: propone la pista vinculada con el destino
+  **Sustituir el contenido de la pista**. Los box añadidos con **Añadir a
+  la pista** no crean el vínculo.
+- **Melodía y acordes juntos**: en la conversión de la pista, con
+  **Melodía** se puede marcar **También los acordes, en otra pista
+  nueva**: de la misma toma (voz y guitarra, una canción entera) salen en
+  una sola pasada dos pistas, la melodía y los acordes.
 - **En el editor clásico** una pista de audio muestra, en solo lectura, la
   lista de sus clips: las acciones sobre la notación (Generar, Tocar con el
   teclado, Importar MIDI, Congelar acordes, Exportar MIDI) no valen para las
   pistas de audio y lo explican con un mensaje.
-- **Tempo**: el audio no se estira. Un clip queda anclado al tiempo en el
-  que empieza pero dura siempre los mismos segundos: si cambias el BPM
-  después de colocarlo, la barra de estado te lo recuerda.
+- **Tempo**: un clip queda anclado al tiempo en el que empieza. Una toma
+  grabada en SoundText **sigue el tempo de la canción**: si cambias el BPM
+  se alarga o se acorta (time-stretch, sin cambiar la afinación) y sigue a
+  tempo. Un archivo importado en cambio dura los mismos segundos; clic
+  derecho → **Seguir el tempo de la canción** para que lo siga a partir de
+  ahí. Si el tempo cambia dentro del clip (por ejemplo después de **Obtener
+  el tempo de la toma**), cada tramo sigue el tempo de su compás. **Velocidad (time-stretch)...** la cambia
+  a mano, en porcentaje; el box muestra la velocidad cuando no es 100%. La
+  primera escucha de un clip estirado tarda unos segundos, luego queda en
+  memoria.
+- **Obtener el tempo de la toma...** (clic derecho en un clip): para quien
+  toca libre, sin clic. SoundText encuentra el pulso de la toma y muestra
+  su tempo compás a compás (media, mínimo, máximo y la curva); elige el
+  compás en el que cae el primer pulso y **Aplicar el tempo**: la canción
+  toma un cambio de tempo por compás (línea `Tempo:` del archivo, con un
+  decimal, por ejemplo `101.4`) y el clip
+  se mueve para que los pulsos caigan en los tiempos. Después de la toma
+  vuelve el tempo de antes. Las notas escritas, el metrónomo, los
+  generadores y la conversión de la toma en notación siguen ese tempo. El
+  primer pulso tocado se toma como inicio de compás; en los compases
+  compuestos (6/8, 12/8) el pulso es la negra con puntillo. Como
+  alternativa, **Tempo fijo, la toma se adapta**: la canción se queda en el
+  tempo elegido y la toma se divide en cada compás, con cada trozo alargado
+  o acortado para durar un compás exacto (fundidos cruzados de 10 ms entre
+  los trozos).
 
 ### Grabar
 
@@ -3678,6 +3947,9 @@ ese punto). Se abre el diálogo de grabación:
 - **Nivel**: el medidor se mueve en cuanto se abre el diálogo: ajusta la
   ganancia en la interfaz de audio para que las partes más fuertes lleguen
   a unos -12/-6 dB sin encender el indicador rojo (saturación).
+- **Afinador**: debajo del medidor, la nota que llega de la entrada y
+  cuántos cents está por encima o por debajo de la correcta (La a 440 Hz),
+  en verde cuando está afinada dentro de 5 cents. Toca una nota cada vez.
 - **Empezar desde**: posición actual, inicio del bucle A (si está fijado) o
   inicio de la canción.
 - **Cuenta atrás** (0-4 compases de clic antes de que empiece la canción) y
@@ -3699,8 +3971,39 @@ SoundFont, solo las pistas de audio y el metrónomo), hace la cuenta atrás y
 graba hasta que pulses **■ Stop**. El diálogo muestra la duración y el pico
 de la toma (y avisa si ha saturado): **Conservar la toma** la añade a la
 pista como clip en el punto de partida; **Grabar** de nuevo la sustituye.
-Si la toma se superpone a clips que ya existen, SoundText pregunta si
-eliminarlos.
+Si la toma se superpone a clips que ya existen, SoundText pregunta qué
+hacer: **Como nueva toma** (propuesto: el clip conserva todas las tomas y
+se elige después), **Sustituir** (elimina los clips de debajo) o
+**Conservar ambas** (suenan juntas).
+
+**Modo** (con los puntos A y B del bucle fijados, menú **Reproducción →
+Bucle**):
+- **En bucle entre A y B**: el tramo A-B se repite sin pararse hasta que
+  pulsas Stop (la cuenta atrás solo al principio). Se graba un solo
+  archivo, y cada vuelta completa se convierte en una toma del mismo clip
+  («Vuelta 1», «Vuelta 2»...); queda activa la última. Una vuelta
+  interrumpida por el Stop no cuenta.
+- **Punch-in entre A y B**: la canción suena desde el **pre-roll** (los
+  compases elegidos antes de A), pero de la grabación solo se conserva el
+  tramo A-B, con fundidos breves en los dos extremos. Va como nueva toma
+  del clip que hay ahí: el clip se divide en A y en B y solo ese tramo
+  recibe la toma, así que el original sigue siempre disponible. La
+  grabación se para sola un segundo después de B. Una toma normal más
+  larga que el clip sobre el que va lo alarga (hasta el clip siguiente).
+
+**Tomas de un clip**: un clip con varias tomas muestra en su box cuál
+suena (p. ej. `[2/3]`); clic derecho → **Tomas** para elegir otra,
+**Comping...** o **Conservar solo la toma activa** (los archivos de las
+demás se quedan en la carpeta del proyecto).
+
+**Comping**: la ventana muestra las tomas una debajo de otra con su forma
+de onda; arrastrando sobre una toma se usa en ese tramo (ajustando a la
+semicorchea; Mayús: libre), un clic la elige para todo el tramo bajo el
+ratón. La fila **Comp** de arriba muestra el resultado, **▶ Escuchar el
+comp** lo reproduce. **Aplicar el comp** divide el clip en los tramos
+elegidos, con un fundido cruzado de 10 ms en cada punto de cambio; cada
+tramo conserva todas las tomas, así que el comping se puede rehacer. Un
+solo Ctrl+Z lo deshace.
 
 Para oírte mientras tocas usa la **monitorización directa** de la interfaz
 de audio (rueda o botón «direct monitor»): no tiene retardo. SoundText solo
@@ -3734,12 +4037,32 @@ opcionales). Si un archivo ya no se encuentra, el clip se queda en el
 proyecto, dibujado en rojo, y no suena: clic derecho → **Localizar
 archivo...** para indicarlo de nuevo.
 
+**Congelar en audio** (menú de la pista, también para pistas de notas): la
+pista se convierte en un clip de audio en una pista nueva "Nombre
+(congelada)", calculado una sola vez tal como suena en Solo (notas,
+instrumento plugin o SFZ, efectos, NAM, volumen y panorama). La pista
+original se queda en la canción, silenciada y con ❄ bajo el nombre;
+**Descongelar** quita la pista de audio y la hace sonar de nuevo. Sirve en
+ordenadores lentos: Play ya no recalcula las pistas pesadas.
+
+**Caché en disco**: las pistas procesadas por efectos, los instrumentos
+plugin y el time-stretch se guardan en `<Proyecto>_audio/cache/` y se
+reutilizan al volver a abrir el proyecto, en lugar de rehacerlos. Un
+cambio (notas, clips, efectos, archivos) los recalcula; la carpeta no
+supera 2 GB (se quitan los renders usados hace más tiempo) y se puede
+borrar cuando se quiera.
+
 ### Exportar
 
 - **Proyecto → Exportar → Mezcla de audio (WAV)...** exporta la canción tal
   como suena (pistas audibles, audio incluido) a un WAV de 48 kHz / 24 bits.
   Hace falta un SoundFont para las pistas con notas; una canción hecha solo
   de pistas de audio se exporta también sin él.
+- **Proyecto → Exportar → Todas las pistas, una por archivo (stems)...**
+  escribe un WAV por cada pista no silenciada en una carpeta "Nombre -
+  pistas", con los efectos o secas. Todas empiezan al principio de la
+  canción y duran lo mismo: en otro programa (o para otro músico) se
+  alinean solas.
 - **Pista → Exportar esta pista → WAV...**, o **clic derecho en el nombre de
   una pista → Exportar WAV (solo esta)...**, exporta a un WAV solo esa pista, con notación o audio, tal como sonaría en
   Solo (el Solo/Mute de las demás pistas no cuenta). Para las pistas con
@@ -3821,6 +4144,11 @@ alineada con lo que se oye.
   bucle** los pone a cero. La sección aparece como una franja de color en la
   regla de la Estructura de la canción. Se puede activar, mover o quitar el
   bucle incluso mientras la canción suena, sin interrupciones.
+- **Velocidad de escucha** (menú desplegable en la barra, 100%-50%):
+  ralentiza la canción sin cambiar su afinación, para practicar un pasaje
+  (también en bucle); el metrónomo la sigue. La primera vez a una
+  velocidad nueva la canción tarda unos segundos en prepararse. No cambia
+  ni la canción ni la exportación.
 - El bucle requiere la reproducción directa descrita arriba (biblioteca
   FluidSynth + `sounddevice`): con los reproductores alternativos la canción no se
   repite, y un mensaje en la barra de estado lo indica.
