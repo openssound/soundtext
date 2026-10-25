@@ -41,7 +41,7 @@ import tempfile
 import threading
 import time
 import wave
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import audio_stream
 from .effects import DEFAULT_REVERB_ROOM, DRY_SYNTH_ROOM, apply_reverb, reverb_cli_options
@@ -774,14 +774,54 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
     return mixed, rate
 
 
+END_FADE_SECONDS = 0.01
+
+
 def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
-                              tracks: Optional[List[Track]] = None, dry: bool = False) -> None:
+                              tracks: Optional[List[Track]] = None, dry: bool = False,
+                              skip_seconds: float = 0.0, length_seconds: Optional[float] = None,
+                              tempo: Optional[float] = None) -> None:
     """Esporta in out_path (WAV 48 kHz, 24 bit, stereo) il mix delle tracce
     udibili, o solo di tracks, eventualmente asciutte (vedi
-    render_project_mix, di cui solleva gli stessi errori)."""
+    render_project_mix, di cui solleva gli stessi errori), senza i primi
+    'skip_seconds'. Con 'length_seconds' il WAV dura esattamente tanto: la
+    coda dopo la fine (rilascio delle note, riverbero) si taglia con una
+    dissolvenza di END_FADE_SECONDS, cosi' un box esportato dura quanto il box.
+    Con 'tempo' (vedi constant_tempo) il WAV porta il suo tempo (blocco
+    "acid", vedi core.audio_tracks.write_acid_tempo), con la metrica del brano."""
+    import numpy as np
     from .audio_tracks import write_wav
     mixed, rate = render_project_mix(project, stop_check, tracks=tracks, dry=dry)
-    write_wav(out_path, mixed, rate, bits=24)
+    if skip_seconds > 0:
+        mixed = mixed[int(round(skip_seconds * rate)):]
+    if length_seconds is not None:
+        frames = max(0, int(round(length_seconds * rate)))
+        if len(mixed) > frames:
+            mixed = np.array(mixed[:frames], dtype=np.float32)
+            fade = min(frames, int(END_FADE_SECONDS * rate))
+            if fade:
+                mixed[frames - fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)[:, None]
+        elif len(mixed) < frames:
+            mixed = np.concatenate([mixed, np.zeros((frames - len(mixed), mixed.shape[1]), np.float32)])
+    write_wav(out_path, mixed, rate, bits=24, tempo=tempo, meter=_wav_meter(project))
+
+
+def _wav_meter(project: Project) -> tuple:
+    """(numeratore, denominatore) della metrica del brano, per il blocco "acid"."""
+    try:
+        num, den = (int(x) for x in str(project.time_sig).split("/"))
+        return num, den
+    except ValueError:
+        return 4, 4
+
+
+def constant_tempo(project: Project) -> Optional[float]:
+    """Il tempo del brano se e' lo stesso dall'inizio alla fine (nessun cambio
+    per battuta ne' marcatore tempo= diverso); None altrimenti: un WAV con
+    il tempo che cambia dentro non ha un tempo solo da scrivere."""
+    from .tempo_map import build_tempo_beat_map
+    values = {float(bpm) for _beat, bpm in build_tempo_beat_map(project)}
+    return values.pop() if len(values) == 1 else None
 
 
 def stem_tracks(project: Project) -> List[Track]:
@@ -805,6 +845,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
     if not tracks:
         raise RuntimeError(tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
     os.makedirs(out_dir, exist_ok=True)
+    tempo, meter = constant_tempo(project), _wav_meter(project)
     paths, lengths, longest = [], [], 0
     for i, track in enumerate(tracks):
         if stop_check and stop_check():
@@ -812,7 +853,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
         mixed, rate = render_project_mix(project, stop_check, tracks=[track], dry=dry, allow_empty=True)
         safe = re.sub(r'[\\/:*?"<>|]', "_", track.name).strip() or "traccia"
         path = os.path.join(out_dir, f"{i + 1:02d} {safe}{' (asciutta)' if dry else ''}.wav")
-        write_wav(path, mixed, rate, bits=24)
+        write_wav(path, mixed, rate, bits=24, tempo=tempo, meter=meter)
         paths.append(path)
         lengths.append(len(mixed))
         longest = max(longest, len(mixed))
@@ -822,7 +863,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
         if length < longest:                       # coda di silenzio fino alla fine del brano
             samples, rate = read_wav(path)
             pad = np.zeros((longest - length, samples.shape[1]), dtype=np.float32)
-            write_wav(path, np.concatenate([samples, pad]), rate, bits=24)
+            write_wav(path, np.concatenate([samples, pad]), rate, bits=24, tempo=tempo, meter=meter)
     return paths
 
 
@@ -1253,6 +1294,186 @@ def slowed_entry(entry: tuple, speed: float) -> tuple:
     return np.clip(np.round(y * 32767.0), -32768, 32767).astype(np.int16), rate
 
 
+class SlowedMix:
+    """Il mix rallentato a 'speed' riempito un pezzo alla volta in un thread
+    (vedi slowed_entry, che lo fa tutto insieme): l'ascolto parte appena e'
+    pronto il pezzo da cui si comincia, invece di aspettare tutto il brano
+    (Rubber Band rallenta tre minuti di mix in quasi un minuto). Si comincia
+    dal pezzo di 'start_seconds' e si va avanti fino in fondo, poi si torna
+    all'inizio; i pezzi si sovrappongono di CROSSFADE con una dissolvenza
+    incrociata, cosi' alle giunture non c'e' un clic. Il riempimento va
+    piu' veloce dell'ascolto: chi suona legge 'samples' mentre si riempie."""
+
+    CHUNK_SECONDS = 8.0      # di mix originale per pezzo
+    PAD_SECONDS = 0.5        # di contesto ai lati di ogni pezzo per Rubber Band
+    CROSSFADE = 0.02         # secondi di dissolvenza fra due pezzi
+
+    def __init__(self, entry: tuple, speed: float):
+        import numpy as np
+        samples, self.rate = entry
+        self.speed = speed
+        self._source = samples
+        n = len(samples)
+        self.samples = np.zeros((int(round(n / speed)), samples.shape[1]), dtype=np.int16)
+        chunk = int(self.CHUNK_SECONDS * self.rate)
+        self._bounds = [(a, min(n, a + chunk)) for a in range(0, n, chunk)] or [(0, 0)]
+        self._done = [False] * len(self._bounds)
+        self._order: List[int] = []
+        self._cond = threading.Condition()
+        self._cancelled = False
+        self._thread: Optional[threading.Thread] = None
+
+    @property
+    def complete(self) -> bool:
+        return all(self._done)
+
+    def entry(self) -> tuple:
+        return self.samples, self.rate
+
+    def _chunk_at(self, seconds: float) -> int:
+        frame = int(max(0.0, seconds) * self.rate)
+        return min(len(self._bounds) - 1, frame // max(1, int(self.CHUNK_SECONDS * self.rate)))
+
+    def start_from(self, seconds: float):
+        """Riempie prima dal pezzo di 'seconds' (il thread parte la prima volta)."""
+        first = self._chunk_at(seconds)
+        with self._cond:
+            count = len(self._bounds)
+            # da li' in fondo, poi all'indietro verso l'inizio: cosi' ogni pezzo
+            # trova scritto un solo vicino, a cui allinearsi (vedi _fill)
+            self._order = [i for i in list(range(first, count)) + list(range(first - 1, -1, -1))
+                           if not self._done[i]]
+            if self._thread is None:
+                self._thread = threading.Thread(target=self._work, daemon=True)
+                self._thread.start()
+            self._cond.notify_all()
+
+    def wait_ready(self, seconds: float, timeout: Optional[float] = None) -> bool:
+        """Aspetta il pezzo di 'seconds' (secondi del brano); False se scade o
+        e' annullato."""
+        index = self._chunk_at(seconds)
+        with self._cond:
+            return self._cond.wait_for(lambda: self._done[index] or self._cancelled, timeout) and \
+                self._done[index]
+
+    def cancel(self):
+        with self._cond:
+            self._cancelled = True
+            self._cond.notify_all()
+
+    def _work(self):
+        while True:
+            with self._cond:
+                if self._cancelled or not self._order:
+                    return
+                index = self._order.pop(0)
+            try:
+                self._fill(index)
+            except Exception:
+                log.warning("Rallentamento dell'ascolto non riuscito", exc_info=True)
+            with self._cond:
+                self._done[index] = True
+                self._cond.notify_all()
+
+    def _fill(self, index: int):
+        import numpy as np
+        from .audio_tracks import stretched
+        a, b = self._bounds[index]
+        if b <= a:
+            return
+        pad = int(self.PAD_SECONDS * self.rate)
+        fade = int(self.CROSSFADE * self.rate / self.speed)
+        lo, hi = max(0, a - pad), min(len(self._source), b + pad)
+        x = self._source[lo:hi].astype(np.float32) / 32767.0
+        y = stretched(x, self.rate, 1.0 / self.speed)
+        y = np.clip(np.round(y * 32767.0), -32768, 32767)
+        total = len(self.samples)
+        origin = int(round(lo / self.speed))              # frame di uscita di y[0]
+        out_a = int(round(a / self.speed))
+        out_b = total if b >= len(self._source) else min(total, int(round(b / self.speed)) + fade)
+        start, stop = max(out_a, origin), min(out_b, origin + len(y))
+        if stop <= start:
+            return
+        joined = index > 0 and self._done[index - 1]
+        joined_next = index + 1 < len(self._bounds) and self._done[index + 1] and out_b < total
+        if joined or joined_next:
+            # le fasi dei due pezzi non coincidono: si sposta il pezzo (di
+            # pochi ms) dove la sua testa (o la coda) somiglia di piu' a quel
+            # che il vicino ha gia' scritto, se no la dissolvenza incrociata
+            # fa un buco di volume
+            at = start if joined else out_b - fade
+            shift = self._best_shift(y, at - origin, self.samples[at:at + fade])
+            origin -= shift
+            start, stop = max(out_a, origin), min(out_b, origin + len(y))
+            if stop <= start:
+                return
+        part = y[start - origin:stop - origin]
+        # testa e coda condivise con i pezzi vicini: se il vicino c'e' gia',
+        # dissolvenza incrociata con quel che ha scritto
+        weight = np.ones(len(part), dtype=np.float32)
+        if joined:
+            head = min(fade, len(part))
+            weight[:head] = np.linspace(0.0, 1.0, head, endpoint=False, dtype=np.float32)
+        if joined_next:
+            tail = min(fade, len(part))
+            weight[len(part) - tail:] = np.minimum(weight[len(part) - tail:],
+                                                   np.linspace(1.0, 0.0, tail, dtype=np.float32))
+        old = self.samples[start:stop].astype(np.float32)
+        mixed = part * weight[:, None] + old * (1.0 - weight[:, None])
+        self.samples[start:stop] = np.clip(np.round(mixed), -32768, 32767).astype(np.int16)
+
+    ALIGN_SECONDS = 0.012    # spostamento massimo di un pezzo per allinearne la fase
+
+    def _best_shift(self, y, at: int, previous) -> int:
+        """Lo spostamento (in frame, +/- ALIGN_SECONDS) di y per cui y[at:...]
+        somiglia di piu' a 'previous' (la coda gia' scritta del vicino)."""
+        import numpy as np
+        reach = int(self.ALIGN_SECONDS * self.rate)
+        ref = previous.astype(np.float32).sum(axis=1)
+        if len(ref) == 0 or not ref.any():
+            return 0
+        mono = y.sum(axis=1)
+        best, best_score = 0, -np.inf
+        for shift in range(-reach, reach + 1):
+            lo = at + shift
+            if lo < 0 or lo + len(ref) > len(mono):
+                continue
+            seg = mono[lo:lo + len(ref)]
+            score = float(np.dot(seg, ref)) / (float(np.linalg.norm(seg)) * float(np.linalg.norm(ref)) + 1e-9)
+            if score > best_score:
+                best, best_score = shift, score
+        return best
+
+
+def _store_when_complete(key: str, job: "SlowedMix"):
+    """Mette in cache il mix rallentato quando e' tutto pronto."""
+    with job._cond:
+        job._cond.wait_for(lambda: job.complete or job._cancelled)
+    if job.complete:
+        _cache_put(key, job.entry())
+
+
+# Il rallentamento in corso (uno solo: un brano diverso o un'altra velocita'
+# annulla quello vecchio), per chiave della cache.
+_slowed_job: Optional[Tuple[str, SlowedMix]] = None
+_slowed_job_lock = threading.Lock()
+
+
+def slowed_mix(key: str, entry: tuple, speed: float, start_seconds: float) -> SlowedMix:
+    """Il SlowedMix di 'key' (quello in corso, se e' lo stesso), che riempie
+    da 'start_seconds'."""
+    global _slowed_job
+    with _slowed_job_lock:
+        if _slowed_job is not None and _slowed_job[0] != key:
+            _slowed_job[1].cancel()
+            _slowed_job = None
+        if _slowed_job is None:
+            _slowed_job = (key, SlowedMix(entry, speed))
+        job = _slowed_job[1]
+    job.start_from(start_seconds)
+    return job
+
+
 COMPARE_MODES = ("result", "sequence", "together")
 COMPARE_GAP_SECONDS = 0.6
 
@@ -1410,6 +1631,11 @@ class PlaybackEngine:
         # del thread vecchio, fuori dal controllo di Stop.
         self._proc_lock = threading.Lock()
         self._rendering = False
+        # Da play() finche' l'audio non parte davvero (o la riproduzione
+        # finisce): fra il rendering e l'apertura dello stream is_playing()
+        # non deve dire False, o chi controlla se e' finita la ferma subito
+        # (l'anteprima dei box, vedi ArrangementView._check_preview_still_playing).
+        self._starting = False
         self._using_winsound = False
         self._win_proc_handle = None
         self._pcm_player = None   # audio_stream.PcmPlayer in corso, se in streaming
@@ -1475,7 +1701,7 @@ class PlaybackEngine:
         # ancora effettivamente in corso su Windows senza un player CLI
         # installato (winsound) o senza alcun synth (player MIDI di sistema).
         player = self._pcm_player
-        return (self._rendering or self._using_winsound
+        return (self._starting or self._rendering or self._using_winsound
                 or (player is not None and player.is_active())
                 or self._win_proc_handle is not None
                 or (self._proc is not None and self._proc.poll() is None))
@@ -1636,6 +1862,7 @@ class PlaybackEngine:
                     return None
                 proc = subprocess.Popen(cmd, **kwargs)
                 self._proc = proc
+                self._starting = False
                 return proc
 
         def _start(cmd, **kwargs):
@@ -1662,12 +1889,21 @@ class PlaybackEngine:
                 slow_key = f"{cache_key}|speed{speed:.3f}"
                 slow = _cache_get(slow_key)
                 if slow is None:
+                    # si comincia appena e' pronto il pezzo da cui si parte;
+                    # il resto si riempie mentre si ascolta (vedi SlowedMix)
+                    job = slowed_mix(slow_key, entry, speed, start_seconds)
                     self._rendering = True
                     try:
-                        slow = slowed_entry(entry, speed)
+                        while not job.wait_ready(start_seconds, timeout=0.2):
+                            if self._play_token != my_token:
+                                return True
                     finally:
                         self._rendering = False
-                    _cache_put(slow_key, slow)
+                    if job.complete:
+                        _cache_put(slow_key, job.entry())
+                    else:
+                        threading.Thread(target=_store_when_complete, args=(slow_key, job), daemon=True).start()
+                    slow = job.entry()
                 if self._play_token != my_token:
                     return True
                 samples = slow[0]
@@ -1685,6 +1921,7 @@ class PlaybackEngine:
                     log.warning("Stream audio non avviabile: si usa il player esterno", exc_info=True)
                     return False
                 self._pcm_player = player
+                self._starting = False
             if on_audio_started:
                 on_audio_started()
             player.wait()
@@ -1980,9 +2217,13 @@ class PlaybackEngine:
                 if not stem_job:
                     for stem in stems or []:
                         stem.cleanup()
+                with self._proc_lock:
+                    if self._play_token == my_token:
+                        self._starting = False
                 if on_finished:
                     on_finished(self.backend_available())
 
+        self._starting = True
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
         return self.backend_available()
@@ -2044,6 +2285,7 @@ class PlaybackEngine:
     def stop(self):
         with self._proc_lock:
             self._play_token += 1
+            self._starting = False
             if self._proc and self._proc.poll() is None:
                 self._proc.terminate()
             self._proc = None

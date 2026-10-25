@@ -543,3 +543,21 @@ def test_fade_and_mute_round_trip_in_the_st_file_and_old_files_stay_identical(tm
     odd = parse_project_text(old.replace("gain=-3", "gain=-3 fade_shape=sigmoide boh=1 futuro"),
                              base_dir=str(tmp_path)).get_track("Voce").audio_clips[0]
     assert odd.fade_shape == "linear" and not odd.muted and odd.gain_db == -3
+
+
+@pytest.mark.parametrize("channels", [1, 2])
+def test_wav_tempo_chunk_round_trip(tmp_path, channels):
+    """Il tempo nel blocco "acid": scritto da write_wav, riletto da
+    read_wav_tempo; i campioni restano quelli (anche con un numero dispari
+    di byte di dati, 24 bit mono)."""
+    from core.audio_tracks import read_wav, read_wav_tempo, write_wav
+    path = str(tmp_path / "loop.wav")
+    samples = np.linspace(-0.5, 0.5, 4801 * channels, dtype=np.float32).reshape(-1, channels)
+    write_wav(path, samples, 48000, bits=24, tempo=126.0, meter=(3, 4))
+    assert read_wav_tempo(path) == 126.0
+    back, rate = read_wav(path)
+    assert rate == 48000 and back.shape == samples.shape and np.allclose(back, samples, atol=1e-5)
+    plain = str(tmp_path / "ripresa.wav")
+    write_wav(plain, samples, 48000)
+    assert read_wav_tempo(plain) is None
+    assert read_wav_tempo(str(tmp_path / "nessuno.wav")) is None

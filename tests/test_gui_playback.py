@@ -301,3 +301,35 @@ if __name__ == "__main__":
         passed += 1
         print(f"OK  {t.__name__}")
     print(f"\n{passed}/{len(tests)} test superati.")
+
+
+def test_playback_time_follows_fermatas_and_waits_for_the_tail(monkeypatch):
+    """Una corona alla fine (sinfonica_1: 4d*2$fermata) allunga il brano:
+    tempo e testina la contano come l'esportazione MIDI; e a fine brano si
+    resta in riproduzione finche' l'audio (coda del riverbero) non e'
+    finito, senza click del metronomo sulla coda."""
+    from gui.main_window import MainWindow
+    from core.tempo_map import seconds_for_beats
+    w = MainWindow()
+    w.project.tempo_bpm = 60
+    w.project.add_track("Archi", "Piano", "4: c*4 d*4 e*4 4f*4$fermata")
+    plain = seconds_for_beats([(0.0, 60)], 7.0)
+    heard = seconds_for_beats(w._tempo_map_as_heard(), 7.0)
+    assert heard > plain + 1.0                          # la corona dura piu' delle sue battute
+
+    w._playback_tempo_map = w._tempo_map_as_heard()
+    w._playback_metrica_map = []
+    w._playback_duration_beats = 7.0
+    w._playback_start_wall = time.time()
+    w._playback_timer.start()
+    monkeypatch.setattr(w, "_current_elapsed_beats", lambda: 9.0)       # gia' oltre la fine
+    playing = {"value": True}
+    monkeypatch.setattr(w.playback, "is_playing", lambda: playing["value"])
+    w._update_playback_progress()
+    assert w._playback_start_wall is not None and w._playback_timer.isActive()   # la coda suona ancora
+    assert w.playback_progress.format().split(" / ")[0] == w.playback_progress.format().split(" / ")[1]
+    playing["value"] = False
+    w._update_playback_progress()
+    assert w._playback_start_wall is None and not w._playback_timer.isActive()
+    w._dirty = False
+    w.close()

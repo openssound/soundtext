@@ -674,3 +674,60 @@ def test_support_entry_appears_only_with_a_support_url(monkeypatch):
     w.support_action.trigger()
     assert opened == ["https://example.org/sostieni"]
     w.close()
+
+
+def test_expand_patterns_in_text_mode():
+    """Modalita' testo: Espandi i pattern c'e' solo per una traccia che usa
+    dei pattern e mostra, in sola lettura, il loro contenuto al posto dei
+    %Nome; l'editor vero resta com'e'."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.notation import Pattern
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    w.show()
+    w.project.patterns["Giro"] = Pattern("Giro", ["c*4", "e*4"])
+    w.project.add_track("Con pattern", "Piano", "4: 2%Giro g*4")
+    w.project.add_track("Senza", "Piano", "4: c*4 d*4")
+    w.refresh_mixer()
+    w.select_track("Senza")
+    assert not (not w.expand_patterns_check.isHidden())
+    w.select_track("Con pattern")
+    assert (not w.expand_patterns_check.isHidden())
+    w.expand_patterns_check.setChecked(True)
+    assert (not w.expanded_editor.isHidden()) and not (not w.editor.isHidden())
+    assert w.expanded_editor.toPlainText() == "4: c*4 e*4 c*4 e*4 g*4"
+    assert w.expanded_editor.isReadOnly()
+    assert w.editor.toPlainText() == "4: 2%Giro g*4"
+    w.select_track("Senza")                    # una traccia senza pattern: torna l'editor vero
+    assert not (not w.expand_patterns_check.isHidden()) and not w.expand_patterns_check.isChecked()
+    assert (not w.editor.isHidden()) and not (not w.expanded_editor.isHidden())
+    w.close()
+
+
+def test_expanded_patterns_highlight_the_playing_note():
+    """Con Espandi i pattern l'evidenziazione della nota che suona passa
+    all'editor espanso (e torna a quello vero togliendo la spunta)."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.notation import Pattern
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    w.project.patterns["Giro"] = Pattern("Giro", ["c*4", "e*4"])
+    w.project.add_track("Con pattern", "Piano", "4: 2%Giro g*4")
+    w.refresh_mixer()
+    w.select_track("Con pattern")
+    w.expand_patterns_check.setChecked(True)
+    w._update_playback_highlight(1.5)           # la seconda nota: e*4 del primo giro
+    selections = w.expanded_editor.extraSelections()
+    assert len(selections) == 1 and selections[0].cursor.selectedText() == "e*4"
+    assert w.editor.extraSelections() == []
+    w.expand_patterns_check.setChecked(False)
+    w._update_playback_highlight(1.5)
+    assert w.editor.extraSelections()[0].cursor.selectedText() == "2%Giro"
+    assert w.expanded_editor.extraSelections() == []
+    w.close()

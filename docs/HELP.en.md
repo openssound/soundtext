@@ -2192,6 +2192,10 @@ the track label on the left.
   box uses `%Name` references) shows the content of the patterns instead of
   the references, read-only: with Play the note being played is highlighted
   inside the patterns too. Unchecking it brings back the `%Name`s.
+- The same checkbox is also in the track's text editor, next to its name
+  (visible only if the track uses `%Name` references): it shows the track
+  with the content of the patterns, read-only, until you uncheck it; during
+  playback it highlights the note being played inside the patterns too.
 - **Double-clicking a `%Name`** (in the text editor or in the box editor)
   opens the pattern library on that pattern, with the track's instrument in
   "Listen with:".
@@ -2229,6 +2233,11 @@ the track label on the left.
   different tracks (that is how you move a box to another track).
 - **Export as .box...** / **Import from .box...** (on an empty spot): see
   below.
+- **Export as WAV...**: just the box in a WAV, as it sounds in Solo with
+  its track (instrument, effects, volume and pan), exactly as long as the
+  box: the tail after the end is cut with a short fade. The WAV carries its
+  tempo: imported into another song it follows that song's tempo (see audio
+  tracks, Tempo).
 - **Delete**.
 
 ### Undo/Redo (Ctrl+Z / Ctrl+Y)
@@ -2441,6 +2450,12 @@ regenerates everything from scratch. The cut never breaks a note: if a
 note crosses the start or the end of the section (an anticipation, a long
 chord) the section widens to include it. With variability at 0% the button
 is disabled (the result would be identical).
+
+All the generators in **Compose → Generate into the selected track** add
+the result after what the track already has: in Text mode at the end of its
+text; in the Song structure view as a new box after the last one (Groove,
+Basso, Giro, Accompagnamento or Riff), and free text already written
+becomes a box too.
 
 **Compose → Generate into the selected track → Drums...** (requires a selected percussion
 track):
@@ -3701,6 +3716,11 @@ SoundText while the rest of the song plays (see "Recording" below), or by
   gets longer or shorter (time-stretch, without changing the pitch) and
   stays in time. An imported file instead lasts the same number of seconds;
   right-click → **Follow the song tempo** to make it follow from then on.
+  The exception is a WAV that carries its own tempo (WAVs exported by
+  SoundText, loops from other DAWs, in the "acid" chunk): it follows the
+  song tempo right away and lasts the same bars, for example a 4-bar box
+  exported at 126 BPM and imported into a song at 120. If the stretch is
+  more than 25% the status bar warns about it.
   If the tempo changes inside the clip (for example after **Get the tempo
   from the take**), each stretch follows the tempo of its own bar. **Speed
   (time-stretch)...** changes it by hand, in percent; the box shows the
@@ -3926,7 +3946,7 @@ so it stays aligned with what you hear.
   appears as a coloured band on the Song structure ruler. You can turn on,
   move or remove the loop even while the song is playing, without
   interruptions.
-- **Playback speed** (drop-down in the toolbar, 100%-50%): slows the song
+- **Playback speed** (drop-down in the toolbar, 100%-50%, or Playback → Playback speed): slows the song
   down without changing its pitch, to practice a passage (also in a loop);
   the metronome follows. The first time at a new speed the song takes a
   few seconds to prepare. It changes neither the song nor the export.

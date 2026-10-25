@@ -2238,6 +2238,11 @@ tasto destro sull'etichetta della traccia a sinistra.
   il box usa dei `%Nome`) mostra il contenuto dei pattern al posto dei
   richiami, in sola lettura: con Play si vede evidenziata la nota che
   suona anche dentro i pattern. Togliendo la spunta tornano i `%Nome`.
+- La stessa casella c'e' anche nell'editor di testo della traccia, accanto
+  al suo nome (visibile solo se la traccia usa dei `%Nome`): mostra la
+  traccia con il contenuto dei pattern, in sola lettura, finche' non si
+  toglie la spunta; durante la riproduzione evidenzia la nota che suona
+  anche dentro i pattern.
 - **Doppio click su un `%Nome`** (nell'editor di testo o in quello del
   box) apre la libreria dei pattern già su quel pattern, con lo strumento
   della traccia in "Ascolta con:".
@@ -2275,6 +2280,11 @@ tasto destro sull'etichetta della traccia a sinistra.
   tracce diverse (è così che si sposta un box su un'altra traccia).
 - **Esporta come .box...** / **Importa da .box...** (sul punto vuoto):
   vedi sotto.
+- **Esporta come WAV...**: il solo box in un WAV, come si sente in Solo
+  con la sua traccia (strumento, effetti, volume e pan), lungo esattamente
+  quanto il box: la coda dopo la fine si taglia con una breve dissolvenza.
+  Il WAV porta scritto il suo tempo: importato in un altro brano ne segue
+  il tempo (vedi le tracce audio, Tempo).
 - **Elimina**.
 
 ### Annulla/Ripeti (Ctrl+Z / Ctrl+Y)
@@ -2490,6 +2500,12 @@ variazione** rigenera tutto da capo. Il taglio non spezza mai una nota: se
 una nota attraversa l'inizio o la fine del tratto (un anticipo, un accordo
 lungo) il tratto si allarga fino a comprenderla. Con la variabilità a 0% il
 pulsante è disattivato (il risultato sarebbe identico).
+
+Tutti i generatori di **Componi → Genera nella traccia selezionata** accodano
+il risultato a quel che la traccia ha gia': in modalita' Testo alla fine del
+suo testo; nella vista Struttura brano come un box nuovo dopo l'ultimo
+(Groove, Basso, Giro, Accompagnamento o Riff), e un testo libero gia' scritto
+diventa a sua volta un box.
 
 **Componi → Genera nella traccia selezionata → Batteria...** (richiede una traccia
 percussiva selezionata):
@@ -3800,7 +3816,12 @@ oppure **importando** file registrati con un altro programma.
   registrata in SoundText **segue il tempo del brano**: se cambi il BPM si
   allunga o si accorcia (time-stretch, senza cambiare l'intonazione) e resta
   a tempo. Un file importato invece dura gli stessi secondi; tasto destro →
-  **Segui il tempo del brano** per farlo seguire da li' in poi. Se il tempo
+  **Segui il tempo del brano** per farlo seguire da li' in poi. Fa eccezione
+  un WAV che porta scritto il suo tempo (i WAV esportati da SoundText, i
+  loop delle altre DAW, nel blocco "acid"): segue subito il tempo del brano
+  e dura le stesse battute, per esempio un box di 4 battute esportato a 126
+  BPM e importato in un brano a 120. Se l'allungamento supera il 25% la
+  barra di stato lo avverte. Se il tempo
   cambia dentro la clip (per esempio dopo **Ricava il tempo dalla
   ripresa**), ogni tratto segue il tempo della sua battuta. **Velocita' (time-stretch)...** la cambia a mano, in
   percentuale; il box mostra la velocita' quando non e' 100%. Il primo
@@ -4033,7 +4054,7 @@ dispositivo audio, quindi resta allineata a cio' che si sente.
   sezione appare come una fascia colorata sul righello della Struttura
   brano. Si puo' attivare, spostare o togliere il loop anche mentre il
   brano suona, senza interruzioni.
-- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%): rallenta il
+- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%, o Riproduzione → Velocita' d'ascolto): rallenta il
   brano senza cambiarne l'intonazione, per esercitarsi su un passaggio
   (anche in loop); il metronomo segue. La prima volta a una velocita' nuova
   il brano si prepara per qualche secondo. Non cambia ne' il brano ne'

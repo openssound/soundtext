@@ -174,9 +174,12 @@ def decoded_wav(path: str) -> Tuple[np.ndarray, int]:
     return samples, rate
 
 
-def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24) -> None:
+def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24,
+              tempo: Optional[float] = None, meter: Tuple[int, int] = (4, 4)) -> None:
     """Scrive samples (float, forma (frame, canali), [-1, 1]; oltre viene
-    limitato) come WAV PCM a 16 o 24 bit."""
+    limitato) come WAV PCM a 16 o 24 bit. Con 'tempo' (BPM) il file porta
+    anche il blocco "acid" (vedi write_acid_tempo): un loop che le DAW, e
+    SoundText all'importazione, fanno andare a tempo con il brano."""
     if samples.ndim == 1:
         samples = samples.reshape(-1, 1)
     clipped = np.clip(samples, -1.0, 1.0)
@@ -192,6 +195,53 @@ def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24) -
         w.setsampwidth(bits // 8)
         w.setframerate(samplerate)
         w.writeframes(raw)
+    if tempo:
+        write_acid_tempo(path, tempo, len(samples) / float(samplerate) * tempo / 60.0, meter)
+
+
+# Il blocco "acid" (Sony ACID, letto da Ableton, Logic, Cubase, FL Studio,
+# Reaper...): flags, nota base, due campi riservati, numero di beat, metrica
+# (denominatore, numeratore) e tempo in BPM.
+_ACID = struct.Struct("<IHHfIHHf")
+_ACID_STRETCH = 0x04       # il loop si adatta al tempo (non e' un "one-shot")
+
+
+def write_acid_tempo(path: str, tempo: float, beats: float, meter: Tuple[int, int] = (4, 4)) -> None:
+    """Aggiunge in fondo al WAV 'path' il blocco "acid" con il suo tempo."""
+    body = _ACID.pack(_ACID_STRETCH, 60, 0x8000, 0.0, max(0, int(round(beats))),
+                      int(meter[1]), int(meter[0]), float(tempo))
+    with open(path, "r+b") as f:
+        f.seek(0, os.SEEK_END)
+        if f.tell() % 2:
+            f.write(b"\0")                 # i blocchi RIFF cominciano su un byte pari
+        f.write(b"acid" + struct.pack("<I", len(body)) + body)
+        size = f.tell() - 8
+        f.seek(4)
+        f.write(struct.pack("<I", size))
+
+
+def read_wav_tempo(path: str) -> Optional[float]:
+    """Il tempo (BPM) del blocco "acid" di un WAV, se c'e' (un loop
+    esportato da SoundText o da un'altra DAW); None se non c'e' o se il file
+    non e' un WAV leggibile."""
+    try:
+        with open(path, "rb") as f:
+            header = f.read(12)
+            if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+                return None
+            while True:
+                chunk = f.read(8)
+                if len(chunk) < 8:
+                    return None
+                chunk_id, size = chunk[:4], struct.unpack("<I", chunk[4:])[0]
+                if chunk_id == b"acid" and size >= _ACID.size:
+                    fields = _ACID.unpack(f.read(_ACID.size))
+                    tempo = fields[7]
+                    one_shot = fields[0] & 0x01
+                    return round(float(tempo), 3) if not one_shot and 20.0 <= tempo <= 400.0 else None
+                f.seek(size + (size % 2), os.SEEK_CUR)
+    except (OSError, struct.error):
+        return None
 
 
 def resample(samples: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:

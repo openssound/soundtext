@@ -14,6 +14,7 @@ ricalcola Track.text da core.arrangement.flatten_clips_to_text.
 import dataclasses
 import itertools
 import os
+import re
 import time
 
 import numpy as np
@@ -1706,6 +1707,7 @@ class ArrangementView(AudioClipActions, QWidget):
         paste_action = menu.addAction(tr("Incolla qui")) if isinstance(self._clipboard, Clip) else None
         menu.addSeparator()
         export_action = menu.addAction(tr("Esporta come .box..."))
+        export_wav_action = menu.addAction(tr("Esporta come WAV..."))
         save_style_action = menu.addAction(tr("Salva come stile del generatore..."))
         menu.addSeparator()
         delete_action = menu.addAction(tr("Elimina"))
@@ -1713,6 +1715,8 @@ class ArrangementView(AudioClipActions, QWidget):
         chosen = menu.exec(global_pos)
         if chosen is play_action:
             self._play_clip(track_name, clip)
+        elif chosen is export_wav_action:
+            self._export_clip_wav(track_name, clip)
         elif chosen is save_style_action:
             self._save_clip_as_style(track_name, clip)
         elif chosen is stop_action:
@@ -2069,6 +2073,39 @@ class ArrangementView(AudioClipActions, QWidget):
             self.host.statusBar().showMessage(tr("Box esportato: {path}", path=path), 4000)
         except OSError as e:
             QMessageBox.critical(self, tr("Errore salvataggio"), str(e))
+
+    def _export_clip_wav(self, track_name: str, clip: Clip):
+        """Esporta in un WAV il solo box, come si sente in Solo con la sua
+        traccia (strumento, plugin, effetti, volume e pan), dal suo inizio
+        alla sua fine: lungo esattamente quanto il box."""
+        track = self.host.project.get_track(track_name)
+        ok, msg = validate_track_text(clip.text, self.host.project.patterns,
+                                      default_octave=track.instrument.default_octave)
+        if not ok:
+            QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile esportare il box:\n{msg}", msg=msg))
+            return
+        host = self.host.project
+        preview = Project(name=clip.name, tempo_bpm=host.tempo_bpm, time_sig=host.time_sig,
+                          metrica_changes=list(host.metrica_changes))
+        preview.patterns = host.patterns
+        # Con le ancore bar=N il box suona dal suo punto del brano: la pausa
+        # davanti si toglie dal WAV
+        text, lead = anchored_preview_text(clip.text, clip.start_beat, host.patterns)
+        box_track = dataclasses.replace(track, text=text, clips=[], mute=False, solo=False,
+                                        effects=[dataclasses.replace(e) for e in track.effects],
+                                        synth_params=dict(track.synth_params))
+        preview.tracks.append(box_track)
+        from core.tempo_map import seconds_for_beats
+        tempo_map = build_tempo_beat_map(preview)
+        lead_seconds = seconds_for_beats(tempo_map, lead)
+        beats = clip_duration_beats(clip.text, host.patterns, track.instrument.default_octave,
+                                    start_beat=clip.start_beat, meter=host.meter())
+        safe_name = re.sub(r'[\\/:*?"<>|]', "_", f"{track.name}_{clip.name}").strip() or "box"
+        start_dir = os.path.dirname(self.host._default_export_path(".wav"))
+        self.host._export_wav(tr("Esporta il box come WAV"), os.path.join(start_dir, safe_name + ".wav"), None,
+                              tr("Box '{name}' esportato", name=clip.name), project=preview,
+                              skip_seconds=lead_seconds,
+                              length_seconds=seconds_for_beats(tempo_map, lead + beats) - lead_seconds)
 
     def _import_clip(self, track_name: str, beat: float):
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa box"), ensure_songs_dir(), tr("Box (*.box)"),

@@ -2285,6 +2285,11 @@ derecho en la etiqueta de la pista a la izquierda.
   si el box usa `%Nombre`) muestra el contenido de los patterns en lugar de
   las llamadas, en solo lectura: con Play se ve resaltada la nota que suena
   también dentro de los patterns. Al desmarcarla vuelven los `%Nombre`.
+- La misma casilla está también en el editor de texto de la pista, junto
+  a su nombre (visible solo si la pista usa `%Nombre`): muestra la pista con
+  el contenido de los patterns, en solo lectura, hasta que se desmarca;
+  durante la reproducción resalta la nota que suena también dentro de los
+  patterns.
 - **Doble clic en un `%Nombre`** (en el editor de texto o en el del box)
   abre la biblioteca de patterns en ese pattern, con el instrumento de la
   pista en "Escuchar con:".
@@ -2323,6 +2328,11 @@ derecho en la etiqueta de la pista a la izquierda.
   entre pistas distintas (así es como se mueve un box a otra pista).
 - **Exportar como .box...** / **Importar desde .box...** (en un punto
   vacío): ver más abajo.
+- **Exportar como WAV...**: solo el box en un WAV, como suena en Solo con
+  su pista (instrumento, efectos, volumen y pan), exactamente tan largo
+  como el box: la cola tras el final se corta con un breve fundido. El WAV
+  lleva escrito su tempo: importado en otra canción sigue su tempo (ver las
+  pistas de audio, Tempo).
 - **Eliminar**.
 
 ### Deshacer/Rehacer (Ctrl+Z / Ctrl+Y)
@@ -2544,6 +2554,12 @@ principio. El corte nunca parte una nota: si una nota cruza el inicio o el
 final del tramo (una anticipación, un acorde largo), el tramo se amplía
 para incluirla. Con la variabilidad al 0% el botón está desactivado (el
 resultado sería idéntico).
+
+Todos los generadores de **Componer → Generar en la pista seleccionada**
+añaden el resultado tras lo que la pista ya tiene: en modo Texto al final de
+su texto; en la vista Estructura de la canción como una caja nueva tras la
+última (Groove, Basso, Giro, Accompagnamento o Riff), y un texto libre ya
+escrito se convierte también en una caja.
 
 **Componer → Generar en la pista seleccionada → Batería...** (requiere una pista de
 percusión seleccionada):
@@ -3906,7 +3922,11 @@ SoundText mientras suena el resto de la canción (ver «Grabar» más abajo), o
   se alarga o se acorta (time-stretch, sin cambiar la afinación) y sigue a
   tempo. Un archivo importado en cambio dura los mismos segundos; clic
   derecho → **Seguir el tempo de la canción** para que lo siga a partir de
-  ahí. Si el tempo cambia dentro del clip (por ejemplo después de **Obtener
+  ahí. La excepción es un WAV que lleva escrito su tempo (los WAV exportados
+  por SoundText, los loops de otras DAW, en el bloque "acid"): sigue enseguida
+  el tempo de la canción y dura los mismos compases, por ejemplo una caja de
+  4 compases exportada a 126 BPM e importada en una canción a 120. Si el
+  estiramiento supera el 25% la barra de estado lo avisa. Si el tempo cambia dentro del clip (por ejemplo después de **Obtener
   el tempo de la toma**), cada tramo sigue el tempo de su compás. **Velocidad (time-stretch)...** la cambia
   a mano, en porcentaje; el box muestra la velocidad cuando no es 100%. La
   primera escucha de un clip estirado tarda unos segundos, luego queda en
@@ -4144,7 +4164,7 @@ alineada con lo que se oye.
   bucle** los pone a cero. La sección aparece como una franja de color en la
   regla de la Estructura de la canción. Se puede activar, mover o quitar el
   bucle incluso mientras la canción suena, sin interrupciones.
-- **Velocidad de escucha** (menú desplegable en la barra, 100%-50%):
+- **Velocidad de escucha** (menú desplegable en la barra, 100%-50%, o Reproducción → Velocidad de escucha):
   ralentiza la canción sin cambiar su afinación, para practicar un pasaje
   (también en bucle); el metrónomo la sigue. La primera vez a una
   velocidad nueva la canción tarda unos segundos en prepararse. No cambia

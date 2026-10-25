@@ -2094,5 +2094,14 @@
  "Tessitura:": "Tesitura:",
  "dello strumento": "del instrumento",
  "ultimo ritornello mezzo tono sopra": "último estribillo medio tono más arriba",
- "ultimo ritornello un tono sopra": "último estribillo un tono más arriba"
+ "ultimo ritornello un tono sopra": "último estribillo un tono más arriba",
+ "Velocita' d'ascolto": "Velocidad de escucha",
+ "Rallenta il brano senza cambiarne l'intonazione, per esercitarsi (anche con il loop A-B). Non cambia il brano ne' l'esportazione.": "Ralentiza la canción sin cambiar su afinación, para practicar (también con el bucle A-B). No cambia ni la canción ni la exportación.",
+ "Mostra il contenuto dei pattern usati nella traccia (in sola lettura)": "Muestra el contenido de los patterns usados en la pista (solo lectura)",
+ "Box '{name}' esportato": "Box '{name}' exportado",
+ "Esporta come WAV...": "Exportar como WAV...",
+ "Esporta il box come WAV": "Exportar el box como WAV",
+ "Impossibile esportare il box:\n{msg}": "No se puede exportar el box:\n{msg}",
+ "Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.": "Atención: el audio está estirado un {percent}%, el sonido puede resentirse.",
+ "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' añadido: el archivo está a {file_bpm:g} BPM y sigue el tempo de la canción ({song_bpm:g} BPM): dura los mismos compases (clic derecho → Seguir el tempo de la canción para desactivarlo)."
 }

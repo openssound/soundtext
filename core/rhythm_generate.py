@@ -1181,8 +1181,9 @@ def _expand_chords_to_cover(chords: List[ChordSpan], min_total_beats: float) -> 
     usato per far seguire al basso l'intera estensione del brano anche
     quando la traccia di accordi sorgente e' piu' corta delle altre tracce
     gia' scritte nel progetto (vedi generate_bass_from_chords/
-    tracks_duration_beats). Nessun effetto (ritorna 'chords' invariata) se
-    gia' abbastanza lunga o se min_total_beats non e' positivo."""
+    tracks_duration_beats); l'ultima ripetizione si tronca a min_total_beats.
+    Nessun effetto (ritorna 'chords' invariata) se gia' abbastanza lunga o
+    se min_total_beats non e' positivo."""
     if not chords or min_total_beats <= 0:
         return chords
     last_end = chords[-1].start_beat + chords[-1].duration_beats
@@ -1197,6 +1198,14 @@ def _expand_chords_to_cover(chords: List[ChordSpan], min_total_beats: float) -> 
             span._replace(start_beat=span.start_beat + offset) for span in chords
         )
         rep += 1
+    # l'ultima ripetizione si ferma a 'min_total_beats': ripetere tutta la
+    # progressione andava oltre (una traccia audio di 32 beat con accordi
+    # riconosciuti fino al 28 dava un basso di 56)
+    if rep > 1:
+        end = min_total_beats
+        expanded = [span if span.start_beat + span.duration_beats <= end + 1e-6
+                    else span._replace(duration_beats=end - span.start_beat)
+                    for span in expanded if span.start_beat < end - 1e-6]
     return expanded
 
 

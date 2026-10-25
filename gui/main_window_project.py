@@ -782,10 +782,15 @@ class ProjectMixin:
         progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
         worker.start()
 
-    def _export_wav(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False):
+    def _export_wav(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False,
+                    project=None, skip_seconds: float = 0.0, length_seconds=None):
         """Chiede dove salvare e renderizza in un WAV, in un thread separato,
-        le tracce udibili (tracks=None) o solo tracks (asciutte con 'dry')."""
-        from core.playback import render_project_mix_to_wav
+        le tracce udibili (tracks=None) o solo tracks (asciutte con 'dry')
+        del brano, o di 'project' (es. un solo box); 'skip_seconds' si
+        tolgono dall'inizio, e con 'length_seconds' il WAV dura tanto. Se il
+        tempo non cambia, il WAV lo porta con se' (core.playback.constant_tempo):
+        importato in un altro brano ne segue il tempo."""
+        from core.playback import constant_tempo, render_project_mix_to_wav
         path, _ = QFileDialog.getSaveFileName(self, title, default_path,
                                                 tr("WAV (*.wav)"), options=file_dialog_options())
         if not path:
@@ -799,8 +804,10 @@ class ProjectMixin:
         progress_dlg.setMinimumDuration(0)
         progress_dlg.setAutoClose(False)
         cancelled = {"value": False}
-        worker = Worker(render_project_mix_to_wav, self.project, path,
-                        stop_check=lambda: cancelled["value"], tracks=tracks, dry=dry, pass_progress=False)
+        worker = Worker(render_project_mix_to_wav, project or self.project, path,
+                        stop_check=lambda: cancelled["value"], tracks=tracks, dry=dry,
+                        skip_seconds=skip_seconds, length_seconds=length_seconds,
+                        tempo=constant_tempo(project or self.project), pass_progress=False)
         self._export_wav_worker = worker  # riferimento forte finche' il thread e' attivo
 
         def handle_ok(_result):

@@ -55,8 +55,8 @@ def test_melody_fills_exactly_the_requested_bars_in_any_meter(style, meter):
         assert ok, msg
         notes = _notes(text)
         # come basso e accompagnamento: il giro di accordi (16 beat) si ripete
-        # per intero fino a coprire le battute richieste
-        expected = 16.0 * -(-9 * bar_beats // 16.0)
+        # fino alle battute richieste, l'ultima ripetizione troncata
+        expected = 9 * bar_beats
         assert notes and max(s + d for s, d, _m in notes) == pytest.approx(expected)
         assert all(55 <= m <= 88 for _s, _d, m in notes)
 

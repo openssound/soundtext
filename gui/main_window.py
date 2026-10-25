@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QScrollArea, QSlider, QSpinBox, QToolBar, QStatusBar, QProgressBar,
     QComboBox, QApplication, QStackedWidget, QMessageBox, QToolButton, QButtonGroup, QFrame,
-    QSizePolicy, QMenu, QDialog, QDoubleSpinBox,
+    QSizePolicy, QMenu, QDialog, QDoubleSpinBox, QCheckBox,
 )
 from core.i18n import tr
 
@@ -31,6 +31,9 @@ from .metronome_engine import MetronomeEngine
 from .arrangement_view import HEADER_WIDTH, ROW_GAP, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
+
+# Velocita' d'ascolto in percento (tendina della barra e Riproduzione -> Velocita' d'ascolto)
+LISTENING_SPEEDS = (100, 90, 80, 75, 70, 60, 50)
 
 
 class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
@@ -187,7 +190,18 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # le tracce in modalita' box), perdendo anche il doppio click sulla
         # barra del titolo su alcuni window manager.
         self.track_title.setWordWrap(True)
-        right_layout.addWidget(self.track_title)
+        title_row = QHBoxLayout()
+        title_row.addWidget(self.track_title, 1)
+        # Come nel dialogo del box: la traccia con il contenuto dei pattern al
+        # posto dei %Nome, in sola lettura, in un secondo editor (quello vero
+        # resta com'e'). Visibile solo se la traccia usa dei pattern.
+        self.expand_patterns_check = QCheckBox(tr("Espandi i pattern"))
+        self.expand_patterns_check.setToolTip(tr("Mostra il contenuto dei pattern usati nella traccia "
+                                                 "(in sola lettura)"))
+        self.expand_patterns_check.toggled.connect(self._on_expand_patterns_toggled)
+        self.expand_patterns_check.hide()
+        title_row.addWidget(self.expand_patterns_check, 0, Qt.AlignTop)
+        right_layout.addLayout(title_row)
 
         self.editor = NotationEditor()
         # Ctrl+Z/Ctrl+Y dell'editor vanno alla cronologia unica del progetto
@@ -213,6 +227,13 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.editor.on_completion_request = self._editor_completions
         self.highlighter = NotationHighlighter(self.editor.document())
         right_layout.addWidget(self.editor)
+
+        self.expanded_editor = NotationEditor()
+        self.expanded_editor.setFont(QFont("Monospace", 11))
+        self.expanded_editor.setReadOnly(True)
+        self._expanded_highlighter = NotationHighlighter(self.expanded_editor.document())
+        self.expanded_editor.hide()
+        right_layout.addWidget(self.expanded_editor)
 
         self.validation_label = QLabel("")
         self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
@@ -516,6 +537,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.loop_action.setEnabled(False)
         loop_menu.addAction(self.loop_action)
         loop_menu.addAction(self._action(tr("Cancella loop"), self.clear_loop))
+        # Le stesse velocita' della tendina della barra (vedi speed_combo):
+        # scegliere qui cambia la tendina, e la tendina spunta la voce qui.
+        speed_menu = playback_menu.addMenu(tr("Velocita' d'ascolto"))
+        speed_menu.setToolTipsVisible(True)
+        self.speed_actions = QActionGroup(self)
+        for percent in LISTENING_SPEEDS:
+            action = QAction(f"{percent}%", self, checkable=True)
+            action.setData(percent / 100.0)
+            action.setChecked(percent == 100)
+            action.setToolTip(tr("Rallenta il brano senza cambiarne l'intonazione, per esercitarsi (anche con "
+                                 "il loop A-B). Non cambia il brano ne' l'esportazione."))
+            action.triggered.connect(lambda _checked=False, i=len(self.speed_actions.actions()):
+                                     self.speed_combo.setCurrentIndex(i))
+            self.speed_actions.addAction(action)
+            speed_menu.addAction(action)
         # Nome storico (era una casella nella barra dei comandi): e' un'azione
         # spuntabile con la stessa interfaccia (isChecked/setChecked/toggled).
         self.humanize_checkbox = QAction(tr("Umanizza"), self, checkable=True)
@@ -690,7 +726,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         # Rallenta l'ascolto (per esercitarsi, anche con il loop A-B)
         self.speed_combo = QComboBox()
-        for percent in (100, 90, 80, 75, 70, 60, 50):
+        for percent in LISTENING_SPEEDS:
             self.speed_combo.addItem(f"{percent}%", percent / 100.0)
         self.speed_combo.setToolTip(tr("Velocita' d'ascolto: rallenta il brano senza cambiarne l'intonazione, "
                                        "per esercitarsi (anche con il loop A-B). Non cambia il brano ne' "

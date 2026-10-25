@@ -2334,6 +2334,11 @@ clic droit sur l'étiquette de la piste à gauche.
   la place des appels, en lecture seule : avec Play, la note jouée est
   surlignée même à l'intérieur des patterns. En la décochant, les `%Nom`
   reviennent.
+- La même case se trouve aussi dans l'éditeur de texte de la piste, à côté
+  de son nom (visible seulement si la piste utilise des `%Nom`) : elle
+  affiche la piste avec le contenu des patterns, en lecture seule, jusqu'à
+  ce qu'on la décoche ; pendant la lecture, elle surligne la note jouée même
+  à l'intérieur des patterns.
 - **Double-clic sur un `%Nom`** (dans l'éditeur de texte ou dans celui du
   box) ouvre la bibliothèque de patterns sur ce pattern, avec l'instrument
   de la piste dans « Écouter avec : ».
@@ -2373,6 +2378,11 @@ clic droit sur l'étiquette de la piste à gauche.
   autre piste).
 - **Exporter en .box...** / **Importer depuis un .box...** (sur un endroit
   vide) : voir plus bas.
+- **Exporter en WAV...** : seulement le box dans un WAV, tel qu'il sonne
+  en Solo avec sa piste (instrument, effets, volume et pan), exactement
+  aussi long que le box : la queue après la fin est coupée par un court
+  fondu. Le WAV porte son tempo : importé dans un autre morceau, il en suit
+  le tempo (voir les pistes audio, Tempo).
 - **Supprimer**.
 
 ### Annuler/Rétablir (Ctrl+Z / Ctrl+Y)
@@ -2600,6 +2610,12 @@ le début. La coupe ne casse jamais une note : si une note traverse le début
 ou la fin du passage (une anticipation, un accord long), le passage
 s'élargit pour l'englober. Avec la variabilité à 0 % le bouton est
 désactivé (le résultat serait identique).
+
+Tous les générateurs de **Composer → Générer dans la piste sélectionnée**
+ajoutent le résultat après ce que la piste contient déjà : en mode Texte à
+la fin de son texte ; dans la vue Structure du morceau comme un nouveau box
+après le dernier (Groove, Basso, Giro, Accompagnamento ou Riff), et un
+texte libre déjà écrit devient lui aussi un box.
 
 **Composer → Générer dans la piste sélectionnée → Batterie...** (nécessite une piste de
 percussion sélectionnée) :
@@ -3996,7 +4012,11 @@ programme.
   le BPM, elle s'allonge ou se raccourcit (time-stretch, sans changer la
   hauteur) et reste en mesure. Un fichier importé, lui, dure le même nombre
   de secondes ; clic droit → **Suivre le tempo du morceau** pour qu'il le
-  suive à partir de là. Si le tempo change à l'intérieur du clip (par
+  suive à partir de là. L'exception est un WAV qui porte son tempo (les WAV
+  exportés par SoundText, les boucles des autres DAW, dans le bloc "acid") :
+  il suit tout de suite le tempo du morceau et dure les mêmes mesures, par
+  exemple un box de 4 mesures exporté à 126 BPM et importé dans un morceau à
+  120. Si l'étirement dépasse 25 %, la barre d'état le signale. Si le tempo change à l'intérieur du clip (par
   exemple après **Tirer le tempo de la prise**), chaque passage suit le
   tempo de sa mesure. **Vitesse
   (time-stretch)...** la change à la main, en pourcentage ; le box montre
@@ -4240,7 +4260,7 @@ qu'on entend.
   boucle** les remet à zéro. La section apparaît comme une bande colorée
   sur la règle de la Structure du morceau. On peut activer, déplacer ou
   retirer la boucle même pendant que le morceau joue, sans interruption.
-- **Vitesse d'écoute** (menu déroulant dans la barre, 100 %-50 %) :
+- **Vitesse d'écoute** (menu déroulant dans la barre, 100 %-50 %, ou Lecture → Vitesse d'écoute) :
   ralentit le morceau sans changer sa hauteur, pour travailler un passage
   (aussi en boucle) ; le métronome suit. La première fois à une nouvelle
   vitesse, le morceau met quelques secondes à se préparer. Ne change ni le

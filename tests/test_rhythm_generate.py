@@ -950,3 +950,20 @@ def test_chord_progression_enrichment_is_reproducible_and_seed_free_at_zero():
     assert generate_chord_progression("Am", "andalusian", bars=8, variability=0.0, seed=9) == plain
     a = generate_chord_progression("Am", "andalusian", bars=8, variability=0.8, seed=9)
     assert a == generate_chord_progression("Am", "andalusian", bars=8, variability=0.8, seed=9)
+
+
+@pytest.mark.parametrize("style", ["root", "walking", "octaves"])
+def test_repeated_progression_stops_at_the_requested_length(style):
+    """Gli accordi riconosciuti in una traccia audio di 32 beat arrivano al
+    beat 28: ripetendo tutta la progressione il basso durava 56 beat. Ora
+    l'ultima ripetizione si tronca: basso, accompagnamento e melodia lunghi
+    quanto la traccia."""
+    from core.rhythm_generate import ChordSpan, generate_bass_from_chords, generate_melodic_line
+    chords = [ChordSpan(0.0, 8.0, 0, True), ChordSpan(8.0, 8.0, 9, True, 3), ChordSpan(16.0, 12.0, 5, True)]
+
+    def end(text):
+        return max(e.start + e.duration for e in parse_track_text(text, {}))
+    assert end(generate_bass_from_chords(chords, style, min_total_beats=32.0)) == 32.0
+    assert end(generate_melodic_line(chords, "block_chords", 4, 48, 84, True, min_total_beats=32.0)) == 32.0
+    assert end(generate_melodic_line(chords, "melody_aaba", 5, 60, 84, False, min_total_beats=32.0)) == 32.0
+    assert end(generate_bass_from_chords(chords, style, min_total_beats=20.0)) == 28.0   # gia' lunghi: invariati

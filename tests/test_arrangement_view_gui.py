@@ -558,3 +558,167 @@ def test_imported_part_entering_mid_song_keeps_its_place_in_a_single_box():
     starts = [e.start for e in parse_track_text(track.text, {}) if e.kind == "note"]
     assert starts == [16.0, 16.5, 17.0, 17.5]
     w.close()
+
+
+def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
+    """Esporta come WAV (menu del box): solo il box, con lo strumento, gli
+    effetti e il volume della sua traccia anche se e' in Mute, senza la
+    pausa davanti di un'ancora bar=N."""
+    import os
+    import time
+    import numpy as np
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import Qt, QTimer
+    from PySide6.QtWidgets import QApplication, QFileDialog
+    app = QApplication.instance() or QApplication([])
+    import core.playback as pb
+    from core.audio_tracks import read_wav
+    from core.model import Clip, Effect
+    from gui.main_window import MainWindow
+    rendered = {}
+
+    def fake_mix(project, stop_check=None, tracks=None, dry=False, **_kw):
+        rendered["project"] = project
+        return np.full((6 * 48000, 2), 0.25, np.float32), 48000      # 6 s
+    monkeypatch.setattr(pb, "render_project_mix", fake_mix)
+    out = str(tmp_path / "box.wav")
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (out, "")))
+    w = MainWindow()
+    w.arrangement_action.setChecked(True)
+    w.project.tempo_bpm = 120
+    track = w.project.add_track("Chitarra", "Guitar", "")
+    track.mute, track.volume = True, 70
+    track.effects = [Effect("eq", {})]
+    track.clips = [Clip("Inizio", "4: c*4 d*4", 0.0), Clip("Tema", "bar=3 4: e*4 f*4", 8.0)]
+    w.arrangement_view.on_clip_changed("Chitarra")
+    av = w.arrangement_view
+    av.refresh()
+    item = next(i for i in av.canvas._scene.items() if isinstance(i, BoxItem) and i.clip is track.clips[1])
+    from PySide6.QtTest import QTest
+
+    def choose_wav():            # QMenu.exec non si puo' sostituire: si sceglie la voce dal menu aperto
+        menu = QApplication.activePopupWidget()
+        menu.setActiveAction(next(x for x in menu.actions() if x.text() == "Esporta come WAV..."))
+        QTest.keyClick(menu, Qt.Key_Return)
+    QTimer.singleShot(50, choose_wav)
+    av.show_box_menu(item, av.mapToGlobal(av.rect().center()))
+    deadline = time.time() + 10
+    while not os.path.exists(out) or w._export_wav_worker is not None:
+        app.processEvents()
+        time.sleep(0.02)
+        assert time.time() < deadline
+    project = rendered["project"]
+    assert [t.name for t in project.tracks] == ["Chitarra"]
+    box = project.tracks[0]
+    assert "e*4 f*4" in box.text and not box.mute and box.volume == 70 and box.effects == track.effects
+    assert track.mute and track.clips[1].text == "bar=3 4: e*4 f*4"      # la traccia vera non cambia
+    samples, rate = read_wav(out)
+    # bar=3: la pausa davanti (8 beat a 120 = 4 s) si toglie, e il WAV dura
+    # quanto il box (2 beat = 1 s), senza la coda del rendering
+    assert len(samples) == 48000
+    from core.audio_tracks import read_wav_tempo
+    assert read_wav_tempo(out) == 120.0                 # il WAV ricorda il suo tempo
+    assert abs(samples[-1]).max() < 1e-3 and abs(samples[0]).max() > 0.2      # dissolvenza solo alla fine
+    w._dirty = False
+    w.close()
+
+
+def test_audio_actions_are_not_shadowed_by_the_view():
+    """AudioClipActions (gui.arrangement_audio) e' una base di ArrangementView:
+    un metodo con lo stesso nome nella vista la nasconde. Era successo con
+    _transpose_clip: Trasponi su una clip audio apriva quello dei box
+    ('AudioClip' object has no attribute 'text')."""
+    from gui.arrangement_audio import AudioClipActions
+    from gui.arrangement_view import ArrangementView
+    own = {n for n in vars(AudioClipActions) if callable(vars(AudioClipActions)[n]) and not n.startswith("__")}
+    assert not own & set(vars(ArrangementView))
+
+
+def test_transpose_on_an_audio_clip(monkeypatch, tmp_path):
+    import numpy as np
+    from PySide6.QtWidgets import QInputDialog
+    from core.audio_tracks import write_wav
+    from core.model import AudioClip
+    path = str(tmp_path / "nylon.wav")
+    write_wav(path, np.zeros((48000, 1), np.float32), 48000)
+    w = MainWindow()
+    track = w.project.add_audio_track("Audio")
+    clip = AudioClip("Nylon_Inizio", path, 0.0)
+    track.audio_clips.append(clip)
+    monkeypatch.setattr(QInputDialog, "getDouble", staticmethod(lambda *a, **k: (2.0, True)))
+    w.arrangement_view._transpose_audio_clip("Audio", clip)
+    assert clip.transpose == 2.0
+    w._dirty = False
+    w.close()
+
+
+def test_generate_into_selected_track_makes_a_box_in_structure_view(monkeypatch):
+    """Componi -> Genera nella traccia selezionata: nella vista Struttura
+    brano il risultato e' un box nuovo dopo l'ultimo (il testo libero gia'
+    scritto diventa a sua volta un box); in modalita' Testo, senza box, si
+    accoda al testo come prima."""
+    from PySide6.QtWidgets import QDialog
+    import gui.main_window_mixer as mixer
+
+    class FakeProgression:
+        def __init__(self, *a, **k):
+            pass
+
+        def exec(self):
+            return QDialog.Accepted
+
+        def result_text(self):
+            return "4: 4C 4G"
+    monkeypatch.setattr(mixer, "ChordProgressionDialog", FakeProgression)
+    w = MainWindow()
+    w.project.add_track("Piano", "Piano", "")
+    w.project.add_track("Libero", "Piano", "4: 4Am")
+    w.project.add_track("Testo", "Piano", "4: 4F")
+    w.refresh_mixer()
+    w.arrangement_action.setChecked(True)
+    w.select_track("Piano")
+    w.generate_progression_into_selected_track()
+    w.generate_progression_into_selected_track()
+    piano = w.project.get_track("Piano")
+    assert [(c.name, c.start_beat, c.text) for c in piano.clips] == [("Giro", 0.0, "4: 4C 4G"),
+                                                                     ("Giro", 8.0, "4: 4C 4G")]
+    assert "4C" in piano.text
+    w.select_track("Libero")
+    w.generate_progression_into_selected_track()
+    assert [(c.name, c.start_beat) for c in w.project.get_track("Libero").clips] == [("Libero", 0.0), ("Giro", 4.0)]
+    w.undo()
+    assert not w.project.get_track("Libero").clips and w.project.get_track("Libero").text == "4: 4Am"
+    w.arrangement_action.setChecked(False)
+    w.select_track("Testo")
+    w.generate_progression_into_selected_track()
+    testo = w.project.get_track("Testo")
+    assert not testo.clips and testo.text == "4: 4F 4: 4C 4G"
+    w._dirty = False
+    w.close()
+
+
+def test_imported_loop_with_its_tempo_follows_the_song(tmp_path, monkeypatch):
+    """Il box Inizio di bossa_nova.st (4 battute a 126 BPM) esportato in WAV
+    e importato in un brano a 120: segue il tempo e dura ancora 4 battute.
+    Una registrazione senza tempo nel file resta com'e'."""
+    import numpy as np
+    import pytest
+    from core.audio_tracks import write_wav
+    loop = str(tmp_path / "Nylon_Inizio.wav")
+    write_wav(loop, np.zeros((int(round(16 * 60 / 126 * 48000)), 2), np.float32), 48000, tempo=126.0)
+    take = str(tmp_path / "ripresa.wav")
+    write_wav(take, np.zeros((int(round(16 * 60 / 126 * 48000)), 2), np.float32), 48000)
+    w = MainWindow()
+    w.project.tempo_bpm = 120
+    w.project.add_audio_track("Audio")
+    av = w.arrangement_view
+    for src in (loop, take):
+        monkeypatch.setattr(av, "_pick_audio_file", lambda *_a, src=src: src)
+        av.import_audio_clip("Audio", av.end_of_track_beat("Audio"))
+    first, second = w.project.get_track("Audio").audio_clips
+    assert first.source_bpm == 126.0
+    assert av.clip_length_beats("Audio", first) == pytest.approx(16.0, abs=0.01)
+    assert second.source_bpm == 0.0
+    assert av.clip_length_beats("Audio", second) == pytest.approx(16 * 120 / 126, abs=0.01)
+    w._dirty = False
+    w.close()

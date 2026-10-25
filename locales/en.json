@@ -2094,5 +2094,14 @@
  "Tessitura:": "Vocal range:",
  "dello strumento": "the instrument's",
  "ultimo ritornello mezzo tono sopra": "last chorus a semitone higher",
- "ultimo ritornello un tono sopra": "last chorus a tone higher"
+ "ultimo ritornello un tono sopra": "last chorus a tone higher",
+ "Velocita' d'ascolto": "Playback speed",
+ "Rallenta il brano senza cambiarne l'intonazione, per esercitarsi (anche con il loop A-B). Non cambia il brano ne' l'esportazione.": "Slows the song down without changing its pitch, for practice (also with the A-B loop). It changes neither the song nor the export.",
+ "Mostra il contenuto dei pattern usati nella traccia (in sola lettura)": "Show the content of the patterns used in the track (read-only)",
+ "Box '{name}' esportato": "Box '{name}' exported",
+ "Esporta come WAV...": "Export as WAV...",
+ "Esporta il box come WAV": "Export the box as WAV",
+ "Impossibile esportare il box:\n{msg}": "Cannot export the box:\n{msg}",
+ "Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.": "Warning: the audio is stretched by {percent}%, the sound may suffer.",
+ "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' added: the file is at {file_bpm:g} BPM and follows the song tempo ({song_bpm:g} BPM): it lasts the same bars (right-click → Follow the song tempo to turn it off)."
 }

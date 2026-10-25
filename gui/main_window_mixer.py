@@ -107,6 +107,7 @@ class MixerMixin:
         self.arrangement_view.set_active_track(name)
         track = self.project.get_track(name)
         if track.is_audio:
+            self._sync_expanded_patterns(track)
             self._show_audio_track_in_editor(track)
             return
         # Riaggancia la colorazione della notazione, staccata per le tracce
@@ -232,10 +233,44 @@ class MixerMixin:
             midi_ref_names=midi_library.list_midi_library,
         )
 
+    def _expanded_track_text(self, track) -> str:
+        """Il testo della traccia con il contenuto dei pattern al posto dei
+        %Nome (core.arrangement.expand_pattern_refs_text)."""
+        from core.arrangement import expand_pattern_refs_text
+        from core.notation import NotationError
+        try:
+            return expand_pattern_refs_text(track.text, self.project.patterns, track.instrument.default_octave)
+        except (NotationError, ValueError):
+            return track.text      # testo non ancora valido: niente da espandere
+
+    def _sync_expanded_patterns(self, track=None):
+        """Espandi i pattern: la casella c'e' solo se la traccia usa dei
+        pattern (o se e' gia' spuntata); spuntata, l'editor espanso mostra il
+        testo aggiornato al posto dell'editor vero."""
+        check = self.expand_patterns_check
+        expanded = None if track is None or track.is_audio or "%" not in track.text \
+            else self._expanded_track_text(track)
+        uses_patterns = expanded is not None and expanded != track.text
+        if not uses_patterns and check.isChecked():
+            check.blockSignals(True)
+            check.setChecked(False)
+            check.blockSignals(False)
+        check.setVisible(uses_patterns)
+        shown = check.isChecked()
+        if shown:
+            self.expanded_editor.setPlainText(expanded)
+        self.editor.setVisible(not shown)
+        self.expanded_editor.setVisible(shown)
+
+    def _on_expand_patterns_toggled(self, _checked: bool):
+        self._sync_expanded_patterns(self.project.find_track(self.current_track_name))
+
     def _validate_current(self):
         if not self.current_track_name:
+            self._sync_expanded_patterns(None)
             return
         track = self.project.get_track(self.current_track_name)
+        self._sync_expanded_patterns(track)
         if track.is_audio:
             return
         ok, msg = validate_track_text(track.text, self.project.patterns)
@@ -956,11 +991,25 @@ class MixerMixin:
             self.select_track(track.name)
             self.statusBar().showMessage(tr("Performance registrata e aggiunta alla traccia '{name}'.", name=track.name), 4000)
 
-    def _append_or_replace_track_text(self, track, new_text):
+    def _append_or_replace_track_text(self, track, new_text, box_name: str = "Box"):
         """Accoda 'new_text' al contenuto gia' presente nella traccia (o lo
         sostituisce se la traccia era vuota) - stessa convenzione di
         play_keyboard_into_selected_track, per non perdere musica scritta a
-        mano o importata in precedenza."""
+        mano o importata in precedenza. Nella vista Struttura brano, o se la
+        traccia e' gia' divisa in box, il testo diventa un box nuovo
+        ('box_name') dopo l'ultimo: il testo di una traccia con box viene
+        dai box, e accodato li' non si vedrebbe nella Struttura."""
+        if track.clips or self.arrangement_action.isChecked():
+            from core.model import Clip
+            view = self.arrangement_view
+            view._wrap_free_text_in_box(track)
+            beat = view.end_of_track_beat(track.name)
+            clip = Clip(name=box_name, text=new_text, start_beat=beat)
+            clip.start_beat = view.resolve_free_slot(track.name, clip, beat)
+            track.clips.append(clip)
+            view.on_clip_changed(track.name)          # ricalcola il testo dai box e segna la modifica
+            view.select_box(track.name, clip)
+            return
         if track.text.strip():
             track.text = f"{track.text.rstrip()} {new_text}"
         else:
@@ -993,7 +1042,7 @@ class MixerMixin:
                                   track_name=track.name)
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text())
+        self._append_or_replace_track_text(track, dlg.result_text(), "Groove")
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Batteria generata e aggiunta alla traccia '{name}'.", name=track.name), 4000)
@@ -1022,7 +1071,7 @@ class MixerMixin:
                                   min_total_beats=other_beats, track_name=track.name)
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text())
+        self._append_or_replace_track_text(track, dlg.result_text(), "Basso")
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Basso generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)
@@ -1085,7 +1134,8 @@ class MixerMixin:
         )
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text())
+        self._append_or_replace_track_text(track, dlg.result_text(),
+                                           "Accompagnamento" if instrument.polyphonic else "Riff")
         self.refresh_mixer()
         self.select_track(track.name)
         kind = "Accompagnamento" if instrument.polyphonic else "Riff/melodia"
@@ -1114,7 +1164,7 @@ class MixerMixin:
                                      track_name=track.name, default_key=last_box_key(self.project, track))
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text())
+        self._append_or_replace_track_text(track, dlg.result_text(), "Giro")
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Giro armonico generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)

@@ -118,7 +118,7 @@ class PlaybackMixin:
         # calcolata una volta qui (non ad ogni tick) perche' il progetto non
         # cambia struttura durante l'esecuzione, solo Mute/Solo/Volume (che
         # riavviano comunque play() da capo, vedi _perform_pending_mixer_restart).
-        self._playback_tempo_map = build_tempo_beat_map(self.project)
+        self._playback_tempo_map = self._tempo_map_as_heard()
         self._playback_metrica_map = build_metrica_beat_map(self.project)
         # Il cronometro NON parte qui: partirebbe prima che l'audio sia
         # davvero udibile (esportazione MIDI + rendering offline richiedono
@@ -225,7 +225,10 @@ class PlaybackMixin:
         elapsed_beats_total = self._current_elapsed_beats()
         total_beats = self._playback_duration_beats
         total_seconds = seconds_for_beats(self._playback_tempo_map, total_beats) if total_beats > 0 else 0.0
-        elapsed_seconds_total = seconds_for_beats(self._playback_tempo_map, elapsed_beats_total)
+        if total_beats > 0 and self._active_loop_beats() is None:
+            elapsed_beats_total = min(elapsed_beats_total, total_beats + 0.5)   # la coda dopo la fine: la barra resta li'
+        elapsed_seconds_total = min(seconds_for_beats(self._playback_tempo_map, elapsed_beats_total),
+                                    total_seconds if total_beats > 0 else float("inf"))
 
         if total_beats > 0:
             pct = max(0, min(100, int(elapsed_beats_total / total_beats * 100)))
@@ -245,10 +248,15 @@ class PlaybackMixin:
             value_at_beat(self._playback_metrica_map, elapsed_beats_total),
         )
 
-        # Fine naturale del brano: ferma timer/barra senza richiedere Stop manuale.
+        # Fine naturale del brano: ferma timer/barra senza richiedere Stop
+        # manuale, ma solo quando l'audio e' davvero finito (la coda del
+        # riverbero suona ancora dopo l'ultima nota: fino ad allora si resta
+        # "in riproduzione" e Stop la ferma).
         if total_beats > 0 and elapsed_beats_total >= total_beats + 0.5 and self._active_loop_beats() is None:
+            self.metronome_engine.stop()          # niente click sulla coda
+            if self.playback.is_playing():
+                return
             self._playback_timer.stop()
-            self.metronome_engine.stop()
             self._playback_start_wall = None
             self._playback_paused_beat = None
             self._set_play_pause_button(playing=False)
@@ -411,15 +419,20 @@ class PlaybackMixin:
         # dal testo della traccia e dai pattern, quindi si ricalcolano solo
         # quando cambiano, invece di ritokenizzare/espandere/parsare l'intera
         # traccia 10 volte al secondo per tutta la riproduzione.
+        # Con Espandi i pattern si evidenzia nell'editor espanso, che ha lo
+        # stesso tempo del testo della traccia (vedi _sync_expanded_patterns).
+        expanded = self.expand_patterns_check.isChecked()
+        editor = self.expanded_editor if expanded else self.editor
+        text = editor.toPlainText() if expanded else track.text
         default_octave = track.instrument.default_octave
-        cache_key = (track.text, default_octave,
+        cache_key = (text, default_octave,
                      tuple((name, tuple(p.tokens)) for name, p in self.project.patterns.items()))
         cached = self._highlight_spans_cache
         if cached is not None and cached[0] == cache_key:
             spans = cached[1]
         else:
             try:
-                spans = compute_token_spans(track.text, self.project.patterns,
+                spans = compute_token_spans(text, self.project.patterns,
                                              default_octave=default_octave, meter=self.project.meter())
             except Exception:
                 return
@@ -430,7 +443,7 @@ class PlaybackMixin:
             return
 
         char_start, char_end, _, _ = span
-        cursor = self.editor.textCursor()
+        cursor = editor.textCursor()
         cursor.setPosition(char_start)
         cursor.setPosition(char_end, QTextCursor.KeepAnchor)
 
@@ -442,7 +455,8 @@ class PlaybackMixin:
         selection = QTextEdit.ExtraSelection()
         selection.cursor = cursor
         selection.format = fmt
-        self.editor.setExtraSelections([selection])
+        (self.editor if expanded else self.expanded_editor).setExtraSelections([])
+        editor.setExtraSelections([selection])
 
         # Scorre l'editor solo se il token evidenziato non e' gia' visibile
         # (ensureCursorVisible e' un no-op altrimenti), senza spostare il
@@ -475,6 +489,20 @@ class PlaybackMixin:
             return True
         return super().eventFilter(obj, event)
 
+    def _tempo_map_as_heard(self):
+        """La mappa del tempo del brano come suona: con le corone ($fermata),
+        che l'esportazione MIDI rallenta (vedi core.midi_export); senza, dopo
+        una corona tempo, barra e testina restano indietro rispetto all'audio
+        (e alla fine il brano risulta finito mentre la corona suona ancora)."""
+        from core.tempo_map import fermata_spans, with_fermatas
+        tracks = self.project.audible_tracks()
+        try:
+            events = {t.name: t.parsed_events(self.project.patterns) for t in tracks if not t.is_audio}
+        except Exception:
+            return build_tempo_beat_map(self.project)
+        return with_fermatas(build_tempo_beat_map(self.project, tracks=tracks, events_by_track=events),
+                             fermata_spans(events))
+
     def _song_duration_beats(self) -> float:
         from core.midi_export import compute_project_duration_beats
         try:
@@ -503,7 +531,7 @@ class PlaybackMixin:
             return
         self._playback_paused_beat = beat
         total = self._song_duration_beats()
-        tempo_map = build_tempo_beat_map(self.project)
+        tempo_map = self._tempo_map_as_heard()
         self.playback_progress.setValue(max(0, min(100, int(beat / total * 100))) if total > 0 else 0)
         self.playback_progress.setFormat(
             f"{self._format_mmss(seconds_for_beats(tempo_map, beat))} / "
@@ -571,6 +599,7 @@ class PlaybackMixin:
 
     def _clear_playback_highlight(self):
         self.editor.setExtraSelections([])
+        self.expanded_editor.setExtraSelections([])
 
     def _on_mixer_changed(self, track_name):
         """Mute/Solo/Volume/Pan/Master modificati dall'utente: se e' in corso
@@ -670,10 +699,13 @@ class PlaybackMixin:
         return [(beat, bpm * speed) for beat, bpm in self._playback_tempo_map]
 
     def _on_speed_changed(self, *_args):
-        """Rallenta l'ascolto (combo della barra): riparte dal punto in cui
-        si e' se sta suonando."""
+        """Rallenta l'ascolto (tendina della barra, o Riproduzione ->
+        Velocita' d'ascolto): riparte dal punto in cui si e' se sta suonando."""
         from core.playback import streaming_available
         speed = self.speed_combo.currentData() or 1.0
+        actions = self.speed_actions.actions()
+        if 0 <= self.speed_combo.currentIndex() < len(actions):
+            actions[self.speed_combo.currentIndex()].setChecked(True)
         self.playback.set_speed(speed)
         if speed < 1.0 and not streaming_available():
             self.statusBar().showMessage(tr("Rallentare l'ascolto richiede la libreria FluidSynth e "
