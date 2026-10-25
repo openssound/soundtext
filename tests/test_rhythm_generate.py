@@ -967,3 +967,30 @@ def test_repeated_progression_stops_at_the_requested_length(style):
     assert end(generate_melodic_line(chords, "block_chords", 4, 48, 84, True, min_total_beats=32.0)) == 32.0
     assert end(generate_melodic_line(chords, "melody_aaba", 5, 60, 84, False, min_total_beats=32.0)) == 32.0
     assert end(generate_bass_from_chords(chords, style, min_total_beats=20.0)) == 28.0   # gia' lunghi: invariati
+
+
+@pytest.mark.parametrize("style", ["block_chords", "quarter_chords", "funk_stab", "sustained"])
+def test_comping_chords_never_double_a_note(style):
+    """Su una triade senza settima il disegno alternativo (fondamentale,
+    terza, settima) con l'ottava dell'intensita' piena scriveva la stessa
+    nota due volte e perdeva la quinta: [g*4 b*4 g*5 g*5] su un Sol."""
+    from core.rhythm_generate import extract_chords_from_track, generate_melodic_line
+    chords = extract_chords_from_track("4: 4Am 4F 4C 4G 4Am 4F 4G 4G", {})
+    for seed in range(12):
+        text = generate_melodic_line(chords, style, 4, 21, 108, True, min_total_beats=32, variability=0.6,
+                                     seed=seed, intensity="full", voice_leading=True)
+        for ev in parse_track_text(text, {}):
+            if ev.kind != "block":
+                continue
+            notes = [(item["letter"].lower(), item["octave"]) for item in ev.items]
+            assert len(notes) == len(set(notes)), (seed, notes)
+            assert len({letter for letter, _o in notes}) >= 3, (seed, notes)   # la triade intera
+
+
+def test_a_line_on_a_triad_still_takes_the_octave_for_the_missing_seventh():
+    from core.rhythm_generate import ChordSpan, _resolve_role, _resolve_roles
+    g = ChordSpan(0.0, 4.0, 7, True, 4, None)
+    assert _resolve_role("seventh", g, None) == (7, 1)
+    assert _resolve_roles(["root", "third", "seventh", "root_hi"], g, None) == [(7, 0), (11, 0), (2, 0), (7, 1)]
+    g7 = g._replace(seventh=10)
+    assert _resolve_roles(["root", "third", "seventh"], g7, None) == [(7, 0), (11, 0), (5, 0)]
