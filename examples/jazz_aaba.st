@@ -10,7 +10,7 @@
 //   - il basso "camminato" (walking bass): quattro note a battuta, sempre
 //     in movimento verso l'accordo seguente;
 //   - il pianoforte che accompagna con il ritmo "Charleston" e gli accordi
-//     a voicing drop-2 (.drop2); la chitarra con i quarti alla Freddie Green;
+//     a voicing drop-2 (.drop2); la chitarra "quattro in battuta";
 //   - la batteria con il ride swing, il pedale del charleston sul 2 e sul 4,
 //     la "piumata" della cassa nell'ultimo chorus;
 //   - le sezioni A e B come pattern: A, A, B, A per tre chorus;
@@ -209,7 +209,7 @@ Pattern %CompAEnd:
 Pattern %CompChorus:
   %CompA %CompA %CompB %CompAEnd
 
-// ---------------------------------------------------------------- chitarra (quarti alla Freddie Green)
+// ---------------------------------------------------------------- chitarra (quattro quarti in battuta)
 
 Pattern %GtrA:
   4: 62@

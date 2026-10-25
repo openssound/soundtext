@@ -224,7 +224,9 @@ def test_dialog_modulation_transposes_the_chord_boxes_in_the_same_undo_step(monk
     track = w.project.add_track("Accordi", "Piano", "")
     track.clips = [Clip("Strofa", "4: 4C 4G", 0.0), Clip("Ritornello", "4: 4F 4C", 8.0)]
     w.arrangement_view.on_clip_changed("Accordi")
-    w.project.add_track("Voce", "Trumpet", "4: c d e f")
+    voce = w.project.add_track("Voce", "Trumpet", "")
+    voce.clips = [Clip("Strofa", "4: c*5 d*5", 0.0), Clip("Ritornello", "4: f*5 e*5", 8.0)]
+    w.arrangement_view.on_clip_changed("Voce")
 
     def fake_exec(dlg):
         assert dlg.melody_combo.currentData() == "Voce"
@@ -237,6 +239,24 @@ def test_dialog_modulation_transposes_the_chord_boxes_in_the_same_undo_step(monk
     chords = w.project.get_track("Accordi")
     assert [c.text for c in chords.clips] == ["4: 4C 4G", "4: 4G 4D"]
     assert "4G 4D" in chords.text
+    assert [c.text for c in w.project.get_track("Voce").clips] == ["4: c*5 d*5", "4: g*5 f#*5"]
     w.undo()
     assert w.project.get_track("Accordi").clips[1].text == "4: 4F 4C"
+    assert w.project.get_track("Voce").clips[1].text == "4: f*5 e*5"
     assert "Batteria" not in [t.name for t in w.project.tracks]
+
+
+def test_modulation_also_raises_the_melody_boxes():
+    """Con la modulazione sale anche la melodia (i box delle altre tracce di
+    note dall'ultimo ritornello in poi): prima restava nella tonalita' di
+    partenza sopra gli accordi saliti. Percussioni e tracce senza box no."""
+    p, acc = _song_with(("Strofa", "4: 4C 4G", 0.0), ("Ritornello", "4: 4F 4C", 8.0))
+    melody = p.add_track("Melodia", "Trumpet", "")
+    melody.clips = [Clip("Strofa", "4: e*5 d*5", 0.0), Clip("Ritornello", "4: c*5 a*4", 8.0)]
+    p.add_track("Libera", "Trumpet", "4: c*5")
+    p.add_track("Percussioni", "Drums", "")
+    parts = arrange(p, song_sections(p, acc), ArrangeOptions(seed=1, modulation=2), 4.0, chord_track="Accordi")
+    assert list(parts["modulated"]) == ["Melodia"]
+    [chorus] = parts["modulated"]["Melodia"]
+    assert (chorus.name, chorus.start_beat, chorus.text) == ("Ritornello", 8.0, "4: d*5 b*4")
+    assert "modulated" not in arrange(p, song_sections(p, acc), ArrangeOptions(seed=1), 4.0)

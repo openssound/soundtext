@@ -2695,7 +2695,9 @@ la fondamentale, l'accordo). Nel dialogo:
   ha molte note (almeno sei in 4/4) l'accompagnamento suona solo sul primo
   tempo e a meta' battuta.
 - **Modulazione**: l'ultimo ritornello e le sezioni dopo di lui salgono di
-  mezzo tono o di un tono; si traspongono anche i loro box degli accordi.
+  mezzo tono o di un tono; si traspongono anche i loro box degli accordi e
+  quelli della melodia e delle altre tracce di note (una traccia scritta come
+  testo libero, senza box, resta com'è: va trasposta a mano).
 
 **Tessitura** (Genera riff/melodia con uno strumento a una voce, Melodia
 dal testo): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenore (Do3-La4) o

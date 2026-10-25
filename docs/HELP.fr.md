@@ -2819,7 +2819,9 @@ grosse caisse, la fondamentale, l'accord). Dans le dialogue :
   joue que sur le premier temps et à la moitié de la mesure.
 - **Modulation** : le dernier refrain et les sections qui le suivent
   montent d'un demi-ton ou d'un ton ; leurs boîtes d'accords sont aussi
-  transposées.
+  transposées, ainsi que celles de la mélodie et des autres pistes de notes
+  (une piste écrite en texte libre, sans boîtes, reste telle quelle : à
+  transposer à la main).
 
 **Tessiture** (Générer riff/mélodie avec un instrument à une voix, Mélodie
 à partir des paroles) : Soprano (Do4-La5), Alto (Fa3-Ré5), Ténor (Do3-La4)

@@ -2759,7 +2759,9 @@ duración; un **Break** deja un solo golpe de conjunto en el primer tiempo
   elegida tiene muchas notas (al menos seis en 4/4) el acompañamiento toca
   solo en el primer tiempo y a mitad de compás.
 - **Modulación**: el último estribillo y las secciones que lo siguen suben
-  medio tono o un tono; también se transponen sus cajas de acordes.
+  medio tono o un tono; también se transponen sus cajas de acordes y las de
+  la melodía y de las demás pistas de notas (una pista escrita como texto
+  libre, sin cajas, queda como está: hay que transponerla a mano).
 
 **Tesitura** (Generar riff/melodía con un instrumento a una voz, Melodía a
 partir de la letra): Soprano (Do4-La5), Contralto (Fa3-Re5), Tenor

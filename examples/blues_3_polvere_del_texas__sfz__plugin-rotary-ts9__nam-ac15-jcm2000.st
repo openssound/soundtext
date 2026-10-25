@@ -1,6 +1,6 @@
 // Polvere del Texas - Texas shuffle in Mi
 //
-// Il blues texano alla Stevie Ray Vaughan: shuffle veloce, la ritmica che
+// Il blues texano: shuffle veloce, la ritmica che
 // martella le corde basse, l'Hammond con il Leslie e una chitarra solista
 // spinta da un Tube Screamer dentro un Marshall. Introduzione, cinque giri
 // da 12 battute (tema, primo assolo, assolo d'organo, secondo assolo al

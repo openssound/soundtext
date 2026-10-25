@@ -431,7 +431,7 @@ def build_voicing_options(info: dict, instrument: InstrumentProfile) -> List[Tup
         note_text = " ".join(midi_to_token(n) for n in notes)
         return f"{prefix}  →  {note_text}"
 
-    options = [("", _label("", "Automatico"))]
+    options = [("", _label("", tr("Automatico")))]
     for style in applicable_voicings(instrument):
         options.append((style, _label(style, style)))
     return options

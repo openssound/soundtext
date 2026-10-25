@@ -1,7 +1,7 @@
 // Tempesta Elettrica - hard rock epico in Mi minore
 //
 // Comincia come una ballata (pianoforte, arpeggi di chitarra pulita, archi)
-// e poi esplode: un galoppo alla Iron Maiden con due chitarre pesanti, il
+// e poi esplode: un galoppo heavy metal con due chitarre pesanti, il
 // ritornello con gli archi, l'assolo, un ponte quieto che torna all'inizio,
 // l'ultimo ritornello e la chiusura con il pianoforte.
 //

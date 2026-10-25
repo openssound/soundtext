@@ -1,6 +1,6 @@
 // Mezzanotte in Sol minore - slow blues in 12/8
 //
-// Un blues lento, minore, alla B.B. King / Gary Moore: tre giri da 12
+// Un blues lento e minore, con la chitarra che canta: tre giri da 12
 // battute (il tema, l'assolo, la ripresa che cresce fino al culmine) e un
 // finale con il rallentando e la corona.
 //

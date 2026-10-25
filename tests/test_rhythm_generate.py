@@ -994,3 +994,17 @@ def test_a_line_on_a_triad_still_takes_the_octave_for_the_missing_seventh():
     assert _resolve_roles(["root", "third", "seventh", "root_hi"], g, None) == [(7, 0), (11, 0), (2, 0), (7, 1)]
     g7 = g._replace(seventh=10)
     assert _resolve_roles(["root", "third", "seventh"], g7, None) == [(7, 0), (11, 0), (5, 0)]
+
+
+def test_guide_tones_on_triads_do_not_leap_two_octaves():
+    """Note guida sugli accordi senza settima (quelli riconosciuti da una
+    traccia audio): la settima mancante era l'ottava sopra la fondamentale,
+    con salti di due ottave (c*4 a*5). Ora e' la quinta."""
+    from core.rhythm_generate import ChordSpan, _resolve_roles, extract_chords_from_track, generate_melodic_line
+    am = ChordSpan(0.0, 4.0, 9, True, 3, None)
+    assert _resolve_roles("seventh", am, None) == [(4, 0)]
+    chords = extract_chords_from_track("4: 4Am | 4F | 4C | 4G |", {})
+    text = generate_melodic_line(chords, "guide_tones", 4, 52, 82, False, min_total_beats=16)
+    from core.chords import pitch_to_midi
+    pitches = [pitch_to_midi(e.letter, e.octave) for e in parse_track_text(text, {}) if e.kind == "note"]
+    assert max(abs(a - b) for a, b in zip(pitches, pitches[1:])) <= 12

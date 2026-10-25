@@ -1832,7 +1832,7 @@
  "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.": "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nArrastra los bordes para recortar el inicio y el final (Mayús: sin ajuste), los tiradores de las esquinas superiores para los fundidos, Alt+arrastrar para mover el contenido dentro del clip; doble clic para cambiar el nombre, clic derecho para más acciones.",
  "{name} (audio)": "{name} (audio)",
  "{name} (congelata)": "{name} (congelada)",
- "{name} (note {n})": "{name} ({n} notas)",
+ "{name} (note {n})": "{name} (notas {n})",
  "{name} (note)": "{name} (notas)",
  "{name} - tracce": "{name} - pistas",
  "{name} congelata": "{name} congelada",
@@ -2103,5 +2103,11 @@
  "Esporta il box come WAV": "Exportar el box como WAV",
  "Impossibile esportare il box:\n{msg}": "No se puede exportar el box:\n{msg}",
  "Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.": "Atención: el audio está estirado un {percent}%, el sonido puede resentirse.",
- "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' añadido: el archivo está a {file_bpm:g} BPM y sigue el tempo de la canción ({song_bpm:g} BPM): dura los mismos compases (clic derecho → Seguir el tempo de la canción para desactivarlo)."
+ "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' añadido: el archivo está a {file_bpm:g} BPM y sigue el tempo de la canción ({song_bpm:g} BPM): dura los mismos compases (clic derecho → Seguir el tempo de la canción para desactivarlo).",
+ "Groove": "Groove",
+ "Giro": "Progresión",
+ "Riff": "Riff",
+ "Riff/melodia": "Riff/melodía",
+ "{name} (copia)": "{name} (copia)",
+ "Automatico": "Automático"
 }

@@ -2640,7 +2640,9 @@ the chord). In the dialog:
   many notes (at least six in 4/4) the accompaniment plays only on the
   first beat and halfway through the bar.
 - **Modulation**: the last chorus and the sections after it go up a
-  semitone or a tone; their chord boxes are transposed too.
+  semitone or a tone; their chord boxes are transposed too, and so are the
+  boxes of the melody and of the other note tracks (a track written as free
+  text, without boxes, stays as it is: transpose it by hand).
 
 **Vocal range** (Generate riff/melody with a single-voice instrument,
 Melody from lyrics): Soprano (C4-A5), Alto (F3-D5), Tenor (C3-A4) or Bass

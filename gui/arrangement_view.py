@@ -2043,7 +2043,8 @@ class ArrangementView(AudioClipActions, QWidget):
     def _duplicate_clip(self, track_name: str, clip: Clip):
         track = self.host.project.get_track(track_name)
         duration = self.clip_length_beats(track_name, clip)
-        new_clip = dataclasses.replace(clip, name=f"{clip.name} (copia)", start_beat=clip.start_beat + duration)
+        new_clip = dataclasses.replace(clip, name=tr("{name} (copia)", name=clip.name),
+                                       start_beat=clip.start_beat + duration)
         new_clip.start_beat = _snap(self.resolve_free_slot(track_name, new_clip, new_clip.start_beat))
         (track.audio_clips if track.is_audio else track.clips).append(new_clip)
         self.on_clip_changed(track_name)

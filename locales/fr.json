@@ -1832,7 +1832,7 @@
  "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.": "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nFaites glisser les bords pour couper le début et la fin (Maj : sans aimantation), les poignées des coins supérieurs pour les fondus, Alt+glisser pour déplacer le contenu dans le clip ; double-clic pour renommer, clic droit pour d'autres actions.",
  "{name} (audio)": "{name} (audio)",
  "{name} (congelata)": "{name} (figée)",
- "{name} (note {n})": "{name} ({n} notes)",
+ "{name} (note {n})": "{name} (notes {n})",
  "{name} (note)": "{name} (notes)",
  "{name} - tracce": "{name} - pistes",
  "{name} congelata": "{name} figée",
@@ -2103,5 +2103,11 @@
  "Esporta il box come WAV": "Exporter le box en WAV",
  "Impossibile esportare il box:\n{msg}": "Impossible d'exporter le box :\n{msg}",
  "Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.": "Attention : l'audio est étiré de {percent} %, le son peut en souffrir.",
- "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' ajouté : le fichier est à {file_bpm:g} BPM et suit le tempo du morceau ({song_bpm:g} BPM) : il dure les mêmes mesures (clic droit → Suivre le tempo du morceau pour le désactiver)."
+ "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' ajouté : le fichier est à {file_bpm:g} BPM et suit le tempo du morceau ({song_bpm:g} BPM) : il dure les mêmes mesures (clic droit → Suivre le tempo du morceau pour le désactiver).",
+ "Groove": "Groove",
+ "Giro": "Grille",
+ "Riff": "Riff",
+ "Riff/melodia": "Riff/mélodie",
+ "{name} (copia)": "{name} (copie)",
+ "Automatico": "Automatique"
 }

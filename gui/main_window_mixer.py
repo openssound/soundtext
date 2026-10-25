@@ -456,6 +456,15 @@ class MixerMixin:
             source.text = flatten_clips_to_text(source.clips, self.project.patterns,
                                                 source.instrument.default_octave, meter=self.project.meter())
             self._reload_editor_from_track()
+        for track_name, boxes in (dlg.parts().get("modulated") or {}).items():
+            # e i box della melodia (e delle altre tracce di note) nelle sezioni modulate
+            moved = {(round(c.start_beat, 6), c.name): c.text for c in boxes}
+            track = self.project.get_track(track_name)
+            for clip in track.clips:
+                clip.text = moved.get((round(clip.start_beat, 6), clip.name), clip.text)
+            track.text = flatten_clips_to_text(track.clips, self.project.patterns,
+                                               track.instrument.default_octave, meter=self.project.meter())
+            self._reload_editor_from_track()
         for kind, base, instrument in (("drums", tr("Batteria"), "Drums"), ("bass", tr("Basso"), "Bass"),
                                        ("comping", tr("Accompagnamento"), options.comping_instrument)):
             clips = dlg.parts().get(kind)
@@ -483,11 +492,11 @@ class MixerMixin:
         bar_beats = project_bar_beats(self.project)
         other_tracks = chord_source_tracks(self.project)
         if kind == "drums":
-            instrument, base, box = "Drums", "Batteria", "Groove"
+            instrument, base, box = "Drums", tr("Batteria"), tr("Groove")
         elif kind == "progression":
-            instrument, base, box = "Piano", "Accordi", "Giro"
+            instrument, base, box = "Piano", tr("Accordi"), tr("Giro")
         elif kind == "bass":
-            instrument, base, box = "Bass", "Basso", "Basso"
+            instrument, base, box = "Bass", tr("Basso"), tr("Basso")
         else:
             names = [n for n in list_instrument_names() if not get_instrument(n).is_percussion]
             instrument, ok = QInputDialog.getItem(
@@ -497,7 +506,7 @@ class MixerMixin:
             if not ok:
                 return
             base = instrument
-            box = "Accompagnamento" if get_instrument(instrument).polyphonic else "Riff"
+            box = tr("Accompagnamento") if get_instrument(instrument).polyphonic else tr("Riff")
         name = self._unique_track_name(base)
         context = tr("nuova traccia '{name}'", name=name)
         if kind == "drums":
@@ -1042,7 +1051,7 @@ class MixerMixin:
                                   track_name=track.name)
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text(), "Groove")
+        self._append_or_replace_track_text(track, dlg.result_text(), tr("Groove"))
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Batteria generata e aggiunta alla traccia '{name}'.", name=track.name), 4000)
@@ -1071,7 +1080,7 @@ class MixerMixin:
                                   min_total_beats=other_beats, track_name=track.name)
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text(), "Basso")
+        self._append_or_replace_track_text(track, dlg.result_text(), tr("Basso"))
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Basso generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)
@@ -1135,10 +1144,10 @@ class MixerMixin:
         if dlg.exec() != QDialog.Accepted:
             return
         self._append_or_replace_track_text(track, dlg.result_text(),
-                                           "Accompagnamento" if instrument.polyphonic else "Riff")
+                                           tr("Accompagnamento") if instrument.polyphonic else tr("Riff"))
         self.refresh_mixer()
         self.select_track(track.name)
-        kind = "Accompagnamento" if instrument.polyphonic else "Riff/melodia"
+        kind = tr("Accompagnamento") if instrument.polyphonic else tr("Riff/melodia")
         self.statusBar().showMessage(tr("{kind} generato e aggiunto alla traccia '{name}'.", kind=kind, name=track.name), 4000)
 
     def generate_progression_into_selected_track(self):
@@ -1164,7 +1173,7 @@ class MixerMixin:
                                      track_name=track.name, default_key=last_box_key(self.project, track))
         if dlg.exec() != QDialog.Accepted:
             return
-        self._append_or_replace_track_text(track, dlg.result_text(), "Giro")
+        self._append_or_replace_track_text(track, dlg.result_text(), tr("Giro"))
         self.refresh_mixer()
         self.select_track(track.name)
         self.statusBar().showMessage(tr("Giro armonico generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)

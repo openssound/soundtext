@@ -306,6 +306,23 @@ def modulated_from(sections: List[Section]) -> Optional[int]:
     return next((k for k in range(len(sections) - 1, -1, -1) if sections[k].intensity == "full"), None)
 
 
+def modulated_boxes(project: Project, from_beat: float, semitones: int,
+                    exclude: Optional[str] = None) -> Dict[str, List[Clip]]:
+    """I box delle tracce di note (non percussioni ne' audio, non 'exclude':
+    la traccia degli accordi) che cominciano da 'from_beat' in poi,
+    trasposti di 'semitones'. Le tracce scritte come testo libero, senza
+    box, restano com'erano: non c'e' un punto da cui tagliarle."""
+    out: Dict[str, List[Clip]] = {}
+    for track in project.tracks:
+        if track.is_audio or track.name == exclude or track.instrument.is_percussion:
+            continue
+        moved = [Clip(c.name, transpose_text(c.text, semitones, track.instrument.default_octave), c.start_beat)
+                 for c in track.clips if c.start_beat >= from_beat - 1e-6]
+        if moved:
+            out[track.name] = moved
+    return out
+
+
 def transpose_text(text: str, semitones: int, default_octave: int = 4) -> str:
     from .notation import PitchRewriter, rewrite_tokens
     return rewrite_tokens(text, PitchRewriter(semitones, default_octave))
@@ -316,12 +333,15 @@ def transpose_text(text: str, semitones: int, default_octave: int = 4) -> str:
 # ---------------------------------------------------------------------------
 
 def arrange(project: Project, sections: List[Section], options: ArrangeOptions,
-            bar_beats: float, chord_octave: int = 4) -> Dict[str, List[Clip]]:
+            bar_beats: float, chord_octave: int = 4, chord_track: Optional[str] = None) -> Dict[str, List[Clip]]:
     """{"drums"/"bass"/"comping": [box, uno per sezione]} delle parti scelte
     (uno stile None = quella parte non si genera), e con la modulazione
     {"chords": [i box degli accordi trasposti]} da mettere al posto di
-    quelli con lo stesso inizio. Solleva ValueError se le sezioni non hanno
-    accordi."""
+    quelli con lo stesso inizio, piu' {"modulated": {traccia: [box]}} con
+    i box delle altre tracce di note (la melodia...) che cominciano dalla
+    sezione modulata, trasposti allo stesso modo: senza, la melodia
+    resterebbe nella tonalita' di prima sopra gli accordi saliti. Solleva
+    ValueError se le sezioni non hanno accordi."""
     from .instruments import get_instrument
     from .rhythm_generate import (_expand_chords_to_cover, _note_token, extract_chords_from_track,
                                   generate_bass_from_chords, generate_drum_pattern, generate_melodic_line)
@@ -334,6 +354,8 @@ def arrange(project: Project, sections: List[Section], options: ArrangeOptions,
     modulate_at = modulated_from(sections) if options.modulation else None
     if modulate_at is not None:
         parts["chords"] = []
+        parts["modulated"] = modulated_boxes(project, sections[modulate_at].start_beat, options.modulation,
+                                             exclude=chord_track)
     previous_chords = []
     for k, section in enumerate(sections):
         if modulate_at is not None and k >= modulate_at:

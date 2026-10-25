@@ -1922,13 +1922,15 @@ def _resolve_roles(role, span: ChordSpan, next_root_pc: Optional[int]) -> List[T
     """Come _resolve_role, ma 'role' puo' essere anche una lista di nomi (le
     note simultanee di un accordo di accompagnamento, vedi MELODIC_PATTERNS):
     risolve ciascun nome e scarta le pause. Un nome singolo (str o tupla
-    pre-risolta) si comporta come _resolve_role. In un accordo la settima che
-    l'accordo non ha diventa la quinta (sola, come nota di una linea, diventa
-    l'ottava sopra la fondamentale): con l'ottava gia' nell'accordo, la stessa
-    nota sarebbe uscita due volte e la quinta sarebbe mancata ([g*4 b*4 g*5
-    g*5] su un Sol). Le note uguali si scrivono una volta sola."""
+    pre-risolta) si comporta come _resolve_role. Accompagnamenti e linee
+    melodiche: la settima che l'accordo non ha diventa la quinta. In un
+    accordo, con l'ottava gia' presente, la stessa nota sarebbe uscita due
+    volte e la quinta sarebbe mancata ([g*4 b*4 g*5 g*5] su un Sol); in una
+    linea (note guida, riff) l'ottava sopra la fondamentale faceva salti di
+    due ottave (c*4 a*5 sul La minore). Il basso (_resolve_role) tiene
+    l'ottava. Le note uguali si scrivono una volta sola."""
     names = role if isinstance(role, list) else [role]
-    if isinstance(role, list) and span.seventh is None:
+    if span.seventh is None:
         names = ["fifth" if name == "seventh" else name for name in names]
     out: List[Tuple[int, int]] = []
     for name in names:

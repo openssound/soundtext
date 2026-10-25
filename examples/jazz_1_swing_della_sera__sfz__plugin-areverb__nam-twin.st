@@ -1,6 +1,6 @@
 // Swing della Sera - per big band, swing in Si bemolle
 //
-// Uno swing alla Count Basie, su una forma AABA da 32 battute:
+// Uno swing classico per big band, su una forma AABA da 32 battute:
 // introduzione degli ottoni, il tema (i sax all'unisono nelle A, le trombe
 // nel ponte), un intero giro di assolo del sax tenore con gli sfondi dei
 // tromboni, lo "shout chorus" a band piena, la ripresa dell'ultima A e il

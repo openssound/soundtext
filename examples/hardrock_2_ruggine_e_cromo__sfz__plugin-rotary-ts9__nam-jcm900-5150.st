@@ -1,8 +1,8 @@
 // Ruggine e Cromo - hard rock pesante in Re minore
 //
-// Un riff lento e pesante alla Deep Purple / Black Sabbath, con l'organo
-// Hammond che passa per un Leslie e poi dentro un Marshall, come faceva Jon
-// Lord: l'organo apre da solo, poi il riff, la strofa (la melodia e'
+// Un riff lento e pesante, con l'organo Hammond che passa per un Leslie
+// e poi dentro un Marshall, come nell'hard rock anni '70: l'organo apre
+// da solo, poi il riff, la strofa (la melodia e'
 // all'organo), il ritornello (alla chitarra), un assolo d'organo, un assolo
 // di chitarra, l'ultimo ritornello e la chiusura.
 //

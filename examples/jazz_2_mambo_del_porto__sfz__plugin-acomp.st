@@ -1,6 +1,6 @@
 // Mambo del Porto - per big band, mambo afro-cubano in Do minore
 //
-// Una big band latina alla Tito Puente / Perez Prado: le percussioni aprono
+// Una big band latina anni '50: le percussioni aprono
 // con il piano montuno e il basso tumbao, i sax espongono il tema, la
 // sezione "mambo" sovrappone i riff (prima i tromboni, poi i sax, poi le
 // trombe), l'assolo del sax contralto, lo shout a band piena, la ripresa del

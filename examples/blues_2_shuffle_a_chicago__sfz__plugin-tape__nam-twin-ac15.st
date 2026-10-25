@@ -1,7 +1,7 @@
 // Shuffle a Chicago - blues shuffle in La
 //
 // Il blues elettrico di Chicago anni '50: l'armonica suonata dentro un
-// microfono e un amplificatore (alla Little Walter), il contrabbasso che
+// microfono e un amplificatore, il contrabbasso che
 // cammina, il piano barrelhouse e la chitarra che tiene lo shuffle.
 // Introduzione, quattro giri da 12 battute (il tema all'armonica, l'assolo
 // di armonica, l'assolo di piano, di nuovo il tema) e il finale.
@@ -11,7 +11,7 @@
 //   salamander-drums, contrabbasso, upright, chitarra-elettrica; in
 //   ~/Strumenti), l'armonica e' quella del SoundFont GM;
 // - l'armonica passa per il profilo NAM di un Vox AC15 con il combo 1x12 e
-//   un'eco "slapback" corta, come nei dischi Chess; la chitarra ritmica per
+//   un'eco "slapback" corta, come nei vecchi dischi; la chitarra ritmica per
 //   il profilo di un Fender Twin (Suoni -> Scarica -> profili NAM consigliati);
 // - sul master il nastro del Calf Tape Simulator (plugin LV2: senza, il
 //   suono passa invariato), poi compressore e limiter.

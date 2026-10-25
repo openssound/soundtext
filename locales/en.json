@@ -1832,7 +1832,7 @@
  "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nTrascina i bordi per tagliare inizio e fine (Shift: senza aggancio), le maniglie in alto agli angoli per le dissolvenze, Alt+trascina per spostare il contenuto dentro la clip; doppio click per rinominare, tasto destro per altre azioni.": "{name}  ({seconds:.1f} s{gain}{muted})\n{file}\nDrag the edges to trim the start and end (Shift: no snapping), the handles at the top corners for fades, Alt+drag to move the content inside the clip; double-click to rename, right-click for more actions.",
  "{name} (audio)": "{name} (audio)",
  "{name} (congelata)": "{name} (frozen)",
- "{name} (note {n})": "{name} ({n} notes)",
+ "{name} (note {n})": "{name} (notes {n})",
  "{name} (note)": "{name} (notes)",
  "{name} - tracce": "{name} - tracks",
  "{name} congelata": "{name} frozen",
@@ -2103,5 +2103,11 @@
  "Esporta il box come WAV": "Export the box as WAV",
  "Impossibile esportare il box:\n{msg}": "Cannot export the box:\n{msg}",
  "Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.": "Warning: the audio is stretched by {percent}%, the sound may suffer.",
- "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' added: the file is at {file_bpm:g} BPM and follows the song tempo ({song_bpm:g} BPM): it lasts the same bars (right-click → Follow the song tempo to turn it off)."
+ "Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano ({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per disattivarlo).": "Clip '{name}' added: the file is at {file_bpm:g} BPM and follows the song tempo ({song_bpm:g} BPM): it lasts the same bars (right-click → Follow the song tempo to turn it off).",
+ "Groove": "Groove",
+ "Giro": "Progression",
+ "Riff": "Riff",
+ "Riff/melodia": "Riff/melody",
+ "{name} (copia)": "{name} (copy)",
+ "Automatico": "Automatic"
 }

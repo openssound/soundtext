@@ -1,6 +1,6 @@
 // Martello - hard rock in Mi
 //
-// Un riff di chitarra alla Led Zeppelin / AC/DC su una batteria anni '70:
+// Un riff di chitarra hard rock su una batteria anni '70:
 // introduzione, strofa, ritornello con gli accordi aperti, di nuovo strofa
 // e ritornello, un assolo di 16 battute con il wah, l'ultimo ritornello e la
 // chiusura sul Mi.

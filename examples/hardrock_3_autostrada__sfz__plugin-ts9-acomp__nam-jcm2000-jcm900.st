@@ -1,6 +1,6 @@
 // Autostrada - hard rock veloce in La
 //
-// Rock'n'roll a tutto volume alla AC/DC: un riff di accordi con le pause,
+// Rock'n'roll a tutto volume: un riff di accordi con le pause,
 // strofe a colpi secchi, ritornello con gli accordi pieni, un assolo di 16
 // battute e la chiusura. Due chitarre ritmiche in due Marshall diversi, una
 // per lato, il basso sugli ottavi e una solista che morde.

@@ -1,6 +1,6 @@
 // Pioggia su Memphis - blues minore soul in La minore
 //
-// Un blues minore lento e "pieno", alla The Thrill Is Gone: groove in
+// Un blues minore lento e "pieno", con un colore soul: groove in
 // sedicesimi, Rhodes con il phaser, gli archi che entrano piano e crescono,
 // la chitarra che canta il tema, il sax tenore che risponde con l'assolo,
 // poi l'ultimo giro con l'assolo di chitarra sopra gli archi al culmine.
