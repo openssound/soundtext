@@ -22,6 +22,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from core.i18n import tr
 from gui.main_window import MainWindow
 from gui.track_header import TrackHeaderWidget
 
@@ -72,9 +73,45 @@ def test_toolbar_fits_a_1200_px_window_with_the_theme(theme_name):
     _app.setStyleSheet(stylesheet_for(theme_name))
     try:
         w = _window(width=1200)
-        for widget in (w.view_structure_btn, w.view_text_btn, w.metronome_checkbox, w.master_vol_slider):
-            assert widget.isVisible()
-            assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        # anche durante l'ascolto (Pausa e' piu' largo di Play) e in vista Struttura (testo in grassetto)
+        for playing, structure in ((False, False), (True, False), (True, True)):
+            w.play_pause_btn.setText(tr("Pausa") if playing else tr("Play"))
+            w.arrangement_action.setChecked(structure)
+            _app.processEvents()
+            for widget in (w.view_structure_btn, w.view_text_btn, w.metronome_checkbox, w.master_vol_slider):
+                assert widget.isVisible(), (playing, structure)
+                assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+@pytest.mark.parametrize("family", ["DejaVu Sans", "Noto Sans"])
+def test_toolbar_has_room_to_spare_with_wide_fonts(family):
+    """DejaVu Sans (comune su Linux, quello della CI) e' piu' largo di Noto
+    Sans: la barra deve starci con un po' di margine, non al pixel."""
+    from PySide6.QtGui import QFont, QFontDatabase
+    from PySide6.QtWidgets import QToolBar
+    from gui.theme import stylesheet_for
+    if family not in QFontDatabase.families():
+        pytest.skip(f"carattere {family} non installato")
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setFamily(family)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark"))
+    try:
+        w = _window(width=1200)
+        toolbar = w.findChild(QToolBar, "mainToolbar")
+        assert toolbar.sizeHint().width() <= 1200 - 20
+        play_width = w.play_pause_btn.width()
+        w.play_pause_btn.setText(tr("Pausa"))
+        _app.processEvents()
+        assert w.play_pause_btn.width() == play_width            # la barra non si allarga durante l'ascolto
+        line = w.tempo_spin.lineEdit()                            # il tempo piu' largo si legge tutto
+        assert line.width() >= line.fontMetrics().horizontalAdvance("288,8 BPM") + 2
         w.close()
     finally:
         _app.setStyleSheet("")

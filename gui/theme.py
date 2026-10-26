@@ -204,12 +204,12 @@ QToolButton:checked {{
     border-color: {ACCENT};
 }}
 /* Barra dei comandi: pulsanti piu' stretti, cosi' la barra intera sta in
-   una finestra di 1200 px (vedi tests/test_main_layout_gui.py) */
+   una finestra di 1200 px anche con DejaVu Sans (vedi tests/test_main_layout_gui.py) */
 QToolBar#mainToolbar {{
     spacing: 3px;
 }}
 QToolBar#mainToolbar QToolButton {{
-    padding: 5px 6px;
+    padding: 5px 4px;
 }}
 
 /* Dialogo file di Qt (Linux, vedi gui.file_dialogs): col padding generico

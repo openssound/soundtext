@@ -5,9 +5,14 @@ non "120,0 BPM") e bpm() lo restituisce intero, cosi' nel file .st resta
 "Tempo: 120 BPM" come prima.
 """
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QDoubleSpinBox
 
 TEMPO_RANGE = (20, 300)
+# Oltre al testo piu' largo ("288,8 BPM") Qt lascia circa 18 px vuoti; nella
+# barra dei comandi ogni pixel conta (deve stare in 1200 px anche con
+# DejaVu Sans, vedi test_main_layout_gui): ne bastano 6.
+SIZE_HINT_TRIM = 12
 
 
 def tempo_value(value: float):
@@ -32,3 +37,11 @@ class TempoSpinBox(QDoubleSpinBox):
 
     def bpm(self):
         return tempo_value(self.value())
+
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        return QSize(hint.width() - SIZE_HINT_TRIM, hint.height())
+
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        return QSize(min(hint.width(), self.sizeHint().width()), hint.height())

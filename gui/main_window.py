@@ -747,7 +747,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.play_pause_btn.setToolTip(tr("Riproduce l'ensemble, o riprende dal punto di pausa (F5)"))
         self.play_pause_btn.setStyleSheet(
             f"QPushButton#playButton {{ font-weight: bold; color: #10151a; background: {ACCENT}; "
-            f"border: 1px solid {ACCENT}; border-radius: 6px; padding: 5px 14px; }}")
+            f"border: 1px solid {ACCENT}; border-radius: 6px; padding: 5px 10px; }}")
         self.play_pause_btn.clicked.connect(self.toggle_play_pause)
         toolbar.addWidget(self.play_pause_btn)
         self._toolbar_icons.append((self.play_pause_btn, "play", "#10151a"))
@@ -793,8 +793,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         song_box.setObjectName("songBox")
         song_box.setStyleSheet("QFrame#songBox { border: 1px solid palette(mid); border-radius: 6px; }")
         song_layout = QHBoxLayout(song_box)
-        song_layout.setContentsMargins(6, 2, 6, 2)
-        song_layout.setSpacing(8)
+        song_layout.setContentsMargins(4, 2, 4, 2)
+        song_layout.setSpacing(6)        # stretti: la barra deve stare in 1200 px (test_main_layout_gui)
 
         self.tempo_spin = TempoSpinBox()               # con un decimale (101,4), vedi gui.tempo_spin
         self.tempo_spin.setValue(self.project.tempo_bpm)
@@ -923,7 +923,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         text_color = "#333333" if get_active_theme() == "light" else "#e0e0e0"
         for button, name, color in self._toolbar_icons:
             if button is self.play_pause_btn:
-                name = "pause" if self.play_pause_btn.text() == "Pausa" else "play"
+                name = "pause" if self.play_pause_btn.text() == tr("Pausa") else "play"
             ic = icon(name, color or text_color)
             # Pulsanti legati a un'azione checkable (loop): a ogni toggle
             # QToolButton ricopia l'icona dall'azione, e se questa ne e'
@@ -932,6 +932,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             if action is not None:
                 action.setIcon(ic)
             button.setIcon(ic)
+        self._fit_play_button()
+
+    def _fit_play_button(self):
+        """Play e Pausa larghi uguali: altrimenti, partendo l'ascolto, la
+        barra dei comandi si allarga e Struttura/Testo finiscono nel menu »
+        (la barra deve stare in 1200 px, vedi test_main_layout_gui)."""
+        button = self.play_pause_btn
+        current = button.text()
+        button.setMinimumWidth(0)
+        widths = []
+        for text in (tr("Play"), tr("Pausa")):
+            button.setText(text)
+            widths.append(button.sizeHint().width())
+        button.setText(current)
+        button.setMinimumWidth(max(widths))
 
     def _apply_theme(self, name: str):
         app_settings.set_theme(name)
