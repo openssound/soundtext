@@ -852,69 +852,16 @@ class ProjectMixin:
             self._mark_dirty()
         self._validate_current()
 
-    def download_nam_profiles(self, ask: bool = True):
-        """Scarica i profili NAM consigliati nella cartella profili_nam
-        (in sottofondo, con una barra di avanzamento)."""
-        from core.nam_profiles import PROFILES, SOURCE_REPO, download_profiles, ensure_nam_dir
-        folder = ensure_nam_dir()
-        self._download_in_background(
-            "_nam_download_worker", download_profiles, folder, len(PROFILES),
-            title=tr("Profili NAM consigliati"),
-            question=tr("Scarico {0} profili NAM di amplificatori e pedali famosi (circa 11 MB) dalla raccolta della comunita' di Neural Amp Modeler su GitHub ({SOURCE_REPO}, licenza GNU GPL v3)?\n\nCartella: {folder}\n\nI profili gia' presenti non vengono riscaricati.", len(PROFILES), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
-            progress_label=tr("Download dei profili NAM..."),
-            hint=tr("\nCartella: {0}\nNel pannello Effetti: + Effetto → Saturazione → Profilo NAM. Agli amplificatori senza cassa aggiungi una cassa (File IR…).", folder))
-
-    def download_cab_irs(self, ask: bool = True):
-        """Scarica le casse (risposte all'impulso) per i profili NAM di sola
-        testata nella sottocartella casse dei profili NAM."""
-        from core.cab_irs import CABINETS, SOURCE_REPO, download_cabinets, ensure_cab_dir
-        folder = ensure_cab_dir()
-        self._download_in_background(
-            "_cab_download_worker", download_cabinets, folder, len(CABINETS),
-            title=tr("Casse per gli amplificatori NAM"),
-            question=tr("Scarico {0} casse per chitarra (risposte all'impulso, meno di 1 MB) da usare con i profili NAM di sola testata? Sono il pacchetto BestPlugins Mega Pack 2 di David Fau Casquel, licenza GNU GPL v2 o successiva, dal repository di Guitarix su GitHub ({SOURCE_REPO}).\n\nCartella: {folder}\n\nLe casse gia' presenti non vengono riscaricate.", len(CABINETS), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
-            progress_label=tr("Download delle casse..."),
-            hint=tr("\nCartella: {0}\nNella card del Profilo NAM (o dell'Amplificatore) scegli Cassa → File IR… e apri una di queste casse. Ogni file prende il nome dell'amplificatore di cui riproduce la cassa.", folder))
-
-    def _download_in_background(self, worker_attr, download, folder, total, title, question,
-                                progress_label, hint):
-        """Chiede conferma (se question non e' vuota) e scarica in sottofondo
-        con download(folder, progress, should_stop), con barra di avanzamento
-        e riepilogo finale. worker_attr tiene il riferimento al thread."""
-        if question and QMessageBox.question(self, title, question) != QMessageBox.StandardButton.Yes:
-            return
-        cancelled = {"value": False}
-        progress_dlg = QProgressDialog(progress_label, tr("Annulla"), 0, total, self)
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
-        worker = Worker(download, folder, pass_progress=False,
-                        progress=lambda i, n, _name: worker.progress.emit(i / n),
-                        should_stop=lambda: cancelled["value"])
-        worker.progress.connect(lambda frac: progress_dlg.setValue(round(frac * total)))
-        setattr(self, worker_attr, worker)      # riferimento forte finche' il thread e' attivo
-
-        def handle_ok(result):
-            worker.wait()
-            progress_dlg.close()
-            setattr(self, worker_attr, None)
-            lines = [tr("Scaricati: {0}, gia' presenti: {1}.", len(result['downloaded']), len(result['present']))]
-            if result["failed"]:
-                lines.append(tr("Non riusciti (controlla la connessione e riprova):"))
-                lines += [f"  • {name}: {reason}" for name, reason in result["failed"]]
-            lines.append(hint)
-            box = QMessageBox.warning if result["failed"] else QMessageBox.information
-            box(self, title, "\n".join(lines))
-
-        def handle_error(msg):
-            worker.wait()
-            progress_dlg.close()
-            setattr(self, worker_attr, None)
-            QMessageBox.warning(self, title, tr("Download non riuscito: {msg}", msg=msg))
-
-        worker.finished_ok.connect(handle_ok)
-        worker.finished_error.connect(handle_error)
-        worker.start()
+    def open_download_dialog(self):
+        """Suoni -> Scarica e installa... (gui.download_dialog)."""
+        from .download_dialog import DownloadDialog
+        dlg = DownloadDialog(self)
+        dlg.exec()
+        if dlg.changed:
+            # un plugin appena installato: i processi dei plugin ripartono al
+            # prossimo uso e rileggono i plugin installati
+            from core import plugins
+            plugins.shutdown()
 
     def show_help(self):
         dlg = HelpDialog(self)

@@ -107,7 +107,7 @@ def test_list_and_unknown_group(capsys):
 
 def test_menu_by_number_or_name_and_empty_exits(monkeypatch, capsys):
     nomi = [nome for nome, _desc in ss.voci_elenco()]
-    assert nomi[-3:] == ["host", "libreria", "tutto"] and len(nomi) == len(set(nomi))
+    assert nomi[-4:] == ["host", "libreria", "nam-plugin", "tutto"] and len(nomi) == len(set(nomi))
     risposte = iter(["1 libreria", "boh", f"{len(nomi)},piano", ""])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(risposte))
     assert ss.menu() == [nomi[0], "libreria"]

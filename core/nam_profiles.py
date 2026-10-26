@@ -1,7 +1,7 @@
 """
 Profili NAM consigliati: una trentina di catture di amplificatori e pedali
-famosi da scaricare con un comando (Strumenti → Scarica profili NAM
-consigliati..., oppure python scarica_profili_nam.py).
+famosi da scaricare con un comando (Suoni → Scarica e installa..., voce
+"profili-nam", oppure python scarica_profili_nam.py).
 
 I file vengono dalla raccolta della comunita' di Neural Amp Modeler su
 GitHub (https://github.com/pelennor2170/NAM_models, licenza GNU GPL v3),

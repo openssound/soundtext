@@ -1,7 +1,7 @@
 """
 Casse consigliate per i profili NAM di sola testata: una ventina di
 risposte all'impulso (IR) di casse per chitarra da scaricare con un comando
-(Strumenti → Scarica casse IR per gli amplificatori NAM...).
+(Suoni → Scarica e installa..., voce "casse-ir").
 
 I file sono il pacchetto "BestPlugins Mega Pack 2" di David Fau Casquel
 (2013), che l'autore ha rilasciato con licenza GNU GPL v2 o successiva per

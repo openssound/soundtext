@@ -13,6 +13,9 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
                                                   Reverb, LSP Plugins (solo Linux)
     python3 scarica_strumenti.py libreria         compila il motore SFZ sfizioso per lo
                                                   strumento SFZ interno (~5 min)
+    python3 scarica_strumenti.py nam-plugin       il plugin LV2 Neural Amp Modeler gia'
+                                                  compilato: profili NAM 4-6 volte piu'
+                                                  veloci (Linux e Windows x64)
     python3 scarica_strumenti.py piano basso      scarica i gruppi indicati
     python3 scarica_strumenti.py tutto            tutti i gruppi (esclusi gli extra)
     python3 scarica_strumenti.py extra_basso      extra: extra_basso, extra_piano,
@@ -63,6 +66,29 @@ def user_lib_dir() -> Path:
     if SISTEMA == "macos":
         return Path.home() / "Library" / "Application Support" / "SoundText" / "lib"
     return Path.home() / ".local" / "lib" / "soundtext"
+
+
+# Cartella LV2 dell'utente, dove lilv cerca da se' (vedi core.lv2_host)
+def user_lv2_dir() -> Path:
+    if SISTEMA == "windows":
+        return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming") / "LV2"
+    if SISTEMA == "macos":
+        return Path.home() / "Library" / "Audio" / "Plug-Ins" / "LV2"
+    return Path.home() / ".lv2"
+
+
+# Plugin LV2 Neural Amp Modeler (motore NAM in C++, GPL-3.0): con lui SoundText
+# calcola i profili NAM 4-6 volte piu' in fretta (vedi core.nam_plugin).
+# Versione fissa, file verificati con lo SHA-256.
+NAM_PLUGIN_VERSION = "v0.2.3"
+NAM_PLUGIN_BASE = f"https://github.com/mikeoliphant/neural-amp-modeler-lv2/releases/download/{NAM_PLUGIN_VERSION}/"
+NAM_PLUGIN_FILES = {
+    "linux": ("neural_amp_modeler_lv2_linux_x64.tgz",
+              "b866d44f535b770f423f99d1083c03ddbafb07e63ed639d11e7f10c7dffb2f5e"),
+    "windows": ("neural_amp_modeler_lv2_win_x64.zip",
+                "d64aec201ae0285e0adb9f1ac22e720d62a15c9947b9506e61dd7c6f8e9ad0ef"),
+}
+NAM_PLUGIN_DIR = "neural_amp_modeler.lv2"
 
 
 # Cartella VST3 dell'utente (non servono i diritti di amministratore)
@@ -161,7 +187,7 @@ def comando_script() -> str:
 def voci_elenco() -> list:
     """(nome, descrizione) di tutto cio' che si puo' scaricare, nell'ordine
     dell'elenco: lo stesso ordine numera le voci del menu interattivo."""
-    host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, serve sudo) + i plugin VST3 della voce vst3",
+    host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, chiede la password) + i plugin VST3 della voce vst3",
             "windows": "7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz, "
                        "i plugin VST3 della voce vst3",
             "macos": "7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz, "
@@ -172,6 +198,8 @@ def voci_elenco() -> list:
             + [("vst3", f"plugin VST3 gratuiti nella cartella VST3 dell'utente: {vst3}"),
                ("host", host),
                ("libreria", "motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)"),
+               ("nam-plugin", f"plugin LV2 Neural Amp Modeler {NAM_PLUGIN_VERSION}: profili NAM 4-6 volte piu' "
+                              "veloci (Linux e Windows x64, ~2 MB)"),
                ("tutto", "tutti i gruppi SFZ (esclusi gli extra_*)")])
 
 
@@ -467,25 +495,42 @@ def installa_dati_surge(sorgente: Path):
     print(f"   -> {dest}")
 
 
+def amministratore_linux() -> list:
+    """Il comando per eseguire come amministratore: sudo da un terminale
+    (chiede li' la password), pkexec senza terminale (la finestra
+    "Scarica e installa" di SoundText: la password la chiede una finestra
+    del sistema). [] se non c'e' modo."""
+    if sys.stdin is not None and sys.stdin.isatty():
+        return ["sudo"]
+    return ["pkexec"] if shutil.which("pkexec") else []
+
+
 def host_linux():
-    _esegui(["sudo", "apt-get", "update"])
-    print("== Installo 7zip")
-    _esegui(["sudo", "apt-get", "install", "-y", "7zip"])
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         # leggibile dall'utente _apt, altrimenti apt avvisa che scarica fuori dalla sandbox
         tmp.chmod(0o755)
+        pacchetti = ["7zip"]
         if subprocess.run(["dpkg", "-s", "surge-xt"], capture_output=True).returncode != 0:
-            print("== Installo Surge XT (sintetizzatore VST3/LV2, Nightly dal GitHub ufficiale)")
+            print("== Scarico Surge XT (sintetizzatore VST3/LV2, Nightly dal GitHub ufficiale)")
             url = asset_github("surge-synthesizer/surge", "Nightly", r"surge-xt-linux-x64-NIGHTLY-.*\.deb")
             scarica_file(url, tmp / "surge-xt.deb")
-            _esegui(["sudo", "apt-get", "install", "-y", tmp / "surge-xt.deb"])
+            pacchetti.append(tmp / "surge-xt.deb")
         if subprocess.run(["dpkg", "-s", "sfizz"], capture_output=True).returncode != 0:
-            print("== Installo sfizz (player SFZ per Ubuntu 24.04)")
+            print("== Scarico sfizz (player SFZ per Ubuntu 24.04)")
             base = "https://download.opensuse.org/repositories/home:/sfztools:/sfizz/xUbuntu_24.04/amd64"
             scarica_file(f"{base}/libsfizz1_1.2.3-0_amd64.deb", tmp / "libsfizz1.deb")
             scarica_file(f"{base}/sfizz_1.2.3-0_amd64.deb", tmp / "sfizz.deb")
-            _esegui(["sudo", "apt-get", "install", "-y", tmp / "libsfizz1.deb", tmp / "sfizz.deb"])
+            pacchetti += [tmp / "libsfizz1.deb", tmp / "sfizz.deb"]
+        admin = amministratore_linux()
+        if not admin:
+            raise Errore("serve la password di amministratore: dal terminale, nella cartella di SoundText, "
+                         "esegui ./scarica_strumenti.sh host")
+        print("== Installo " + ", ".join(Path(p).stem if isinstance(p, Path) else p for p in pacchetti)
+              + " (apt" + (": la password la chiede una finestra del sistema" if admin == ["pkexec"] else "")
+              + ")")
+        # un solo comando da amministratore: la password si chiede una volta
+        _esegui(admin + ["sh", "-c", 'apt-get update && apt-get install -y "$@"', "sh"] + pacchetti)
 
 
 def host_windows_macos():
@@ -667,6 +712,46 @@ def libreria_compilata(build: Path) -> Path:
     raise Errore("la libreria compilata non si trova")
 
 
+def installa_plugin_nam():
+    """Il plugin LV2 Neural Amp Modeler gia' compilato, nella cartella LV2
+    dell'utente: SoundText lo usa per calcolare i profili NAM."""
+    dest = user_lv2_dir() / NAM_PLUGIN_DIR
+    stamp = dest / "soundtext.versione"
+    if stamp.exists() and stamp.read_text().strip() == NAM_PLUGIN_VERSION:
+        print(f"== nam-plugin: Neural Amp Modeler {NAM_PLUGIN_VERSION} gia' installato in {dest}, salto")
+        return
+    import platform as _platform
+    voce = NAM_PLUGIN_FILES.get(SISTEMA)
+    if voce is None or _platform.machine().lower() not in ("x86_64", "amd64"):
+        print(f"== nam-plugin: non c'e' una versione pronta per questo sistema ({SISTEMA}, "
+              f"{_platform.machine()}): SoundText continua a calcolare i profili NAM da se', piu' lentamente")
+        return
+    nome, sha = voce
+    print(f"== nam-plugin: Neural Amp Modeler {NAM_PLUGIN_VERSION} (LV2, GPL-3.0)")
+    download = DEST / "_download"
+    file = download / nome
+    scarica_file(NAM_PLUGIN_BASE + nome, file)
+    import hashlib
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()
+    if digest != sha:
+        file.unlink()
+        raise Errore(f"il file scaricato non e' quello atteso (SHA-256 {digest[:12]}...): non lo installo")
+    appoggio = Path(tempfile.mkdtemp(prefix="nam-lv2-"))
+    try:
+        estrai(file, appoggio)
+        trovato = next(appoggio.rglob(NAM_PLUGIN_DIR), None)
+        if trovato is None or not trovato.is_dir():
+            raise Errore(f"nell'archivio manca la cartella {NAM_PLUGIN_DIR}")
+        _rimuovi(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(trovato, dest)
+    finally:
+        _rimuovi(appoggio)
+    file.unlink()
+    stamp.write_text(NAM_PLUGIN_VERSION + "\n")
+    print(f"   -> {dest}")
+
+
 def installa_libreria():
     lib_dir = user_lib_dir()
     stamp = lib_dir / "sfizioso.commit"
@@ -736,6 +821,8 @@ def main(argv) -> int:
                 installa_vst3()
             elif arg == "libreria":
                 installa_libreria()
+            elif arg == "nam-plugin":
+                installa_plugin_nam()
             elif arg == "tutto":
                 for voce in GRUPPI:
                     scarica(voce)

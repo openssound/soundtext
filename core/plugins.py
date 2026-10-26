@@ -186,6 +186,19 @@ class _Host:
 RENDER_HOSTS = max(1, min(3, (os.cpu_count() or 2) // 2))
 _hosts = {"ui": _Host("ui"), "live": _Host("live")}
 _hosts.update({f"render{i}": _Host(f"render{i}") for i in range(RENDER_HOSTS)})
+# Processi per il motore NAM in C++ (vedi core.nam_plugin): un pezzo del
+# brano ciascuno, in parallelo, separati dal rendering degli strumenti.
+NAM_HOSTS = max(1, min(6, os.cpu_count() or 2))
+_hosts.update({f"nam{i}": _Host(f"nam{i}") for i in range(NAM_HOSTS)})
+
+
+def process_audio_on(channel: str, ref: str, params: dict, state: str, samples: np.ndarray, rate: int) -> np.ndarray:
+    """Come process_audio, in un processo scelto da chi chiama (core.nam_plugin)."""
+    ref = resolve_ref(ref)
+    x = np.ascontiguousarray(samples[:, :2], dtype=np.float32)
+    y = _call(channel, ref, ("process", ref, int(rate), dict(params or {}), state or "", x),
+              _timeout_for(len(x) / float(rate)))
+    return np.ascontiguousarray(y, dtype=np.float32)
 
 
 _channels: Dict[str, str] = {}   # ref -> processo del rendering

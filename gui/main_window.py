@@ -603,15 +603,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Cartelle dei plugin VST3..."), self.show_plugin_dirs,
             tooltip=tr("Le cartelle in cui cercare i plugin VST3, oltre a quelle standard del sistema.")))
         sounds_menu.addSeparator()
-        download_menu = sounds_menu.addMenu(tr("Scarica"))
-        download_menu.addAction(self._action(
-            tr("Scarica profili NAM consigliati..."), self.download_nam_profiles,
-            tooltip=tr("Scarica nella cartella profili_nam una trentina di profili NAM di amplificatori "
-                    "e pedali famosi, da usare con l'effetto Profilo NAM.")))
-        download_menu.addAction(self._action(
-            tr("Scarica casse IR per gli amplificatori NAM..."), self.download_cab_irs,
-            tooltip=tr("Scarica una ventina di casse per chitarra (risposte all'impulso) da abbinare "
-                    "ai profili NAM di sola testata, con Cassa → File IR…")))
+        sounds_menu.addAction(self._action(
+            tr("Scarica e installa..."), self.open_download_dialog,
+            tooltip=tr("Strumenti campionati SFZ, plugin VST3, profili e casse NAM, il motore NAM veloce e "
+                    "il motore SFZ interno, in un'unica finestra.")))
 
         options_menu = menubar.addMenu(tr("&Opzioni"))
         options_menu.addAction(self._action(

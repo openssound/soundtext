@@ -1685,8 +1685,7 @@ effects, divided by family in the **+ Effect** menu:
     device, which reproduces its sound with great fidelity. Thousands can be
     found, almost all free, on **Tone3000** (tone3000.com): famous
     amplifiers, overdrive and distortion pedals, preamplifiers, sometimes
-    with the cabinet included. To get started, **Sounds → Download → Download
-    recommended NAM profiles...** downloads about thirty in one go (see "Where to
+    with the cabinet included. To get started, **Sounds → Download and install...**, item *Recommended NAM profiles*, downloads about thirty in one go (see "Where to
     find NAM profiles", below).
 
     When you add the effect (**+ Effect → Saturation → NAM profile**) the
@@ -1770,8 +1769,7 @@ effects, divided by family in the **+ Effect** menu:
       card says so in red and the sound passes through unchanged.
 
     **Where to find NAM profiles.**
-    - **Recommended profiles, in one go:** **Sounds → Download → Download
-      recommended NAM profiles...** (or, from a terminal in the SoundText
+    - **Recommended profiles, in one go:** **Sounds → Download and install...**, item *Recommended NAM profiles* (or, from a terminal in the SoundText
       folder, `python3 scarica_profili_nam.py`) downloads 34 profiles of
       famous amplifiers and pedals, about 11 MB in all, into the
       **`profili_nam`** folder next to SoundText (or into
@@ -1806,7 +1804,14 @@ effects, divided by family in the **+ Effect** menu:
         Swedish* (death metal), and for bass *Tech 21 dUg DP3X*. *Maxon
         OD808*, *Boss SD-1*, *MXR M77* and *Precision Drive* are "feather"
         networks, the lightest: about half the processing time.
-    - **Cabinets for amplifiers without a cabinet:** **Sounds → Download → Download IR cabinets for NAM amplifiers...** downloads 20 guitar
+    - **Fast NAM engine:** NAM profiles are computed inside SoundText; with
+      the **Neural Amp Modeler** plugin (LV2, GPL-3.0, the *Fast NAM engine*
+      item of the **Sounds → Download and install...** window,
+      for 64-bit Linux and Windows) the computation is 4-6 times faster, and
+      the first playback of a song with NAM guitars starts much sooner. The
+      sound is the same (about 0.2% difference). Without the plugin, or if
+      it does not respond, SoundText computes the profiles itself as before.
+    - **Cabinets for amplifiers without a cabinet:** **Sounds → Download and install...**, item *IR cabinets for NAM amplifiers*, downloads 20 guitar
       cabinets (impulse responses, less than 1 MB) into the
       **`profili_nam/casse`** subfolder, with the licence text and a
       `LEGGIMI.txt`; the "Choose IR…" window already opens there. They are
@@ -2105,6 +2110,21 @@ the SoundFont**. The name of the plugin appears under the track name.
 Some LV2 plugins load a file: for example sfizz LV2 plays an **SFZ
 file**. In the parameters window these properties have a row with
 **Browse...** and **Remove**; the chosen file is kept in the project.
+
+**Download and install.** **Sounds → Download and install...**
+opens a window with everything SoundText can download: the sampled SFZ
+instruments (piano, Rhodes, sax, drum kits, basses, strings and more), the
+free VST3 plugins, the NAM profiles and IR cabinets, the fast NAM engine
+and the built-in SFZ engine. For each item it shows size, licence and
+whether it is already installed; tick the items and **Install** downloads
+them in the background, with progress and a log; **Stop** interrupts (the
+download resumes next time). It is the same work as `scarica_strumenti.py`
+from the terminal. The built-in SFZ engine is compiled on your computer:
+if git, cmake or the compiler are missing, the window says so before
+starting. On Linux 7-Zip, sfizz and Surge XT are installed with apt: a system
+window asks for the administrator password, once (if the system has no
+pkexec, install that item from the terminal with
+`./scarica_strumenti.sh host`).
 
 **Built-in SFZ instrument.** An `.sfz` file (a sampled instrument, like
 the ones downloaded by `scarica_strumenti.py`) can also be played without
@@ -4248,13 +4268,11 @@ suggest that SoundText is one of their products. Use of the VST logo has
 Steinberg's own rules.
 
 **Downloaded content and third-party plugins.**
-- The **recommended NAM profiles** (Sounds → Download → Download recommended NAM
-  profiles) come from the pelennor2170 collection, under the GPL-3.0
+- The **recommended NAM profiles** (Sounds → Download and install..., item *Recommended NAM profiles*) come from the pelennor2170 collection, under the GPL-3.0
   licence: SoundText downloads them to the user's computer, it does not
   include them in the builds. Whoever redistributes them must respect their
   licence.
-- The **recommended IR cabinets** (Sounds → Download → Download IR cabinets for
-  NAM amplifiers) are the BestPlugins Mega Pack 2 by David Fau Casquel,
+- The **recommended IR cabinets** (Sounds → Download and install..., item *IR cabinets for NAM amplifiers*) are the BestPlugins Mega Pack 2 by David Fau Casquel,
   under the GPL v2 or later: SoundText also downloads these to the user's
   computer, together with the licence text, and does not include them in
   the builds.

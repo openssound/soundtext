@@ -1793,8 +1793,7 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     fidèlement. On en trouve des milliers, presque tous gratuits, sur
     **Tone3000** (tone3000.com) : amplificateurs célèbres, pédales
     d'overdrive et de distorsion, préamplificateurs, parfois avec le baffle
-    inclus. Pour commencer, **Sons → Télécharger → Télécharger les profils NAM
-    recommandés...** en télécharge une trentaine d'un coup (voir « Où trouver
+    inclus. Pour commencer, **Sons → Télécharger et installer...**, élément *Profils NAM recommandés*, en télécharge une trentaine d'un coup (voir « Où trouver
     des profils NAM », plus bas).
 
     En ajoutant l'effet (**+ Effet → Saturation → Profil NAM**) la fenêtre
@@ -1883,8 +1882,7 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       l'écrit en rouge et le son passe inchangé.
 
     **Où trouver des profils NAM.**
-    - **Profils recommandés, d'un coup :** **Sons → Télécharger → Télécharger les
-      profils NAM recommandés...** (ou, depuis un terminal dans le dossier
+    - **Profils recommandés, d'un coup :** **Sons → Télécharger et installer...**, élément *Profils NAM recommandés* (ou, depuis un terminal dans le dossier
       de SoundText, `python3 scarica_profili_nam.py`) télécharge 34 profils
       d'amplificateurs et de pédales célèbres, environ 11 Mo au total, dans le
       dossier **`profili_nam`** à côté de SoundText (ou dans
@@ -1919,7 +1917,14 @@ disponibles, divisés par famille dans le menu **+ Effet** :
         suédois* (death metal), et pour la basse *Tech 21 dUg DP3X*. *Maxon
         OD808*, *Boss SD-1*, *MXR M77* et *Precision Drive* sont des réseaux
         « feather », les plus légers : environ la moitié du temps de calcul.
-    - **Baffles pour les amplis sans baffle :** **Sons → Télécharger → Télécharger des baffles IR pour les amplis NAM...** télécharge 20
+    - **Moteur NAM rapide :** les profils NAM se calculent dans SoundText ;
+      avec le plugin **Neural Amp Modeler** (LV2, GPL-3.0, élément *Moteur
+      NAM rapide* de la fenêtre **Sons → Télécharger et installer...**, pour Linux et Windows 64 bits) le calcul est 4 à 6
+      fois plus rapide, et la première écoute d'un morceau avec des guitares
+      NAM démarre bien plus tôt. Le son est le même (environ 0,2 % de
+      différence). Sans le plugin, ou s'il ne répond pas, SoundText calcule
+      les profils lui-même comme avant.
+    - **Baffles pour les amplis sans baffle :** **Sons → Télécharger et installer...**, élément *Baffles IR pour les amplificateurs NAM*, télécharge 20
       baffles de guitare (réponses impulsionnelles, moins de 1 Mo) dans le
       sous-dossier **`profili_nam/casse`**, avec le texte de la licence et
       un `LEGGIMI.txt` ; la fenêtre « Choisir l'IR… » s'ouvre déjà là. Il
@@ -2238,6 +2243,21 @@ Certains plugins LV2 chargent un fichier : par exemple sfizz LV2 joue un
 **fichier SFZ**. Dans la fenêtre des paramètres ces propriétés ont une
 ligne avec **Parcourir...** et **Retirer** ; le fichier choisi reste dans
 le projet.
+
+**Télécharger et installer.** **Sons → Télécharger et installer...** ouvre une fenêtre avec tout ce que SoundText sait
+télécharger : les instruments échantillonnés SFZ (piano, Rhodes, sax,
+batteries, basses, cordes et autres), les plugins VST3 gratuits, les
+profils NAM et les baffles IR, le moteur NAM rapide et le moteur SFZ
+intégré. Pour chaque élément elle indique la taille, la licence et s'il
+est déjà installé ; cochez les éléments et **Installer** les télécharge en
+arrière-plan, avec la progression et un journal ; **Arrêter** interrompt
+(le téléchargement reprend la fois suivante). C'est le même travail que
+`scarica_strumenti.py` depuis le terminal. Le moteur SFZ intégré se
+compile sur l'ordinateur : s'il manque git, cmake ou le compilateur, la
+fenêtre le dit avant de commencer. Sous Linux, 7-Zip, sfizz et Surge XT
+s'installent avec apt : une fenêtre du système demande le mot de passe
+administrateur, une seule fois (si le système n'a pas pkexec, cet élément
+s'installe depuis le terminal avec `./scarica_strumenti.sh host`).
 
 **Instrument SFZ intégré.** Un fichier `.sfz` (instrument échantillonné,
 comme ceux que télécharge `scarica_strumenti.py`) peut aussi être joué sans
@@ -4583,13 +4603,11 @@ pour faire croire que SoundText est l'un de leurs produits. L'utilisation
 du logo VST obéit à des règles propres à Steinberg.
 
 **Contenus téléchargés et plugins de tiers.**
-- Les **profils NAM recommandés** (Sons → Télécharger → Télécharger les profils NAM
-  recommandés) viennent de la collection de pelennor2170, sous licence
+- Les **profils NAM recommandés** (Sons → Télécharger et installer..., élément *Profils NAM recommandés*) viennent de la collection de pelennor2170, sous licence
   GPL-3.0 : SoundText les télécharge sur l'ordinateur de l'utilisateur, il
   ne les inclut pas dans les builds. Celui qui les redistribue doit en
   respecter la licence.
-- Les **baffles IR recommandés** (Sons → Télécharger → Télécharger des baffles IR
-  pour les amplis NAM) sont le BestPlugins Mega Pack 2 de David Fau
+- Les **baffles IR recommandés** (Sons → Télécharger et installer..., élément *Baffles IR pour les amplificateurs NAM*) sont le BestPlugins Mega Pack 2 de David Fau
   Casquel, sous licence GPL v2 ou ultérieure : SoundText les télécharge
   eux aussi sur l'ordinateur de l'utilisateur, avec le texte de la
   licence, et ne les inclut pas dans les builds.

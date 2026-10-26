@@ -1723,7 +1723,7 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
     Se ne trovano migliaia, quasi tutti gratuiti, su **Tone3000**
     (tone3000.com): amplificatori famosi, pedali di overdrive e distorsione,
     preamplificatori, a volte anche con la cassa inclusa. Per cominciare,
-    **Suoni → Scarica → Scarica profili NAM consigliati...** ne scarica una
+    **Suoni → Scarica e installa...**, voce *Profili NAM consigliati*, ne scarica una
     trentina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
 
     Aggiungendo l'effetto (**+ Effetto → Saturazione → Profilo NAM**) si
@@ -1811,8 +1811,7 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       in rosso e il suono passa invariato.
 
     **Dove trovare i profili NAM.**
-    - **Profili consigliati, in un colpo:** **Suoni → Scarica → Scarica profili
-      NAM consigliati...** (oppure, da terminale nella cartella di
+    - **Profili consigliati, in un colpo:** **Suoni → Scarica e installa...**, voce *Profili NAM consigliati* (oppure, da terminale nella cartella di
       SoundText, `python3 scarica_profili_nam.py`) scarica 34 profili di
       amplificatori e pedali famosi, circa 11 MB in tutto, nella cartella
       **`profili_nam`** accanto a SoundText (o in `~/SoundText/profili_nam`
@@ -1845,8 +1844,14 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
         svedese* (death metal), e per il basso *Tech 21 dUg DP3X*. *Maxon
         OD808*, *Boss SD-1*, *MXR M77* e *Precision Drive* sono reti
         "feather", le più leggere: circa metà del tempo di calcolo.
-    - **Casse per gli amplificatori senza cassa:** **Suoni → Scarica → Scarica
-      casse IR per gli amplificatori NAM...** scarica 20 casse per chitarra
+    - **Motore NAM veloce:** i profili NAM si calcolano dentro SoundText;
+      con il plugin **Neural Amp Modeler** (LV2, GPL-3.0, voce *Motore NAM
+      veloce* della finestra **Suoni → Scarica e installa...**,
+      per Linux e Windows a 64 bit) il calcolo è 4-6 volte più veloce, e il
+      primo ascolto di un brano con chitarre NAM parte molto prima. Il suono
+      è lo stesso (differenza dello 0,2% circa). Senza il plugin, o se non
+      risponde, SoundText calcola i profili da sé come prima.
+    - **Casse per gli amplificatori senza cassa:** **Suoni → Scarica e installa...**, voce *Casse IR per gli amplificatori NAM*, scarica 20 casse per chitarra
       (risposte all'impulso, meno di 1 MB) nella sottocartella
       **`profili_nam/casse`**, con il testo della licenza e un
       `LEGGIMI.txt`; la finestra "Scegli IR…" si apre già lì. Sono il
@@ -2148,6 +2153,21 @@ traccia compare il nome del plugin.
 Alcuni plugin LV2 caricano un file: per esempio sfizz LV2 suona un
 **file SFZ**. Nella finestra dei parametri queste proprieta' hanno una
 riga con **Sfoglia...** e **Togli**; il file scelto resta nel progetto.
+
+**Scarica e installa.** **Suoni → Scarica e installa...** apre
+una finestra con tutto quello che SoundText sa scaricare: gli strumenti
+campionati SFZ (piano, Rhodes, sax, batterie, bassi, archi e altri), i
+plugin VST3 gratuiti, i profili NAM e le casse IR, il motore NAM veloce e
+il motore SFZ interno. Per ogni voce dice dimensione, licenza e se è già
+installata; si spuntano le voci e **Installa** le scarica in sottofondo,
+con l'avanzamento e un registro; **Ferma** interrompe (il download
+riprende la volta dopo). È lo stesso lavoro di `scarica_strumenti.py` dal
+terminale. Il motore SFZ interno si compila sul computer: se mancano git,
+cmake o il compilatore la finestra lo dice prima di partire. Su Linux
+7-Zip, sfizz e Surge XT si installano con apt: la password di
+amministratore la chiede una finestra del sistema, una volta sola (se il
+sistema non ha pkexec, la voce si installa dal terminale con
+`./scarica_strumenti.sh host`).
 
 **Strumento SFZ interno.** Un file `.sfz` (strumento campionato, come
 quelli che scarica `scarica_strumenti.py`) si puo' suonare anche senza
@@ -4370,12 +4390,10 @@ credere che SoundText sia un loro prodotto. L'uso del logo VST ha regole
 proprie di Steinberg.
 
 **Contenuti scaricati e plugin di altri.**
-- I **profili NAM consigliati** (Suoni → Scarica → Scarica profili NAM
-  consigliati) vengono dalla raccolta di pelennor2170, con licenza
+- I **profili NAM consigliati** (Suoni → Scarica e installa..., voce *Profili NAM consigliati*) vengono dalla raccolta di pelennor2170, con licenza
   GPL-3.0: SoundText li scarica sul computer dell'utente, non li include
   nelle build. Chi li ridistribuisce deve rispettarne la licenza.
-- Le **casse IR consigliate** (Suoni → Scarica → Scarica casse IR per gli
-  amplificatori NAM) sono il pacchetto BestPlugins Mega Pack 2 di David Fau
+- Le **casse IR consigliate** (Suoni → Scarica e installa..., voce *Casse IR per gli amplificatori NAM*) sono il pacchetto BestPlugins Mega Pack 2 di David Fau
   Casquel, con licenza GPL v2 o successiva: anche queste SoundText le
   scarica sul computer dell'utente, insieme al testo della licenza, e non
   le include nelle build.

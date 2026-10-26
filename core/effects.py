@@ -946,7 +946,12 @@ def _nam_stage(x: np.ndarray, rate: int, path: str) -> np.ndarray:
             y = _fft_resample(y, model.sample_rate, rate)[:len(mono)]
             y = np.concatenate([y, np.zeros(len(mono) - len(y))])
         else:
-            y = process(model, mono)
+            # il motore in C++ del plugin Neural Amp Modeler, se c'e' (4-6
+            # volte piu' veloce, vedi core.nam_plugin); altrimenti la rete in numpy
+            from . import nam_plugin
+            y = nam_plugin.process(path, mono, rate, model.receptive_field, model.loudness)
+            if y is None:
+                y = process(model, mono)
         y = np.asarray(y, dtype=np.float32)
         with _nam_cache_lock:
             _nam_out_cache[key] = y

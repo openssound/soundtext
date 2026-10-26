@@ -62,8 +62,8 @@ class NamProfileDialog(QDialog):
             tr("Profili NAM sul computer, per tipologia. Un amplificatore senza cassa riceve da solo una cassa "
                "interna; i pedali vanno messi prima di un amplificatore (interno o profilo).")
             if self.entries else
-            tr("Nessun profilo NAM nella cartella dei profili: scaricane una trentina con Suoni → Scarica → "
-               "Scarica profili NAM consigliati..., oppure scegli un file con «Altro file…»."))
+            tr("Nessun profilo NAM nella cartella dei profili: scaricane una trentina con Suoni → Scarica e "
+               "installa... (voce «Profili NAM consigliati»), oppure scegli un file con «Altro file…»."))
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.search = QLineEdit()

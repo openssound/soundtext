@@ -21,6 +21,14 @@ if __name__ == "__main__" and "--plugin-worker" in sys.argv[1:]:
     _plugin_worker_main()
     sys.exit(0)
 
+# La finestra "Scarica e installa" (gui.download_dialog) avvia se stessa con
+# --scarica-strumenti <voci>: esegue scarica_strumenti.py (accanto al
+# programma) in un processo a parte, anche nell'app impacchettata, dove non
+# c'e' un Python da usare.
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--scarica-strumenti":
+    from core.downloads import run_script as _run_download_script
+    sys.exit(_run_download_script(sys.argv[2:]))
+
 from PySide6.QtCore import QTimer, QTranslator
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
