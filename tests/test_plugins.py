@@ -584,3 +584,25 @@ def test_picker_puts_unusable_plugins_last_and_disabled(monkeypatch):
     assert [i.data(0, Qt.UserRole) for i in items] == ["lv2:urn:b", "lv2:urn:c", "vst3:/a.vst3"]
     assert [bool(i.flags() & Qt.ItemIsEnabled) for i in items] == [True, True, False]
     assert "bloccato" in items[2].toolTip(1)
+
+
+@pytest.mark.skipif(not lv2_available(), reason="libreria lilv non disponibile")
+def test_lv2_plugin_list_is_safe_from_several_threads(monkeypatch):
+    """Rendendo in parallelo piu' tracce con plugin LV2, piu' thread chiedono
+    insieme l'elenco dei plugin: lilv non e' thread-safe, e senza il lock del
+    mondo il programma andava in crash (segmentation fault)."""
+    import threading
+    from core import lv2_host
+    monkeypatch.setattr(lv2_host, "_info_cache", None)
+    results, start = [], threading.Barrier(8)
+
+    def ask():
+        start.wait()
+        results.append(len(lv2_host.list_lv2_plugins()))
+
+    threads = [threading.Thread(target=ask) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(results) == 8 and len(set(results)) == 1
