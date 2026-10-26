@@ -1625,6 +1625,10 @@ class PlaybackEngine:
         # di questa race: una volta superato, un thread vecchio resta
         # per sempre "non piu' valido".
         self._play_token = 0
+        # (pronte, totale) mentre si preparano le tracce con effetti o
+        # strumenti plugin prima che parta l'audio; None altrimenti (vedi
+        # play_file/_start_stems e la barra di avanzamento)
+        self.stem_progress = None
         # Serializza "controllo del token + avvio del processo" (vedi
         # _spawn in play_file) con stop(): senza, uno stop() arrivato fra il
         # controllo del token e il Popen lasciava partire comunque l'audio
@@ -1939,11 +1943,23 @@ class PlaybackEngine:
             stem_job["samples"] = []
             stem_job["named"] = []
             stem_job["interrupted"] = False
+            progress = [0, len(stems)]
+            self.stem_progress = tuple(progress)
+
+            def done():
+                progress[0] += 1
+                if self._play_token == my_token:
+                    self.stem_progress = tuple(progress)
 
             def work():
                 from .effect_render import render_stems
                 try:
-                    for stem, samples in zip(stems, render_stems(stems, lambda: self._play_token != my_token)):
+                    # Uno Stop non interrompe le tracce in preparazione: finiscono
+                    # in sottofondo e vanno in cache, cosi' il Play che segue le
+                    # trova pronte invece di ricominciare (con i profili NAM ci
+                    # vuole anche un minuto, e lo Stop arriva spesso proprio
+                    # mentre si aspetta).
+                    for stem, samples in zip(stems, render_stems(stems, None, on_done=done)):
                         if samples is not None:
                             stem_job["samples"].append((samples, -stems_offset))
                             stem_job["named"].append((stem.track_name, samples))
@@ -1974,6 +1990,8 @@ class PlaybackEngine:
                 _start_stems()
                 if stem_job:
                     stem_job["thread"].join()
+                    if self._play_token == my_token:
+                        self.stem_progress = None
                     if stem_job["interrupted"]:
                         return None
                 if self._play_token != my_token:
@@ -2283,6 +2301,7 @@ class PlaybackEngine:
         return True
 
     def stop(self):
+        self.stem_progress = None
         with self._proc_lock:
             self._play_token += 1
             self._starting = False

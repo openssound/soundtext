@@ -221,6 +221,14 @@ class PlaybackMixin:
 
     def _update_playback_progress(self):
         if self._playback_start_wall is None:
+            # l'audio non e' ancora partito: si stanno preparando le tracce
+            # con effetti o strumenti plugin (con i profili NAM anche un minuto)
+            prepared = getattr(self.playback, "stem_progress", None)
+            if prepared:
+                done, total = prepared
+                self.playback_progress.setValue(int(done / max(1, total) * 100))
+                self.playback_progress.setFormat(
+                    tr("Preparo strumenti ed effetti… {done} di {total}", done=done, total=total))
             return
         elapsed_beats_total = self._current_elapsed_beats()
         total_beats = self._playback_duration_beats

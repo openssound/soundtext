@@ -2109,5 +2109,6 @@
  "Riff": "Riff",
  "Riff/melodia": "Riff/melody",
  "{name} (copia)": "{name} (copy)",
- "Automatico": "Automatic"
+ "Automatico": "Automatic",
+ "Preparo strumenti ed effetti… {done} di {total}": "Preparing instruments and effects… {done} of {total}"
 }

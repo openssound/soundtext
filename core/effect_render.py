@@ -407,16 +407,23 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
         return wet
 
 
-def render_stems(requests: List[StemRequest], stop_check=None) -> List[Optional[np.ndarray]]:
+def render_stems(requests: List[StemRequest], stop_check=None, on_done=None) -> List[Optional[np.ndarray]]:
     """render_stem di ogni richiesta, in parallelo (un thread per traccia):
     i plugin lavorano nei loro processi (vedi core.plugins.render_channel)
     e la sintesi col SoundFont ha il suo lock, quindi le tracce si
-    sovrappongono invece di sommarsi. Solleva RuntimeError se annullata."""
+    sovrappongono invece di sommarsi. on_done() si chiama (da quei thread)
+    a ogni traccia pronta, per mostrare l'avanzamento. Solleva RuntimeError
+    se annullata."""
+    def one(request):
+        result = render_stem(request, stop_check)
+        if on_done is not None:
+            on_done()
+        return result
     if len(requests) <= 1:
-        return [render_stem(r, stop_check) for r in requests]
+        return [one(r) for r in requests]
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=min(8, len(requests))) as pool:
-        futures = [pool.submit(render_stem, r, stop_check) for r in requests]
+        futures = [pool.submit(one, r) for r in requests]
         return [f.result() for f in futures]
 
 
