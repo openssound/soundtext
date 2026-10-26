@@ -45,7 +45,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # theme.track_card_colors/_apply_theme).
         set_active_theme(app_settings.get_theme())
         self.setWindowTitle(self.APP_TITLE)
-        self.resize(1200, 720)
+        self.resize(*self._initial_size())
 
         self.project = Project(name=tr("Nuovo progetto"))
         self.current_path = None
@@ -130,6 +130,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.arrangement_action.setChecked(True)
 
     # ------------------------------------------------------------------ UI
+
+    @staticmethod
+    def _initial_size():
+        """All'apertura: l'85% dello schermo disponibile, almeno 1200 x 720
+        (e mai piu' dello schermo), cosi' la barra dei comandi ha spazio."""
+        from PySide6.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return 1200, 720
+        area = screen.availableGeometry()
+        width = min(area.width(), max(1200, int(area.width() * 0.85)))
+        height = min(area.height(), max(720, int(area.height() * 0.85)))
+        return width, height
 
     def _build_ui(self):
         splitter = QSplitter(Qt.Horizontal)
@@ -780,8 +793,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         song_box.setObjectName("songBox")
         song_box.setStyleSheet("QFrame#songBox { border: 1px solid palette(mid); border-radius: 6px; }")
         song_layout = QHBoxLayout(song_box)
-        song_layout.setContentsMargins(8, 2, 8, 2)
-        song_layout.setSpacing(12)
+        song_layout.setContentsMargins(6, 2, 6, 2)
+        song_layout.setSpacing(8)
 
         self.tempo_spin = TempoSpinBox()               # con un decimale (101,4), vedi gui.tempo_spin
         self.tempo_spin.setValue(self.project.tempo_bpm)
@@ -792,7 +805,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.metrica_combo.setEditable(True)
         self.metrica_combo.addItems(["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"])
         self.metrica_combo.setCurrentText(self.project.time_sig)
-        self.metrica_combo.setFixedWidth(70)
+        self.metrica_combo.setFixedWidth(64)
         self.metrica_combo.setToolTip(
             tr("Metrica (indicazione di tempo) del progetto, es. 4/4, 3/4, 6/8.\n"
             "Durante la riproduzione mostra la metrica in vigore in quel punto, "
@@ -807,7 +820,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             "Am", "Em", "Bm", "F#m", "C#m", "G#m", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm",
         ])
         self.key_combo.setCurrentText(self.project.key)
-        self.key_combo.setFixedWidth(70)
+        self.key_combo.setFixedWidth(64)
         self.key_combo.setToolTip(
             tr("Tonalita' del brano, es. C, Am, G, Em... (vuota = non impostata).\n"
             "Importando un file MIDI viene riconosciuta e impostata automaticamente, se presente.\n"

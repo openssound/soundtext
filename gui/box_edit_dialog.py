@@ -34,7 +34,7 @@ from core.playback import PlaybackEngine
 
 from .highlighter import NotationHighlighter
 from .pattern_editor_dialog import PatternEditorDialog, pattern_ref_at
-from .theme import GOOD, BAD, WARN
+from .theme import BAD, good_text, warn_text
 from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor, handle_chord_double_click
@@ -163,10 +163,10 @@ class BoxEditDialog(QDialog):
             self.status_label.setStyleSheet(f"color: {BAD};")
         elif issues:
             self.status_label.setText(bar_issues_summary(issues))
-            self.status_label.setStyleSheet(f"color: {WARN};")
+            self.status_label.setStyleSheet(f"color: {warn_text()};")
         else:
             self.status_label.setText(tr("✓  Sintassi valida"))
-            self.status_label.setStyleSheet(f"color: {GOOD};")
+            self.status_label.setStyleSheet(f"color: {good_text()};")
 
     def _preview_project(self, text: str) -> Project:
         preview = Project(name="preview", tempo_bpm=self.tempo_bpm, time_sig=self.project.time_sig,

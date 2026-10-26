@@ -58,6 +58,36 @@ def _menu_texts(open_menu_fn):
 
 # --------------------------------------------------------------- barra dei comandi
 
+@pytest.mark.parametrize("theme_name", ["dark", "light"])
+def test_toolbar_fits_a_1200_px_window_with_the_theme(theme_name):
+    """Con il foglio di stile vero del tema (i padding dei pulsanti) e un
+    carattere da 10 punti, come su un desktop Linux: la barra intera sta in
+    una finestra di 1200 px, Struttura e Testo compresi."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for(theme_name))
+    try:
+        w = _window(width=1200)
+        for widget in (w.view_structure_btn, w.view_text_btn, w.metronome_checkbox, w.master_vol_slider):
+            assert widget.isVisible()
+            assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+def test_window_opens_with_room_for_the_toolbar():
+    width, height = MainWindow._initial_size()
+    screen = _app.primaryScreen().availableGeometry()
+    assert width >= min(1200, screen.width()) and height >= min(720, screen.height())
+    assert width <= screen.width() and height <= screen.height()
+
+
 def test_toolbar_fits_a_1200_px_window():
     w = _window(width=1200)
     for widget in (w.master_vol_slider, w.master_vol_value_label, w.level_meter, w.view_text_btn,

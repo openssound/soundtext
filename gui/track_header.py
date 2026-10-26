@@ -221,7 +221,7 @@ class TrackHeaderWidget(QFrame):
         border = theme.ACCENT if self._active else colors["border"]
         light = theme.get_active_theme() == "light"
         text_color = "#333333" if light else "#e0e0e0"
-        field = "#f0f0f2" if light else "#2d2d30"
+        field = "#e2e2e5" if light else "#2d2d30"
         # Il foglio di stile globale da' ai QToolButton un padding pensato
         # per la barra dei comandi: in questi pulsanti da 24x20 non
         # resterebbe spazio per la lettera o l'icona.

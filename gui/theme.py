@@ -33,8 +33,10 @@ _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_
 # (sfondi/bordi/testo) e ACCENT_DIM (sfondo di hover/selezione, che deve
 # restare in contrasto col TEXT del tema). LINK (i link della guida e dei
 # QTextBrowser) invece cambia: ACCENT su bianco come testo si legge poco.
-_LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#cfe3f5", BG_BASE="#f5f5f5", BG_PANEL="#ffffff",
-              BG_FIELD="#ffffff", BG_HOVER="#e8f0f8", BORDER="#d3d3d6", TEXT="#1c1c1e",
+# Niente bianco pieno: grigi tenui, il piu' chiaro per i campi di testo
+# (editor), cosi' il tema non abbaglia e il testo resta ben contrastato.
+_LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#c6dcef", BG_BASE="#e4e4e7", BG_PANEL="#ececee",
+              BG_FIELD="#f4f4f5", BG_HOVER="#dce5ee", BORDER="#c4c4c9", TEXT="#1c1c1e",
               TEXT_DIM="#55555a", LINK="#1d5f99")
 
 
@@ -62,6 +64,17 @@ def text_dim() -> str:
     return (_LIGHT if _active_theme == "light" else _DARK)["TEXT_DIM"]
 
 
+def warn_text() -> str:
+    """L'ambra degli avvisi come colore di testo nel tema attivo: WARN su uno
+    sfondo chiaro si legge poco."""
+    return "#8a5a00" if _active_theme == "light" else WARN
+
+
+def good_text() -> str:
+    """Il verde di "tutto bene" come colore di testo nel tema attivo."""
+    return "#2e7d32" if _active_theme == "light" else GOOD
+
+
 def dim(widget, style: str = ""):
     """Testo secondario: il colore lo da' il foglio di stile globale (regola
     [dim="true"]), cosi' segue il tema anche quando lo si cambia; 'style'
@@ -78,7 +91,7 @@ def track_card_colors() -> dict:
     restare illeggibili (sfondo scuro fisso + testo scuro del tema chiaro)
     quando l'utente passa al tema chiaro."""
     if _active_theme == "light":
-        return dict(bg="#ffffff", border="#d3d3d6", text_dim="#55555a")
+        return dict(bg="#ededef", border="#c4c4c9", text_dim="#55555a")
     return dict(bg="#232323", border="#3a3a3a", text_dim="#999999")
 
 
@@ -189,6 +202,14 @@ QToolButton:checked {{
     color: #10151a;
     font-weight: bold;
     border-color: {ACCENT};
+}}
+/* Barra dei comandi: pulsanti piu' stretti, cosi' la barra intera sta in
+   una finestra di 1200 px (vedi tests/test_main_layout_gui.py) */
+QToolBar#mainToolbar {{
+    spacing: 3px;
+}}
+QToolBar#mainToolbar QToolButton {{
+    padding: 5px 6px;
 }}
 
 /* Dialogo file di Qt (Linux, vedi gui.file_dialogs): col padding generico

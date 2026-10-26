@@ -24,7 +24,7 @@ from .rhythm_generate_dialog import (
     DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, chord_source_tracks,
     last_box_key,
 )
-from .theme import GOOD, BAD, WARN
+from .theme import GOOD, BAD, WARN, good_text, warn_text
 from core.i18n import tr
 from .file_dialogs import file_dialog_options
 
@@ -281,13 +281,13 @@ class MixerMixin:
         if issues:
             self.validation_label.setText(bar_issues_summary(issues))
             self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {WARN}; "
+                f"padding: 5px 10px; border-radius: 5px; color: {warn_text()}; "
                 f"background-color: rgba(224,160,48,30); border: 1px solid {WARN};"
             )
         elif ok:
             self.validation_label.setText(tr("✓  Sintassi valida"))
             self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {GOOD}; "
+                f"padding: 5px 10px; border-radius: 5px; color: {good_text()}; "
                 f"background-color: rgba(76,175,80,30); border: 1px solid {GOOD};"
             )
         else:

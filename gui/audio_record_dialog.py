@@ -23,7 +23,7 @@ from core.audio_recording import (
     loop_clip, loop_pass_count, punch_clip, recorded_clip, save_take, take_preview,
 )
 
-from .theme import GOOD, WARN, dim
+from .theme import dim, good_text, warn_text
 from .worker import Worker
 from core.i18n import tr
 
@@ -145,7 +145,7 @@ class AudioRecordDialog(QDialog):
             "click e la base se escono dalle casse. Ascolta in cuffia, oppure scegli la scheda audio a cui e' "
             "collegato lo strumento."))
         self.mic_warning.setWordWrap(True)
-        self.mic_warning.setStyleSheet(f"color: {WARN};")
+        self.mic_warning.setStyleSheet(f"color: {warn_text()};")
         self.mic_warning.setVisible(False)
         form.addRow("", self.mic_warning)
 
@@ -431,7 +431,7 @@ class AudioRecordDialog(QDialog):
         sign = "+" if cents > 0 else "−" if cents < 0 else "±"
         self.tuner_label.setText(tr("{note}  {sign}{cents} cent  ({hz:.1f} Hz)",
                                     note=name, sign=sign, cents=abs(cents), hz=freq))
-        self.tuner_label.setStyleSheet(f"color: {GOOD if abs(cents) <= 5 else WARN};")
+        self.tuner_label.setStyleSheet(f"color: {good_text() if abs(cents) <= 5 else warn_text()};")
 
     # ------------------------------------------------------------ registrazione
 

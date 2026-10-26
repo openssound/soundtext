@@ -489,7 +489,7 @@ class SendsCard(QFrame):
         grid.addWidget(self.room_combo, 2, 1, 1, 2)
         layout.addLayout(grid)
         self.room_hint = QLabel(tr("Nella stanza piccola il riverbero\nsi sente appena: prova Sala."))
-        self.room_hint.setStyleSheet("color: #e8c96d; font-size: 11px;")
+        self.room_hint.setStyleSheet(f"color: {theme.warn_text()}; font-size: 11px;")
         layout.addWidget(self.room_hint)
         dim = QLabel(tr("Effetti del synth: valgono anche\nnell'export MIDI (l'ambiente no)."))
         dim.setStyleSheet(f"color: {theme.track_card_colors()['text_dim']}; font-size: 11px;")
@@ -690,7 +690,7 @@ class EffectsPanel(QFrame):
         colors = theme.track_card_colors()
         light = theme.get_active_theme() == "light"
         text = "#333333" if light else "#e0e0e0"
-        base = "#f5f5f5" if light else theme.BG_BASE
+        base = "#e4e4e7" if light else theme.BG_BASE
         self.setStyleSheet(
             f"QFrame#effectsPanel {{ background: {base}; border-top: 2px solid {theme.ACCENT}; }}"
             f"QFrame#effectsPanel QLabel, QFrame#effectsPanel QCheckBox {{ color: {text}; }}"

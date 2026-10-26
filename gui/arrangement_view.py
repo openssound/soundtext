@@ -117,7 +117,7 @@ def _snap(beat: float) -> float:
 
 def _canvas_colors() -> dict:
     if get_active_theme() == "light":
-        return {"bg": "#f0f0f2", "header_bg": "#ffffff", "row_bg": "#f7f7f9", "ruler_bg": "#ffffff",
+        return {"bg": "#e1e1e5", "header_bg": "#ededef", "row_bg": "#e7e7ea", "ruler_bg": "#ededef",
                 "border": "#b4b4ba", "text": "#45454a", "box_text": "#10151a"}
     return {"bg": "#181818", "header_bg": "#232323", "row_bg": "#202020", "ruler_bg": "#232323",
             "border": BORDER, "text": TEXT_DIM, "box_text": "#10151a"}

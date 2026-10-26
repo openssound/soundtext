@@ -96,8 +96,8 @@ class Knob(QAbstractSlider):
         light = theme.get_active_theme() == "light"
         colors = theme.track_card_colors()
         text_color = QColor("#333333" if light else "#e0e0e0")
-        groove = QColor("#d9d9dd" if light else "#3f3f44")
-        face = QColor("#f0f0f2" if light else "#2d2d30")
+        groove = QColor("#c6c6cb" if light else "#3f3f44")
+        face = QColor("#e2e2e5" if light else "#2d2d30")
         accent = QColor(theme.ACCENT)
         if not self.isEnabled():
             accent = QColor(colors["text_dim"])
