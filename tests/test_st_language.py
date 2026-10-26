@@ -68,7 +68,10 @@ def test_soundtext_and_library_share_one_engine():
     import st_language.notation
     import st_language.timing
     assert core.notation is st_language.notation and core.chords is st_language.chords
-    assert core.tempo_map is st_language.timing and core.musicxml_export is st_language.musicxml
+    assert core.musicxml_export is st_language.musicxml
+    # core.tempo_map e' la libreria con il tempo del brano da tutte le tracce (vedi la')
+    assert core.tempo_map.with_fermatas is st_language.timing.with_fermatas
+    assert core.tempo_map.build_tempo_beat_map is not st_language.timing.build_tempo_beat_map
     from core.instruments import InstrumentProfile
     assert InstrumentProfile is st_language.instruments.InstrumentProfile
     assert st_song.flatten_clips_to_text.__module__ == "st_language.song"

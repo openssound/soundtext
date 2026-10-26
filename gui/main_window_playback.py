@@ -502,14 +502,11 @@ class PlaybackMixin:
         che l'esportazione MIDI rallenta (vedi core.midi_export); senza, dopo
         una corona tempo, barra e testina restano indietro rispetto all'audio
         (e alla fine il brano risulta finito mentre la corona suona ancora)."""
-        from core.tempo_map import fermata_spans, with_fermatas
-        tracks = self.project.audible_tracks()
+        from core.tempo_map import song_tempo_beat_map_heard
         try:
-            events = {t.name: t.parsed_events(self.project.patterns) for t in tracks if not t.is_audio}
+            return song_tempo_beat_map_heard(self.project)
         except Exception:
             return build_tempo_beat_map(self.project)
-        return with_fermatas(build_tempo_beat_map(self.project, tracks=tracks, events_by_track=events),
-                             fermata_spans(events))
 
     def _song_duration_beats(self) -> float:
         from core.midi_export import compute_project_duration_beats

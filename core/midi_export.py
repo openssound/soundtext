@@ -20,7 +20,6 @@ from st_language.midi import (  # noqa: F401  (note e articolazioni: nella libre
     effective_articulation, sounding_span, shift_ticks, needs_bend_range, decorated_velocity, ornament_spans,
     sounding_events,
 )
-from st_language.timing import fermata_spans, with_fermatas
 
 TICKS_PER_BEAT = 480
 
@@ -182,13 +181,14 @@ def _note_messages(note_spans: List[Tuple[int, int, int, int]], channel: int
 
 def _build_global_tempo_map(project: Project, tracks: List[Track], events_by_track: Dict[str, List[Event]],
                              start_offset_beats: float = 0.0) -> List[Tuple[int, int]]:
-    """Mappa di tempo (tick, bpm) ordinata, derivata da core.tempo_map.
-    build_tempo_beat_map (beat -> bpm, vedi la' per le due sorgenti di cambi
-    combinate) convertendo i beat in tick MIDI."""
-    from .tempo_map import build_tempo_beat_map
+    """Mappa di tempo (tick, bpm) ordinata, derivata da core.tempo_map
+    (beat -> bpm, con le corone) convertendo i beat in tick MIDI. Il tempo e'
+    del brano: i cambi e le corone di tutte le tracce, anche se se ne
+    esporta una sola (il rendering di una traccia alla volta) o se sono in
+    mute."""
+    from .tempo_map import song_tempo_beat_map_heard
 
-    beat_map = build_tempo_beat_map(project, tracks=tracks, events_by_track=events_by_track)
-    beat_map = with_fermatas(beat_map, fermata_spans(events_by_track))
+    beat_map = song_tempo_beat_map_heard(project, events_by_track=events_by_track)
     beat_map = _shift_beat_map(beat_map, start_offset_beats)
     return [(round(beat * TICKS_PER_BEAT), bpm) for beat, bpm in beat_map]
 

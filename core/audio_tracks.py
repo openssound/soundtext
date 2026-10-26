@@ -1077,15 +1077,6 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
     return done
 
 
-def _tracks_with_tempo_markers(project: Project) -> List[Track]:
-    """Le sole tracce che possono avere marcatori 'tempo=N' nel testo (anche
-    dentro un pattern): leggere le note di tutte le tracce a ogni modifica
-    costerebbe decimi di secondo, e quasi mai ce ne sono."""
-    in_patterns = any("tempo=" in tok for pat in project.patterns.values() for tok in pat.tokens)
-    return [t for t in project.tracks
-            if not t.is_audio and ("tempo=" in t.text or (in_patterns and "%" in t.text))]
-
-
 def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     """Le clip che seguono il tempo del brano (source_bpm > 0) prendono lo
     stretch che le fa durare, con la mappa del tempo di adesso, tante battute
@@ -1096,7 +1087,7 @@ def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     if not following:
         return []
     from .tempo_map import build_tempo_beat_map, seconds_for_beats, value_at_beat
-    tempo_map = build_tempo_beat_map(project, tracks=_tracks_with_tempo_markers(project))
+    tempo_map = build_tempo_beat_map(project)
     changed = []
     for clip in following:
         info = cached_wav_info(clip.file)
