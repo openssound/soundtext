@@ -1579,6 +1579,14 @@ lecture :
 - la vélocité obtenue reste de toute façon dans les limites MIDI valables
   (1-127).
 
+**Pistes avec un instrument échantillonné ou plugin** (SFZ, VST3, LV2 :
+Piste → Instrument plugin) : ici le Volume et le Master sont un **gain sur
+l'audio**, comme un fader, et les vélocités restent celles écrites. Avec
+des échantillons la vélocité choisit l'enregistrement (un coup léger n'est
+pas un coup fort joué plus doucement) : la mettre à l'échelle changerait le
+timbre et, au-dessus de 100 %, ramènerait accents et coups légers sur
+l'échantillon le plus fort.
+
 Les réglages de Volume, Pan, Mute et Solo de chaque piste sont enregistrés
 dans le fichier `.st` (bloc `Mixer <Nom de piste>:`) et rétablis
 automatiquement à la réouverture du projet.
@@ -1610,6 +1618,11 @@ synthé :
 - **Ambiance**, une seule pour **tout le morceau** : l'espace dans lequel
   toutes les pistes envoient leur réverbération. Petite pièce (par défaut),
   Salle, Grande salle ou Église.
+
+La réverbération et le chorus valent aussi pour les pistes jouées par un
+instrument échantillonné ou plugin (SFZ, VST3, LV2), avec la même ambiance
+du morceau ; pas pour celles qui passent par un profil NAM, qui comme les
+autres pistes vont dans l'amplificateur sans réverbération.
 
 Le bouton FX s'allume (bleu clair) quand la piste a de la réverbération, du
 chorus ou des effets de la chaîne, et son info-bulle en montre les valeurs.
@@ -1805,11 +1818,18 @@ disponibles, divisés par famille dans le menu **+ Effet** :
       l'Amplificateur (voir plus haut). Un profil de tête seule sans baffle
       sonne agressif et grésillant : quand vous choisissez un profil que le
       fichier déclare sans baffle (amplificateur ou préampli, pas les pédales
-      ni ceux pour basse), SoundText lui met de lui-même un baffle intégré
-      adapté (4×12 pour Marshall, Mesa, 5150 et semblables, Combo 1×12 pour
-      Vox et semblables, sinon 2×12), si le Baffle était sur *Aucun* ; en
-      choisissant un profil avec le baffle inclus, il revient sur *Aucun /
-      inclus*.
+      ni ceux pour basse), SoundText lui met de lui-même un baffle, si le
+      Baffle était sur *Aucun* : pour les têtes rock et metal le **vrai
+      baffle** de leur famille, si vous avez téléchargé les baffles IR (voir
+      plus bas : Marshall JMP 2203 pour Marshall, Orange, Friedman et
+      semblables, EVH 5150 III pour Peavey 5150 et 6505, Mesa Boogie Mark V
+      pour Mesa, et Engl, Splawn, Laney, Krank pour les leurs) ; sinon un
+      baffle intégré adapté (4×12 pour les têtes, Combo 1×12 pour Vox,
+      Magnatone et semblables, sinon 2×12). Pour les combos clairs (Fender,
+      Vox, Magnatone), parmi les baffles IR il n'y en a pas d'adapté et le
+      baffle intégré reste. Si le fichier IR d'un baffle manque, on entend le
+      baffle intégré adapté au profil plutôt qu'aucun. En choisissant un
+      profil avec le baffle inclus, il revient sur *Aucun / inclus*.
     - **Le synthé joue « sec » :** une piste de notes qui va dans un profil
       NAM est jouée par le synthé sans sa réverbération ni son chorus, comme
       une guitare branchée directement dans l'amplificateur. Un ampli à fort

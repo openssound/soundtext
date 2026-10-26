@@ -11,7 +11,7 @@
 //   (scarica_strumenti: drskit-sfz, pastabass, chitarra-dist,
 //   chitarra-elettrica; in ~/Strumenti); l'organo e' quello del SoundFont GM;
 // - organo: Leslie veloce (Calf Rotary Speaker, plugin LV2) e poi il profilo
-//   NAM del Marshall JCM900 con la 4x12;
+//   NAM del Marshall JCM900 con la cassa vera (IR) di un Marshall;
 // - chitarra a sinistra: il campione gia' distorto, solo ripulito sui bassi;
 //   chitarra a destra: pulita in un Tube Screamer e nel profilo NAM del Peavey
 //   5150 high gain; la solista: Tube Screamer e Marshall JCM900, eco e
@@ -295,18 +295,18 @@ Effetti Chitarra Sinistra:
 
 Effetti Chitarra Destra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
-  nam: ingresso=0 cassa=4x12 livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam"
+  nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam" ir="../profili_nam/casse/EVH 5150 III.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Organo:
   plugin: mix=100 livello=0 ref="lv2:http://calf.sourceforge.net/plugins/RotarySpeaker" p.vib_speed=2 p.level_out=1
-  nam: ingresso=-4 cassa=4x12 livello=-4 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=-4 cassa=file livello=-4 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=14
 
 Effetti Solista:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.45 p.fslider1_=750 p.fslider0_=-2
-  nam: ingresso=0 cassa=4x12 livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=0 cassa=file livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=1/4 tempo=625 ripetizioni=28 mix=15
   riverbero: stanza=60 smorzamento=45 ampiezza=100 mix=16
   passa_alto: frequenza=160 pendenza=12

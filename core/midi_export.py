@@ -207,7 +207,8 @@ def _control_messages(cc: int, value: int, channel: int) -> List[mido.Message]:
 def export_project_to_midi(project: Project, path: str, only_audible: bool = True,
                             tracks: Optional[List[Track]] = None, midi_dir: Optional[str] = None,
                             start_offset_beats: float = 0.0,
-                            humanize: bool = False, humanize_amount: int = 50):
+                            humanize: bool = False, humanize_amount: int = 50,
+                            volume_as_gain: bool = False):
     """Esporta il progetto (o un sottoinsieme esplicito di tracce, funzionalita' 3)
     in un file MIDI standard multitraccia.
 
@@ -226,7 +227,14 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
     fisso: e' proprio l'incoerenza fra un ascolto e l'altro a suonare
     'umana'). Non tocca eventi di tipo slide/sustain/tempo_marker/rest, ne'
     la timeline logica (il cursore/le durate 'di griglia' restano quelli
-    nominali, cambia solo il tick MIDI effettivo scritto nel file)."""
+    nominali, cambia solo il tick MIDI effettivo scritto nel file).
+
+    volume_as_gain: per le tracce suonate da uno strumento plugin (SFZ,
+    VST3, LV2) il volume di traccia e il master non toccano le note: le
+    velocity restano quelle scritte (scelgono gli strati dinamici dei
+    campioni) e CC7 resta al valore neutro dello strumento; il volume lo
+    applica chi renderizza, come guadagno sull'audio (vedi
+    core.effect_render.StemRequest.gain)."""
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_BEAT)
 
     if tracks is None:
@@ -299,9 +307,10 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
         # Il volume master (project.master_volume) scala ulteriormente questo
         # fattore, applicandosi uniformemente a tutte le tracce.
         volume_factor = (track.volume / 100.0) * master_factor
-        midi_track.append(mido.Message("control_change", control=7,
-                                        value=max(0, min(127, round(track.volume * master_factor))),
-                                        channel=channel, time=0))
+        cc7 = max(0, min(127, round(track.volume * master_factor)))
+        if volume_as_gain and track.synth and not track.is_audio:
+            volume_factor, cc7 = 1.0, 100
+        midi_track.append(mido.Message("control_change", control=7, value=cc7, channel=channel, time=0))
         midi_track.append(mido.Message("control_change", control=10, value=track.pan,
                                         channel=channel, time=0))
         # Invio al riverbero (CC91) e al chorus (CC93) del synth: scritti solo
@@ -335,7 +344,7 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
         # Automazioni (vol=, expr=, pan=...): i valori scritti prima del
         # punto di partenza valgono comunque, si applica l'ultimo al tick 0.
         controls_before: Dict[int, Tuple[float, int]] = {}
-        volume_scale = track.volume * master_factor / 100.0
+        volume_scale = volume_factor
 
         # le note di abbellimento (d'g) suonano subito prima della loro nota
         for ev in sounding_events(events):

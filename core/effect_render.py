@@ -218,6 +218,12 @@ class StemRequest:
     synth: str = ""
     synth_params: dict = field(default_factory=dict)
     synth_state: str = ""
+    # Strumento plugin: il volume (di traccia per il master) come guadagno
+    # sull'audio, e gli invii a riverbero e chorus (percentuali), vedi
+    # core.midi_export.export_project_to_midi(volume_as_gain=True)
+    gain: float = 1.0
+    reverb_send: int = 0
+    chorus_send: int = 0
     # Il pan della traccia si applica dopo la catena (vedi apply_pan): la
     # traccia asciutta e' al centro, cosi' un ampli mono (NAM) non riporta
     # al centro una chitarra spostata a sinistra.
@@ -225,7 +231,7 @@ class StemRequest:
 
     @property
     def wet_key(self) -> str:
-        return self.dry_key + "|" + chain_signature(self.effects, self.bpm) + f"|pan{self.pan}"
+        return self.dry_key + "|" + chain_signature(self.effects, self.bpm) + f"|pan{self.pan}|gain{self.gain}"
 
     def cleanup(self):
         if self.midi_path and os.path.exists(self.midi_path):
@@ -253,15 +259,25 @@ def prepare_stem(project: Project, track: Track, tempo_map) -> StemRequest:
         return StemRequest(track.name, key, effects, layers=layers, bpm=project.tempo_bpm, pan=pan)
     handle = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
     handle.close()
-    export_project_to_midi(project, handle.name, tracks=[centered])
     if track.synth and not lv2_instrument_missing(track.synth):
+        # Le velocity restano quelle scritte: con i campioni scelgono lo strato
+        # dinamico (un colpo leggero non e' un colpo forte piu' piano). Il
+        # volume si applica all'audio, come un fader.
         from .plugins import signature as plugin_signature
+        export_project_to_midi(project, handle.name, tracks=[centered], volume_as_gain=True)
+        gain = max(0, min(200, track.volume)) / 100.0 * max(0, min(200, project.master_volume)) / 100.0
+        dry_amp = synth_dry_for(effects)
+        reverb_send = 0 if dry_amp else track.reverb
+        chorus_send = 0 if dry_amp else track.chorus
         with open(handle.name, "rb") as f:
             digest = hashlib.sha1(f.read())
         digest.update(repr(plugin_signature(track.synth, track.synth_params, track.synth_state)).encode())
+        digest.update(repr((reverb_send, chorus_send, project.reverb_room)).encode())
         return StemRequest(track.name, "synth" + digest.hexdigest(), effects, midi_path=handle.name,
                            reverb_room=project.reverb_room, bpm=project.tempo_bpm, synth=track.synth, synth_params=dict(track.synth_params),
-                           synth_state=track.synth_state, pan=pan)
+                           synth_state=track.synth_state, pan=pan, gain=gain, reverb_send=reverb_send,
+                           chorus_send=chorus_send)
+    export_project_to_midi(project, handle.name, tracks=[centered])
     overrides = _resolve_channel_soundfont_overrides(project, False, tracks=[track])
     # verso un amplificatore simulato la traccia va senza riverbero e chorus del synth
     room = DRY_SYNTH_ROOM if synth_dry_for(effects) else project.reverb_room
@@ -293,6 +309,10 @@ def _render_dry_locked(request: StemRequest, stop_check=None) -> Optional[np.nda
         return dry
     if request.synth:
         dry = render_synth(request, stop_check)
+        if dry is not None:
+            from .effects import apply_synth_sends
+            dry = apply_synth_sends(dry, AUDIO_SAMPLE_RATE, request.reverb_room or "",
+                                    request.reverb_send, request.chorus_send)
     if dry is None and request.midi_path is not None:
         # traccia di testo col SoundFont (anche quando il suo strumento
         # plugin non funziona: meglio sentirla col SoundFont che non sentirla)
@@ -351,16 +371,19 @@ def apply_pan(samples: np.ndarray, request: StemRequest) -> np.ndarray:
     in un mixer: gli effetti (ampli mono compresi) lavorano sul suono al
     centro, poi lo si sposta. Tracce audio: bilanciamento, come nel mix
     delle clip; tracce di note: potenza costante, come il pan del synth
-    (al centro il livello resta quello di prima)."""
+    (al centro il livello resta quello di prima). Per le tracce suonate da
+    uno strumento plugin anche il volume (request.gain), dopo la catena come
+    un fader: non cambia quanto si spinge un amplificatore o un compressore."""
+    gain = np.float32(request.gain if request.synth else 1.0)
     if request.pan == 64:
-        return samples
+        return samples if gain == 1.0 else np.multiply(samples, gain, dtype=np.float32)
     if request.layers or request.midi_path is None:
         from .audio_tracks import _pan_gains
         left, right = _pan_gains(request.pan)
     else:
         angle = (max(0, min(127, request.pan)) / 127.0) * np.pi / 2
         left, right = np.sqrt(2.0) * np.cos(angle), np.sqrt(2.0) * np.sin(angle)
-    return np.multiply(samples, np.array([left, right], dtype=np.float32), dtype=np.float32)
+    return np.multiply(samples, np.array([left, right], dtype=np.float32) * gain, dtype=np.float32)
 
 
 def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:

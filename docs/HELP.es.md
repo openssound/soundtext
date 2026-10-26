@@ -1545,6 +1545,13 @@ Esto hace que el control sea eficaz con cualquier motor de reproducción:
 - la velocidad resultante siempre se mantiene dentro de los límites MIDI
   válidos (1-127).
 
+**Pistas con un instrumento sampleado o plugin** (SFZ, VST3, LV2: Pista →
+Instrumento plugin): aquí el Volumen y el Máster son una **ganancia sobre el
+audio**, como un fader, y las velocidades quedan como están escritas. Con
+las muestras la velocidad elige la grabación (un golpe suave no es un golpe
+fuerte más bajo): escalarla cambiaría el timbre, y por encima del 100%
+llevaría acentos y golpes suaves a la muestra más fuerte.
+
 Los ajustes de Volumen, Pan, Mute y Solo de cada pista se guardan en el
 archivo `.st` (bloque `Mixer <Nombre de pista>:`) y se restablecen
 automáticamente al volver a abrir el proyecto.
@@ -1577,6 +1584,11 @@ del sintetizador:
 - **Ambiente**, uno para **toda la canción**: el espacio al que todas las
   pistas envían su reverberación. Habitación pequeña (predeterminado),
   Sala, Sala grande o Iglesia.
+
+La reverberación y el chorus valen también para las pistas tocadas por un
+instrumento sampleado o plugin (SFZ, VST3, LV2), con el mismo ambiente de
+la canción; no para las que pasan por un perfil NAM, que como las demás
+pistas entran en el amplificador sin reverberación.
 
 El botón FX se enciende (celeste) cuando la pista tiene reverberación,
 chorus o efectos de la cadena, y su descripción emergente muestra los
@@ -1768,10 +1780,17 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
       perfil solo de cabezal sin caja suena áspero y chisporroteante: cuando
       eliges un perfil que el archivo declara sin caja (amplificador o
       preamplificador, no los pedales ni los de bajo), SoundText le pone por
-      sí solo una caja interna adecuada (4×12 para Marshall, Mesa, 5150 y
-      similares, Combo 1×12 para Vox y similares, si no 2×12), si la Caja
-      estaba en *Ninguna*; al elegir un perfil con la caja incluida vuelve a
-      *Ninguna / incluida*.
+      sí solo una caja, si la Caja estaba en *Ninguna*: para los cabezales
+      de rock y metal la **caja real** de su familia, si descargaste las
+      cajas IR (ver abajo: Marshall JMP 2203 para Marshall, Orange, Friedman
+      y similares, EVH 5150 III para Peavey 5150 y 6505, Mesa Boogie Mark V
+      para Mesa, y Engl, Splawn, Laney, Krank para las suyas); si no, una
+      caja interna adecuada (4×12 para los cabezales, Combo 1×12 para Vox,
+      Magnatone y similares, si no 2×12). Para los combos limpios (Fender,
+      Vox, Magnatone) entre las cajas IR no hay una adecuada y queda la caja
+      interna. Si falta el archivo IR de una caja, se oye la caja interna
+      adecuada al perfil en lugar de ninguna. Al elegir un perfil con la
+      caja incluida vuelve a *Ninguna / incluida*.
     - **El sintetizador suena «seco»:** una pista de notas que va a un
       perfil NAM la toca el sintetizador sin su reverberación ni su chorus,
       como una guitarra conectada directamente al amplificador. Un

@@ -1491,6 +1491,13 @@ effective on any playback engine:
 - the resulting velocity still stays within the valid MIDI limits
   (1-127).
 
+**Tracks with a sampled or plugin instrument** (SFZ, VST3, LV2: Track →
+Plugin instrument): here Volume and Master are a **gain on the audio**,
+like a fader, and the velocities stay as written. With samples the
+velocity chooses the recording (a soft hit is not a loud hit played
+quieter): scaling it would change the timbre, and above 100% it would
+push accents and soft hits all onto the loudest sample.
+
 The Volume, Pan, Mute and Solo settings of each track are saved in the
 `.st` file (`Mixer <Track name>:` block) and restored automatically when
 the project is reopened.
@@ -1520,6 +1527,11 @@ first card, **Quick send**, contains the synth effects:
   guitars, choirs);
 - **Room**, one for **the whole song**: the space into which all tracks send
   their reverb. Small room (default), Hall, Large hall or Church.
+
+Reverb and chorus also apply to tracks played by a sampled or plugin
+instrument (SFZ, VST3, LV2), with the same room of the song; not to those
+that go through a NAM profile, which, like the other tracks, go into the
+amplifier without reverb.
 
 The FX button lights up (light blue) when the track has reverb, chorus or
 chain effects, and its tooltip shows their values.
@@ -1698,10 +1710,17 @@ effects, divided by family in the **+ Effect** menu:
       head-only profile without a cabinet sounds harsh and fizzy: when you
       choose a profile that the file declares as having no cabinet
       (amplifier or preamp, not pedals and not bass profiles), SoundText
-      gives it a suitable built-in cabinet by itself (4×12 for Marshall,
-      Mesa, 5150 and the like, Combo 1×12 for Vox and the like, otherwise
-      2×12), if the Cabinet was set to *None*; choosing a profile with the
-      cabinet included sets it back to *None / included*.
+      gives it a cabinet by itself, if the Cabinet was set to *None*: for
+      rock and metal heads the **real cabinet** of their family, if you
+      downloaded the IR cabinets (see below: Marshall JMP 2203 for Marshall,
+      Orange, Friedman and the like, EVH 5150 III for Peavey 5150 and 6505,
+      Mesa Boogie Mark V for Mesa, and Engl, Splawn, Laney, Krank for their
+      own); otherwise a suitable built-in cabinet (4×12 for heads, Combo
+      1×12 for Vox, Magnatone and the like, otherwise 2×12). For clean combos
+      (Fender, Vox, Magnatone) there is no suitable IR cabinet and the
+      built-in one stays. If the IR file of a cabinet is missing, you hear
+      the built-in cabinet suited to the profile instead of none. Choosing a
+      profile with the cabinet included sets it back to *None / included*.
     - **The synth plays "dry":** a note track going into a NAM profile is
       played by the synth without its reverb and chorus, like a guitar
       plugged straight into the amplifier. A high-gain amplifier would raise

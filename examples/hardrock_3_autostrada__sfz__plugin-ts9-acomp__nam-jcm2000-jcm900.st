@@ -315,18 +315,18 @@ Effetti Basso:
   eq: bassi=2 medi=2 alti=0
 
 Effetti Ritmica Sinistra:
-  nam: ingresso=0 cassa=4x12 livello=-7 nam="../profili_nam/Marshall JCM2000 - crunch.nam"
+  nam: ingresso=0 cassa=file livello=-7 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Ritmica Destra:
-  nam: ingresso=-6 cassa=4x12 livello=-6 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=-6 cassa=file livello=-6 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Solista:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.4 p.fslider1_=800 p.fslider0_=-2
-  nam: ingresso=0 cassa=4x12 livello=-3 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=0 cassa=file livello=-3 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=libera tempo=110 ripetizioni=12 mix=14 preset="Slapback"
   riverbero: stanza=50 smorzamento=45 ampiezza=100 mix=14
   passa_alto: frequenza=160 pendenza=12

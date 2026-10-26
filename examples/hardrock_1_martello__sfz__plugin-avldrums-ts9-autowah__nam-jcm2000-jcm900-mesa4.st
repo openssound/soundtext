@@ -12,7 +12,7 @@
 //   chitarra-elettrica; in ~/Strumenti);
 // - le due ritmiche, una per lato, entrano pulite in un Tube Screamer usato
 //   come booster e poi in due amplificatori diversi (profili NAM Marshall
-//   JCM2000 e JCM900, cassa 4x12): il suono "largo" di due chitarre vere;
+//   JCM2000 e JCM900, cassa Marshall da IR): il suono "largo" di due chitarre;
 // - la solista: GxAutoWah, Tube Screamer e il profilo NAM del Mesa Boogie
 //   Mark IV, poi eco puntata e riverbero;
 // - il basso: distorsione parallela e compressore; sul master compressore e
@@ -287,20 +287,20 @@ Effetti Basso:
 
 Effetti Ritmica Sinistra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.2 p.fslider1_=700 p.fslider0_=0
-  nam: ingresso=3 cassa=4x12 livello=-8 nam="../profili_nam/Marshall JCM2000 - crunch.nam"
+  nam: ingresso=3 cassa=file livello=-8 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Ritmica Destra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.2 p.fslider1_=650 p.fslider0_=0
-  nam: ingresso=0 cassa=4x12 livello=-8 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Solista:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxautowah#autowah" p.BYPASS=1
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.45 p.fslider1_=750 p.fslider0_=-2
-  nam: ingresso=0 cassa=4x12 livello=-1 nam="../profili_nam/Mesa Boogie Mark IV - lead.nam"
+  nam: ingresso=0 cassa=file livello=-1 nam="../profili_nam/Mesa Boogie Mark IV - lead.nam" ir="../profili_nam/casse/Mesa Boogie Mark V.wav"
   delay: suddivisione=1/8p tempo=352 ripetizioni=30 mix=16
   riverbero: stanza=55 smorzamento=45 ampiezza=100 mix=16
   passa_alto: frequenza=160 pendenza=12

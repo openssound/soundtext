@@ -1524,6 +1524,13 @@ il controllo efficace su qualunque motore di riproduzione:
   utile per far emergere uno strumento troppo debole nel missaggio;
 - la velocity risultante resta comunque nei limiti MIDI validi (1-127).
 
+**Tracce con uno strumento campionato o plugin** (SFZ, VST3, LV2: Traccia →
+Strumento plugin): qui il Volume e il Master sono un **guadagno sull'audio**,
+come un fader, e le velocity restano quelle scritte. Con i campioni la
+velocity sceglie la registrazione (un colpo leggero non e' un colpo forte
+piu' piano): scalarla cambierebbe il timbro, e sopra 100% schiaccerebbe
+accenti e colpi leggeri tutti sul campione piu' forte.
+
 Le impostazioni di Volume, Pan, Mute e Solo di ogni traccia vengono salvate
 nel file `.st` (blocco `Mixer <Nome traccia>:`) e ripristinate
 automaticamente alla riapertura del progetto.
@@ -1555,6 +1562,11 @@ del synth:
 - **Ambiente**, uno per **tutto il brano**: lo spazio in cui tutte le tracce
   mandano il loro riverbero. Stanza piccola (predefinito), Sala, Sala grande
   o Chiesa.
+
+Riverbero e chorus valgono anche per le tracce suonate da uno strumento
+campionato o plugin (SFZ, VST3, LV2), con lo stesso ambiente del brano;
+non per quelle che passano da un profilo NAM, che come le altre tracce
+vanno nell'amplificatore senza riverbero.
 
 Il pulsante FX si accende (azzurro) quando la traccia ha riverbero, chorus
 o effetti della catena, e il suo suggerimento ne mostra i valori.
@@ -1735,10 +1747,17 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
       profilo di sola testata senza cassa suona aspro e sfrigolante: quando
       scegli un profilo che il file dichiara senza cassa (amplificatore o
       preamplificatore, non i pedali e non quelli per basso), SoundText gli
-      mette da solo una cassa interna adatta (4×12 per Marshall, Mesa, 5150
-      e simili, Combo 1×12 per Vox e simili, altrimenti 2×12), se la Cassa
-      era su *Nessuna*; scegliendo un profilo con la cassa inclusa torna su
-      *Nessuna / inclusa*.
+      mette da solo una cassa, se la Cassa era su *Nessuna*: per le testate
+      rock e metal la **cassa vera** della loro famiglia, se hai scaricato
+      le casse IR (vedi sotto: Marshall JMP 2203 per Marshall, Orange,
+      Friedman e simili, EVH 5150 III per Peavey 5150 e 6505, Mesa Boogie
+      Mark V per Mesa, e Engl, Splawn, Laney, Krank per le loro); altrimenti
+      una cassa interna adatta (4×12 per le testate, Combo 1×12 per Vox,
+      Magnatone e simili, altrimenti 2×12). Per i combo puliti (Fender, Vox,
+      Magnatone) fra le casse IR non ce n'è una adatta e resta la cassa
+      interna. Se il file IR di una cassa manca, si sente la cassa interna
+      adatta al profilo invece di nessuna. Scegliendo un profilo con la
+      cassa inclusa torna su *Nessuna / inclusa*.
     - **Il synth suona "secco":** una traccia di note che va in un profilo
       NAM viene suonata dal synth senza il suo riverbero e il suo chorus,
       come una chitarra collegata direttamente all'amplificatore. Un

@@ -327,19 +327,19 @@ Effetti Archi:
 
 Effetti Ritmica Sinistra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
-  nam: ingresso=0 cassa=4x12 livello=-8 nam="../profili_nam/Mesa Boogie Mark IV - lead.nam"
+  nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Mesa Boogie Mark IV - lead.nam" ir="../profili_nam/casse/Mesa Boogie Mark V.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Ritmica Destra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
-  nam: ingresso=0 cassa=4x12 livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam"
+  nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam" ir="../profili_nam/casse/EVH 5150 III.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Solista:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.45 p.fslider1_=750 p.fslider0_=-2
-  nam: ingresso=0 cassa=4x12 livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam"
+  nam: ingresso=0 cassa=file livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=1/4 tempo=536 ripetizioni=30 mix=16
   riverbero: stanza=65 smorzamento=45 ampiezza=100 mix=18
   passa_alto: frequenza=160 pendenza=12

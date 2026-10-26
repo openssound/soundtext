@@ -11,7 +11,7 @@
 //   basso-plettro, chitarra-elettrica; in ~/Strumenti), l'Hammond del
 //   SoundFont GM;
 // - chitarra solista: GxTubeScreamer (plugin LV2) e il profilo NAM del
-//   Marshall JCM2000 crunch con la 4x12; chitarra ritmica: il Vox AC15
+//   Marshall JCM2000 crunch con la cassa IR di un Marshall; ritmica: il Vox AC15
 //   (profili con Suoni -> Scarica -> profili NAM consigliati);
 // - organo: il Leslie del Calf Rotary Speaker, a velocita' alta;
 // - master: EQ, compressore e limiter.
@@ -301,7 +301,7 @@ Effetti Organo:
 
 Effetti Chitarra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.5 p.fslider1_=700 p.fslider0_=-4
-  nam: ingresso=2 cassa=4x12 livello=-4 nam="../profili_nam/Marshall JCM2000 - crunch.nam"
+  nam: ingresso=2 cassa=file livello=-4 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=libera tempo=95 ripetizioni=10 mix=12 preset="Slapback"
   riverbero: stanza=50 smorzamento=45 ampiezza=100 mix=16
   passa_alto: frequenza=160 pendenza=12
