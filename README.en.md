@@ -316,7 +316,7 @@ when the file changes) and starts the app; it accepts the same arguments as
 
 ```bash
 ./run.sh
-./run.sh examples/ensemble_demo.st
+./run.sh examples/funk_in_mi.st
 ```
 
 With the dependencies already installed you can also start it directly:
@@ -324,7 +324,7 @@ With the dependencies already installed you can also start it directly:
 ```bash
 python3 main.py
 # or opening an example project directly:
-python3 main.py examples/ensemble_demo.st
+python3 main.py examples/funk_in_mi.st
 ```
 
 The interface language is chosen in **Options → Language** (the first

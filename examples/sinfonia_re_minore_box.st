@@ -1,6 +1,6 @@
 // Sinfonia n. 1 in Re minore, "Dal buio alla luce": una sinfonia di esempio in quattro tempi.
 //
-// Versione a box: la stessa musica di sinfonia_re_minore.st, ma ogni sezione di ogni traccia e' un box
+// Versione a box: ogni sezione di ogni traccia e' un box
 // della vista Struttura brano (`Box Traccia "Nome" |beat:`): le tracce non hanno testo e la
 // posizione di ogni box e' nell'intestazione. Aprendola nell'app si vedono i blocchi in fila.
 //

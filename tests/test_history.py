@@ -206,9 +206,9 @@ def test_opening_a_project_does_not_mark_it_modified():
     from gui.main_window import MainWindow
     w = MainWindow()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    w._load_and_apply_project(os.path.join(root, "examples", "blues_12bar.st"))
+    w._load_and_apply_project(os.path.join(root, "examples", "funk_in_mi.st"))
     _app.processEvents()
-    assert w.tempo_spin.value() == w.project.tempo_bpm == 96
+    assert w.tempo_spin.value() == w.project.tempo_bpm == 104
     assert not w._dirty
     assert not w.history.can_undo()
     w.close()

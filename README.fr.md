@@ -344,7 +344,7 @@ arguments que `main.py` :
 
 ```bash
 ./run.sh
-./run.sh examples/ensemble_demo.st
+./run.sh examples/funk_in_mi.st
 ```
 
 Avec les dépendances déjà installées on peut aussi la lancer directement :
@@ -352,7 +352,7 @@ Avec les dépendances déjà installées on peut aussi la lancer directement :
 ```bash
 python3 main.py
 # ou en ouvrant directement un projet d'exemple :
-python3 main.py examples/ensemble_demo.st
+python3 main.py examples/funk_in_mi.st
 ```
 
 La langue de l'interface se choisit dans **Options → Langue** (la première

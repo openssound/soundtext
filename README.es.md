@@ -343,7 +343,7 @@ archivo cambia) e inicia la aplicación; acepta los mismos argumentos que
 
 ```bash
 ./run.sh
-./run.sh examples/ensemble_demo.st
+./run.sh examples/funk_in_mi.st
 ```
 
 Con las dependencias ya instaladas también se puede iniciar directamente:
@@ -351,7 +351,7 @@ Con las dependencias ya instaladas también se puede iniciar directamente:
 ```bash
 python3 main.py
 # o abriendo directamente un proyecto de ejemplo:
-python3 main.py examples/ensemble_demo.st
+python3 main.py examples/funk_in_mi.st
 ```
 
 El idioma de la interfaz se elige en **Opciones → Idioma** (la primera vez,

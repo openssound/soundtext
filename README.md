@@ -325,7 +325,7 @@ e avvia l'app; accetta gli stessi argomenti di `main.py`:
 
 ```bash
 ./run.sh
-./run.sh examples/ensemble_demo.st
+./run.sh examples/funk_in_mi.st
 ```
 
 Con le dipendenze gia' installate si puo' anche avviare direttamente:
@@ -333,7 +333,7 @@ Con le dipendenze gia' installate si puo' anche avviare direttamente:
 ```bash
 python3 main.py
 # oppure aprendo direttamente un progetto di esempio:
-python3 main.py examples/ensemble_demo.st
+python3 main.py examples/funk_in_mi.st
 ```
 
 La lingua dell'interfaccia si sceglie in **Opzioni → Lingua** (la prima
