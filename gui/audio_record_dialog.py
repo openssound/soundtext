@@ -23,7 +23,7 @@ from core.audio_recording import (
     loop_clip, loop_pass_count, punch_clip, recorded_clip, save_take, take_preview,
 )
 
-from .theme import GOOD, TEXT_DIM, WARN
+from .theme import GOOD, WARN, dim
 from .worker import Worker
 from core.i18n import tr
 
@@ -138,7 +138,7 @@ class AudioRecordDialog(QDialog):
 
         self.hint_label = QLabel()
         self.hint_label.setWordWrap(True)
-        self.hint_label.setStyleSheet(f"color: {TEXT_DIM};")
+        dim(self.hint_label)
         form.addRow("", self.hint_label)
         self.mic_warning = QLabel(tr(
             "Attenzione: questo ingresso e' probabilmente il microfono del computer, che registra anche il "
@@ -229,7 +229,7 @@ class AudioRecordDialog(QDialog):
             tr("Per sentirti mentre suoni usa il monitoraggio diretto della scheda audio (manopola o "
             "tasto \"direct monitor\"): e' senza ritardo. SoundText manda in cuffia solo il brano."))
         monitor_note.setWordWrap(True)
-        monitor_note.setStyleSheet(f"color: {TEXT_DIM}; padding-top: 6px;")
+        dim(monitor_note, "padding-top: 6px;")
         layout.addWidget(monitor_note)
 
         self.status_label = QLabel()
@@ -421,7 +421,7 @@ class AudioRecordDialog(QDialog):
         monitor = self._monitor if self._recorder is None else None
         if monitor is None or not hasattr(monitor, "read_recent"):
             self.tuner_label.setText("—")
-            self.tuner_label.setStyleSheet(f"color: {TEXT_DIM};")
+            dim(self.tuner_label)
             return
         from core import tuning
         freq = tuning.block_pitch(monitor.read_recent(tuning.TUNER_BLOCK_SECONDS), monitor.samplerate)

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from core.i18n import tr
 from core.levels import to_dbfs
-from .theme import BAD, GOOD, WARN
+from .theme import BAD, GOOD, WARN, text_dim
 
 METER_FLOOR_DB = -48.0
 PEAK_HOLD_SECONDS = 1.0
@@ -126,7 +126,7 @@ class LevelMeter(QWidget):
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(BAD) if self._clipped else pal.base())
         p.drawRoundedRect(led, 3, 3)
-        p.setPen(QColor("#ffffff") if self._clipped else pal.mid().color())
+        p.setPen(QColor("#ffffff") if self._clipped else QColor(text_dim()))
         font = p.font()
         font.setPointSizeF(max(6.5, font.pointSizeF() - 2))
         font.setBold(True)

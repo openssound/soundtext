@@ -80,14 +80,17 @@ MIDI). Chaque piste est associée à un instrument et contient une suite de
 
 ### 1.0 La fenêtre
 
-- **Barre des commandes**, depuis la gauche : le **transport** (retour au
-  début, Lecture/Pause, Stop, **●** Enregistrer dans la piste audio
-  sélectionnée, boucle A-B, métronome), le bloc **Morceau** (tempo,
-  métrique, tonalité), le choix de la vue **Structure / Texte** et le volume
-  **Master**. En survolant un bouton on voit à quoi il sert et son
-  raccourci.
-- **Barre d'avancement**, sur toute la largeur sous la barre des
-  commandes : temps écoulé et durée ; cliquez pour sauter à cet endroit.
+- **Barre des commandes**, depuis la gauche : le **Master** (FX du master
+  et volume), le **transport** (retour au début, Lecture/Pause, Stop, **●** Enregistrer dans la piste audio
+  sélectionnée, boucle A-B, métronome, vitesse d'écoute), le bloc
+  **Morceau** (tempo, métrique, levée, tonalité) et le choix de la vue
+  **Structure / Texte**. En survolant un bouton on voit à quoi il sert et
+  son raccourci.
+- **Deuxième rangée**, sous la barre des commandes : sous le Master le
+  **niveau du mix** avec le voyant rouge **CLIP** de saturation (il reste
+  allumé jusqu'à ce qu'on clique dessus), aussi large que la colonne des
+  pistes ; puis la **barre d'avancement** : temps écoulé et durée ; cliquez
+  pour sauter à cet endroit.
 - **Vue Structure du morceau** (8bis) : les pistes en box, avec la table de
   mixage dans les en-têtes des lignes (8) ; ou bien la **vue Texte** : les
   mêmes en-têtes en colonne à gauche et la notation de la piste
@@ -1582,8 +1585,8 @@ automatiquement à la réouverture du projet.
 
 ### 8.2 Volume master
 
-En plus du Volume de chaque piste (8.1), la barre d'outils principale a un
-curseur **Master** (0-200 %, même échelle et même convention : 100 % = gain
+En plus du Volume de chaque piste (8.1), la barre des commandes (à gauche,
+au-dessus du niveau du mix) a un curseur **Master** (0-200 %, même échelle et même convention : 100 % = gain
 d'origine) qui règle ensemble le volume de **toutes** les pistes, en plus
 du volume déjà réglé sur chacune — utile pour un ajustement général du
 niveau sans devoir toucher chaque piste une à une. Comme pour

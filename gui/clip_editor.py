@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 from core import audio_tracks
 from core.i18n import tr
 
-from .theme import ACCENT, TEXT_DIM
+from .theme import ACCENT, dim, text_dim
 
 MIN_VISIBLE_SAMPLES = 64        # zoom massimo: tanti campioni su tutta la larghezza
 CURVE_TOP_DB, CURVE_BOTTOM_DB = 6.0, -40.0
@@ -113,7 +113,7 @@ class WaveformView(QWidget):
                     painter.setBrush(QColor("#9fd3ff"))
                     for x, v in zip(xs, part):
                         painter.drawEllipse(QPointF(x, mid - v * half), 2, 2)
-        painter.setPen(QPen(QColor(TEXT_DIM), 1, Qt.DotLine))
+        painter.setPen(QPen(QColor(text_dim()), 1, Qt.DotLine))
         painter.drawLine(QPointF(0, mid), QPointF(w, mid))
         if self.gain_points:
             xs = np.linspace(self.view_start, self.view_end, max(2, w // 3))
@@ -132,7 +132,7 @@ class WaveformView(QWidget):
             if span / (step * mult) <= 10:
                 step *= mult
                 break
-        painter.setPen(QPen(QColor(TEXT_DIM), 1))
+        painter.setPen(QPen(QColor(text_dim()), 1))
         t = np.ceil(self.view_start / step) * step
         decimals = max(0, int(-np.floor(np.log10(step))))
         while t <= self.view_end:
@@ -221,7 +221,7 @@ class ClipEditorDialog(QDialog):
         self.wave.selection_changed.connect(self._on_selection)
 
         self.info = QLabel()
-        self.info.setStyleSheet(f"color: {TEXT_DIM};")
+        dim(self.info)
         layout.addWidget(self.info)
 
         edits = QHBoxLayout()

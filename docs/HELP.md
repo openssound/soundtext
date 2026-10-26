@@ -80,13 +80,18 @@ spazi, conformi alla ST-Syntax.
 
 ### 1.0 La finestra
 
-- **Barra dei comandi**, da sinistra: il **trasporto** (torna all'inizio,
+- **Barra dei comandi**, da sinistra: il **Master** (FX del master e
+  volume), il **trasporto** (torna all'inizio,
   Play/Pausa, Stop, **●** Registra nella traccia audio selezionata, loop
-  A-B, metronomo), il blocco **Brano** (tempo, metrica, tonalita'), la
-  scelta della vista **Struttura / Testo** e il volume **Master**. Passando il mouse su un pulsante compare
-  a cosa serve e la sua scorciatoia.
-- **Barra di avanzamento**, a tutta larghezza sotto la barra dei comandi:
-  tempo trascorso e durata; clic per saltare in quel punto.
+  A-B, metronomo, velocita' d'ascolto), il blocco **Brano** (tempo,
+  metrica, levare, tonalita') e la scelta della vista **Struttura / Testo**.
+  Passando il mouse su un pulsante compare a cosa serve e la sua
+  scorciatoia.
+- **Seconda riga**, sotto la barra dei comandi: sotto il Master il
+  **livello del mix** con la spia rossa **CLIP** di saturazione (resta
+  accesa finche' non la si clicca), largo quanto la colonna delle tracce;
+  poi la **barra di avanzamento**: tempo trascorso e durata; clic per
+  saltare in quel punto.
 - **Vista Struttura brano** (8bis): le tracce a box, con il mixer nelle
   testate delle righe (8); oppure **vista Testo**: le stesse testate in
   colonna a sinistra e la notazione della traccia selezionata.
@@ -1525,8 +1530,8 @@ automaticamente alla riapertura del progetto.
 
 ### 8.2 Volume master
 
-Oltre al Volume di ogni singola traccia (8.1), la toolbar principale ha uno
-slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
+Oltre al Volume di ogni singola traccia (8.1), la barra dei comandi (a sinistra,
+sopra il livello del mix) ha uno slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
 guadagno originale) che scala insieme il volume di **tutte** le tracce, in
 aggiunta al volume gia' impostato su ciascuna — utile per un aggiustamento
 generale del livello senza dover toccare ogni traccia singolarmente. Come

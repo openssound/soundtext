@@ -80,14 +80,17 @@ separados por espacios, conformes a la ST-Syntax.
 
 ### 1.0 La ventana
 
-- **Barra de comandos**, desde la izquierda: el **transporte** (volver al
-  inicio, Play/Pausa, Stop, **●** Grabar en la pista de audio
-  seleccionada, bucle A-B, metrónomo), el bloque **Canción** (tempo,
-  compás, tonalidad), la elección de la vista **Estructura / Texto** y el
-  volumen **Máster**. Al pasar el ratón sobre un botón aparece para qué
-  sirve y su atajo.
-- **Barra de progreso**, a todo lo ancho debajo de la barra de comandos:
-  tiempo transcurrido y duración; haz clic para saltar a ese punto.
+- **Barra de comandos**, desde la izquierda: el **Máster** (FX del máster
+  y volumen), el **transporte** (volver al inicio, Play/Pausa, Stop, **●** Grabar en la pista de audio
+  seleccionada, bucle A-B, metrónomo, velocidad de escucha), el bloque
+  **Canción** (tempo, compás, anacrusa, tonalidad) y la elección de la
+  vista **Estructura / Texto**. Al pasar el ratón sobre un botón aparece
+  para qué sirve y su atajo.
+- **Segunda fila**, debajo de la barra de comandos: bajo el Máster el
+  **nivel de la mezcla** con el piloto rojo **CLIP** de saturación (sigue
+  encendido hasta que se hace clic en él), tan ancho como la columna de las
+  pistas; luego la **barra de progreso**: tiempo transcurrido y duración;
+  haz clic para saltar a ese punto.
 - **Vista Estructura de la canción** (8bis): las pistas en boxes, con el
   mezclador en las cabeceras de las filas (8); o bien la **vista Texto**:
   las mismas cabeceras en columna a la izquierda y la notación de la pista
@@ -1548,8 +1551,8 @@ automáticamente al volver a abrir el proyecto.
 
 ### 8.2 Volumen máster
 
-Además del Volumen de cada pista (8.1), la barra de herramientas principal
-tiene un control deslizante **Máster** (0-200%, misma escala y misma
+Además del Volumen de cada pista (8.1), la barra de comandos (a la izquierda,
+encima del nivel de la mezcla) tiene un control deslizante **Máster** (0-200%, misma escala y misma
 convención: 100% = ganancia original) que escala a la vez el volumen de
 **todas** las pistas, además del volumen ya ajustado en cada una — útil
 para un ajuste general del nivel sin tener que tocar cada pista por

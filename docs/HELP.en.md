@@ -80,13 +80,16 @@ Each track is associated with an instrument and contains a sequence of
 
 ### 1.0 The window
 
-- **Command bar**, from the left: the **transport** (back to the start,
-  Play/Pause, Stop, **●** Record into the selected audio track, A-B loop,
-  metronome), the **Song** block (tempo, time signature, key), the choice of
-  the **Structure / Text** view and the **Master** volume. Hovering over a
-  button shows what it does and its shortcut.
-- **Progress bar**, full width below the command bar: elapsed time and
-  length; click to jump to that point.
+- **Command bar**, from the left: the **Master** (master FX and volume),
+  the **transport** (back to the start, Play/Pause, Stop, **●** Record into the
+  selected audio track, A-B loop, metronome, listening speed), the **Song**
+  block (tempo, time signature, pickup, key) and the choice of the
+  **Structure / Text** view. Hovering over a button shows what it does and
+  its shortcut.
+- **Second row**, below the command bar: under the Master the **mix level**
+  with the red **CLIP** light (it stays on until you click it), as wide as
+  the tracks column; then the **progress bar**: elapsed time and length;
+  click to jump to that point.
 - **Song structure view** (8bis): the tracks as boxes, with the mixer in
   the row headers (8); or the **Text view**: the same headers in a column
   on the left and the notation of the selected track.
@@ -1494,8 +1497,8 @@ the project is reopened.
 
 ### 8.2 Master volume
 
-Besides the Volume of each single track (8.1), the main toolbar has a
-**Master** slider (0-200%, same scale and same convention: 100% = original
+Besides the Volume of each single track (8.1), the command bar (on the left,
+above the mix level) has a **Master** slider (0-200%, same scale and same convention: 100% = original
 gain) that scales the volume of **all** tracks together, on top of the
 volume already set on each one — useful for a general level adjustment
 without having to touch every track individually. As for track

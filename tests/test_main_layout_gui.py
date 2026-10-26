@@ -60,12 +60,23 @@ def _menu_texts(open_menu_fn):
 
 def test_toolbar_fits_a_1200_px_window():
     w = _window(width=1200)
-    for widget in (w.master_vol_slider, w.master_vol_value_label, w.view_text_btn, w.metronome_checkbox):
+    for widget in (w.master_vol_slider, w.master_vol_value_label, w.level_meter, w.view_text_btn,
+                   w.metronome_checkbox):
         assert widget.isVisible()
         right = widget.mapTo(w, QPoint(widget.width(), 0)).x()
         assert right <= w.width()
-    # l'avanzamento ha una riga tutta sua, larga quasi quanto la finestra
-    assert w.playback_progress.isVisible() and w.playback_progress.width() > 900
+    # il livello del master sta sotto il gruppo Master, largo uguale; poi
+    # l'avanzamento in tutto il resto della seconda riga
+    master_box = w.master_vol_slider.parentWidget()
+    box = master_box.mapTo(w, QPoint(0, 0))
+    meter = w.level_meter.mapTo(w, QPoint(0, 0))
+    progress = w.playback_progress.mapTo(w, QPoint(0, 0))
+    assert meter.x() == box.x() and w.level_meter.width() == master_box.width()
+    assert meter.y() > box.y()
+    assert progress.x() > meter.x() + w.level_meter.width()
+    # ...e comincia dove finisce la colonna delle tracce
+    assert abs(progress.x() - w.mixer_panel.width()) <= 6
+    assert w.playback_progress.isVisible() and w.playback_progress.width() > 800
 
 
 def test_view_buttons_switch_view_and_tracks_column():
@@ -89,9 +100,11 @@ def test_no_separate_mixer_button_or_menu_item():
 def test_text_view_column_uses_the_same_headers_as_the_structure_view():
     from gui.arrangement_view import HEADER_WIDTH, ROW_HEIGHT
     w = _window()
-    w.view_text_btn.click()
-    text_headers = w.track_headers
     structure_headers = w.arrangement_view.canvas.header_widgets
+    in_structure = {name: (h.mapTo(w, QPoint(0, 0)), h.size()) for name, h in structure_headers.items()}
+    w.view_text_btn.click()
+    _app.processEvents()
+    text_headers = w.track_headers
     assert list(text_headers) == list(structure_headers) == ["Piano", "Voce"]
     for name, header in text_headers.items():
         assert isinstance(header, TrackHeaderWidget)
@@ -99,9 +112,28 @@ def test_text_view_column_uses_the_same_headers_as_the_structure_view():
         other = structure_headers[name]
         assert header.name_label.text() == other.name_label.text()
         assert header.instr_label.text() == other.instr_label.text()
+        # passando da Struttura a Testo la testata resta dov'era, grande uguale
+        assert (header.mapTo(w, QPoint(0, 0)), header.size()) == in_structure[name]
     assert text_headers["Voce"].record_btn is not None
-    # La colonna e' larga quanto le testate: il resto va all'editor.
-    assert w.mixer_panel.width() < HEADER_WIDTH + 40
+    # La colonna e' larga quanto le testate (piu' il bordo): il resto va all'editor.
+    assert w.mixer_panel.width() == HEADER_WIDTH + 1
+
+
+def test_switching_view_keeps_the_scrolled_headers_in_place():
+    tracks = tuple((f"T{i}", "Piano") for i in range(12))
+    w = _window(height=600, tracks=tracks, audio=())
+    w.view_text_btn.click()
+    _app.processEvents()
+    w.scroll.verticalScrollBar().setValue(200)
+    _app.processEvents()
+    in_text = {name: h.mapTo(w, QPoint(0, 0)) for name, h in w.track_headers.items()}
+    w.view_structure_btn.click()
+    for _ in range(3):
+        _app.processEvents()
+    canvas = w.arrangement_view.canvas
+    assert canvas.verticalScrollBar().value() == 200
+    for name in ("T4", "T6"):
+        assert canvas.header_widgets[name].mapTo(w, QPoint(0, 0)) == in_text[name]
 
 
 def test_transport_buttons(monkeypatch):

@@ -22,13 +22,13 @@ from core import settings as app_settings
 from .voicing_picker import NotationEditor
 from .tempo_spin import TempoSpinBox
 from .highlighter import NotationHighlighter
-from .theme import ACCENT, ACCENT_DIM, BAD, TEXT_DIM, get_active_theme, palette_for, stylesheet_for, set_active_theme
+from .theme import ACCENT, ACCENT_DIM, BAD, dim, get_active_theme, palette_for, stylesheet_for, set_active_theme
 from .icons import icon
 from .main_window_mixer import MixerMixin
 from .main_window_project import ProjectMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
-from .arrangement_view import HEADER_WIDTH, ROW_GAP, ArrangementView
+from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
 
@@ -141,17 +141,25 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # traccia di cui modificare il testo.
         left = QWidget()
         self.mixer_panel = left
+        # Stesse posizioni e dimensioni della colonna delle testate nella
+        # vista Struttura: passando da una vista all'altra le tracce non si
+        # spostano. Il titolo sta dove la' c'e' il righello (sotto il bordo di
+        # 1 px della tela), le testate sono larghe HEADER_WIDTH e, come la',
+        # la colonna non ha una sua barra di scorrimento (si scorre con la
+        # rotella).
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 4, 0)
-        left_layout.setSpacing(8)
+        left_layout.setContentsMargins(1, 1, 0, 0)
+        left_layout.setSpacing(0)
         title = QLabel(tr("Tracce"))
-        title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 2px 4px;")
+        title.setFixedHeight(RULER_HEIGHT)
+        title.setStyleSheet("font-size: 13px; font-weight: bold; padding: 0 6px;")
         left_layout.addWidget(title)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.mixer_container = QWidget()
         self.mixer_layout = QVBoxLayout(self.mixer_container)
         self.mixer_layout.setContentsMargins(0, 0, 0, 0)
@@ -160,7 +168,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Nessuna traccia nel progetto.\n\nUsa '+ Aggiungi traccia' qui sotto\nper iniziare a comporre.")
         )
         self.empty_state_label.setAlignment(Qt.AlignCenter)
-        self.empty_state_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 13px; padding: 30px 10px;")
+        dim(self.empty_state_label, "font-size: 13px; padding: 30px 10px;")
         self.empty_state_label.setWordWrap(True)
         self.mixer_layout.addWidget(self.empty_state_label)
         # Come nella vista Struttura: un solo pulsante, subito sotto l'ultima
@@ -171,9 +179,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.mixer_layout.addStretch()
         self.scroll.setWidget(self.mixer_container)
         left_layout.addWidget(self.scroll)
-        # Larga quanto le testate (piu' la barra di scorrimento): il resto
-        # della finestra va all'editor.
-        left.setFixedWidth(HEADER_WIDTH + self.scroll.verticalScrollBar().sizeHint().width() + 6)
+        # Larga quanto le testate (piu' il bordo): il resto della finestra va
+        # all'editor.
+        self._tracks_column_width = HEADER_WIDTH
+        left.setFixedWidth(HEADER_WIDTH + 1)
 
         # --- Colonna destra: editor notazione ---------------------------
         right = QWidget()
@@ -290,7 +299,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.shortcuts_hint = QLabel(
             tr("Spazio Play · R Registra · Shift+Spazio ascolta il box · Canc elimina · "
             "Ctrl+D duplica · S dividi · Ctrl+rotella zoom · Ctrl+K cerca un comando"))
-        self.shortcuts_hint.setStyleSheet(f"color: {TEXT_DIM}; padding-right: 8px;")
+        dim(self.shortcuts_hint, "padding-right: 8px;")
         self.statusBar().addPermanentWidget(self.shortcuts_hint)
 
     def _build_menu(self):
@@ -660,8 +669,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         palette_btn = QPushButton(tr("Cerca un comando…   Ctrl+K"))
         palette_btn.setObjectName("paletteButton")
         palette_btn.setToolTip(tr("Trova qualsiasi funzione scrivendone il nome (Ctrl+K)"))
-        palette_btn.setStyleSheet(f"QPushButton#paletteButton {{ color: {TEXT_DIM}; padding: 2px 14px; "
-                                  "text-align: left; min-width: 220px; }")
+        dim(palette_btn, "QPushButton#paletteButton { padding: 2px 14px; text-align: left; min-width: 220px; }")
         palette_btn.clicked.connect(self.open_command_palette)
         menubar.setCornerWidget(palette_btn, Qt.TopRightCorner)
         self.palette_btn = palette_btn
@@ -685,6 +693,37 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         toolbar.setMovable(False)
         toolbar.setObjectName("mainToolbar")
         self.addToolBar(toolbar)
+
+        # --- Master: effetti e volume (il livello e' nella riga sotto) -----
+        master_box = QWidget()
+        master_layout = QHBoxLayout(master_box)
+        master_layout.setContentsMargins(0, 0, 0, 0)
+        master_layout.addWidget(QLabel(" Master "))
+        # Catena di effetti sul master (mix finale): apre il pannello Effetti.
+        self.master_fx_btn = QPushButton("FX")
+        self.master_fx_btn.setMinimumWidth(52)
+        self.master_fx_btn.setAccessibleName(tr("Effetti sul master"))
+        self.master_fx_btn.clicked.connect(lambda: self.effects_panel.open_master())
+        master_layout.addWidget(self.master_fx_btn)
+        self.master_vol_slider = QSlider(Qt.Horizontal)
+        self.master_vol_slider.setRange(0, 200)
+        self.master_vol_slider.setValue(self.project.master_volume)
+        self.master_vol_slider.setFixedWidth(80)
+        self.master_vol_slider.setToolTip(
+            tr("Volume master: scala il volume di tutte le tracce insieme, "
+            "in aggiunta al volume di ciascuna (100% = guadagno originale).")
+        )
+        self.master_vol_slider.valueChanged.connect(self._on_master_volume_changed)
+        master_layout.addWidget(self.master_vol_slider)
+        self.master_vol_value_label = QLabel(f"{self.project.master_volume}%")
+        self.master_vol_value_label.setFixedWidth(38)
+        master_layout.addWidget(self.master_vol_value_label)
+        # largo quanto la colonna delle tracce (meno il margine e il separatore
+        # della barra): il livello sotto ha la stessa larghezza, e la barra di
+        # avanzamento comincia dove comincia il brano
+        master_box.setFixedWidth(self._tracks_column_width - 10)
+        toolbar.addWidget(master_box)
+        toolbar.addSeparator()
 
         # --- Trasporto ---------------------------------------------------
         self.rewind_btn = self._tool_button("rewind", tr("Torna all'inizio del brano"), lambda: self.seek_to_beat(0.0))
@@ -795,7 +834,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             column = QVBoxLayout()
             column.setSpacing(0)
             label = QLabel(caption.upper())
-            label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 9px; letter-spacing: 1px;")
+            dim(label, "font-size: 10px; letter-spacing: 1px;")
             column.addWidget(label)
             column.addWidget(widget)
             song_layout.addLayout(column)
@@ -824,34 +863,23 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.view_text_btn.clicked.connect(lambda: self.arrangement_action.setChecked(False))
         self.view_text_btn.setChecked(True)
 
-        toolbar.addSeparator()
-        toolbar.addWidget(QLabel(" Master "))
-        # Catena di effetti sul master (mix finale): apre il pannello Effetti.
-        self.master_fx_btn = QPushButton("FX")
-        self.master_fx_btn.setMinimumWidth(52)
-        self.master_fx_btn.setAccessibleName(tr("Effetti sul master"))
-        self.master_fx_btn.clicked.connect(lambda: self.effects_panel.open_master())
-        toolbar.addWidget(self.master_fx_btn)
-        self.master_vol_slider = QSlider(Qt.Horizontal)
-        self.master_vol_slider.setRange(0, 200)
-        self.master_vol_slider.setValue(self.project.master_volume)
-        self.master_vol_slider.setFixedWidth(100)
-        self.master_vol_slider.setToolTip(
-            tr("Volume master: scala il volume di tutte le tracce insieme, "
-            "in aggiunta al volume di ciascuna (100% = guadagno originale).")
-        )
-        self.master_vol_slider.valueChanged.connect(self._on_master_volume_changed)
-        toolbar.addWidget(self.master_vol_slider)
-        self.master_vol_value_label = QLabel(f"{self.project.master_volume}%")
-        self.master_vol_value_label.setFixedWidth(38)
-        toolbar.addWidget(self.master_vol_value_label)
-
-        # --- Avanzamento: riga propria, a tutta larghezza -----------------
+        # --- Seconda riga: sotto il Master il suo livello, poi l'avanzamento
         self.addToolBarBreak()
         progress_bar = QToolBar("Avanzamento")
         progress_bar.setMovable(False)
         progress_bar.setObjectName("progressToolbar")
         self.addToolBar(progress_bar)
+
+        # Livello del master e spia di clipping (vedi gui.level_meter), largo
+        # quanto il gruppo Master della riga sopra, per stargli sotto
+        from .level_meter import LevelMeter
+        self.level_meter = LevelMeter()
+        self.level_meter.setFixedWidth(master_box.width())
+        self._clip_detail_for = None    # (id dei livelli, testo con le battute)
+        self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
+        progress_bar.addWidget(self.level_meter)
+        progress_bar.addSeparator()
+
         self.playback_progress = QProgressBar()
         self.playback_progress.setRange(0, 100)
         self.playback_progress.setValue(0)
@@ -862,12 +890,6 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.playback_progress.setToolTip(tr("Avanzamento della riproduzione: clicca per saltare in quel punto."))
         self.playback_progress.installEventFilter(self)
         progress_bar.addWidget(self.playback_progress)
-        # Livello del master e spia di clipping (vedi gui.level_meter)
-        from .level_meter import LevelMeter
-        self.level_meter = LevelMeter()
-        self._clip_detail_for = None    # (id dei livelli, testo con le battute)
-        self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
-        progress_bar.addWidget(self.level_meter)
 
         self._refresh_toolbar_icons()
 
@@ -948,6 +970,13 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._command_palette.exec()
 
     def _toggle_arrangement_view(self, checked):
+        # Le testate stanno negli stessi punti nelle due viste: anche lo
+        # scorrimento della colonna passa da una vista all'altra.
+        canvas_bar = self.arrangement_view.canvas.verticalScrollBar()
+        text_bar = self.scroll.verticalScrollBar()
+        offset = (text_bar if checked else canvas_bar).value()
+        target = canvas_bar if checked else text_bar
+        QTimer.singleShot(0, lambda: target.setValue(offset))
         self.center_stack.setCurrentIndex(1 if checked else 0)
         (self.view_structure_btn if checked else self.view_text_btn).setChecked(True)
         self.shortcuts_hint.setVisible(checked)

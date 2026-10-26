@@ -653,7 +653,7 @@ class EffectsPanel(QFrame):
         outer.addLayout(head)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {theme.TEXT_DIM}; font-size: 11px;")
+        theme.dim(self.status_label, "font-size: 11px;")
         outer.addWidget(self.status_label)
 
         # --- corpo: card in fila, con scorrimento orizzontale

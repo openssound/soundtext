@@ -35,7 +35,7 @@ _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_
 # QTextBrowser) invece cambia: ACCENT su bianco come testo si legge poco.
 _LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#cfe3f5", BG_BASE="#f5f5f5", BG_PANEL="#ffffff",
               BG_FIELD="#ffffff", BG_HOVER="#e8f0f8", BORDER="#d3d3d6", TEXT="#1c1c1e",
-              TEXT_DIM="#6b6b6f", LINK="#1d5f99")
+              TEXT_DIM="#55555a", LINK="#1d5f99")
 
 
 # Stato del tema attivo, usato dai widget che si disegnano con un
@@ -56,6 +56,21 @@ def get_active_theme() -> str:
     return _active_theme
 
 
+def text_dim() -> str:
+    """Il grigio del testo secondario nel tema attivo, per chi disegna da se'
+    (QPainter): TEXT_DIM e' quello del tema scuro."""
+    return (_LIGHT if _active_theme == "light" else _DARK)["TEXT_DIM"]
+
+
+def dim(widget, style: str = ""):
+    """Testo secondario: il colore lo da' il foglio di stile globale (regola
+    [dim="true"]), cosi' segue il tema anche quando lo si cambia; 'style'
+    sono gli altri attributi del widget (dimensione, margini...)."""
+    widget.setProperty("dim", True)
+    widget.setStyleSheet(style)      # anche vuoto: toglie un colore messo prima
+    return widget
+
+
 def track_card_colors() -> dict:
     """Colori per le 'card' del mixer (testate delle tracce, gui.track_header), che si disegnano
     con uno sfondo scuro fisso indipendente dal foglio di stile globale:
@@ -63,7 +78,7 @@ def track_card_colors() -> dict:
     restare illeggibili (sfondo scuro fisso + testo scuro del tema chiaro)
     quando l'utente passa al tema chiaro."""
     if _active_theme == "light":
-        return dict(bg="#ffffff", border="#d3d3d6", text_dim="#6b6b6f")
+        return dict(bg="#ffffff", border="#d3d3d6", text_dim="#55555a")
     return dict(bg="#232323", border="#3a3a3a", text_dim="#999999")
 
 
@@ -84,6 +99,12 @@ QWidget {{
 
 QLabel {{
     background: transparent;
+}}
+
+/* Testo secondario (didascalie, suggerimenti): il grigio del tema attivo,
+   vedi dim() */
+*[dim="true"] {{
+    color: {TEXT_DIM};
 }}
 
 QMenuBar {{

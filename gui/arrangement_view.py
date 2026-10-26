@@ -76,7 +76,8 @@ MAX_PX_PER_BEAT = 96
 ZOOM_STEP = 1.25
 ROW_HEIGHT = 64
 ROW_GAP = 6
-HEADER_WIDTH = 230   # colonna delle testate traccia (mixer dentro le righe, vedi gui.track_header)
+HEADER_WIDTH = 250   # colonna delle testate traccia (mixer dentro le righe, vedi gui.track_header); larga
+                     # quanto la colonna della vista Testo e il gruppo Master della barra dei comandi
 RULER_HEIGHT = 26
 SNAP_BEATS = 1.0
 MIN_SCENE_BARS = 32
@@ -117,7 +118,7 @@ def _snap(beat: float) -> float:
 def _canvas_colors() -> dict:
     if get_active_theme() == "light":
         return {"bg": "#f0f0f2", "header_bg": "#ffffff", "row_bg": "#f7f7f9", "ruler_bg": "#ffffff",
-                "border": "#c4c4c8", "text": TEXT_DIM, "box_text": "#10151a"}
+                "border": "#b4b4ba", "text": "#45454a", "box_text": "#10151a"}
     return {"bg": "#181818", "header_bg": "#232323", "row_bg": "#202020", "ruler_bg": "#232323",
             "border": BORDER, "text": TEXT_DIM, "box_text": "#10151a"}
 
