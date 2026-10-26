@@ -11,8 +11,9 @@
 //   basso-plettro, chitarra-elettrica; in ~/Strumenti), l'Hammond del
 //   SoundFont GM;
 // - chitarra solista: GxTubeScreamer (plugin LV2) e il profilo NAM del
-//   Marshall JCM2000 crunch con la cassa IR di un Marshall; ritmica: il Vox AC15
-//   (profili con Suoni -> Scarica -> profili NAM consigliati);
+//   Marshall JCM2000 crunch con la cassa IR di un Marshall; ritmica: il Fender
+//   Twin pulito, che lascia chiari i bicordi dello shuffle (profili con
+//   Suoni -> Scarica e installa..., voce Profili NAM consigliati);
 // - organo: il Leslie del Calf Rotary Speaker, a velocita' alta;
 // - master: EQ, compressore e limiter.
 
@@ -235,7 +236,7 @@ Box Organo "Primo assolo" |64:
   swing=66 vol=85 %OrChorus
 
 Box Organo "Assolo d'organo" |112:
-  swing=66 vol=100 %OrSolo
+  swing=66 vol=127 %OrSolo
 
 Box Organo "Secondo assolo" |160:
   swing=66 vol=85 %OrChorus
@@ -284,33 +285,36 @@ Plugin Chitarra:
 Effetti Batteria:
   compressore: soglia=-16 rapporto=3 attacco=15 rilascio=150 guadagno=7 preset="Batteria"
   riverbero: stanza=30 smorzamento=50 ampiezza=80 mix=10
-  volume: guadagno=2
+  passa_alto: frequenza=40 pendenza=12
+  volume: guadagno=0
 
 Effetti Basso:
   compressore: soglia=-20 rapporto=4 attacco=15 rilascio=120 guadagno=3 preset="Basso"
   eq: bassi=2 medi=1 alti=0
 
 Effetti Ritmica:
-  nam: ingresso=0 cassa=combo_1x12 livello=-13 nam="../profili_nam/Vox AC15 - Top Boost.nam"
+  nam: ingresso=0 cassa=combo_1x12 livello=10.5 nam="../profili_nam/Fender Twin Reverb - pulito.nam"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=10
   passa_alto: frequenza=110 pendenza=12
 
 Effetti Organo:
   plugin: mix=100 livello=8 ref="lv2:http://calf.sourceforge.net/plugins/RotarySpeaker" p.vib_speed=2 p.level_out=1
   riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=14
+  volume: guadagno=-11
 
 Effetti Chitarra:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.5 p.fslider1_=700 p.fslider0_=-4
   nam: ingresso=2 cassa=file livello=-4 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
+  eq: bassi=0 medi=1 alti=-3
   delay: suddivisione=libera tempo=95 ripetizioni=10 mix=12 preset="Slapback"
   riverbero: stanza=50 smorzamento=45 ampiezza=100 mix=16
   passa_alto: frequenza=160 pendenza=12
 
 Catena master:
-  volume: guadagno=-5.5
-  eq: bassi=1 medi=0 alti=1
-  compressore: soglia=-14 rapporto=2 attacco=30 rilascio=200 guadagno=2 preset="Colla del mix"
-  limiter: guadagno=1 tetto=-1 rilascio=100
+  volume: guadagno=-7
+  eq: bassi=0 medi=0 alti=1
+  compressore: soglia=-14 rapporto=2 attacco=30 rilascio=200 guadagno=1 preset="Colla del mix"
+  limiter: guadagno=0 tetto=-1 rilascio=100
 
 // ================================================================ mixer
 
@@ -321,10 +325,10 @@ Mixer Basso:
   volume: 100 pan: 0 mute: no solo: no
 
 Mixer Ritmica:
-  volume: 85 pan: -0.55 mute: no solo: no
+  volume: 120 pan: -0.55 mute: no solo: no
 
 Mixer Organo:
-  volume: 75 pan: 0.5 mute: no solo: no
+  volume: 115 pan: 0.5 mute: no solo: no
 
 Mixer Chitarra:
-  volume: 110 pan: 0.1 mute: no solo: no
+  volume: 90 pan: 0.1 mute: no solo: no
