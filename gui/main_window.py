@@ -846,7 +846,16 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             column.addWidget(label)
             column.addWidget(widget)
             song_layout.addLayout(column)
-        toolbar.addWidget(song_box)
+        # Il riquadro Brano sta in uno "slot" della prima riga o, se la
+        # prima riga non entra nella finestra, in uno della seconda (vedi
+        # _place_song_box): Struttura/Testo non finiscono mai nel menu ».
+        self._song_box = song_box
+        self._main_toolbar = toolbar
+        self._song_slot_top = QWidget()
+        top_layout = QHBoxLayout(self._song_slot_top)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.addWidget(song_box)
+        self._song_top_action = toolbar.addWidget(self._song_slot_top)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -898,6 +907,13 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.playback_progress.setToolTip(tr("Avanzamento della riproduzione: clicca per saltare in quel punto."))
         self.playback_progress.installEventFilter(self)
         progress_bar.addWidget(self.playback_progress)
+        self._song_bottom_separator = progress_bar.addSeparator()
+        self._song_slot_bottom = QWidget()
+        bottom_layout = QHBoxLayout(self._song_slot_bottom)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        self._song_bottom_action = progress_bar.addWidget(self._song_slot_bottom)
+        self._song_bottom_separator.setVisible(False)
+        self._song_bottom_action.setVisible(False)
 
         self._refresh_toolbar_icons()
 
@@ -942,6 +958,38 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             widths.append(button.sizeHint().width())
         button.setText(current)
         button.setMinimumWidth(max(widths))
+        self._place_song_box()
+
+    def song_box_in_first_row(self) -> bool:
+        return self._song_box.parent() is self._song_slot_top
+
+    def _place_song_box(self):
+        """Il riquadro Brano nella prima riga della barra se la riga intera
+        entra nella finestra, altrimenti nella seconda (con caratteri larghi,
+        come quello di sistema di macOS, o una finestra stretta). Il conto
+        si fa sempre sulla riga completa, cosi' non si ribalta avanti e indietro."""
+        if not hasattr(self, "_song_box"):
+            return
+        top = self.song_box_in_first_row()
+        spacing = self._main_toolbar.layout().spacing()
+        need = self._main_toolbar.sizeHint().width()
+        if not top:
+            need += self._song_box.sizeHint().width() + spacing
+        want_top = need <= self.width()
+        if want_top == top:
+            return
+        source, target = ((self._song_slot_bottom, self._song_slot_top) if want_top
+                          else (self._song_slot_top, self._song_slot_bottom))
+        source.layout().removeWidget(self._song_box)
+        target.layout().addWidget(self._song_box)
+        self._song_box.show()
+        self._song_top_action.setVisible(want_top)
+        self._song_bottom_action.setVisible(not want_top)
+        self._song_bottom_separator.setVisible(not want_top)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._place_song_box()
 
     def _apply_theme(self, name: str):
         app_settings.set_theme(name)

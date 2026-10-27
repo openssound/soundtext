@@ -199,11 +199,17 @@ def test_opening_another_project_clears_the_history():
     _close(w)
 
 
-def test_opening_a_project_does_not_mark_it_modified():
+def test_opening_a_project_does_not_mark_it_modified(monkeypatch):
     """Aprire un progetto aggiorna i campi Tempo/Metrica/Tonalita' della
     toolbar: non deve risultare modificato (niente richiesta di salvataggio
     alla chiusura) ne' creare passi da annullare."""
+    from PySide6.QtWidgets import QMessageBox
     from gui.main_window import MainWindow
+    # funk_in_mi.st definisce i suoi strumenti (Clavinet, Fiati): il primo
+    # caricamento lo dice con una finestra modale, che nel test resterebbe
+    # aperta per sempre
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a) or QMessageBox.Ok)
     w = MainWindow()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     w._load_and_apply_project(os.path.join(root, "examples", "funk_in_mi.st"))

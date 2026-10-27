@@ -141,6 +141,7 @@ def test_linux_host_item_asks_the_password_with_pkexec(script, monkeypatch):
 
 def test_linux_host_installs_everything_with_one_password(script, tmp_path, monkeypatch):
     import types
+    from pathlib import PureWindowsPath
     commands = []
     monkeypatch.setattr(script, "_esegui", lambda cmd, **kw: commands.append([str(c) for c in cmd]))
     monkeypatch.setattr(script, "asset_github", lambda *a: "https://example.invalid/surge.deb")
@@ -152,7 +153,8 @@ def test_linux_host_installs_everything_with_one_password(script, tmp_path, monk
     assert len(commands) == 1                                            # una sola richiesta di password
     cmd = commands[0]
     assert cmd[:3] == ["pkexec", "sh", "-c"] and "apt-get install -y" in cmd[3]
-    assert cmd[5] == "7zip" and [c.rsplit("/", 1)[-1] for c in cmd[6:]] == [
+    # i .deb stanno nella cartella temporanea: sulla CI Windows i percorsi hanno "\\"
+    assert cmd[5] == "7zip" and [PureWindowsPath(c).name for c in cmd[6:]] == [
         "surge-xt.deb", "libsfizz1.deb", "sfizz.deb"]
     monkeypatch.setattr(script.shutil, "which", lambda name: None)
     with pytest.raises(script.Errore):                                   # niente pkexec, niente terminale

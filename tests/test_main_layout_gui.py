@@ -87,6 +87,40 @@ def test_toolbar_fits_a_1200_px_window_with_the_theme(theme_name):
         _app.setFont(old_font)
 
 
+def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
+    """Con un carattere piu' largo (come quello di sistema di macOS) o una
+    finestra stretta, Tempo/Metrica/Levare/Tonalita' scendono nella seconda
+    riga invece di spingere Struttura/Testo nel menu »; tornano su appena
+    c'e' spazio."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark"))
+    try:
+        w = _window(width=1600)
+        assert w.song_box_in_first_row()
+        for width in (1000, 1600, 1000):
+            w.resize(width, 720)
+            _app.processEvents()
+            assert w.song_box_in_first_row() == (width == 1600)
+            for widget in (w.view_structure_btn, w.view_text_btn, w.tempo_spin, w.key_combo):
+                assert widget.isVisible(), (width, widget)
+                assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        # un carattere piu' largo, a 1200 px (il tema fissa 13 px per tutti i widget)
+        _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 16px; }")
+        w.close()
+        w = _window(width=1200)
+        assert not w.song_box_in_first_row()
+        assert w.view_structure_btn.isVisible() and w.view_text_btn.isVisible() and w.tempo_spin.isVisible()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
 @pytest.mark.parametrize("family", ["DejaVu Sans", "Noto Sans"])
 def test_toolbar_has_room_to_spare_with_wide_fonts(family):
     """DejaVu Sans (comune su Linux, quello della CI) e' piu' largo di Noto
