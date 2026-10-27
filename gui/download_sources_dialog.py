@@ -8,9 +8,9 @@ da SoundText (vedi core.downloads.apply_source_overrides).
 
 from typing import Dict, List
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                               QPushButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout)
+                               QPushButton, QStyledItemDelegate, QTreeWidget, QTreeWidgetItem, QVBoxLayout)
 
 from core import downloads
 from core import settings as app_settings
@@ -19,6 +19,24 @@ from core.i18n import tr
 from .theme import dim
 
 KEY_ROLE = Qt.UserRole
+
+
+class _AddressDelegate(QStyledItemDelegate):
+    """Righe alte quanto il campo di modifica: con il padding dei QLineEdit
+    del tema, nella riga normale il testo da modificare restava schiacciato."""
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        editor.setStyleSheet("QLineEdit { padding: 1px 4px; }")
+        editor.setFrame(True)
+        return editor
+
+    def sizeHint(self, option, index):
+        hint = super().sizeHint(option, index)
+        return QSize(hint.width(), max(hint.height(), option.fontMetrics.height() + 12))
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
 
 
 class DownloadSourcesDialog(QDialog):
@@ -45,6 +63,7 @@ class DownloadSourcesDialog(QDialog):
         self.tree.setColumnCount(2)
         self.tree.setHeaderLabels([tr("Voce"), tr("Indirizzo")])
         self.tree.setColumnWidth(0, 300)
+        self.tree.setItemDelegate(_AddressDelegate(self.tree))
         self.tree.itemChanged.connect(self._on_item_changed)
         heads: Dict[str, QTreeWidgetItem] = {}
         for source in self._sources.values():
