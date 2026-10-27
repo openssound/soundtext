@@ -90,7 +90,8 @@ MIDI). Chaque piste est associée à un instrument et contient une suite de
   fenêtre est trop étroite, le bloc Morceau descend dans la rangée du bas.
 - **En bas**, sous les deux vues : la rangée du **Master**, aussi large que
   la colonne des pistes, avec le volume du mix, **FX** (les effets sur le
-  master) et le **niveau du mix** avec le voyant rouge **CLIP** de
+  master) et le **niveau du mix** en deux barres (en haut le canal gauche,
+  en bas le droit), avec le voyant rouge **CLIP** de
   saturation (il reste allumé jusqu'à ce qu'on clique dessus) ; à côté la
   **barre d'avancement** : un clic saute à cet endroit.
 - **Vue Structure du morceau** (8bis) : les pistes en box, avec la table de

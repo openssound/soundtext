@@ -1,7 +1,8 @@
 """Indicatore di livello del master con spia di clipping (vedi core.levels).
 
-La barra va da METER_FLOOR_DB a 0 dBFS: verde fino a -12, gialla fino a
--3, rossa oltre. Il segno del picco resta fermo un attimo e poi scende. La
+Due barre, il canale sinistro sopra e il destro sotto, da METER_FLOOR_DB a
+0 dBFS: verdi fino a -12, gialle fino a -3, rosse oltre. Il segno del picco
+di ciascuna resta fermo un attimo e poi scende. La
 spia CLIP si accende quando il master clippa e resta accesa (anche dopo
 lo Stop e nei nuovi ascolti) finche' non la si clicca.
 """
@@ -31,13 +32,14 @@ class LevelMeter(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(18)
+        self.setFixedHeight(20)
         self.setMinimumWidth(150)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedWidth(170)
-        self._db = METER_FLOOR_DB
-        self._peak_db = METER_FLOOR_DB
-        self._peak_time = 0.0
+        # per canale (0 = sinistro, 1 = destro): livello, picco trattenuto e quando
+        self._db = [METER_FLOOR_DB, METER_FLOOR_DB]
+        self._peak_db = [METER_FLOOR_DB, METER_FLOOR_DB]
+        self._peak_time = [0.0, 0.0]
         self._clipped = False
         self._available = True
         self._clip_detail = ""
@@ -45,15 +47,25 @@ class LevelMeter(QWidget):
 
     # -- stato --------------------------------------------------------------
     def set_level(self, level: float):
-        """Livello attuale (0..1 del fondo scala)."""
-        self._db = to_dbfs(level)
+        """Livello attuale (0..1 del fondo scala), uguale sui due canali."""
+        self.set_levels(level, level)
+
+    def set_levels(self, left: float, right: float):
+        """Livello attuale del canale sinistro e del destro (0..1 del fondo scala)."""
         now = time.monotonic()
-        if self._db >= self._peak_db:
-            self._peak_db, self._peak_time = self._db, now
-        elif now - self._peak_time > PEAK_HOLD_SECONDS:
-            fall = (now - self._peak_time - PEAK_HOLD_SECONDS) * PEAK_FALL_DB_PER_SECOND
-            self._peak_db = max(self._db, self._peak_db - fall)
+        for ch, level in enumerate((left, right)):
+            db = to_dbfs(level)
+            self._db[ch] = db
+            if db >= self._peak_db[ch]:
+                self._peak_db[ch], self._peak_time[ch] = db, now
+            elif now - self._peak_time[ch] > PEAK_HOLD_SECONDS:
+                fall = (now - self._peak_time[ch] - PEAK_HOLD_SECONDS) * PEAK_FALL_DB_PER_SECOND
+                self._peak_db[ch] = max(db, self._peak_db[ch] - fall)
         self.update()
+
+    def levels_db(self):
+        """(sinistro, destro) in dBFS: quello che le barre mostrano adesso."""
+        return tuple(self._db)
 
     def set_clipped(self, clipped: bool, detail: str = ""):
         """Accende (o spegne) la spia; 'detail' (le battute) va nel suggerimento."""
@@ -71,8 +83,9 @@ class LevelMeter(QWidget):
             self.update()
 
     def silence(self):
-        """Barra a zero (Stop o fine del brano); la spia resta com'e'."""
-        self._db = self._peak_db = METER_FLOOR_DB
+        """Barre a zero (Stop o fine del brano); la spia resta com'e'."""
+        self._db = [METER_FLOOR_DB, METER_FLOOR_DB]
+        self._peak_db = [METER_FLOOR_DB, METER_FLOOR_DB]
         self.update()
 
     @property
@@ -83,8 +96,9 @@ class LevelMeter(QWidget):
         if not self._available:
             text = tr("Livello del master: non disponibile con questo modo di riproduzione.")
         else:
-            text = tr("Livello del master (picco, dBFS). La spia CLIP si accende quando il "
-                      "master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.")
+            text = tr("Livello del master (picco, dBFS): sopra il canale sinistro, sotto il destro. "
+                      "La spia CLIP si accende quando il master supera il fondo scala e il suono si "
+                      "rompe; clicca la spia per spegnerla.")
             if self._clipped and self._clip_detail:
                 text += "\n" + self._clip_detail
         self.setToolTip(text)
@@ -106,17 +120,20 @@ class LevelMeter(QWidget):
         p.drawRect(bar.adjusted(0, 0, -1, -1))
         if self._available:
             inner = bar.adjusted(1, 1, -1, -1)
-            filled = inner.width() * _fraction(self._db)
-            # tre zone colorate, disegnate fino al livello attuale
-            for lo, hi, color in ((METER_FLOOR_DB, -12.0, GOOD), (-12.0, -3.0, WARN), (-3.0, 0.0, BAD)):
-                x0 = inner.left() + inner.width() * _fraction(lo)
-                x1 = min(inner.left() + filled, inner.left() + inner.width() * _fraction(hi))
-                if x1 > x0:
-                    p.fillRect(QRectF(x0, inner.top(), x1 - x0, inner.height()), QColor(color))
-            if self._peak_db > METER_FLOOR_DB:
-                x = inner.left() + inner.width() * _fraction(self._peak_db)
-                p.fillRect(QRectF(min(x, inner.right() - 2), inner.top(), 2, inner.height()),
-                           QColor(BAD if self._peak_db > -3 else pal.text().color()))
+            half = (inner.height() - 1) / 2            # due barre, 1 px fra l'una e l'altra
+            for ch in (0, 1):
+                row = QRectF(inner.left(), inner.top() + ch * (half + 1), inner.width(), half)
+                filled = row.width() * _fraction(self._db[ch])
+                # tre zone colorate, disegnate fino al livello attuale
+                for lo, hi, color in ((METER_FLOOR_DB, -12.0, GOOD), (-12.0, -3.0, WARN), (-3.0, 0.0, BAD)):
+                    x0 = row.left() + row.width() * _fraction(lo)
+                    x1 = min(row.left() + filled, row.left() + row.width() * _fraction(hi))
+                    if x1 > x0:
+                        p.fillRect(QRectF(x0, row.top(), x1 - x0, row.height()), QColor(color))
+                if self._peak_db[ch] > METER_FLOOR_DB:
+                    x = row.left() + row.width() * _fraction(self._peak_db[ch])
+                    p.fillRect(QRectF(min(x, row.right() - 2), row.top(), 2, row.height()),
+                               QColor(BAD if self._peak_db[ch] > -3 else pal.text().color()))
             # tacche a -24, -12, -6, -3
             p.setPen(pal.mid().color())
             for db in (-24.0, -12.0, -6.0, -3.0):

@@ -251,3 +251,30 @@ def test_track_meters_follow_playback():
     w._update_track_meters(None)                     # fermo: barre a zero, la spia resta
     assert meters["Piano"]._db < -40 and meters["Basso"].over
     w.close()
+
+
+def test_left_and_right_channels_are_measured_apart():
+    x = _tone(1.0, 0.8)
+    x[:, 1] *= 0.1                                      # destra 20 dB piu' piano
+    levels = analyze_int16(_int16(x), RATE)
+    left, right = levels.channel_peak_between(0.2, 0.4)
+    assert abs(left - 0.8) < 0.01 and abs(right - 0.08) < 0.01
+    assert abs(levels.peak_between(0.2, 0.4) - left) < 1e-6     # il picco complessivo resta il piu' alto
+    mono = analyze_int16(_int16(_tone(1.0, 0.5)[:, :1]), RATE)
+    assert mono.channel_peak_between(0.2, 0.4) == mono.channel_peak_between(0.2, 0.4)[::-1]
+
+
+def test_master_meter_shows_two_channels():
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    x = _tone(2.0, 0.8)
+    x[:, 1] *= 0.1
+    w.playback.master_levels = analyze_int16(_int16(x), RATE)
+    w.playback.position_seconds = lambda: 1.0
+    w._update_level_meter()
+    left_db, right_db = w.level_meter.levels_db()
+    assert abs(left_db - right_db - 20.0) < 0.5
+    w.level_meter.grab()                               # si disegna senza errori
+    w.close()

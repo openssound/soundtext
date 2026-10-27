@@ -2059,7 +2059,7 @@
  "Il master clippa per {seconds} s, alle battute {bars}.": "The master clips for {seconds} s, at bars {bars}.",
  "Il master non clippa (picco {db} dBFS).": "The master does not clip (peak {db} dBFS).",
  "Le tracce piu' forti (picco suonate da sole):": "The loudest tracks (peak when played on their own):",
- "Livello del master (picco, dBFS). La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Master level (peak, dBFS). The CLIP light turns on when the master goes over full scale and the sound distorts; click the light to turn it off.",
+ "Livello del master (picco, dBFS): sopra il canale sinistro, sotto il destro. La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Master level (peak, dBFS): left channel on top, right below. The CLIP light turns on when the master goes over full scale and the sound distorts; click the light to turn it off.",
  "Livello del master: non disponibile con questo modo di riproduzione.": "Master level: not available with this playback mode.",
  "Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.": "Measures the peak of each track played on its own and of the mix, and where they clip.",
  "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "To fix it, lower the volume of the clipping or loudest tracks, the master volume, or Sounds -> Synthesis volume (gain).",

@@ -2059,7 +2059,7 @@
  "Il master clippa per {seconds} s, alle battute {bars}.": "El máster satura durante {seconds} s, en los compases {bars}.",
  "Il master non clippa (picco {db} dBFS).": "El máster no satura (pico {db} dBFS).",
  "Le tracce piu' forti (picco suonate da sole):": "Las pistas más fuertes (pico tocadas solas):",
- "Livello del master (picco, dBFS). La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Nivel del máster (pico, dBFS). El indicador CLIP se enciende cuando el máster supera el fondo de escala y el sonido se distorsiona; haz clic en el indicador para apagarlo.",
+ "Livello del master (picco, dBFS): sopra il canale sinistro, sotto il destro. La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Nivel del máster (pico, dBFS): arriba el canal izquierdo, abajo el derecho. El indicador CLIP se enciende cuando el máster supera el fondo de escala y el sonido se distorsiona; haz clic en el indicador para apagarlo.",
  "Livello del master: non disponibile con questo modo di riproduzione.": "Nivel del máster: no disponible con este modo de reproducción.",
  "Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.": "Mide el pico de cada pista tocada sola y de la mezcla, y dónde saturan.",
  "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "Para corregirlo, baja el volumen de las pistas que saturan o de las más fuertes, el volumen del máster, o Sonidos -> Volumen de síntesis (ganancia).",

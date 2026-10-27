@@ -90,7 +90,8 @@ spazi, conformi alla ST-Syntax.
   finestra e' troppo stretta, il blocco Brano scende nella riga in fondo.
 - **In fondo**, sotto le due viste: la riga del **Master**, larga quanto
   la colonna delle tracce, con il volume del mix, **FX** (gli effetti sul
-  master) e il **livello del mix** con la spia rossa **CLIP** di
+  master) e il **livello del mix**, in due barre (sopra il canale sinistro,
+  sotto il destro), con la spia rossa **CLIP** di
   saturazione (resta accesa finche' non la si clicca); accanto la **barra
   di avanzamento**: un clic salta in quel punto.
 - **Vista Struttura brano** (8bis): le tracce a box, con il mixer nelle

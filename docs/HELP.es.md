@@ -91,7 +91,8 @@ separados por espacios, conformes a la ST-Syntax.
   fila inferior.
 - **Abajo**, debajo de las dos vistas: la fila del **Máster**, tan ancha
   como la columna de las pistas, con el volumen de la mezcla, **FX** (los
-  efectos del máster) y el **nivel de la mezcla** con el piloto rojo
+  efectos del máster) y el **nivel de la mezcla** en dos barras (arriba el
+  canal izquierdo, abajo el derecho), con el piloto rojo
   **CLIP** de saturación (sigue encendido hasta que se hace clic en él); al
   lado la **barra de progreso**: un clic salta a ese punto.
 - **Vista Estructura de la canción** (8bis): las pistas en boxes, con el

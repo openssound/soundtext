@@ -285,7 +285,7 @@ class PlaybackMixin:
             self.level_meter.set_available(not (self._playback_start_wall is not None and seconds is None))
             return
         self.level_meter.set_available(True)
-        self.level_meter.set_level(levels.peak_between(seconds - 0.06, seconds))
+        self.level_meter.set_levels(*levels.channel_peak_between(seconds - 0.06, seconds))
         if levels.clipped_between(seconds - 0.1, seconds):
             self.level_meter.set_clipped(True, self._clip_detail(levels))
 

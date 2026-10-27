@@ -19,7 +19,7 @@ from core.i18n import tr
 from . import theme
 from .level_meter import LevelMeter
 
-MASTER_STRIP_HEIGHT = 52
+MASTER_STRIP_HEIGHT = 56     # contiene il misuratore a due barre (sinistra e destra)
 
 
 class MasterStrip(QFrame):

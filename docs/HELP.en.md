@@ -90,7 +90,8 @@ Each track is associated with an instrument and contains a sequence of
   block moves to the bottom row.
 - **At the bottom**, below both views: the **Master** row, as wide as the
   tracks column, with the mix volume, **FX** (the effects on the master)
-  and the **mix level** with the red **CLIP** light (it stays on until you
+  and the **mix level** in two bars (left channel on top, right below)
+  with the red **CLIP** light (it stays on until you
   click it); next to it the **progress bar**: a click jumps to that point.
 - **Song structure view** (8bis): the tracks as boxes, with the mixer in
   the row headers (8); or the **Text view**: the same headers in a column

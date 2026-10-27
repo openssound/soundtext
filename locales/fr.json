@@ -2059,7 +2059,7 @@
  "Il master clippa per {seconds} s, alle battute {bars}.": "Le master sature pendant {seconds} s, aux mesures {bars}.",
  "Il master non clippa (picco {db} dBFS).": "Le master ne sature pas (crête {db} dBFS).",
  "Le tracce piu' forti (picco suonate da sole):": "Les pistes les plus fortes (crête jouées seules) :",
- "Livello del master (picco, dBFS). La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Niveau du master (crête, dBFS). Le voyant CLIP s'allume quand le master dépasse la pleine échelle et que le son se déforme ; cliquez sur le voyant pour l'éteindre.",
+ "Livello del master (picco, dBFS): sopra il canale sinistro, sotto il destro. La spia CLIP si accende quando il master supera il fondo scala e il suono si rompe; clicca la spia per spegnerla.": "Niveau du master (crête, dBFS) : en haut le canal gauche, en bas le droit. Le voyant CLIP s'allume quand le master dépasse la pleine échelle et que le son se déforme ; cliquez sur le voyant pour l'éteindre.",
  "Livello del master: non disponibile con questo modo di riproduzione.": "Niveau du master : non disponible avec ce mode de lecture.",
  "Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.": "Mesure la crête de chaque piste jouée seule et du mix, et où elles saturent.",
  "Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' forti, il volume del master, oppure Suoni -> Volume di sintesi (gain).": "Pour y remédier, baissez le volume des pistes qui saturent ou des plus fortes, le volume du master, ou Sons -> Volume de synthèse (gain).",
