@@ -119,3 +119,38 @@ def test_selected_track_header_is_tinted_with_its_color():
     header = w.arrangement_view.canvas.header_widgets["Bass"]
     assert header.styleSheet() != plain
     w.close()
+
+
+# ------------------------------------------------------------ vista Testo (fase 3)
+
+def test_text_view_title_banner_and_line_numbers():
+    from core.model import Clip
+    w = _window()
+    w.arrangement_action.setChecked(False)
+    w.select_track("Bass")
+    assert w.track_title.text() == "Bass" and not w.boxes_banner.isVisibleTo(w)
+    w.select_track("Guitar 1")
+    assert w.track_title.text().startswith("Guitar 1") and "Guitar" in w.track_title.text()[8:]
+    track = w.project.get_track("Bass")
+    track.clips = [Clip(name="A", text="4: c d e f", start_beat=0.0)]
+    w.refresh_mixer()
+    w.select_track("Bass")
+    assert w.boxes_banner.isVisibleTo(w)
+    assert w.editor.viewportMargins().left() == w.editor.line_number_width() > 0
+    w.close()
+
+
+def test_click_on_the_syntax_line_goes_to_the_first_bar_warning():
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtTest import QTest
+    w = _window()
+    w.arrangement_action.setChecked(False)
+    w.project.add_track("Piano", "Piano", "4: c d e f | g a b |")
+    w.refresh_mixer()
+    w.select_track("Piano")
+    assert "battuta 2" in w.validation_label.text()
+    w.editor.moveCursor(w.editor.textCursor().MoveOperation.Start)
+    QTest.mouseClick(w.validation_label, Qt.LeftButton, pos=QPoint(5, 5))
+    assert w.editor.textCursor().position() > 0          # sul punto segnalato
+    w._dirty = False
+    w.close()

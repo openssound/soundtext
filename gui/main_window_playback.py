@@ -487,6 +487,11 @@ class PlaybackMixin:
     # ------------------------------------------------------ salto e loop A-B
 
     def eventFilter(self, obj, event):
+        # Clic sulla riga della sintassi: il cursore va al primo avviso
+        if (obj is getattr(self, "validation_label", None) and event.type() == QEvent.MouseButtonPress
+                and event.button() == Qt.LeftButton):
+            self.jump_to_first_issue()
+            return True
         # Click sulla barra di avanzamento: salta al punto corrispondente.
         if (obj is getattr(self, "playback_progress", None)
                 and event.type() == QEvent.MouseButtonPress

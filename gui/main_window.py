@@ -22,7 +22,8 @@ from core import settings as app_settings
 from .voicing_picker import NotationEditor
 from .tempo_spin import TempoSpinBox
 from .highlighter import NotationHighlighter
-from .theme import ACCENT, ACCENT_DIM, BAD, dim, get_active_theme, palette_for, stylesheet_for, set_active_theme
+from .theme import (ACCENT, ACCENT_DIM, BAD, VALIDATION_STYLE, dim, get_active_theme, palette_for, stylesheet_for,
+                    set_active_theme)
 from .icons import icon
 from .main_window_mixer import MixerMixin
 from .main_window_project import ProjectMixin
@@ -204,16 +205,32 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self.track_title = QLabel(tr("Nessuna traccia selezionata"))
         self.track_title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 2px 0;")
-        # Senza word-wrap, il suffisso "vista Struttura brano attiva: ..."
-        # (select_track, per una traccia con box) rende il testo cosi' lungo
-        # da far crescere il minimumSizeHint della finestra oltre la sua
-        # larghezza corrente: Qt/il window manager sono allora costretti a
-        # ridimensionarla (osservato dopo ogni import MIDI, che porta sempre
-        # le tracce in modalita' box), perdendo anche il doppio click sulla
-        # barra del titolo su alcuni window manager.
+        # Con word-wrap un titolo lungo non fa crescere il minimumSizeHint
+        # della finestra oltre la sua larghezza (che il window manager
+        # sarebbe costretto ad allargare).
         self.track_title.setWordWrap(True)
         title_row = QHBoxLayout()
         title_row.addWidget(self.track_title, 1)
+        # Strumenti sul testo della traccia: pulsanti piccoli in alto, della
+        # loro larghezza (prima erano una fila larga quanto la finestra sotto l'editor)
+        freeze_btn = QToolButton()
+        freeze_btn.setText(tr("Congela accordi"))
+        freeze_btn.setToolTip(
+            tr("Sostituisce ogni accordo astratto (es. Cmaj7) con il blocco di note concrete\n"
+            "generato dal motore di voicing per lo strumento di questa traccia.")
+        )
+        freeze_btn.clicked.connect(self.freeze_chords)
+        relative_btn = QToolButton()
+        relative_btn.setText(tr("Altezze relative e tonalità"))
+        relative_btn.setToolTip(
+            tr("Riscrive le note della traccia con le ottave relative (rel:) e, se il brano ha una\n"
+               "tonalità, con le sue alterazioni (key=): stesse note, testo più corto.")
+        )
+        relative_btn.clicked.connect(self.rewrite_relative)
+        self.text_tool_buttons = (freeze_btn, relative_btn)
+        for button in self.text_tool_buttons:
+            button.setObjectName("textTool")
+            title_row.addWidget(button, 0, Qt.AlignTop)
         # Come nel dialogo del box: la traccia con il contenuto dei pattern al
         # posto dei %Nome, in sola lettura, in un secondo editor (quello vero
         # resta com'e'). Visibile solo se la traccia usa dei pattern.
@@ -224,6 +241,27 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.expand_patterns_check.hide()
         title_row.addWidget(self.expand_patterns_check, 0, Qt.AlignTop)
         right_layout.addLayout(title_row)
+
+        # Traccia fatta di box: qui si legge il testo completo, ma si modifica
+        # aprendo un box (prima lo diceva il titolo, in una frase lunga)
+        self.boxes_banner = QFrame()
+        self.boxes_banner.setObjectName("boxesBanner")
+        banner_layout = QHBoxLayout(self.boxes_banner)
+        banner_layout.setContentsMargins(10, 4, 6, 4)
+        self.boxes_banner_label = QLabel(tr("Questa traccia e' fatta di box: qui si legge il testo completo, "
+                                            "per modificarlo apri un box nella vista Struttura."))
+        self.boxes_banner_label.setWordWrap(True)
+        banner_layout.addWidget(self.boxes_banner_label, 1)
+        to_structure = QToolButton()
+        to_structure.setText(tr("Vai alla vista Struttura"))
+        to_structure.setObjectName("textTool")
+        to_structure.clicked.connect(lambda: self.arrangement_action.setChecked(True))
+        banner_layout.addWidget(to_structure)
+        self.boxes_banner.setStyleSheet(
+            f"QFrame#boxesBanner {{ border-left: 3px solid {ACCENT}; border-radius: 4px; "
+            "background-color: rgba(90,169,230,28); }")
+        self.boxes_banner.hide()
+        right_layout.addWidget(self.boxes_banner)
 
         self.editor = NotationEditor()
         # Ctrl+Z/Ctrl+Y dell'editor vanno alla cronologia unica del progetto
@@ -248,6 +286,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.editor.on_selection_context_menu = self._on_editor_selection_context_menu
         self.editor.on_completion_request = self._editor_completions
         self.highlighter = NotationHighlighter(self.editor.document())
+        self.editor.enable_line_numbers()
         right_layout.addWidget(self.editor)
 
         self.expanded_editor = NotationEditor()
@@ -257,26 +296,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.expanded_editor.hide()
         right_layout.addWidget(self.expanded_editor)
 
+        # Riga sottile in fondo all'editor: sintassi valida, avvisi sulle
+        # battute (un clic porta al primo) o errore (vedi _validate_current)
         self.validation_label = QLabel("")
-        self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
+        self.validation_label.setStyleSheet(VALIDATION_STYLE)
+        self.validation_label.installEventFilter(self)
         right_layout.addWidget(self.validation_label)
-
-        freeze_btn = QPushButton(tr("Congela accordi in note esplicite (voicing automatico)"))
-        freeze_btn.setToolTip(
-            tr("Sostituisce ogni accordo astratto (es. Cmaj7) con il blocco di note concrete\n"
-            "generato dal motore di voicing per lo strumento di questa traccia.")
-        )
-        freeze_btn.clicked.connect(self.freeze_chords)
-        relative_btn = QPushButton(tr("Altezze relative e tonalità"))
-        relative_btn.setToolTip(
-            tr("Riscrive le note della traccia con le ottave relative (rel:) e, se il brano ha una\n"
-               "tonalità, con le sue alterazioni (key=): stesse note, testo più corto.")
-        )
-        relative_btn.clicked.connect(self.rewrite_relative)
-        tools_row = QHBoxLayout()
-        tools_row.addWidget(freeze_btn, 1)
-        tools_row.addWidget(relative_btn)
-        right_layout.addLayout(tools_row)
 
         # Area centrale: due pagine intercambiabili (vedi
         # _toggle_arrangement_view) - l'editor di testo classico (sopra) e la

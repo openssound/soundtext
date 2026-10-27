@@ -59,6 +59,21 @@ _FLAT_TRIGGER_LETTERS = set("abcdefgABCDEFG")
 _FLAT_TRIGGER_BOUNDARY = set(" \t\n[(>") | set("0123456789")
 
 
+class _LineNumberArea(QWidget):
+    """Il margine dei numeri di riga di NotationEditor.enable_line_numbers."""
+
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+
+    def sizeHint(self):
+        from PySide6.QtCore import QSize
+        return QSize(self.editor.line_number_width(), 0)
+
+    def paintEvent(self, event):
+        self.editor._paint_line_numbers(event)
+
+
 class NotationEditor(QPlainTextEdit):
     """QPlainTextEdit specializzato per la notazione: se il proprietario
     imposta on_double_click_token, il doppio click prova prima quel
@@ -114,6 +129,68 @@ class NotationEditor(QPlainTextEdit):
     def use_window_undo(self):
         self._window_undo = True
         self.setUndoRedoEnabled(False)
+
+    # ------------------------------------------------------------ numeri di riga
+    def enable_line_numbers(self):
+        """Un margine a sinistra con il numero di ogni riga; quello della riga
+        del cursore e' evidenziato. Nel testo non si evidenzia niente: le
+        extraSelections servono a seguire le note durante l'ascolto."""
+        self._line_area = _LineNumberArea(self)
+        self.blockCountChanged.connect(self._update_line_margin)
+        self.updateRequest.connect(self._scroll_line_area)
+        self.cursorPositionChanged.connect(self._line_area.update)
+        self._update_line_margin()
+
+    def line_number_width(self) -> int:
+        digits = len(str(max(1, self.blockCount())))
+        return 14 + self.fontMetrics().horizontalAdvance("9") * max(2, digits)
+
+    def _update_line_margin(self, *_args):
+        self.setViewportMargins(self.line_number_width(), 0, 0, 0)
+
+    def _scroll_line_area(self, rect, dy):
+        if dy:
+            self._line_area.scroll(0, dy)
+        else:
+            self._line_area.update(0, rect.y(), self._line_area.width(), rect.height())
+        if rect.contains(self.viewport().rect()):
+            self._update_line_margin()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.FontChange and getattr(self, "_line_area", None) is not None:
+            self._update_line_margin()       # lo zoom del testo cambia la larghezza delle cifre
+            self.resizeEvent(None)
+
+    def resizeEvent(self, event):
+        if event is not None:
+            super().resizeEvent(event)
+        area = getattr(self, "_line_area", None)
+        if area is not None:
+            cr = self.contentsRect()
+            area.setGeometry(cr.left(), cr.top(), self.line_number_width(), cr.height())
+
+    def _paint_line_numbers(self, event):
+        from PySide6.QtGui import QColor, QPainter
+        from . import theme
+        painter = QPainter(self._line_area)
+        light = theme.get_active_theme() == "light"
+        painter.fillRect(event.rect(), QColor("#ececef" if light else "#1f1f22"))
+        current = self.textCursor().blockNumber()
+        block = self.firstVisibleBlock()
+        top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
+        font = QFont(self.font())
+        while block.isValid() and top <= event.rect().bottom():
+            height = round(self.blockBoundingRect(block).height())
+            if block.isVisible() and top + height >= event.rect().top():
+                is_current = block.blockNumber() == current
+                font.setBold(is_current)
+                painter.setFont(font)
+                painter.setPen(QColor(theme.ACCENT) if is_current else QColor("#8a8a90"))
+                painter.drawText(0, top, self._line_area.width() - 6, self.fontMetrics().height(),
+                                 Qt.AlignRight, str(block.blockNumber() + 1))
+            block = block.next()
+            top += height
 
     def event(self, event):
         if (self._window_undo and event.type() == QEvent.ShortcutOverride

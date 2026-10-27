@@ -95,7 +95,11 @@ spazi, conformi alla ST-Syntax.
   di avanzamento**: un clic salta in quel punto.
 - **Vista Struttura brano** (8bis): le tracce a box, con il mixer nelle
   testate delle righe (8); oppure **vista Testo**: le stesse testate in
-  colonna a sinistra e la notazione della traccia selezionata.
+  colonna a sinistra e la notazione della traccia selezionata, con i
+  numeri di riga e, sotto, la riga della sintassi (un clic sugli avvisi
+  delle battute porta al primo). Se la traccia e' fatta di box, una banda
+  in alto lo dice: il testo si modifica aprendo un box nella vista
+  Struttura.
 
 ### 1.0bis Cerca un comando (Ctrl+K) e scorciatoie
 
@@ -2453,7 +2457,7 @@ comunque libero di essere ri-suddiviso a mano.
 
 ## 9. Congelare gli accordi
 
-Il pulsante "Congela accordi in note esplicite" nell'editor sostituisce ogni
+Il pulsante **Congela accordi**, sopra l'editor della vista Testo, sostituisce ogni
 accordo astratto della traccia corrente con il blocco `[...]` di note
 concrete generato dal motore di voicing per lo strumento assegnato.
 

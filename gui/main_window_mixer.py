@@ -24,7 +24,7 @@ from .rhythm_generate_dialog import (
     DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, chord_source_tracks,
     last_box_key,
 )
-from .theme import GOOD, BAD, WARN, good_text, warn_text
+from .theme import BAD, VALIDATION_STYLE, WARN, good_text, warn_text
 from core.i18n import tr
 from .file_dialogs import file_dialog_options
 
@@ -79,7 +79,8 @@ class MixerMixin:
             self.editor.setPlainText("")
             self.editor.blockSignals(False)
             self.validation_label.setText("")
-            self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
+            self.validation_label.setStyleSheet(VALIDATION_STYLE)
+            self.boxes_banner.hide()
 
     def sync_mixer_widgets(self, track_name, source=None):
         """Riallinea le due testate della traccia (colonna della vista Testo
@@ -127,9 +128,10 @@ class MixerMixin:
         if self.highlighter.document() is not self.editor.document():
             self.highlighter.setDocument(self.editor.document())
         uses_boxes = bool(track.clips)
-        suffix = tr("   ·   vista Struttura brano attiva: apri un box per modificare il contenuto") \
-            if uses_boxes else ""
-        self.track_title.setText(f"{track.name}   ·   {track.instrument_name}{suffix}")
+        # nome e strumento, una volta sola se coincidono (come nelle testate)
+        same = track.instrument_name.strip().lower() == track.name.strip().lower()
+        self.track_title.setText(track.name if same else f"{track.name}   ·   {track.instrument_name}")
+        self.boxes_banner.setVisible(uses_boxes)
         self.editor.blockSignals(True)
         self.editor.setPlainText(track.text)
         self.editor.setReadOnly(uses_boxes)
@@ -159,6 +161,7 @@ class MixerMixin:
         lettura) l'elenco delle sue clip e come aggiungerne."""
         from core.audio_tracks import clip_is_missing, clip_play_seconds
         self.track_title.setText(tr("{name}   ·   traccia audio", name=track.name))
+        self.boxes_banner.hide()
         if track.audio_clips:
             lines = [tr("Clip audio di questa traccia (si spostano nella vista Struttura brano):"), ""]
             for c in sorted(track.audio_clips, key=lambda c: c.start_beat):
@@ -177,7 +180,8 @@ class MixerMixin:
         self.editor.blockSignals(False)
         self.validation_label.setText(tr("Traccia audio · {0} clip", len(track.audio_clips)))
         self.validation_label.setToolTip("")
-        self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
+        self.validation_label.setStyleSheet(VALIDATION_STYLE)
+        self._validation_jump = None
 
     def _reject_audio_track(self, track, what: str) -> bool:
         """True (dopo averlo spiegato all'utente) se track e' una traccia
@@ -290,24 +294,30 @@ class MixerMixin:
                                  self.project.metrica_changes, pickup=self.project.pickup) if ok else []
         self.highlighter.set_bar_errors(i.char_start for i in issues)
         self.validation_label.setToolTip("\n".join(i.message for i in issues))
+        # una riga sottile: il colore dice lo stato, con un filo a sinistra per
+        # avvisi ed errori; un clic sugli avvisi porta al primo (jump_to_first_issue)
+        self._validation_jump = min(i.char_start for i in issues) if issues else None
         if issues:
-            self.validation_label.setText(bar_issues_summary(issues))
+            self.validation_label.setText(bar_issues_summary(issues) + "   " + tr("(clic: vai al primo)"))
             self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {warn_text()}; "
-                f"background-color: rgba(224,160,48,30); border: 1px solid {WARN};"
-            )
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
         elif ok:
             self.validation_label.setText(tr("✓  Sintassi valida"))
-            self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {good_text()}; "
-                f"background-color: rgba(76,175,80,30); border: 1px solid {GOOD};"
-            )
+            self.validation_label.setStyleSheet(f"{VALIDATION_STYLE} color: {good_text()};")
         else:
             self.validation_label.setText(tr("✗  Errore di sintassi: {msg}", msg=msg))
-            self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {BAD}; "
-                f"background-color: rgba(224,85,85,30); border: 1px solid {BAD};"
-            )
+            self.validation_label.setStyleSheet(f"{VALIDATION_STYLE} color: {BAD}; border-left: 3px solid {BAD};")
+
+    def jump_to_first_issue(self):
+        """Clic sulla riga della sintassi: il cursore va al primo avviso sulle battute."""
+        position = getattr(self, "_validation_jump", None)
+        if position is None:
+            return
+        cursor = self.editor.textCursor()
+        cursor.setPosition(min(position, len(self.editor.toPlainText())))
+        self.editor.setTextCursor(cursor)
+        self.editor.ensureCursorVisible()
+        self.editor.setFocus()
 
     # ------------------------------------------------------------ tracce
 

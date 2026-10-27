@@ -211,6 +211,11 @@ QToolBar#mainToolbar {{
 QToolBar#mainToolbar QToolButton {{
     padding: 5px 4px;
 }}
+/* Pulsanti piccoli sopra l'editor della vista Testo (Congela accordi...) */
+QToolButton#textTool {{
+    border: 1px solid {BORDER};
+    padding: 3px 8px;
+}}
 
 /* Dialogo file di Qt (Linux, vedi gui.file_dialogs): col padding generico
 dei QToolButton le icone di Indietro/Avanti/Su/Nuova cartella/vista si
@@ -476,3 +481,8 @@ def stylesheet_for(theme_name: str) -> str:
     (vedi core.settings.get_theme/set_theme): 'light' o, per qualunque altro
     valore (incluso quello predefinito 'dark'), il tema scuro."""
     return LIGHT_STYLESHEET if theme_name == "light" else DARK_STYLESHEET
+
+
+# Riga della sintassi sotto l'editor della vista Testo: sottile, il colore
+# lo aggiunge lo stato (gui.main_window_mixer._validate_current)
+VALIDATION_STYLE = "padding: 2px 8px; font-size: 12px;"

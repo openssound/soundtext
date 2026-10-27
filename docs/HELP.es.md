@@ -97,7 +97,10 @@ separados por espacios, conformes a la ST-Syntax.
 - **Vista Estructura de la canción** (8bis): las pistas en boxes, con el
   mezclador en las cabeceras de las filas (8); o bien la **vista Texto**:
   las mismas cabeceras en columna a la izquierda y la notación de la pista
-  seleccionada.
+  seleccionada, con los números de línea y, debajo, la línea de la sintaxis
+  (un clic en los avisos de los compases lleva al primero). Si la pista
+  está hecha de box, una franja arriba lo indica: el texto se modifica
+  abriendo un box en la vista Estructura.
 
 ### 1.0bis Buscar un comando (Ctrl+K) y atajos
 
@@ -2504,7 +2507,7 @@ se puede volver a dividir a mano.
 
 ## 9. Congelar los acordes
 
-El botón «Congelar acordes en notas explícitas» del editor sustituye cada
+El botón **Congelar acordes**, encima del editor de la vista Texto, sustituye cada
 acorde abstracto de la pista actual por el bloque `[...]` de notas
 concretas generado por el motor de voicing para el instrumento asignado.
 

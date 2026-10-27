@@ -96,7 +96,10 @@ MIDI). Chaque piste est associée à un instrument et contient une suite de
 - **Vue Structure du morceau** (8bis) : les pistes en box, avec la table de
   mixage dans les en-têtes des lignes (8) ; ou bien la **vue Texte** : les
   mêmes en-têtes en colonne à gauche et la notation de la piste
-  sélectionnée.
+  sélectionnée, avec les numéros de ligne et, dessous, la ligne de la
+  syntaxe (un clic sur les avertissements des mesures mène au premier). Si
+  la piste est faite de box, une bande en haut l'indique : le texte se
+  modifie en ouvrant un box dans la vue Structure.
 
 ### 1.0bis Rechercher une commande (Ctrl+K) et raccourcis
 
@@ -2554,7 +2557,7 @@ redivisée en box : le texte reste libre d'être redivisé à la main.
 
 ## 9. Figer les accords
 
-Le bouton « Figer les accords en notes explicites » de l'éditeur remplace
+Le bouton **Figer les accords**, au-dessus de l'éditeur de la vue Texte, remplace
 chaque accord abstrait de la piste courante par le bloc `[...]` de notes
 concrètes généré par le moteur de voicing pour l'instrument assigné.
 

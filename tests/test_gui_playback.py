@@ -281,7 +281,7 @@ def test_selecting_a_boxed_track_does_not_force_window_wider():
         track.clips = [Clip(name="Piano1 1", text=track.text, start_beat=0.0)]
         win.refresh_mixer()
         win.select_track("Piano1")
-        assert "vista Struttura brano attiva" in win.track_title.text()
+        assert not win.boxes_banner.isHidden() and "box" in win.boxes_banner_label.text()
 
         assert win.minimumSizeHint().width() <= max(width_before, 900), (
             "selezionare una traccia con box non deve far crescere il minimo "
