@@ -410,6 +410,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                               ["Ctrl+=", "Ctrl++"]))
         view_menu.addAction(self._view_action(tr("Riduci (zoom)"), self.arrangement_view.zoom_out, ["Ctrl+-"]))
         view_menu.addAction(self._view_action(tr("Zoom normale"), self.arrangement_view.zoom_reset, ["Ctrl+0"]))
+        row_height_menu = view_menu.addMenu(tr("Altezza delle tracce"))
+        row_height_menu.setToolTip(tr("Nella vista Struttura brano: righe piu' alte mostrano meglio le note "
+                                      "dentro i box (anche Ctrl+Maiusc+rotellina)."))
+        self._row_height_group = QActionGroup(self)
+        self._row_height_actions = {}
+        from .arrangement_view import ROW_HEIGHTS
+        for height, label in zip(ROW_HEIGHTS, (tr("Normale"), tr("Alta"), tr("Molto alta"))):
+            act = QAction(label, self, checkable=True)
+            act.triggered.connect(lambda _checked=False, h=height: self.arrangement_view.set_row_height(h))
+            self._row_height_group.addAction(act)
+            row_height_menu.addAction(act)
+            self._row_height_actions[height] = act
+        self.sync_row_height_actions()
         view_menu.addSeparator()
         # dimensione del testo: scorciatoie valide col fuoco nell'editor (vedi gui.text_zoom)
         view_menu.addActions(self.editor.text_zoom_actions)
@@ -1022,6 +1035,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # Il canvas a box ha uno sfondo esplicito (vedi ArrangementView.refresh).
         self.arrangement_view.refresh()
         self._refresh_toolbar_icons()
+
+    def sync_row_height_actions(self):
+        from . import arrangement_view
+        for height, act in self._row_height_actions.items():
+            act.setChecked(height == arrangement_view.ROW_HEIGHT)
 
     def _view_action(self, label, slot, shortcuts, tooltip=None):
         """Azione le cui scorciatoie valgono solo con la vista Struttura

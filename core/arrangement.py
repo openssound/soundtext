@@ -234,3 +234,31 @@ def expand_pattern_refs_text(text: str, patterns: Dict[str, Pattern], default_oc
             last = end
     out.append(text[last:])
     return "".join(out)
+
+
+def song_sections(project) -> list:
+    """Le sezioni del brano per il righello della vista Struttura:
+    [(beat d'inizio, nome)], ricavate dai box. Una sezione comincia dove
+    almeno due tracce cominciano un box (o una, se il brano ne ha una
+    sola); il nome e' quello dei box che cominciano li', preferendo quello
+    che compare su piu' tracce nel brano ("Introduzione" piuttosto che il
+    "Groove" del solo basso). Non e' scritto nel file: segue i box."""
+    starts = {}                 # beat -> [nome del box, ...]
+    spread = {}                 # nome -> tracce in cui compare
+    tracks = [t for t in project.tracks if t.clips or t.audio_clips]
+    for track in tracks:
+        names = set()
+        for clip in list(track.clips) + list(track.audio_clips):
+            starts.setdefault(round(clip.start_beat, 6), []).append(clip.name)
+            names.add(clip.name)
+        for name in names:
+            spread[name] = spread.get(name, 0) + 1
+    needed = min(2, len(tracks))
+    sections = []
+    for beat in sorted(starts):
+        names = starts[beat]
+        if len(names) < needed or not needed:
+            continue
+        best = max(names, key=lambda n: (spread.get(n, 0), names.count(n), -names.index(n)))
+        sections.append((beat, best))
+    return sections

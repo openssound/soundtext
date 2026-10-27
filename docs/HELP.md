@@ -119,6 +119,7 @@ promemoria e' in fondo a destra nella barra di stato.
 | Ctrl+D | duplica il box selezionato |
 | S | divide la clip audio selezionata nel punto della testina |
 | Ctrl+rotellina | zoom orizzontale (resta fermo il punto sotto il mouse) |
+| Ctrl+Maiusc+rotellina | altezza delle righe (anche Vista → Altezza delle tracce) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | ingrandisci / riduci / zoom normale (anche da menu Vista) |
 | Ctrl+Z / Ctrl+Y | annulla / ripeti |
 
@@ -2261,6 +2262,16 @@ Il colore di ogni box (e della striscia a sinistra della testata della
 traccia) riflette la famiglia dello strumento (basso, chitarra, fiati,
 ecc.), la stessa convenzione usata altrove nell'app (es. sezione 7). Le
 testate contengono anche il mixer della traccia (vedi sezione 8).
+
+Dentro ogni box si vedono le **note** in miniatura: trattini alla loro
+altezza per melodie e accordi, una riga per suono per la batteria; il nome
+sta nella striscia in alto. Le stanghette delle battute passano dietro i
+box. Il **righello** ha due fasce: sopra i numeri di battuta, sotto le
+**sezioni** del brano (Introduzione, Strofa, Ritornello...), ricavate dai
+box che cominciano insieme su piu' tracce; un clic su una sezione porta la
+testina al suo inizio. **Vista → Altezza delle tracce** (o
+**Ctrl+Maiusc+rotellina**) rende le righe piu' alte, per leggere meglio le
+note.
 
 ### Creare un box
 

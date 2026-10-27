@@ -119,6 +119,7 @@ recordatorio abajo a la derecha en la barra de estado.
 | Ctrl+D | duplicar el box seleccionado |
 | S | dividir el clip de audio seleccionado en el punto del cabezal |
 | Ctrl+rueda | zoom horizontal (el punto bajo el ratón no se mueve) |
+| Ctrl+Mayús+rueda | altura de las filas (también Vista → Altura de las pistas) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | ampliar / reducir / zoom normal (también desde el menú Vista) |
 | Ctrl+Z / Ctrl+Y | deshacer / rehacer |
 
@@ -2310,6 +2311,16 @@ pista) refleja la familia del instrumento (bajo, guitarra, vientos, etc.),
 la misma convención que se usa en otras partes de la aplicación (p. ej.
 sección 7). Las cabeceras también contienen el mezclador de la pista (ver
 sección 8).
+
+Dentro de cada box se ven las **notas** en miniatura: guiones a su
+altura para melodías y acordes, una fila por sonido para la batería; el
+nombre está en la franja de arriba. Las líneas de compás pasan detrás de
+los box. La **regla** tiene dos franjas: arriba los números de compás,
+abajo las **secciones** de la canción (Introducción, Estrofa,
+Estribillo...), deducidas de los box que empiezan a la vez en varias
+pistas; un clic en una sección lleva el cabezal a su inicio. **Vista →
+Altura de las pistas** (o **Ctrl+Mayús+rueda**) hace las filas más altas,
+para leer mejor las notas.
 
 ### Crear un box
 

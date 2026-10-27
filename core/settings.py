@@ -441,3 +441,15 @@ def set_download_sources(values: Dict[str, str]):
     else:
         _cache.pop("download_sources", None)
     _save()
+
+
+def get_arrangement_row_height() -> int:
+    """Altezza delle righe della vista Struttura brano (Vista -> Altezza
+    delle tracce); 0 = quella predefinita."""
+    return int(_load().get("arrangement_row_height", 0) or 0)
+
+
+def set_arrangement_row_height(height: int):
+    _load()
+    _cache["arrangement_row_height"] = int(height)
+    _save()

@@ -20,7 +20,7 @@ import time
 import numpy as np
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsItem,
@@ -35,6 +35,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.clip_preview import clip_preview, patterns_key
+from core.arrangement import song_sections
 from core.arrangement import (
     anchored_preview_text,
     clip_duration_beats,
@@ -74,14 +76,23 @@ DEFAULT_PX_PER_BEAT = 24
 MIN_PX_PER_BEAT = 6
 MAX_PX_PER_BEAT = 96
 ZOOM_STEP = 1.25
-ROW_HEIGHT = 64
+ROW_HEIGHT = 64          # cambia con Vista -> Altezza delle tracce (vedi ArrangementView.set_row_height)
+DEFAULT_ROW_HEIGHT = 64
+# Le altezze delle righe: con le righe alte la miniatura delle note si legge
+# meglio. Non piu' basse di 64: le testate (gui.track_header) ci stanno a fatica.
+ROW_HEIGHTS = (64, 96, 128)
 ROW_GAP = 6
 HEADER_WIDTH = 250   # colonna delle testate traccia (mixer dentro le righe, vedi gui.track_header); larga
                      # quanto la colonna della vista Testo e il gruppo Master della barra dei comandi
-RULER_HEIGHT = 26
+RULER_HEIGHT = 40
+RULER_BARS_HEIGHT = 20   # in alto i numeri di battuta, sotto la fascia delle sezioni (core.arrangement.song_sections)
 SNAP_BEATS = 1.0
 MIN_SCENE_BARS = 32
 BOX_CORNER_RADIUS = 6
+# Box: striscia con il nome in alto, sotto la miniatura delle note (core.clip_preview)
+BOX_NAME_STRIP = 16
+BOX_PREVIEW_MIN_WIDTH = 18     # piu' stretto di cosi' il box mostra solo il colore
+BOX_PREVIEW_MIN_SPAN = 12      # semitoni: una melodia di poche note non occupa tutta l'altezza
 PLAYHEAD_EDGE_MARGIN = 60  # px dal bordo del viewport oltre cui l'auto-scroll insegue la testina
 PREVIEW_PLAY_TEXT = tr("Ascolta il box selezionato")
 PREVIEW_PAUSE_TEXT = tr("Pausa ascolto del box")
@@ -118,9 +129,9 @@ def _snap(beat: float) -> float:
 def _canvas_colors() -> dict:
     if get_active_theme() == "light":
         return {"bg": "#e1e1e5", "header_bg": "#ededef", "row_bg": "#e7e7ea", "ruler_bg": "#ededef",
-                "border": "#b4b4ba", "text": "#45454a", "box_text": "#10151a"}
+                "border": "#b4b4ba", "text": "#45454a", "text_strong": "#1c1c20", "box_text": "#10151a"}
     return {"bg": "#181818", "header_bg": "#232323", "row_bg": "#202020", "ruler_bg": "#232323",
-            "border": BORDER, "text": TEXT_DIM, "box_text": "#10151a"}
+            "border": BORDER, "text": TEXT_DIM, "text_strong": "#e8e8e8", "box_text": "#10151a"}
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +152,10 @@ class BoxItem(QGraphicsRectItem):
         # dopo il primo posizionamento: quello non deve passare da itemChange
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable |
                        QGraphicsItem.ItemSendsGeometryChanges)
+        if type(self) is BoxItem:
+            # l'immagine del box (colore, nome, miniatura delle note) si tiene
+            # pronta: ridisegnare la vista con centinaia di box la copia soltanto
+            self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
 
     def _layout(self):
         instrument_name = self.view.host.project.get_track(self.track_name).instrument_name
@@ -151,6 +166,18 @@ class BoxItem(QGraphicsRectItem):
         color = QColor(_family_color(instrument_name))
         self.setBrush(QBrush(color))
         self.setPen(QPen(color.darker(140), 1))
+        # Solo se l'aspetto e' cambiato: la miniatura si ricalcola e l'immagine
+        # tenuta pronta (setCacheMode) si ridisegna. refresh() ripassa da qui
+        # per ogni box: ridisegnarli tutti ogni volta costava tempo.
+        look = (color.rgba(), self.clip.name, self.clip.text, width, height, instrument_name,
+                self.clip.start_beat)
+        if look != getattr(self, "_look", None):
+            self._look = look
+            self._note_rects = None
+            self._strip_color = QColor(color).darker(112)
+            self._note_color = _ink_on(color, 150)
+            self._text_color = _ink_on(color, 255)
+            self.update()
         self.setPos(HEADER_WIDTH + self.clip.start_beat * PX_PER_BEAT, self._fixed_y)
         self.setToolTip(tr("{name}  ({duration:.2f} beat)\nDoppio click per modificare, tasto destro per altre azioni.", name=self.clip.name, duration=duration))
 
@@ -223,9 +250,30 @@ class BoxItem(QGraphicsRectItem):
         # rettangolo con angoli vivi, senza modo di arrotondarli - qui si
         # ridisegna a mano con lo stesso pen/brush impostati in _layout(),
         # cosi' inizio/fine di ogni box risaltano meglio nel canvas.
+        rect = self.rect()
+        color = self.brush().color()
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
-        painter.drawRoundedRect(self.rect(), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.drawRoundedRect(rect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        strip = min(BOX_NAME_STRIP, rect.height())
+        # striscia del nome: un po' piu' scura del box, angoli arrotondati solo in alto
+        painter.save()
+        painter.setClipRect(QRectF(rect.left(), rect.top(), rect.width(), strip))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self._strip_color)
+        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.restore()
+        notes = self._preview_rects(QRectF(rect.left() + 3, rect.top() + strip + 3,
+                                          rect.width() - 6, rect.height() - strip - 6))
+        if notes:
+            # trattini allineati ai pixel: senza antialiasing costano molto meno
+            # (centinaia di box con decine di note ciascuno) e sembrano uguali
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(self._note_color)
+            painter.drawRects(notes)
+            painter.restore()
         if self.clip is self.view.selected_clip:
             # Evidenziazione esplicita del box selezionato (invece di
             # affidarsi al solo indicatore tratteggiato predefinito di Qt,
@@ -238,11 +286,65 @@ class BoxItem(QGraphicsRectItem):
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
-        painter.setPen(QPen(QColor(_canvas_colors()["box_text"])))
-        painter.setFont(QFont("Sans", 9))
-        rect = self.rect().adjusted(4, 2, -4, -2)
-        painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, self.clip.name)
+            painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.setPen(self._text_color)
+        painter.setFont(_box_font())
+        painter.drawText(QRectF(rect.left() + 5, rect.top(), rect.width() - 8, strip),
+                         Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, self.clip.name)
+
+    def _preview_rects(self, area: QRectF):
+        """I trattini della miniatura nell'area data (coordinate del box),
+        calcolati una volta per scala e dimensione (vedi _layout)."""
+        if area.width() < BOX_PREVIEW_MIN_WIDTH or area.height() < 6:
+            return []
+        key = (PX_PER_BEAT, area.width(), area.height())
+        if self._note_rects is not None and self._note_rects[0] == key:
+            return self._note_rects[1]
+        preview = self.view.box_preview(self.track_name, self.clip)
+        rects = []
+        if preview is not None:
+            if preview.percussion:
+                lanes = preview.high + 1
+                low, span = 0, lanes
+            else:
+                span = max(BOX_PREVIEW_MIN_SPAN, preview.high - preview.low + 1)
+                low = (preview.low + preview.high + 1) / 2 - span / 2
+            row = area.height() / span
+            thick = max(1.5, min(5.0, row))
+            for start, duration, lane in preview.notes:
+                x = area.left() + start * PX_PER_BEAT
+                if x > area.right():
+                    continue
+                width = min(max(2.0, duration * PX_PER_BEAT - 1), area.right() - x)
+                if preview.percussion:
+                    y = area.top() + lane * row + (row - thick) / 2
+                else:
+                    y = area.bottom() - (lane - low + 1) * row + (row - thick) / 2
+                rects.append(QRectF(x, y, width, thick))
+        self._note_rects = (key, rects)
+        return rects
+
+
+def _ink_on(color: QColor, alpha: int) -> QColor:
+    """Testo e note sopra un box: scuri sui colori chiari, chiari su quelli
+    scuri (luminanza percepita)."""
+    light = 0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue() > 140
+    ink = QColor("#10151a") if light else QColor("#f4f4f4")
+    ink.setAlpha(alpha)
+    return ink
+
+
+_BOX_FONT = None
+
+
+def _box_font() -> QFont:
+    """Il carattere del programma, a 11 px (nome dei box, sezioni del righello)."""
+    global _BOX_FONT
+    if _BOX_FONT is None:
+        from PySide6.QtWidgets import QApplication
+        _BOX_FONT = QFont(QApplication.font())
+        _BOX_FONT.setPixelSize(11)
+    return _BOX_FONT
 
 
 class AudioBoxItem(BoxItem):
@@ -804,11 +906,19 @@ class ArrangementCanvas(QGraphicsView):
 
     def wheelEvent(self, event):
         """Ctrl+rotellina: zoom orizzontale, tenendo fermo il beat sotto il
-        mouse. Senza Ctrl: scorrimento normale."""
+        mouse; Ctrl+Maiusc+rotellina: altezza delle righe. Senza Ctrl:
+        scorrimento normale."""
         if not event.modifiers() & Qt.ControlModifier:
             super().wheelEvent(event)
             return
         steps = event.angleDelta().y() / 120.0
+        if event.modifiers() & Qt.ShiftModifier:
+            # con Maiusc alcuni sistemi passano la rotellina sull'asse orizzontale
+            steps = steps or event.angleDelta().x() / 120.0
+            if steps:
+                self.view.step_row_height(1 if steps > 0 else -1)
+            event.accept()
+            return
         if steps:
             self.view.zoom_by(ZOOM_STEP ** steps, anchor_view_x=event.position().x())
         event.accept()
@@ -818,9 +928,14 @@ class ArrangementCanvas(QGraphicsView):
         if self._over_fixed_area(view_pos):
             if (event.button() == Qt.LeftButton and view_pos.y() < RULER_HEIGHT
                     and view_pos.x() >= HEADER_WIDTH):
-                # Click sul righello: salta in quel punto del brano (agganciato al beat).
-                scene_x = self.mapToScene(view_pos).x()
-                self.view.host.seek_to_beat(float(round((scene_x - HEADER_WIDTH) / PX_PER_BEAT)))
+                # Click sul righello: salta in quel punto del brano (agganciato
+                # al beat), o all'inizio della sezione cliccata.
+                section = self.section_at(view_pos)
+                if section is not None:
+                    self.view.host.seek_to_beat(float(section))
+                else:
+                    scene_x = self.mapToScene(view_pos).x()
+                    self.view.host.seek_to_beat(float(round((scene_x - HEADER_WIDTH) / PX_PER_BEAT)))
             elif view_pos.y() >= RULER_HEIGHT:
                 self.view.select_box(None, None)   # click sulla colonna dei nomi
             # Niente super(): non si afferra il box che scorre sotto.
@@ -864,6 +979,79 @@ class ArrangementCanvas(QGraphicsView):
         if hit:
             self.view.show_empty_menu(hit[0], _snap(hit[1]), event.globalPos())
 
+    def _section_rects(self, vw: int) -> list:
+        """[(rettangolo nel viewport, beat, nome)] delle etichette delle
+        sezioni visibili: ciascuna si ferma dove comincia la successiva."""
+        out = []
+        sections = getattr(self, "sections", [])
+        font_metrics = QFontMetrics(_box_font())
+        for i, (beat, name) in enumerate(sections):
+            x = self.mapFromScene(QPointF(HEADER_WIDTH + beat * PX_PER_BEAT, 0)).x()
+            end = (self.mapFromScene(QPointF(HEADER_WIDTH + sections[i + 1][0] * PX_PER_BEAT, 0)).x()
+                   if i + 1 < len(sections) else vw)
+            if end <= HEADER_WIDTH or x >= vw:
+                continue
+            width = min(font_metrics.horizontalAdvance(name) + 12, end - x - 2)
+            if width < 14:
+                continue
+            out.append((QRectF(x + 1, RULER_BARS_HEIGHT + 1, width, RULER_HEIGHT - RULER_BARS_HEIGHT - 4), beat, name))
+        return out
+
+    def _draw_sections(self, painter, colors, vw):
+        tag = QColor(ACCENT)
+        tag.setAlpha(55)
+        painter.save()
+        painter.setClipRect(HEADER_WIDTH, 0, vw - HEADER_WIDTH, RULER_HEIGHT)
+        painter.setFont(_box_font())
+        for rect, _beat, name in self._section_rects(vw):
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(tag)
+            painter.drawRoundedRect(rect, 4, 4)
+            painter.setPen(QColor(colors["text_strong"]))
+            painter.drawText(rect.adjusted(6, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine,
+                             name)
+        painter.restore()
+
+    def section_at(self, view_pos):
+        """Il beat della sezione sotto il punto del righello, o None."""
+        for rect, beat, _name in self._section_rects(self.viewport().width()):
+            if rect.contains(QPointF(view_pos)):
+                return beat
+        return None
+
+    def drawBackground(self, painter, rect):
+        """La griglia delle battute e dei movimenti, sotto i box: disegnata
+        sopra (in paintEvent, come prima) attraversava i box e li faceva
+        sembrare spezzati in tanti pezzi."""
+        super().drawBackground(painter, rect)
+        colors = _canvas_colors()
+        bar_pen = QPen(QColor(colors["border"]), 0)
+        beat_color = QColor(colors["border"])
+        beat_color.setAlpha(70)
+        beat_pen = QPen(beat_color, 0)
+        time_sig, metrica_changes, pickup = self.meter_args
+        bars = [float(b) for b in itertools.takewhile(
+            lambda b: HEADER_WIDTH + float(b) * PX_PER_BEAT <= rect.right(),
+            bar_starts(time_sig, metrica_changes, pickup))]
+        if pickup:
+            bars.insert(0, 0.0)
+        top, bottom = rect.top(), rect.bottom()
+        if PX_PER_BEAT >= 18:               # i movimenti solo quando c'e' spazio per vederli
+            painter.setPen(beat_pen)
+            edges = bars + [bars[-1] + self.beats_per_bar] if bars else []
+            for start, end in zip(edges, edges[1:]):
+                beat = start + 1
+                while beat < end - 1e-9:
+                    x = HEADER_WIDTH + beat * PX_PER_BEAT
+                    if rect.left() <= x:
+                        painter.drawLine(QLineF(x, top, x, bottom))
+                    beat += 1
+        painter.setPen(bar_pen)
+        for start in bars:
+            x = HEADER_WIDTH + start * PX_PER_BEAT
+            if x >= rect.left():
+                painter.drawLine(QLineF(x, top, x, bottom))
+
     def paintEvent(self, event):
         super().paintEvent(event)
         colors = _canvas_colors()
@@ -889,9 +1077,10 @@ class ArrangementCanvas(QGraphicsView):
                 break
             if x >= HEADER_WIDTH:
                 painter.setPen(pen)
-                painter.drawLine(int(x), 0, int(x), vh)
+                painter.drawLine(int(x), 0, int(x), RULER_BARS_HEIGHT)   # nelle righe la disegna drawBackground
                 painter.setPen(QColor(colors["text"]))
-                painter.drawText(int(x) + 3, RULER_HEIGHT - 8, str(bar))
+                painter.drawText(int(x) + 3, RULER_BARS_HEIGHT - 6, str(bar))
+        self._draw_sections(painter, colors, vw)
 
         # Loop A-B: fascia colorata sul righello (piena se attivo, tenue se
         # solo impostato) con i marcatori A e B.
@@ -1036,6 +1225,11 @@ class ArrangementView(AudioClipActions, QWidget):
 
         self.canvas = ArrangementCanvas(self)
         layout.addWidget(self.canvas)
+        # l'altezza delle righe scelta l'ultima volta (Vista -> Altezza delle tracce)
+        global ROW_HEIGHT
+        from core import settings as app_settings
+        saved = app_settings.get_arrangement_row_height()
+        ROW_HEIGHT = min(ROW_HEIGHTS, key=lambda h: abs(h - saved)) if saved else DEFAULT_ROW_HEIGHT
 
     # ------------------------------------------------------------ ciclo di vita
 
@@ -1044,8 +1238,14 @@ class ArrangementView(AudioClipActions, QWidget):
         self.refresh()
 
     def select_box(self, track_name: str | None, clip: Clip | None):
+        previous = getattr(self, "selected_clip", None)
         self.selected_track_name = track_name
         self.selected_clip = clip
+        # i box tengono pronta la loro immagine (setCacheMode): il vecchio e
+        # il nuovo selezionato vanno ridisegnati, il resto della scena no
+        for item in self.canvas._scene.items():
+            if isinstance(item, BoxItem) and (item.clip is previous or item.clip is clip):
+                item.update()
         self.canvas._scene.update()
 
     def selected_track(self):
@@ -1095,6 +1295,9 @@ class ArrangementView(AudioClipActions, QWidget):
         self.selected_track()
 
         self.canvas.meter_args = (project.time_sig, list(project.metrica_changes), project.pickup)
+        self._patterns_sig = patterns_key(project.patterns)     # per la miniatura dei box (box_preview)
+        self.canvas.sections = song_sections(project)          # la fascia delle sezioni nel righello
+        self._meter = project.meter()
         try:
             num, den = project.time_sig.split("/")
             self.canvas.beats_per_bar = int(num) * 4.0 / int(den)
@@ -1281,6 +1484,18 @@ class ArrangementView(AudioClipActions, QWidget):
             self._tempo_map_cache = (key, build_tempo_beat_map(project))
         return self._tempo_map_cache[1]
 
+    def box_preview(self, track_name: str, clip):
+        """Le note da disegnare dentro il box (core.clip_preview), in cache."""
+        project = self.host.project
+        track = project.get_track(track_name)
+        if track.is_audio:
+            return None
+        sig = getattr(self, "_patterns_sig", None)
+        meter = getattr(self, "_meter", None) or project.meter()
+        return clip_preview(clip.text, track.instrument, project.patterns, meter=meter,
+                            origin_beat=clip.start_beat, patterns_sig=sig,
+                            meter_key=(project.time_sig, tuple(project.metrica_changes), project.pickup))
+
     def clip_length_beats(self, track_name: str, clip) -> float:
         """Durata in beat di un box: dalla notazione per un Clip, dal file
         (alla posizione della clip, vedi core.audio_tracks) per un AudioClip."""
@@ -1288,8 +1503,18 @@ class ArrangementView(AudioClipActions, QWidget):
         if isinstance(clip, AudioClip):
             return audio_tracks.clip_span_beats(clip, self._tempo_map())     # con la ripetizione in loop
         track = project.get_track(track_name)
-        return clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
-                                   start_beat=clip.start_beat, meter=project.meter())
+        # In cache: refresh() la chiede due volte per ogni box, e rileggere la
+        # notazione era la parte piu' lenta del ricalcolo della vista.
+        sig = getattr(self, "_patterns_sig", None) or patterns_key(project.patterns)
+        key = (clip.text, track.instrument.default_octave, sig,
+               (project.time_sig, tuple(project.metrica_changes), project.pickup), round(clip.start_beat, 6))
+        cache = self.__dict__.setdefault("_length_cache", {})
+        if key not in cache:
+            if len(cache) > 20000:
+                cache.clear()
+            cache[key] = clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
+                                             start_beat=clip.start_beat, meter=project.meter())
+        return cache[key]
 
     def edit_box(self, item: BoxItem):
         if isinstance(item, AudioBoxItem):
@@ -1860,6 +2085,27 @@ class ArrangementView(AudioClipActions, QWidget):
         hbar.setValue(int(hbar.value() + target_x - anchor_view_x))
         canvas.viewport().update()
         self.host.statusBar().showMessage(tr("Zoom: {0:.0%}", PX_PER_BEAT / DEFAULT_PX_PER_BEAT), 2000)
+
+    def set_row_height(self, height: int, remember: bool = True):
+        """Altezza delle righe (una di ROW_HEIGHTS): righe e testate si
+        ricostruiscono, la scelta si ricorda nelle impostazioni."""
+        global ROW_HEIGHT
+        height = min(ROW_HEIGHTS, key=lambda h: abs(h - height))
+        if remember:
+            from core import settings as app_settings
+            app_settings.set_arrangement_row_height(height)
+        if height == ROW_HEIGHT:
+            return
+        ROW_HEIGHT = height
+        self._rebuild_headers()
+        self.refresh()
+        self.canvas.viewport().update()
+        if hasattr(self.host, "sync_row_height_actions"):
+            self.host.sync_row_height_actions()
+
+    def step_row_height(self, step: int):
+        index = ROW_HEIGHTS.index(ROW_HEIGHT) if ROW_HEIGHT in ROW_HEIGHTS else 0
+        self.set_row_height(ROW_HEIGHTS[max(0, min(len(ROW_HEIGHTS) - 1, index + step))])
 
     def zoom_by(self, factor: float, anchor_view_x: float | None = None):
         self.set_zoom(PX_PER_BEAT * factor, anchor_view_x)

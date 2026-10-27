@@ -120,6 +120,7 @@ aide-mémoire se trouve en bas à droite de la barre d'état.
 | Ctrl+D | dupliquer le box sélectionné |
 | S | diviser le clip audio sélectionné à la position de la tête de lecture |
 | Ctrl+molette | zoom horizontal (le point sous la souris reste fixe) |
+| Ctrl+Maj+molette | hauteur des lignes (aussi Affichage → Hauteur des pistes) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | agrandir / réduire / zoom normal (aussi depuis le menu Affichage) |
 | Ctrl+Z / Ctrl+Y | annuler / rétablir |
 
@@ -2358,6 +2359,16 @@ La couleur de chaque box (et de la bande à gauche de l'en-tête de la piste)
 reflète la famille de l'instrument (basse, guitare, vents, etc.), la même
 convention qu'ailleurs dans l'application (ex. section 7). Les en-têtes
 contiennent aussi la table de mixage de la piste (voir section 8).
+
+Dans chaque box, les **notes** apparaissent en miniature : des tirets à
+leur hauteur pour les mélodies et les accords, une ligne par son pour la
+batterie ; le nom est dans la bande du haut. Les barres de mesure passent
+derrière les box. La **règle** a deux bandes : en haut les numéros de
+mesure, en bas les **sections** du morceau (Introduction, Couplet,
+Refrain...), déduites des box qui commencent ensemble sur plusieurs
+pistes ; un clic sur une section amène la tête de lecture à son début.
+**Affichage → Hauteur des pistes** (ou **Ctrl+Maj+molette**) rend les lignes plus
+hautes, pour mieux lire les notes.
 
 ### Créer un box
 

@@ -117,6 +117,7 @@ is at the bottom right of the status bar.
 | Ctrl+D | duplicate the selected box |
 | S | split the selected audio clip at the playhead |
 | Ctrl+wheel | horizontal zoom (the point under the mouse stays still) |
+| Ctrl+Shift+wheel | row height (also View → Track height) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | zoom in / zoom out / normal zoom (also from the View menu) |
 | Ctrl+Z / Ctrl+Y | undo / redo |
 
@@ -2218,6 +2219,15 @@ The colour of each box (and of the strip on the left of the track header)
 reflects the instrument family (bass, guitar, winds, etc.), the same
 convention used elsewhere in the app (e.g. section 7). The headers also
 contain the track's mixer (see section 8).
+
+Inside each box the **notes** show in miniature: dashes at their pitch
+for melodies and chords, one row per sound for drums; the name sits in the
+strip at the top. Bar lines run behind the boxes. The **ruler** has two
+bands: bar numbers on top, the song's **sections** below (Intro, Verse,
+Chorus...), worked out from the boxes that start together on several
+tracks; a click on a section moves the playhead to its start. **View →
+Track height** (or **Ctrl+Shift+wheel**) makes the rows taller, to read
+the notes better.
 
 ### Creating a box
 
