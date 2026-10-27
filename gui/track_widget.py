@@ -5,6 +5,7 @@ testate delle tracce (gui.track_header) e dalla vista Struttura brano.
 """
 
 from core.instruments import get_instrument, gm_family_for_program
+from core.i18n import tr
 from core.model import AUDIO_INSTRUMENT_NAME
 
 # Colore identificativo per famiglia strumentale, per una scansione visiva
@@ -36,7 +37,9 @@ def _family_color(instrument_name: str) -> str:
 
 
 def _pan_label(value: int) -> str:
+    """Il bilanciamento come si legge nella lingua dell'interfaccia: S 30, C,
+    D 44 in italiano (L/R in inglese, I/D in spagnolo, G/D in francese)."""
     if value == 64:
-        return "C"
+        return tr("C")
     offset = round((value - 64) / 63 * 100)
-    return f"L{-offset}" if offset < 0 else f"R{offset}"
+    return tr("S{n}", n=-offset) if offset < 0 else tr("D{n}", n=offset)

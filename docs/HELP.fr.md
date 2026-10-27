@@ -80,17 +80,19 @@ MIDI). Chaque piste est associée à un instrument et contient une suite de
 
 ### 1.0 La fenêtre
 
-- **Barre des commandes**, depuis la gauche : le **Master** (FX du master
-  et volume), le **transport** (retour au début, Lecture/Pause, Stop, **●** Enregistrer dans la piste audio
-  sélectionnée, boucle A-B, métronome, vitesse d'écoute), le bloc
-  **Morceau** (tempo, métrique, levée, tonalité) et le choix de la vue
-  **Structure / Texte**. En survolant un bouton on voit à quoi il sert et
-  son raccourci.
-- **Deuxième rangée**, sous la barre des commandes : sous le Master le
-  **niveau du mix** avec le voyant rouge **CLIP** de saturation (il reste
-  allumé jusqu'à ce qu'on clique dessus), aussi large que la colonne des
-  pistes ; puis la **barre d'avancement** : temps écoulé et durée ; cliquez
-  pour sauter à cet endroit.
+- **Barre des commandes**, depuis la gauche : le **transport** (retour au
+  début, Lecture/Pause, Stop, **●** Enregistrer dans la piste audio
+  sélectionnée, boucle A-B, métronome, vitesse d'écoute), l'**affichage du
+  temps** (temps écoulé et durée, et dessous la mesure et le temps : un
+  clic échange lequel des deux est en grand), le bloc **Morceau** (tempo,
+  métrique, levée, tonalité) et le choix de la vue **Structure / Texte**.
+  En survolant un bouton on voit à quoi il sert et son raccourci. Si la
+  fenêtre est trop étroite, le bloc Morceau descend dans la rangée du bas.
+- **En bas**, sous les deux vues : la rangée du **Master**, aussi large que
+  la colonne des pistes, avec le volume du mix, **FX** (les effets sur le
+  master) et le **niveau du mix** avec le voyant rouge **CLIP** de
+  saturation (il reste allumé jusqu'à ce qu'on clique dessus) ; à côté la
+  **barre d'avancement** : un clic saute à cet endroit.
 - **Vue Structure du morceau** (8bis) : les pistes en box, avec la table de
   mixage dans les en-têtes des lignes (8) ; ou bien la **vue Texte** : les
   mêmes en-têtes en colonne à gauche et la notation de la piste
@@ -1549,13 +1551,14 @@ deux vues : dans la vue Structure du morceau à gauche de chaque ligne, dans
 la vue Texte dans la colonne **Pistes** à gauche (là il sert aussi à
 choisir la piste dont on modifie le texte). L'en-tête contient :
 
-- nom et instrument, **M**, **S**, **●** (pistes audio seulement :
+- nom et instrument (l'instrument seulement s'il diffère du nom), **M**,
+  **S**, **●** (pistes audio seulement :
   enregistrer), **FX** (ouvre le panneau Effets, voir 8.3 et 8.4) et le menu
   **⋯** avec toutes les actions de la piste (générer, jouer au clavier,
   importer du MIDI ou de l'audio, nom et instrument, exporter en MIDI,
   supprimer) ;
 - à droite, deux boutons rotatifs : **Vol** (volume, la valeur en %) et
-  **Pan** (C = centre, L/R = gauche/droite). On les tourne en faisant
+  **Pan** (C = centre, G/D = gauche/droite). On les tourne en faisant
   glisser vers le haut/bas (plus finement avec Maj), avec la molette ou avec
   les flèches ; double-clic = retour à 100 % / au centre.
 
@@ -1594,8 +1597,8 @@ automatiquement à la réouverture du projet.
 
 ### 8.2 Volume master
 
-En plus du Volume de chaque piste (8.1), la barre des commandes (à gauche,
-au-dessus du niveau du mix) a un curseur **Master** (0-200 %, même échelle et même convention : 100 % = gain
+En plus du Volume de chaque piste (8.1), la rangée **Master** en bas de la
+colonne des pistes a un curseur **Master** (0-200 %, même échelle et même convention : 100 % = gain
 d'origine) qui règle ensemble le volume de **toutes** les pistes, en plus
 du volume déjà réglé sur chacune — utile pour un ajustement général du
 niveau sans devoir toucher chaque piste une à une. Comme pour
@@ -1625,8 +1628,11 @@ instrument échantillonné ou plugin (SFZ, VST3, LV2), avec la même ambiance
 du morceau ; pas pour celles qui passent par un profil NAM, qui comme les
 autres pistes vont dans l'amplificateur sans réverbération.
 
-Le bouton FX s'allume (bleu clair) quand la piste a de la réverbération, du
-chorus ou des effets de la chaîne, et son info-bulle en montre les valeurs.
+Le bouton FX a le contour bleu clair quand la piste a de la réverbération,
+du chorus ou des effets de la chaîne, et son info-bulle en montre les
+valeurs ; il est bleu clair plein tant que le panneau Effets est ouvert sur
+cette piste. La piste sélectionnée a l'en-tête légèrement teinté de sa
+couleur.
 
 Ce sont les effets déjà présents dans le synthé (fluidsynth) : on les
 entend tout de suite à l'écoute normale, sans traitement supplémentaire, et
@@ -1987,7 +1993,7 @@ disponibles, divisés par famille dans le menu **+ Effet** :
   « au galop » classique des guitares rock.
 
 Le **panneau Effets** s'ouvre depuis le bouton FX de la piste (pour le
-master, depuis le bouton FX à côté du curseur Master : voir 8.5) et reste en
+master, depuis le bouton FX de la rangée Master : voir 8.5) et reste en
 bas de la fenêtre (on peut le redimensionner en faisant glisser son bord).
 Chaque effet est une **carte** avec :
 - **⏻** pour l'allumer ou l'éteindre sans perdre les réglages ;
@@ -2050,8 +2056,8 @@ Le bouton FX montre combien d'effets sont allumés (ex. **FX 3**).
 
 En plus des pistes, le **mix final** du morceau peut aussi passer par une
 chaîne d'effets : c'est le « mastering », la dernière retouche qui rend le
-morceau plus compact, équilibré et fort. Le bouton **FX** à côté du curseur
-**Master**, dans la barre des commandes, ouvre le panneau Effets sur le
+morceau plus compact, équilibré et fort. Le bouton **FX** de la rangée
+**Master**, en bas de la colonne des pistes, ouvre le panneau Effets sur le
 master (étiquette « Master · mix final »). On utilise les mêmes effets et
 les mêmes cartes que pour les pistes ; les plus adaptés au master sont :
 - **EQ 3 bandes :** petites retouches de la tonalité générale (±1-3 dB) ;
@@ -4333,8 +4339,9 @@ qu'on entend.
 
 ### Sauter à un point et répéter une section (boucle A-B)
 
-- **Saut** : cliquez sur la barre de progression dans la barre d'outils, ou
-  sur la règle des mesures dans la vue Structure du morceau. Si le morceau
+- **Saut** : cliquez sur la barre de progression en bas de la fenêtre, ou
+  sur la règle des mesures (ou sur une section) dans la vue Structure du
+  morceau. Si le morceau
   joue, il repart de là ; s'il est arrêté ou en pause, le prochain Play
   partira de ce point.
 - **Boucle A-B** (menu **Lecture → Boucle**) : **Boucle : début (A) ici** (`Ctrl+[`)
@@ -4356,9 +4363,10 @@ qu'on entend.
 
 ### 12.1 Barre de progression et surlignage du token en cours
 
-Pendant la lecture, la barre de progression (la ligne sur toute la largeur
-sous la barre de commandes) affiche le temps écoulé et la durée totale du
-morceau (p. ex. « 00:42 / 01:30 »). Dans la piste affichée dans l'éditeur,
+Pendant la lecture, l'affichage du temps de la barre des commandes montre
+le temps écoulé et la durée totale du morceau (p. ex. « 00:42 / 01:30 »)
+et la position (mesure et temps) ; la barre de progression en bas de la
+fenêtre avance avec le morceau. Dans la piste affichée dans l'éditeur,
 le token en cours de lecture (note, silence, accord, bloc, ou toute la
 référence s'il s'agit d'un `%pattern`/`&"midi"`) est surligné avec les
 couleurs inversées par rapport au thème (fond clair, texte foncé), pour

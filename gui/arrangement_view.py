@@ -1272,6 +1272,9 @@ class ArrangementView(AudioClipActions, QWidget):
         seguire l'esecuzione dell'intero brano con una linea verticale nel
         canvas, indipendentemente da quale traccia sia quella selezionata."""
         self.canvas.set_playhead_beat(beat)
+        display = getattr(self.host, "time_display", None)
+        if display is not None:
+            display.set_beat(beat)
 
     def set_loop_region(self, region, active: bool = False):
         """Sezione del loop A-B della riproduzione principale da mostrare
@@ -1295,6 +1298,9 @@ class ArrangementView(AudioClipActions, QWidget):
         self.selected_track()
 
         self.canvas.meter_args = (project.time_sig, list(project.metrica_changes), project.pickup)
+        display = getattr(self.host, "time_display", None)
+        if display is not None:
+            display.set_meter(*self.canvas.meter_args)
         self._patterns_sig = patterns_key(project.patterns)     # per la miniatura dei box (box_preview)
         self.canvas.sections = song_sections(project)          # la fascia delle sezioni nel righello
         self._meter = project.meter()

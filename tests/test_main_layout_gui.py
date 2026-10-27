@@ -113,10 +113,13 @@ def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
         # un carattere piu' largo, a 1200 px (il tema fissa 13 px per tutti i widget)
         _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 16px; }")
         w.close()
-        w = _window(width=1200)
+        w = _window(width=1600)
+        w.resize(w.first_row_full_width() - 120, 720)       # la barra intera non ci sta piu'
+        _app.processEvents()
         assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width())
-        if w.width() <= 1200:
+        if w.width() < w.first_row_full_width():
             assert not w.song_box_in_first_row()
+            assert w._song_slot_bottom.isVisible()           # scende nella riga in fondo, accanto al Master
         assert w.view_structure_btn.isVisible() and w.view_text_btn.isVisible() and w.tempo_spin.isVisible()
         w.close()
     finally:
@@ -169,18 +172,19 @@ def test_toolbar_fits_a_1200_px_window():
         assert widget.isVisible()
         right = widget.mapTo(w, QPoint(widget.width(), 0)).x()
         assert right <= w.width()
-    # il livello del master sta sotto il gruppo Master, largo uguale; poi
-    # l'avanzamento in tutto il resto della seconda riga
-    master_box = w.master_vol_slider.parentWidget()
-    box = master_box.mapTo(w, QPoint(0, 0))
-    meter = w.level_meter.mapTo(w, QPoint(0, 0))
+    # il Master e' la riga in fondo alla colonna delle tracce, larga uguale e
+    # sotto le viste; accanto la barra di avanzamento, nel resto della riga
+    strip = w.master_strip
+    corner = strip.mapTo(w, QPoint(0, 0))
+    assert corner.x() == 0 and abs(strip.width() - w.mixer_panel.width()) <= 2
+    assert corner.y() > w.arrangement_view.mapTo(w, QPoint(0, w.arrangement_view.height() - 1)).y()
+    assert w.level_meter.parentWidget() is strip and w.master_vol_slider.parentWidget() is strip
     progress = w.playback_progress.mapTo(w, QPoint(0, 0))
-    assert meter.x() == box.x() and w.level_meter.width() == master_box.width()
-    assert meter.y() > box.y()
-    assert progress.x() > meter.x() + w.level_meter.width()
-    # ...e comincia dove finisce la colonna delle tracce
-    assert abs(progress.x() - w.mixer_panel.width()) <= 6
+    assert progress.x() > corner.x() + strip.width()
     assert w.playback_progress.isVisible() and w.playback_progress.width() > 800
+    # il tempo in cifre sta nel display della barra dei comandi
+    assert w.time_display.isVisible()
+    assert w.time_display.mapTo(w, QPoint(w.time_display.width(), 0)).x() <= w.width()
 
 
 def test_view_buttons_switch_view_and_tracks_column():
@@ -312,7 +316,7 @@ def test_header_pan_knob_changes_the_track_and_the_text_view_header():
     header.pan_knob.setValue(20)
     assert w.project.get_track("Piano").pan == 20
     assert w.track_headers["Piano"].pan_knob.value() == 20
-    assert "L" in header.pan_knob.toolTip()
+    assert "S70" in header.pan_knob.toolTip()           # S = sinistra, nella lingua dell'interfaccia
     assert w.history.can_undo()
 
 

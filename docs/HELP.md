@@ -80,18 +80,19 @@ spazi, conformi alla ST-Syntax.
 
 ### 1.0 La finestra
 
-- **Barra dei comandi**, da sinistra: il **Master** (FX del master e
-  volume), il **trasporto** (torna all'inizio,
+- **Barra dei comandi**, da sinistra: il **trasporto** (torna all'inizio,
   Play/Pausa, Stop, **●** Registra nella traccia audio selezionata, loop
-  A-B, metronomo, velocita' d'ascolto), il blocco **Brano** (tempo,
-  metrica, levare, tonalita') e la scelta della vista **Struttura / Testo**.
-  Passando il mouse su un pulsante compare a cosa serve e la sua
-  scorciatoia.
-- **Seconda riga**, sotto la barra dei comandi: sotto il Master il
-  **livello del mix** con la spia rossa **CLIP** di saturazione (resta
-  accesa finche' non la si clicca), largo quanto la colonna delle tracce;
-  poi la **barra di avanzamento**: tempo trascorso e durata; clic per
-  saltare in quel punto.
+  A-B, metronomo, velocita' d'ascolto), il **display del tempo** (tempo
+  trascorso e durata, e sotto la battuta e il movimento: un clic scambia
+  quale dei due e' in grande), il blocco **Brano** (tempo, metrica, levare,
+  tonalita') e la scelta della vista **Struttura / Testo**. Passando il
+  mouse su un pulsante compare a cosa serve e la sua scorciatoia. Se la
+  finestra e' troppo stretta, il blocco Brano scende nella riga in fondo.
+- **In fondo**, sotto le due viste: la riga del **Master**, larga quanto
+  la colonna delle tracce, con il volume del mix, **FX** (gli effetti sul
+  master) e il **livello del mix** con la spia rossa **CLIP** di
+  saturazione (resta accesa finche' non la si clicca); accanto la **barra
+  di avanzamento**: un clic salta in quel punto.
 - **Vista Struttura brano** (8bis): le tracce a box, con il mixer nelle
   testate delle righe (8); oppure **vista Testo**: le stesse testate in
   colonna a sinistra e la notazione della traccia selezionata.
@@ -1498,12 +1499,13 @@ viste: nella vista Struttura brano a sinistra di ogni riga, nella vista
 Testo nella colonna **Tracce** a sinistra (li' serve anche a scegliere la
 traccia di cui modificare il testo). La testata contiene:
 
-- nome e strumento, **M**, **S**, **●** (solo tracce audio: registra),
+- nome e strumento (lo strumento solo se e' diverso dal nome), **M**,
+  **S**, **●** (solo tracce audio: registra),
   **FX** (apre il pannello Effetti, vedi 8.3 e 8.4) e il menu
   **⋯** con tutte le azioni della traccia (genera, suona con la tastiera,
   importa MIDI o audio, nome e strumento, esporta MIDI, rimuovi);
 - a destra, due manopole: **Vol** (volume, il valore in %) e **Pan**
-  (C = centro, L/R = sinistra/destra). Si girano trascinando su/giu' (con
+  (C = centro, S/D = sinistra/destra). Si girano trascinando su/giu' (con
   Maiusc piu' fine), con la rotellina o con le frecce; doppio click = torna
   a 100% / al centro.
 
@@ -1538,8 +1540,8 @@ automaticamente alla riapertura del progetto.
 
 ### 8.2 Volume master
 
-Oltre al Volume di ogni singola traccia (8.1), la barra dei comandi (a sinistra,
-sopra il livello del mix) ha uno slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
+Oltre al Volume di ogni singola traccia (8.1), la riga **Master** in fondo alla
+colonna delle tracce ha uno slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
 guadagno originale) che scala insieme il volume di **tutte** le tracce, in
 aggiunta al volume gia' impostato su ciascuna — utile per un aggiustamento
 generale del livello senza dover toccare ogni traccia singolarmente. Come
@@ -1569,8 +1571,10 @@ campionato o plugin (SFZ, VST3, LV2), con lo stesso ambiente del brano;
 non per quelle che passano da un profilo NAM, che come le altre tracce
 vanno nell'amplificatore senza riverbero.
 
-Il pulsante FX si accende (azzurro) quando la traccia ha riverbero, chorus
-o effetti della catena, e il suo suggerimento ne mostra i valori.
+Il pulsante FX ha il contorno azzurro quando la traccia ha riverbero, chorus
+o effetti della catena, e il suo suggerimento ne mostra i valori; e'
+azzurro pieno quando il pannello Effetti e' aperto su quella traccia. La
+traccia selezionata ha la testata appena tinta del suo colore.
 
 Sono gli effetti già presenti nel synth (fluidsynth): si sentono subito con
 il normale ascolto, senza rielaborazioni in più, e a riproduzione in corso
@@ -1910,7 +1914,7 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
   cavallo" delle chitarre rock.
 
 Il **pannello Effetti** si apre dal pulsante FX della traccia (per il
-master, dal pulsante FX accanto allo slider Master: vedi 8.5) e resta in
+master, dal pulsante FX della riga Master: vedi 8.5) e resta in
 fondo alla finestra (si può ridimensionare trascinando il bordo). Ogni
 effetto è una **card** con:
 - **⏻** per accenderlo o spegnerlo senza perdere le regolazioni;
@@ -1970,8 +1974,8 @@ Da sapere:
 
 Oltre alle singole tracce, anche il **mix finale** del brano può passare
 per una catena di effetti: è il "mastering", l'ultimo ritocco che rende
-il brano più compatto, equilibrato e forte. Il pulsante **FX** accanto
-allo slider **Master**, nella barra dei comandi, apre il pannello Effetti
+il brano più compatto, equilibrato e forte. Il pulsante **FX** della riga
+**Master**, in fondo alla colonna delle tracce, apre il pannello Effetti
 sul master (etichetta "Master · mix finale"). Si usano gli stessi effetti
 e le stesse card delle tracce; quelli più adatti al master sono:
 - **EQ a 3 bande:** piccoli ritocchi al tono generale (±1-3 dB);
@@ -4126,8 +4130,9 @@ dispositivo audio, quindi resta allineata a cio' che si sente.
 
 ### Saltare a un punto e ripetere una sezione (loop A-B)
 
-- **Salto**: clicca sulla barra di avanzamento in toolbar, oppure sul
-  righello delle battute nella vista Struttura brano. Se il brano sta
+- **Salto**: clicca sulla barra di avanzamento in fondo alla finestra,
+  oppure sul righello delle battute (o su una sezione) nella vista
+  Struttura brano. Se il brano sta
   suonando riparte da li'; se e' fermo o in pausa, il prossimo Play
   partira' da quel punto.
 - **Loop A-B** (menu **Riproduzione → Loop**): **Loop: inizio (A) qui** (`Ctrl+[`) e
@@ -4149,9 +4154,10 @@ dispositivo audio, quindi resta allineata a cio' che si sente.
 
 ### 12.1 Barra di avanzamento ed evidenziazione del token in esecuzione
 
-Durante la riproduzione, la barra di avanzamento (la riga a tutta larghezza
-sotto la barra dei comandi) mostra il
-tempo trascorso e la durata totale del brano (es. "00:42 / 01:30"). Nella
+Durante la riproduzione, il display del tempo nella barra dei comandi
+mostra il tempo trascorso e la durata totale del brano (es. "00:42 /
+01:30") e la posizione (battuta e movimento); la barra di avanzamento in
+fondo alla finestra avanza con il brano. Nella
 traccia visualizzata nell'editor, il token attualmente in esecuzione (nota,
 pausa, accordo, blocco, o l'intero riferimento se e' un `%pattern`/`&"midi"`)
 viene evidenziato con i colori invertiti rispetto al tema (sfondo chiaro,

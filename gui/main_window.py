@@ -298,7 +298,18 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # si preme FX su una traccia.
         self.effects_panel = EffectsPanel(self)
         outer_splitter = QSplitter(Qt.Vertical)
-        outer_splitter.addWidget(splitter)
+        # Sotto le due viste, la riga del Master (allineata alla colonna delle
+        # tracce) con la barra di avanzamento accanto: vedi _build_bottom_row.
+        main_area = QWidget()
+        main_layout = QVBoxLayout(main_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(splitter, 1)
+        self._bottom_row = QHBoxLayout()
+        self._bottom_row.setContentsMargins(0, 0, 0, 0)
+        self._bottom_row.setSpacing(0)
+        main_layout.addLayout(self._bottom_row)
+        outer_splitter.addWidget(main_area)
         outer_splitter.addWidget(self.effects_panel)
         outer_splitter.setStretchFactor(0, 3)
         outer_splitter.setStretchFactor(1, 1)
@@ -720,35 +731,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.addToolBar(toolbar)
 
         # --- Master: effetti e volume (il livello e' nella riga sotto) -----
-        master_box = QWidget()
-        master_layout = QHBoxLayout(master_box)
-        master_layout.setContentsMargins(0, 0, 0, 0)
-        master_layout.addWidget(QLabel(" Master "))
-        # Catena di effetti sul master (mix finale): apre il pannello Effetti.
-        self.master_fx_btn = QPushButton("FX")
-        self.master_fx_btn.setMinimumWidth(52)
-        self.master_fx_btn.setAccessibleName(tr("Effetti sul master"))
-        self.master_fx_btn.clicked.connect(lambda: self.effects_panel.open_master())
-        master_layout.addWidget(self.master_fx_btn)
-        self.master_vol_slider = QSlider(Qt.Horizontal)
-        self.master_vol_slider.setRange(0, 200)
-        self.master_vol_slider.setValue(self.project.master_volume)
-        self.master_vol_slider.setFixedWidth(80)
-        self.master_vol_slider.setToolTip(
-            tr("Volume master: scala il volume di tutte le tracce insieme, "
-            "in aggiunta al volume di ciascuna (100% = guadagno originale).")
-        )
-        self.master_vol_slider.valueChanged.connect(self._on_master_volume_changed)
-        master_layout.addWidget(self.master_vol_slider)
-        self.master_vol_value_label = QLabel(f"{self.project.master_volume}%")
-        self.master_vol_value_label.setFixedWidth(38)
-        master_layout.addWidget(self.master_vol_value_label)
-        # largo quanto la colonna delle tracce (meno il margine e il separatore
-        # della barra): il livello sotto ha la stessa larghezza, e la barra di
-        # avanzamento comincia dove comincia il brano
-        master_box.setFixedWidth(self._tracks_column_width - 10)
-        toolbar.addWidget(master_box)
-        toolbar.addSeparator()
+        # Il Master non sta piu' qui: e' la riga in fondo alla colonna delle
+        # tracce (gui.master_strip, vedi _build_bottom_row).
 
         # --- Trasporto ---------------------------------------------------
         self.rewind_btn = self._tool_button("rewind", tr("Torna all'inizio del brano"), lambda: self.seek_to_beat(0.0))
@@ -798,6 +782,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.speed_combo.currentIndexChanged.connect(self._on_speed_changed)
         toolbar.addWidget(self.speed_combo)
 
+        toolbar.addSeparator()
+
+        # --- Display del tempo (gui.time_display) ------------------------
+        from .time_display import TimeDisplay
+        self.time_display = TimeDisplay()
+        toolbar.addWidget(self.time_display)
         toolbar.addSeparator()
 
         # --- Brano: tempo, metrica, tonalita' ------------------------------
@@ -897,42 +887,49 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.view_text_btn.clicked.connect(lambda: self.arrangement_action.setChecked(False))
         self.view_text_btn.setChecked(True)
 
-        # --- Seconda riga: sotto il Master il suo livello, poi l'avanzamento
-        self.addToolBarBreak()
-        progress_bar = QToolBar("Avanzamento")
-        progress_bar.setMovable(False)
-        progress_bar.setObjectName("progressToolbar")
-        self.addToolBar(progress_bar)
+        self._build_bottom_row()
+        self._refresh_toolbar_icons()
 
-        # Livello del master e spia di clipping (vedi gui.level_meter), largo
-        # quanto il gruppo Master della riga sopra, per stargli sotto
-        from .level_meter import LevelMeter
-        self.level_meter = LevelMeter()
-        self.level_meter.setFixedWidth(master_box.width())
+    def _build_bottom_row(self):
+        """In fondo, sotto le due viste: la riga del Master (gui.master_strip),
+        larga quanto la colonna delle tracce, e la barra di avanzamento
+        sottile, cliccabile per saltare (vedi eventFilter). Il tempo in cifre
+        lo mostra il display nella barra dei comandi."""
+        from .master_strip import MASTER_STRIP_HEIGHT, MasterStrip
+        from .time_display import PlaybackProgress
+        strip = MasterStrip(self._tracks_column_width + 1, self.project.master_volume,
+                            self._on_master_volume_changed, lambda: self.effects_panel.open_master())
+        self.master_strip = strip
+        self.master_fx_btn = strip.fx_btn
+        self.master_vol_slider = strip.vol_slider
+        self.master_vol_value_label = strip.vol_label
+        self.level_meter = strip.meter
         self._clip_detail_for = None    # (id dei livelli, testo con le battute)
         self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
-        progress_bar.addWidget(self.level_meter)
-        progress_bar.addSeparator()
+        self._bottom_row.addWidget(strip)
 
-        self.playback_progress = QProgressBar()
+        self.playback_progress = PlaybackProgress()
         self.playback_progress.setRange(0, 100)
         self.playback_progress.setValue(0)
-        self.playback_progress.setMinimumWidth(200)
+        self.playback_progress.setTextVisible(False)
+        self.playback_progress.setFixedHeight(8)
         self.playback_progress.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.playback_progress.setTextVisible(True)
-        self.playback_progress.setFormat("00:00 / 00:00")
         self.playback_progress.setToolTip(tr("Avanzamento della riproduzione: clicca per saltare in quel punto."))
         self.playback_progress.installEventFilter(self)
-        progress_bar.addWidget(self.playback_progress)
-        self._song_bottom_separator = progress_bar.addSeparator()
+        self.playback_progress.textChanged.connect(self.time_display.set_time_text)
+        self.playback_progress.setFormat("00:00 / 00:00")
+        progress_box = QWidget()
+        progress_box.setFixedHeight(MASTER_STRIP_HEIGHT)
+        progress_layout = QVBoxLayout(progress_box)
+        progress_layout.setContentsMargins(12, 0, 12, 0)
+        progress_layout.addWidget(self.playback_progress, 0, Qt.AlignVCenter)
+        self._bottom_row.addWidget(progress_box, 1)
+        # qui scende il riquadro Brano se la barra dei comandi non entra (_place_song_box)
         self._song_slot_bottom = QWidget()
         bottom_layout = QHBoxLayout(self._song_slot_bottom)
-        bottom_layout.setContentsMargins(0, 0, 0, 0)
-        self._song_bottom_action = progress_bar.addWidget(self._song_slot_bottom)
-        self._song_bottom_separator.setVisible(False)
-        self._song_bottom_action.setVisible(False)
-
-        self._refresh_toolbar_icons()
+        bottom_layout.setContentsMargins(0, 0, 8, 0)
+        self._song_slot_bottom.setVisible(False)
+        self._bottom_row.addWidget(self._song_slot_bottom, 0, Qt.AlignVCenter)
 
     def _tool_button(self, icon_name, tooltip, slot, color=None, checkable=False):
         """Pulsante a icona della barra dei comandi (vedi gui.icons)."""
@@ -988,10 +985,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         return need
 
     def _place_song_box(self):
-        """Il riquadro Brano nella prima riga della barra se la riga intera
-        entra nella finestra, altrimenti nella seconda (con caratteri larghi,
-        come quello di sistema di macOS, o una finestra stretta). Il conto
-        si fa sempre sulla riga completa, cosi' non si ribalta avanti e indietro."""
+        """Il riquadro Brano nella barra dei comandi se la barra intera entra
+        nella finestra, altrimenti nella riga in fondo, accanto alla barra di
+        avanzamento (con caratteri larghi, come quello di sistema di macOS, o
+        una finestra stretta). Il conto si fa sempre sulla barra completa,
+        cosi' non si ribalta avanti e indietro."""
         if not hasattr(self, "_song_box"):
             return
         top = self.song_box_in_first_row()
@@ -1004,8 +1002,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         target.layout().addWidget(self._song_box)
         self._song_box.show()
         self._song_top_action.setVisible(want_top)
-        self._song_bottom_action.setVisible(not want_top)
-        self._song_bottom_separator.setVisible(not want_top)
+        self._song_slot_bottom.setVisible(not want_top)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -1026,6 +1023,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             header.sync_from_track()
         refresh_add_track_icon(self.mixer_add_track_btn)
         self.effects_panel.theme_changed()
+        self.master_strip.refresh_style()
         # I colori dell'evidenziazione sintattica (es. [ ... ] in giallo/ambra,
         # vedi highlighter.py) dipendono dal tema attivo ma i QTextCharFormat
         # vengono creati solo alla costruzione del NotationHighlighter: un

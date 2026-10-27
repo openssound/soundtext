@@ -60,6 +60,7 @@ class TrackHeaderWidget(QFrame):
         self.track = track
         self.track_name = track.name
         self._active = False
+        self._fx_open = False             # il pannello Effetti e' aperto su questa traccia
         self.setFixedSize(width, height)
         self.setObjectName("trackHeader")
 
@@ -166,6 +167,8 @@ class TrackHeaderWidget(QFrame):
             subtitle = tr("❄ congelata in '{audio}'", audio=t.frozen)
         self._set_elided(self.name_label, t.name)
         self._set_elided(self.instr_label, subtitle)
+        # "Bass / Bass": lo strumento si scrive solo se dice qualcosa in piu' del nome
+        self.instr_label.setVisible(subtitle.strip().lower() != t.name.strip().lower())
         for widget, value in ((self.mute_btn, t.mute), (self.solo_btn, t.solo)):
             widget.blockSignals(True)
             widget.setChecked(value)
@@ -178,7 +181,8 @@ class TrackHeaderWidget(QFrame):
         self._update_knob_tooltips()
         self.fx_btn.setText(fx_button_text(t))
         self.fx_btn.setToolTip(fx_summary(t))
-        self.fx_btn.setObjectName("fxBtnOn" if has_fx(t) else "fxBtn")
+        self._has_fx = has_fx(t)
+        self._refresh_fx_name()
         self._refresh_style()
 
     def _set_elided(self, label: QLabel, text: str):
@@ -191,7 +195,7 @@ class TrackHeaderWidget(QFrame):
     def _update_knob_tooltips(self):
         t = self.track
         self.vol_knob.setToolTip(tr("Volume: {volume}%\nTrascina su/giu' o usa la rotellina; doppio clic: 100%", volume=t.volume))
-        self.pan_knob.setToolTip(tr("Pan: {0} (sinistra L - centro C - destra R)\nTrascina su/giu' o usa la rotellina; doppio clic: centro", _pan_label(t.pan)))
+        self.pan_knob.setToolTip(tr("Pan: {0} (sinistra S - centro C - destra D)\nTrascina su/giu' o usa la rotellina; doppio clic: centro", _pan_label(t.pan)))
 
     def set_peak(self, peak):
         """Picco della traccia suonata da sola (core.levels.TrackPeak), o
@@ -214,10 +218,31 @@ class TrackHeaderWidget(QFrame):
         self._active = active
         self._refresh_style()
 
+    def set_fx_open(self, open_: bool):
+        if open_ != self._fx_open:
+            self._fx_open = open_
+            self._refresh_fx_name()
+            self._refresh_style()
+
+    def _refresh_fx_name(self):
+        """FX: in accento pieno solo se il pannello Effetti e' aperto su
+        questa traccia; con effetti ma chiuso, solo il contorno e il numero
+        (prima era pieno: si confondeva con un pulsante premuto)."""
+        self.fx_btn.setObjectName("fxBtnOpen" if self._fx_open else
+                                  "fxBtnOn" if getattr(self, "_has_fx", False) else "fxBtn")
+
     def _refresh_style(self):
         colors = theme.track_card_colors()
         stripe = _family_color(self.track.instrument_name)
         bg = colors["bg"]
+        if self._active:
+            # la traccia selezionata: lo sfondo appena tinto del suo colore
+            from PySide6.QtGui import QColor
+            base, tint = QColor(bg), QColor(stripe)
+            mix = 0.16
+            bg = QColor(round(base.red() * (1 - mix) + tint.red() * mix),
+                        round(base.green() * (1 - mix) + tint.green() * mix),
+                        round(base.blue() * (1 - mix) + tint.blue() * mix)).name()
         border = theme.ACCENT if self._active else colors["border"]
         light = theme.get_active_theme() == "light"
         text_color = "#333333" if light else "#e0e0e0"
@@ -233,7 +258,8 @@ class TrackHeaderWidget(QFrame):
             f"border-radius: 4px; background: {field}; color: {text_color}; font-size: 11px; font-weight: bold; }}"
             "QFrame#trackHeader QToolButton#muteBtn:checked { background: #e05555; color: white; border-color: #e05555; }"
             "QFrame#trackHeader QToolButton#soloBtn:checked { background: #e8c96d; color: #222; border-color: #e8c96d; }"
-            f"QFrame#trackHeader QToolButton#fxBtnOn {{ background: {theme.ACCENT_DIM}; color: white; "
+            f"QFrame#trackHeader QToolButton#fxBtnOn {{ color: {theme.ACCENT}; border-color: {theme.ACCENT}; }}"
+            f"QFrame#trackHeader QToolButton#fxBtnOpen {{ background: {theme.ACCENT}; color: #10151a; "
             f"border-color: {theme.ACCENT}; }}"
             "QFrame#trackHeader QToolButton#menuBtn { border: none; background: transparent; }"
             f"QFrame#trackHeader QToolButton#menuBtn:hover {{ background: {field}; }}"

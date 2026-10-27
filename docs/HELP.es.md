@@ -80,17 +80,20 @@ separados por espacios, conformes a la ST-Syntax.
 
 ### 1.0 La ventana
 
-- **Barra de comandos**, desde la izquierda: el **Máster** (FX del máster
-  y volumen), el **transporte** (volver al inicio, Play/Pausa, Stop, **●** Grabar en la pista de audio
-  seleccionada, bucle A-B, metrónomo, velocidad de escucha), el bloque
-  **Canción** (tempo, compás, anacrusa, tonalidad) y la elección de la
-  vista **Estructura / Texto**. Al pasar el ratón sobre un botón aparece
-  para qué sirve y su atajo.
-- **Segunda fila**, debajo de la barra de comandos: bajo el Máster el
-  **nivel de la mezcla** con el piloto rojo **CLIP** de saturación (sigue
-  encendido hasta que se hace clic en él), tan ancho como la columna de las
-  pistas; luego la **barra de progreso**: tiempo transcurrido y duración;
-  haz clic para saltar a ese punto.
+- **Barra de comandos**, desde la izquierda: el **transporte** (volver al
+  inicio, Play/Pausa, Stop, **●** Grabar en la pista de audio
+  seleccionada, bucle A-B, metrónomo, velocidad de escucha), el **visor del
+  tiempo** (tiempo transcurrido y duración, y debajo el compás y el tiempo:
+  un clic intercambia cuál se ve en grande), el bloque **Canción** (tempo,
+  compás, anacrusa, tonalidad) y la elección de la vista **Estructura /
+  Texto**. Al pasar el ratón sobre un botón aparece para qué sirve y su
+  atajo. Si la ventana es demasiado estrecha, el bloque Canción baja a la
+  fila inferior.
+- **Abajo**, debajo de las dos vistas: la fila del **Máster**, tan ancha
+  como la columna de las pistas, con el volumen de la mezcla, **FX** (los
+  efectos del máster) y el **nivel de la mezcla** con el piloto rojo
+  **CLIP** de saturación (sigue encendido hasta que se hace clic en él); al
+  lado la **barra de progreso**: un clic salta a ese punto.
 - **Vista Estructura de la canción** (8bis): las pistas en boxes, con el
   mezclador en las cabeceras de las filas (8); o bien la **vista Texto**:
   las mismas cabeceras en columna a la izquierda y la notación de la pista
@@ -1518,12 +1521,13 @@ vistas: en la vista Estructura de la canción a la izquierda de cada fila,
 en la vista Texto en la columna **Pistas** de la izquierda (allí también
 sirve para elegir la pista cuyo texto se edita). La cabecera contiene:
 
-- nombre e instrumento, **M**, **S**, **●** (solo pistas de audio:
+- nombre e instrumento (el instrumento solo si es distinto del nombre),
+  **M**, **S**, **●** (solo pistas de audio:
   grabar), **FX** (abre el panel Efectos, ver 8.3 y 8.4) y el menú **⋯** con
   todas las acciones de la pista (generar, tocar con el teclado, importar
   MIDI o audio, nombre e instrumento, exportar MIDI, eliminar);
 - a la derecha, dos mandos: **Vol** (volumen, el valor en %) y **Pan**
-  (C = centro, L/R = izquierda/derecha). Se giran arrastrando arriba/abajo
+  (C = centro, I/D = izquierda/derecha). Se giran arrastrando arriba/abajo
   (más fino con Mayús), con la rueda o con las flechas; doble clic = volver
   a 100% / al centro.
 
@@ -1559,8 +1563,8 @@ automáticamente al volver a abrir el proyecto.
 
 ### 8.2 Volumen máster
 
-Además del Volumen de cada pista (8.1), la barra de comandos (a la izquierda,
-encima del nivel de la mezcla) tiene un control deslizante **Máster** (0-200%, misma escala y misma
+Además del Volumen de cada pista (8.1), la fila **Máster** al pie de la
+columna de las pistas tiene un control deslizante **Máster** (0-200%, misma escala y misma
 convención: 100% = ganancia original) que escala a la vez el volumen de
 **todas** las pistas, además del volumen ya ajustado en cada una — útil
 para un ajuste general del nivel sin tener que tocar cada pista por
@@ -1591,9 +1595,11 @@ instrumento sampleado o plugin (SFZ, VST3, LV2), con el mismo ambiente de
 la canción; no para las que pasan por un perfil NAM, que como las demás
 pistas entran en el amplificador sin reverberación.
 
-El botón FX se enciende (celeste) cuando la pista tiene reverberación,
+El botón FX tiene el contorno celeste cuando la pista tiene reverberación,
 chorus o efectos de la cadena, y su descripción emergente muestra los
-valores.
+valores; es celeste lleno mientras el panel Efectos está abierto en esa
+pista. La pista seleccionada tiene la cabecera ligeramente teñida de su
+color.
 
 Son los efectos que ya tiene el sintetizador (fluidsynth): se oyen enseguida
 con la escucha normal, sin procesos adicionales, y durante la reproducción
@@ -1948,7 +1954,7 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
   galope» de las guitarras de rock.
 
 El **panel Efectos** se abre desde el botón FX de la pista (para el máster,
-desde el botón FX junto al control Máster: ver 8.5) y se queda en la parte
+desde el botón FX de la fila Máster: ver 8.5) y se queda en la parte
 de abajo de la ventana (se puede redimensionar arrastrando su borde). Cada
 efecto es una **tarjeta** con:
 - **⏻** para encenderlo o apagarlo sin perder los ajustes;
@@ -2011,8 +2017,8 @@ Conviene saber:
 
 Además de las pistas, también la **mezcla final** de la canción puede
 pasar por una cadena de efectos: es el «mastering», el último retoque que
-hace la canción más compacta, equilibrada y fuerte. El botón **FX** junto
-al control **Máster**, en la barra de comandos, abre el panel Efectos del
+hace la canción más compacta, equilibrada y fuerte. El botón **FX** de la
+fila **Máster**, al pie de la columna de las pistas, abre el panel Efectos del
 máster (etiqueta «Máster · mezcla final»). Se usan los mismos efectos y las
 mismas tarjetas que en las pistas; los más adecuados para el máster son:
 - **EQ de 3 bandas:** pequeños retoques del tono general (±1-3 dB);
@@ -4236,8 +4242,9 @@ alineada con lo que se oye.
 
 ### Saltar a un punto y repetir una sección (bucle A-B)
 
-- **Salto**: haz clic en la barra de progreso de la barra de herramientas, o
-  en la regla de compases de la vista Estructura de la canción. Si la
+- **Salto**: haz clic en la barra de progreso al pie de la ventana, o en la
+  regla de compases (o en una sección) de la vista Estructura de la
+  canción. Si la
   canción está sonando, vuelve a empezar desde ahí; si está detenida o en
   pausa, el próximo Play empezará desde ese punto.
 - **Bucle A-B** (menú **Reproducción → Bucle**): **Bucle: inicio (A) aquí**
@@ -4259,9 +4266,10 @@ alineada con lo que se oye.
 
 ### 12.1 Barra de progreso y resaltado del token en reproducción
 
-Durante la reproducción, la barra de progreso (la fila de ancho completo
-bajo la barra de comandos) muestra el tiempo transcurrido y la duración
-total de la canción (p. ej. «00:42 / 01:30»). En la pista que se muestra en
+Durante la reproducción, el visor del tiempo de la barra de comandos
+muestra el tiempo transcurrido y la duración total de la canción (p. ej.
+«00:42 / 01:30») y la posición (compás y tiempo); la barra de progreso al
+pie de la ventana avanza con la canción. En la pista que se muestra en
 el editor, el token que se está reproduciendo (nota, silencio, acorde,
 bloque, o la referencia entera si es un `%pattern`/`&"midi"`) se resalta con
 los colores invertidos respecto al tema (fondo claro, texto oscuro), para

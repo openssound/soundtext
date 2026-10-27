@@ -80,16 +80,18 @@ Each track is associated with an instrument and contains a sequence of
 
 ### 1.0 The window
 
-- **Command bar**, from the left: the **Master** (master FX and volume),
-  the **transport** (back to the start, Play/Pause, Stop, **●** Record into the
-  selected audio track, A-B loop, metronome, listening speed), the **Song**
-  block (tempo, time signature, pickup, key) and the choice of the
-  **Structure / Text** view. Hovering over a button shows what it does and
-  its shortcut.
-- **Second row**, below the command bar: under the Master the **mix level**
-  with the red **CLIP** light (it stays on until you click it), as wide as
-  the tracks column; then the **progress bar**: elapsed time and length;
-  click to jump to that point.
+- **Command bar**, from the left: the **transport** (back to the start,
+  Play/Pause, Stop, **●** Record into the selected audio track, A-B loop,
+  metronome, listening speed), the **time display** (elapsed time and
+  length, and below it the bar and beat: a click swaps which one is
+  large), the **Song** block (tempo, time signature, pickup, key) and the
+  choice of the **Structure / Text** view. Hovering over a button shows
+  what it does and its shortcut. If the window is too narrow, the Song
+  block moves to the bottom row.
+- **At the bottom**, below both views: the **Master** row, as wide as the
+  tracks column, with the mix volume, **FX** (the effects on the master)
+  and the **mix level** with the red **CLIP** light (it stays on until you
+  click it); next to it the **progress bar**: a click jumps to that point.
 - **Song structure view** (8bis): the tracks as boxes, with the mixer in
   the row headers (8); or the **Text view**: the same headers in a column
   on the left and the notation of the selected track.
@@ -1464,7 +1466,8 @@ in the Song structure view on the left of each row, in the Text view in the
 **Tracks** column on the left (there it is also used to choose the track
 whose text to edit). The header contains:
 
-- name and instrument, **M**, **S**, **●** (audio tracks only: record),
+- name and instrument (the instrument only when it differs from the name),
+  **M**, **S**, **●** (audio tracks only: record),
   **FX** (opens the Effects panel, see 8.3 and 8.4) and the **⋯** menu with
   all the actions of the track (generate, play with the keyboard, import
   MIDI or audio, name and instrument, export MIDI, remove);
@@ -1505,8 +1508,8 @@ the project is reopened.
 
 ### 8.2 Master volume
 
-Besides the Volume of each single track (8.1), the command bar (on the left,
-above the mix level) has a **Master** slider (0-200%, same scale and same convention: 100% = original
+Besides the Volume of each single track (8.1), the **Master** row at the bottom
+of the tracks column has a **Master** slider (0-200%, same scale and same convention: 100% = original
 gain) that scales the volume of **all** tracks together, on top of the
 volume already set on each one — useful for a general level adjustment
 without having to touch every track individually. As for track
@@ -1534,8 +1537,10 @@ instrument (SFZ, VST3, LV2), with the same room of the song; not to those
 that go through a NAM profile, which, like the other tracks, go into the
 amplifier without reverb.
 
-The FX button lights up (light blue) when the track has reverb, chorus or
-chain effects, and its tooltip shows their values.
+The FX button has a light blue outline when the track has reverb, chorus or
+chain effects, and its tooltip shows their values; it is solid light blue
+while the Effects panel is open on that track. The selected track's header
+is lightly tinted with its colour.
 
 These are the effects already present in the synth (fluidsynth): they are
 heard immediately with normal listening, without extra processing, and
@@ -1872,7 +1877,7 @@ effects, divided by family in the **+ Effect** menu:
   "galloping" echo of rock guitars.
 
 The **Effects panel** opens from the track's FX button (for the master,
-from the FX button next to the Master slider: see 8.5) and stays at the
+from the FX button of the Master row: see 8.5) and stays at the
 bottom of the window (it can be resized by dragging its edge). Each effect
 is a **card** with:
 - **⏻** to switch it on or off without losing the settings;
@@ -1933,8 +1938,8 @@ Good to know:
 
 Besides single tracks, the song's **final mix** can also go through an
 effect chain: it is "mastering", the final touch that makes the song more
-compact, balanced and loud. The **FX** button next to the **Master** slider,
-in the command bar, opens the Effects panel on the master (label "Master ·
+compact, balanced and loud. The **FX** button of the **Master** row, at the
+bottom of the tracks column, opens the Effects panel on the master (label "Master ·
 final mix"). The same effects and cards as for tracks are used; the most
 suitable for the master are:
 - **3-band EQ:** small touches to the overall tone (±1-3 dB);
@@ -4016,8 +4021,8 @@ so it stays aligned with what you hear.
 
 ### Jumping to a point and repeating a section (A-B loop)
 
-- **Jump**: click on the progress bar in the toolbar, or on the bar ruler in
-  the Song structure view. If the song is playing it restarts from there; if
+- **Jump**: click on the progress bar at the bottom of the window, or on the
+  bar ruler (or a section) in the Song structure view. If the song is playing it restarts from there; if
   it is stopped or paused, the next Play will start from that point.
 - **A-B loop** (**Playback → Loop** menu): **Loop: start (A) here** (`Ctrl+[`) and
   **Loop: end (B) here** (`Ctrl+]`) set the two ends on the beat being
@@ -4037,9 +4042,10 @@ so it stays aligned with what you hear.
 
 ### 12.1 Progress bar and highlighting of the token being played
 
-During playback, the progress bar (the full-width row under the command
-bar) shows the elapsed time and the total length of the song (e.g.
-"00:42 / 01:30"). In the track shown in the editor, the token currently
+During playback, the time display in the command bar shows the elapsed
+time and the total length of the song (e.g. "00:42 / 01:30") and the
+position (bar and beat); the progress bar at the bottom of the window
+moves with the song. In the track shown in the editor, the token currently
 being played (note, rest, chord, block, or the whole reference if it is a
 `%pattern`/`&"midi"`) is highlighted with colours inverted relative to the
 theme (light background, dark text), to follow playback visually line by

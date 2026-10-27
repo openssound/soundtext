@@ -719,6 +719,19 @@ class EffectsPanel(QFrame):
     def is_master(self) -> bool:
         return isinstance(self.track, MasterTarget)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._notify_fx_buttons()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._notify_fx_buttons()
+
+    def _notify_fx_buttons(self):
+        """Il pulsante FX della traccia aperta qui si accende (host.sync_fx_buttons)."""
+        if hasattr(self.host, "sync_fx_buttons"):
+            self.host.sync_fx_buttons()
+
     def open_master(self):
         """Apre il pannello sulla catena del master (mix finale)."""
         if self.is_master and self.track.project is self.host.project:
@@ -738,6 +751,7 @@ class EffectsPanel(QFrame):
         if self.track is not None:
             self.close_panel()
         self.track = track
+        self._notify_fx_buttons()
         self._snapshot = (copy.deepcopy(track.effects), track.reverb, track.chorus, project.reverb_room)
         self.bypass_btn.setChecked(False)
         self._apply_style()

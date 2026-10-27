@@ -92,6 +92,18 @@ class MixerMixin:
         if header is not None and header is not source:
             header.sync_from_track()
 
+    def sync_fx_buttons(self):
+        """Il pulsante FX acceso pieno solo sulla traccia aperta nel pannello
+        Effetti (le altre con effetti restano in tinta tenue)."""
+        panel = getattr(self, "effects_panel", None)
+        open_track = panel.track if panel is not None and panel.isVisible() else None
+        headers = list(getattr(self, "track_headers", {}).values())
+        view = getattr(self, "arrangement_view", None)
+        if view is not None:
+            headers += list(view.canvas.header_widgets.values())
+        for header in headers:
+            header.set_fx_open(open_track is header.track)
+
     def open_effects_panel(self, track_name):
         """Pulsante FX di una traccia: la seleziona e apre il pannello
         Effetti in fondo alla finestra (gui.effects_panel)."""

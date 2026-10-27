@@ -20,7 +20,7 @@ from . import theme
 _START_ANGLE = 225.0   # gradi (convenzione Qt: 0 = ore 3, antiorario): minimo in basso a sinistra
 _SPAN = 270.0          # fino al massimo in basso a destra
 _KNOB = 34             # diametro del disco
-_CAPTION_H = 11        # altezza dell'etichetta sotto il disco
+_CAPTION_H = 12        # altezza dell'etichetta sotto il disco
 
 
 class Knob(QAbstractSlider):
@@ -135,7 +135,7 @@ class Knob(QAbstractSlider):
         p.setPen(text_color)
         p.drawText(inner, Qt.AlignCenter, text)
 
-        font.setPixelSize(9)
+        font.setPixelSize(10)
         font.setBold(False)
         p.setFont(font)
         p.setPen(QColor(colors["text_dim"]))
