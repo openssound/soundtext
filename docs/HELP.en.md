@@ -111,7 +111,7 @@ matter.
 
 **Shortcuts in the Song structure view** (with the mouse or the focus on
 the canvas; in the text editor these keys are used for typing). A reminder
-is at the bottom right of the status bar.
+is in **? How to use**, at the top left of the view.
 
 | Key | Action |
 |---|---|

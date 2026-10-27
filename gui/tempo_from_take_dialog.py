@@ -37,7 +37,7 @@ class TempoCurve(QWidget):
         lo, hi = min(self.tempos), max(self.tempos)
         if hi - lo < 4:
             lo, hi = lo - 2, hi + 2
-        p.setFont(QFont("Sans", 8))
+        p.setFont(_app_font(11))
         p.setPen(text)
         p.drawText(QRectF(0, rect.top() - 6, 36, 14), Qt.AlignRight | Qt.AlignVCenter, str(hi))
         p.drawText(QRectF(0, rect.bottom() - 8, 36, 14), Qt.AlignRight | Qt.AlignVCenter, str(lo))
@@ -114,3 +114,11 @@ class TempoFromTakeDialog(QDialog):
     def fixed_bpm(self):
         """Il tempo fisso scelto, o None se il brano segue l'esecuzione."""
         return self.bpm_spin.value() if self.fixed_radio.isChecked() else None
+
+
+def _app_font(pixels: int) -> QFont:
+    """Il carattere del programma a 'pixels' px (non "Sans" fisso)."""
+    from PySide6.QtWidgets import QApplication
+    font = QFont(QApplication.font())
+    font.setPixelSize(pixels)
+    return font

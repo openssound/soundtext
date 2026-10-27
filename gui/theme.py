@@ -24,7 +24,7 @@ WARN = "#e0a030"   # avvisi che non bloccano (es. controlli di battuta)
 
 _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_PANEL,
              BG_FIELD=BG_FIELD, BG_HOVER=BG_HOVER, BORDER=BORDER, TEXT=TEXT, TEXT_DIM=TEXT_DIM,
-             LINK=ACCENT)
+             LINK=ACCENT, CONTROL_BORDER="#808086")
 
 # ACCENT resta lo stesso blu in entrambi i temi: e' abbastanza chiaro da
 # restare leggibile come bordo/handle/sfondo di stato "attivo" (col testo
@@ -37,7 +37,10 @@ _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_
 # (editor), cosi' il tema non abbaglia e il testo resta ben contrastato.
 _LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#c6dcef", BG_BASE="#e4e4e7", BG_PANEL="#ececee",
               BG_FIELD="#f4f4f5", BG_HOVER="#dce5ee", BORDER="#c4c4c9", TEXT="#1c1c1e",
-              TEXT_DIM="#55555a", LINK="#1d5f99")
+              TEXT_DIM="#55555a", LINK="#1d5f99", CONTROL_BORDER="#7a7a80")
+# CONTROL_BORDER: il bordo delle caselle di spunta e dei pulsanti tondi. Con
+# BORDER (quello dei riquadri) una casella vuota quasi non si vedeva: 1,2:1
+# sul campo nel tema scuro, contro i 3:1 consigliati per i controlli.
 
 
 # Stato del tema attivo, usato dai widget che si disegnano con un
@@ -99,6 +102,7 @@ def _build_stylesheet(p: dict) -> str:
     ACCENT, ACCENT_DIM = p["ACCENT"], p["ACCENT_DIM"]
     BG_BASE, BG_PANEL, BG_FIELD, BG_HOVER = p["BG_BASE"], p["BG_PANEL"], p["BG_FIELD"], p["BG_HOVER"]
     BORDER, TEXT, TEXT_DIM = p["BORDER"], p["TEXT"], p["TEXT_DIM"]
+    CONTROL_BORDER = p["CONTROL_BORDER"]
     return f"""
 QMainWindow, QDialog {{
     background-color: {BG_BASE};
@@ -283,7 +287,7 @@ QCheckBox {{
 }}
 QCheckBox::indicator {{
     width: 15px; height: 15px;
-    border: 1px solid {BORDER};
+    border: 1px solid {CONTROL_BORDER};
     border-radius: 3px;
     background: {BG_FIELD};
 }}
@@ -301,7 +305,7 @@ QRadioButton {{
 }}
 QRadioButton::indicator {{
     width: 15px; height: 15px;
-    border: 1px solid {BORDER};
+    border: 1px solid {CONTROL_BORDER};
     border-radius: 8px;
     background: {BG_FIELD};
 }}
@@ -408,6 +412,24 @@ QTreeView, QListView {{
 }}
 QTreeView::item, QListView::item {{
     padding: 3px 4px;
+}}
+/* Le caselle negli elenchi (Scarica e installa...): come le QCheckBox */
+QTreeView::indicator, QListView::indicator {{
+    width: 14px; height: 14px;
+    border: 1px solid {CONTROL_BORDER};
+    border-radius: 3px;
+    background: {BG_FIELD};
+}}
+QTreeView::indicator:checked, QListView::indicator:checked {{
+    background: {ACCENT};
+    border-color: {ACCENT};
+}}
+QTreeView::indicator:indeterminate, QListView::indicator:indeterminate {{
+    background: {ACCENT_DIM};
+    border-color: {ACCENT};
+}}
+QTreeView::indicator:disabled, QListView::indicator:disabled {{
+    border-color: {BORDER};
 }}
 QTreeView::item:selected, QListView::item:selected {{
     background-color: {ACCENT_DIM};

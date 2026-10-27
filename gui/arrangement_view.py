@@ -103,7 +103,9 @@ HELP_TEXT = (
     "• Doppio click su un box: modificalo. Tasto destro: trasponi, duplica, dividi e altro.\n"
     "• Shift+Spazio: ascolta il box selezionato. Play/Stop in alto: tutto il brano.\n"
     "• Clic sul righello: salta in quel punto.\n"
-    "• Testata della traccia: M/S/● e volume; ⋯ o tasto destro per tutte le azioni.")
+    "• Testata della traccia: M/S/● e volume; ⋯ o tasto destro per tutte le azioni.\n"
+    "• Tasti: Spazio Play · R registra · Canc elimina · Ctrl+D duplica · S dividi · "
+    "Ctrl+rotellina zoom · Ctrl+Maiusc+rotellina altezza delle righe · Ctrl+K cerca un comando.")
 )
 EMPTY_ROW_HINT = tr("Doppio click per creare un box · tasto destro per generare, suonare o importare")
 EMPTY_AUDIO_ROW_HINT = tr("Doppio click per importare un file audio · ● per registrare")
@@ -335,6 +337,16 @@ def _ink_on(color: QColor, alpha: int) -> QColor:
 
 
 _BOX_FONT = None
+
+
+def _ui_font(pixels: int, bold: bool = False) -> QFont:
+    """Il carattere del programma a 'pixels' px: prima la vista disegnava
+    con "Sans" a punti fissi, diverso dal resto dell'interfaccia."""
+    from PySide6.QtWidgets import QApplication
+    font = QFont(QApplication.font())
+    font.setPixelSize(pixels)
+    font.setBold(bold)
+    return font
 
 
 def _box_font() -> QFont:
@@ -722,7 +734,7 @@ class AudioBoxItem(BoxItem):
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
         painter.setPen(QPen(text_color))
-        painter.setFont(QFont("Sans", 9, QFont.Bold))
+        painter.setFont(_ui_font(11, bold=True))
         if self._missing:
             label = tr("{name}  (file mancante)", name=self.clip.name)
         elif self.clip.muted:
@@ -1064,7 +1076,7 @@ class ArrangementCanvas(QGraphicsView):
         beat0_x = self.mapFromScene(QPointF(HEADER_WIDTH, 0)).x()
         pen = QPen(QColor(colors["border"]))
         painter.setPen(pen)
-        painter.setFont(QFont("Sans", 8))
+        painter.setFont(_ui_font(11))
         # Le stanghette vere del brano: cambi di metrica e levare compresi
         # (con il levare, la battuta 0 comincia all'inizio del brano).
         time_sig, metrica_changes, pickup = self.meter_args
@@ -1118,12 +1130,12 @@ class ArrangementCanvas(QGraphicsView):
             hint = self._row_hint(name)
             if hint and top >= RULER_HEIGHT:
                 painter.setPen(QColor(colors["text"]))
-                painter.setFont(QFont("Sans", 9))
+                painter.setFont(_ui_font(12))
                 painter.drawText(QRectF(HEADER_WIDTH + 14, top, vw - HEADER_WIDTH - 20, ROW_HEIGHT),
                                  Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, hint)
         if not self.row_ys:
             painter.setPen(QColor(colors["text"]))
-            painter.setFont(QFont("Sans", 10))
+            painter.setFont(_ui_font(13))
             painter.drawText(QRectF(HEADER_WIDTH + 14, RULER_HEIGHT, vw - HEADER_WIDTH - 20, ROW_HEIGHT),
                              Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, NO_TRACKS_HINT)
 

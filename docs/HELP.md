@@ -113,7 +113,7 @@ Maiuscole e accenti non contano.
 
 **Scorciatoie nella vista Struttura brano** (con il mouse o il fuoco sul
 canvas; nell'editor di testo questi tasti servono a scrivere). Un
-promemoria e' in fondo a destra nella barra di stato.
+promemoria e' in **? Come si usa**, in alto a sinistra nella vista.
 
 | Tasto | Azione |
 |---|---|

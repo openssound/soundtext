@@ -56,6 +56,7 @@ class DownloadDialog(QDialog):
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(5000)
+        self.log.hide()            # compare con Installa: prima l'elenco ha tutto lo spazio
         layout.addWidget(self.log, 2)
 
         row = QHBoxLayout()
@@ -172,6 +173,7 @@ class DownloadDialog(QDialog):
         if not keys:
             return
         program, *args = downloads.command(keys)
+        self.log.show()
         self.log.appendPlainText("$ " + " ".join(keys))
         self._pending = ""
         self._process = QProcess(self)

@@ -343,13 +343,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self.setCentralWidget(outer_splitter)
         self.setStatusBar(QStatusBar())
-        # Promemoria delle scorciatoie della vista Struttura brano, a destra
-        # nella barra di stato (visibile solo in quella vista).
-        self.shortcuts_hint = QLabel(
-            tr("Spazio Play · R Registra · Shift+Spazio ascolta il box · Canc elimina · "
-            "Ctrl+D duplica · S dividi · Ctrl+rotella zoom · Ctrl+K cerca un comando"))
-        dim(self.shortcuts_hint, "padding-right: 8px;")
-        self.statusBar().addPermanentWidget(self.shortcuts_hint)
+        # La barra di stato e' solo per i messaggi: le scorciatoie della vista
+        # Struttura stanno in "? Come si usa" (gui.arrangement_view.HELP_TEXT),
+        # nei suggerimenti dei pulsanti e nella ricerca dei comandi (Ctrl+K).
 
     def _build_menu(self):
         menubar = self.menuBar()
@@ -1098,7 +1094,6 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         QTimer.singleShot(0, lambda: target.setValue(offset))
         self.center_stack.setCurrentIndex(1 if checked else 0)
         (self.view_structure_btn if checked else self.view_text_btn).setChecked(True)
-        self.shortcuts_hint.setVisible(checked)
         # Colonna delle tracce solo nella vista Testo: nella Struttura le
         # stesse testate stanno gia' a sinistra delle righe.
         self.mixer_panel.setVisible(not checked)

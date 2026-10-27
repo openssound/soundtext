@@ -114,7 +114,7 @@ atajo. Las mayúsculas y los acentos no cuentan.
 
 **Atajos en la vista Estructura de la canción** (con el ratón o el foco en
 el lienzo; en el editor de texto estas teclas sirven para escribir). Hay un
-recordatorio abajo a la derecha en la barra de estado.
+recordatorio en **? Cómo se usa**, arriba a la izquierda en la vista.
 
 | Tecla | Acción |
 |---|---|

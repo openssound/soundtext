@@ -114,7 +114,7 @@ accents ne comptent pas.
 
 **Raccourcis dans la vue Structure du morceau** (avec la souris ou le focus
 sur le canevas ; dans l'éditeur de texte ces touches servent à écrire). Un
-aide-mémoire se trouve en bas à droite de la barre d'état.
+aide-mémoire se trouve dans **? Mode d'emploi**, en haut à gauche de la vue.
 
 | Touche | Action |
 |---|---|
