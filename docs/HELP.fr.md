@@ -2254,10 +2254,38 @@ arrière-plan, avec la progression et un journal ; **Arrêter** interrompt
 (le téléchargement reprend la fois suivante). C'est le même travail que
 `scarica_strumenti.py` depuis le terminal. Le moteur SFZ intégré se
 compile sur l'ordinateur : s'il manque git, cmake ou le compilateur, la
-fenêtre le dit avant de commencer. Sous Linux, 7-Zip, sfizz et Surge XT
+fenêtre demande s'il faut les installer, et si vous répondez oui elle les
+installe avant de compiler (apt sous Linux, winget sous Windows, les outils
+de Xcode sous macOS). Sous Linux, 7-Zip, sfizz et Surge XT
 s'installent avec apt : une fenêtre du système demande le mot de passe
 administrateur, une seule fois (si le système n'a pas pkexec, cet élément
 s'installe depuis le terminal avec `./scarica_strumenti.sh host`).
+
+Autres choses que sait faire la fenêtre :
+- **Tout un groupe en un clic :** les lignes *Instruments échantillonnés
+  (SFZ)* et *Autres instruments SFZ (volumineux)* ont leur propre case, qui
+  coche ou décoche tous les instruments du groupe (elle est à moitié cochée
+  si vous n'en avez choisi que certains).
+- **SoundFonts General MIDI :** *MuseScore General* (MIT, ~38 Mo, le plus
+  complet), *TimGM6mb* (GPL-2.0, ~6 Mo, léger) et le kit de batterie
+  *FreePats GM, percussions* (GPL-3.0, ~15 Mo). Ils vont dans le dossier
+  des SoundFonts de SoundText, avec le fichier de la licence à côté : on
+  les choisit dans **Sons → SoundFont** ou pour un seul instrument.
+- **Plugins VST3 gratuits :** en plus de Dexed, Airwindows et Dragonfly
+  Reverb, le synthétiseur *OB-Xf*, le waveshaper *Wolf Shaper* et, pour la
+  guitare, *ChowTapeModel*, *ChowCentaur* et *ChowMatrix*. Sous Windows,
+  les plugins Chow n'existent qu'avec leur installateur : la fenêtre le
+  lance et Windows demande de confirmer.
+- **Plugins LV2 gratuits** (Linux uniquement) : *Dragonfly Reverb*, *LSP
+  Plugins*, *Wolf Shaper* et le synthétiseur de batterie *Geonkick*, dans
+  le dossier `~/.lv2`. S'il manque la bibliothèque lilv, la fenêtre
+  demande s'il faut l'installer.
+- **Sources...** (aussi depuis **Options → Sources des
+  téléchargements...**) : les adresses d'où chaque élément est téléchargé,
+  modifiables par un double-clic, par exemple pour utiliser un miroir.
+  Celles qui ont changé sont en gras ; **Rétablir l'original** et **Tout
+  rétablir** reviennent à celles de SoundText. Elles valent pour les
+  installations lancées depuis SoundText.
 
 **Instrument SFZ intégré.** Un fichier `.sfz` (instrument échantillonné,
 comme ceux que télécharge `scarica_strumenti.py`) peut aussi être joué sans

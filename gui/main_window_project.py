@@ -852,6 +852,11 @@ class ProjectMixin:
             self._mark_dirty()
         self._validate_current()
 
+    def edit_download_sources(self):
+        """Opzioni -> Sorgenti dei download... (gui.download_sources_dialog)."""
+        from .download_sources_dialog import DownloadSourcesDialog
+        DownloadSourcesDialog(self).exec()
+
     def open_download_dialog(self):
         """Suoni -> Scarica e installa... (gui.download_dialog)."""
         from .download_dialog import DownloadDialog

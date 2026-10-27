@@ -617,6 +617,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Umanizza..."), self.show_humanize_settings,
             tooltip=tr("Imposta l'intensita' della variazione casuale di timing/velocity.")
         ))
+        options_menu.addAction(self._action(
+            tr("Sorgenti dei download..."), self.edit_download_sources,
+            tooltip=tr("Gli indirizzi da cui \"Scarica e installa\" prende strumenti, plugin e SoundFont.")
+        ))
 
         midi_import_menu = options_menu.addMenu(tr("Import MIDI"))
         recognize_chords_action = QAction(tr("Riconosci accordi nell'import MIDI"), self, checkable=True)
@@ -963,6 +967,13 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def song_box_in_first_row(self) -> bool:
         return self._song_box.parent() is self._song_slot_top
 
+    def first_row_full_width(self) -> int:
+        """La larghezza che chiede la prima riga della barra con il riquadro Brano dentro."""
+        need = self._main_toolbar.sizeHint().width()
+        if not self.song_box_in_first_row():
+            need += self._song_box.sizeHint().width() + self._main_toolbar.layout().spacing()
+        return need
+
     def _place_song_box(self):
         """Il riquadro Brano nella prima riga della barra se la riga intera
         entra nella finestra, altrimenti nella seconda (con caratteri larghi,
@@ -971,11 +982,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         if not hasattr(self, "_song_box"):
             return
         top = self.song_box_in_first_row()
-        spacing = self._main_toolbar.layout().spacing()
-        need = self._main_toolbar.sizeHint().width()
-        if not top:
-            need += self._song_box.sizeHint().width() + spacing
-        want_top = need <= self.width()
+        want_top = self.first_row_full_width() <= self.width()
         if want_top == top:
             return
         source, target = ((self._song_slot_bottom, self._song_slot_top) if want_top

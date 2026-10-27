@@ -105,7 +105,8 @@ def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
         for width in (1000, 1600, 1000):
             w.resize(width, 720)
             _app.processEvents()
-            assert w.song_box_in_first_row() == (width == 1600)
+            # la regola, sulla larghezza vera (Windows puo' non stringere la finestra fino a 1000 px)
+            assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width()), (width, w.width())
             for widget in (w.view_structure_btn, w.view_text_btn, w.tempo_spin, w.key_combo):
                 assert widget.isVisible(), (width, widget)
                 assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
@@ -113,7 +114,9 @@ def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
         _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 16px; }")
         w.close()
         w = _window(width=1200)
-        assert not w.song_box_in_first_row()
+        assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width())
+        if w.width() <= 1200:
+            assert not w.song_box_in_first_row()
         assert w.view_structure_btn.isVisible() and w.view_text_btn.isVisible() and w.tempo_spin.isVisible()
         w.close()
     finally:

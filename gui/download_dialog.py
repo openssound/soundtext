@@ -4,6 +4,11 @@ NAM e motori in un'unica finestra. Si spuntano le voci, Installa le esegue
 in un processo a parte (core.downloads, che usa scarica_strumenti.py) e la
 finestra ne mostra l'avanzamento e il registro; Annulla lo ferma (i
 download interrotti riprendono la volta dopo).
+
+I gruppi di strumenti SFZ hanno una casella propria: un clic spunta o toglie
+tutto il gruppo. Se per una voce manca qualcosa (gli strumenti per
+compilare il motore SFZ, la libreria lilv per i plugin LV2) la finestra
+chiede se installarlo e lo fa prima, nello stesso processo.
 """
 
 import shutil
@@ -19,6 +24,8 @@ from core.i18n import tr
 from .theme import dim
 
 KEY_ROLE = Qt.UserRole
+# I gruppi con la casella "tutti": un clic spunta o toglie ogni strumento
+GROUP_CHECK_CATEGORIES = (downloads.CATEGORY_SFZ, downloads.CATEGORY_SFZ_EXTRA)
 
 
 class DownloadDialog(QDialog):
@@ -52,6 +59,9 @@ class DownloadDialog(QDialog):
         layout.addWidget(self.log, 2)
 
         row = QHBoxLayout()
+        self.sources_btn = QPushButton(tr("Sorgenti..."))
+        self.sources_btn.setToolTip(tr("Gli indirizzi da cui si scarica ogni voce (Opzioni → Sorgenti dei download)"))
+        self.sources_btn.clicked.connect(self.edit_sources)
         self.install_btn = QPushButton(tr("Installa"))
         self.install_btn.clicked.connect(self.install)
         self.cancel_btn = QPushButton(tr("Ferma"))
@@ -62,6 +72,7 @@ class DownloadDialog(QDialog):
         row.addStretch(1)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         buttons.rejected.connect(self.reject)
+        row.addWidget(self.sources_btn)
         row.addWidget(buttons)
         layout.addLayout(row)
         self.refresh()
@@ -79,7 +90,12 @@ class DownloadDialog(QDialog):
             head = heads.get(item.category)
             if head is None:
                 head = heads[item.category] = QTreeWidgetItem([downloads.category_label(item.category)])
-                head.setFlags(head.flags() & ~Qt.ItemIsUserCheckable)
+                if item.category in GROUP_CHECK_CATEGORIES:
+                    # spunta a meta' se solo alcuni strumenti sono scelti
+                    head.setFlags(head.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate)
+                    head.setToolTip(0, tr("Spunta o togli tutti gli strumenti del gruppo"))
+                else:
+                    head.setFlags(head.flags() & ~Qt.ItemIsUserCheckable)
                 font = head.font(0)
                 font.setBold(True)
                 head.setFont(0, font)
@@ -89,14 +105,19 @@ class DownloadDialog(QDialog):
             row.setToolTip(1, item.detail)
             linux_host = item.key == "host" and script is not None and script.SISTEMA == "linux"
             terminal_only = linux_host and not shutil.which("pkexec")
-            unavailable = item.key == "nam-plugin" and script is not None and script.SISTEMA not in script.NAM_PLUGIN_FILES
+            unavailable = ((item.key == "nam-plugin" and script is not None
+                            and script.SISTEMA not in script.NAM_PLUGIN_FILES)
+                           or (item.key == "lv2" and downloads.lv2_unavailable()))
             if terminal_only:
                 row.setText(2, tr("dal terminale"))
                 row.setToolTip(2, tr("Su Linux si installano con apt, che chiede la password: dal terminale, "
                                      "nella cartella di SoundText, esegui ./scarica_strumenti.sh host"))
                 row.setFlags(row.flags() & ~Qt.ItemIsEnabled)
             elif unavailable:
-                row.setFlags(row.flags() & ~Qt.ItemIsEnabled)
+                row.setFlags(row.flags() & ~(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable))
+                if item.key == "lv2":
+                    row.setText(2, tr("non disponibile"))
+                    row.setToolTip(2, tr("SoundText usa i plugin LV2 solo su Linux"))
             else:
                 if linux_host:
                     row.setToolTip(2, tr("Su Linux si installano con apt: la password di amministratore la "
@@ -147,16 +168,9 @@ class DownloadDialog(QDialog):
         keys = self.checked_keys()
         if not keys or self._process is not None:
             return
-        builds = [k for k in keys if self._items[k].needs_build and not self._items[k].installed]
-        if builds:
-            problem = downloads.build_tools_problem()
-            if problem:
-                QMessageBox.warning(self, tr("Servono gli strumenti per compilare"),
-                                    tr("Il motore SFZ interno si compila sul tuo computer, e mancano alcuni "
-                                       "strumenti. Installali e riprova:\n\n{problem}", problem=problem))
-                keys = [k for k in keys if k not in builds]
-                if not keys:
-                    return
+        keys = self._add_requirements(keys)
+        if not keys:
+            return
         program, *args = downloads.command(keys)
         self.log.appendPlainText("$ " + " ".join(keys))
         self._pending = ""
@@ -168,6 +182,42 @@ class DownloadDialog(QDialog):
         self._process.start(program, args)
         self.status.setText(tr("In corso…"))
         self._update_buttons()
+
+    def _add_requirements(self, keys: List[str]) -> List[str]:
+        """Quello che serve prima delle voci scelte: gli strumenti per
+        compilare il motore SFZ, la libreria lilv per i plugin LV2. Se manca
+        chiede se installarlo; senza, la voce che non puo' funzionare si toglie."""
+        builds = [k for k in keys if self._items[k].needs_build and not self._items[k].installed]
+        missing = downloads.missing_build_tools() if builds else []
+        if missing:
+            names = "\n".join(f"• {name}" for name in missing)
+            problem = downloads.build_tools_install_problem()
+            if problem:
+                QMessageBox.warning(self, tr("Servono gli strumenti per compilare"),
+                                    tr("Il motore SFZ interno si compila sul tuo computer, e mancano:\n\n{names}"
+                                       "\n\nNon posso installarli da qui ({problem}): installali e riprova.",
+                                       names=names, problem=problem))
+                keys = [k for k in keys if k not in builds]
+            elif QMessageBox.question(
+                    self, tr("Servono gli strumenti per compilare"),
+                    tr("Il motore SFZ interno si compila sul tuo computer, e mancano:\n\n{names}\n\n"
+                       "Vuoi che li installi prima di compilare? Potrebbe chiedere la password di "
+                       "amministratore o una conferma del sistema.", names=names)) == QMessageBox.Yes:
+                keys = ["strumenti-compilazione"] + keys
+            else:
+                keys = [k for k in keys if k not in builds]
+        if "lv2" in keys and downloads.lilv_missing():
+            if QMessageBox.question(
+                    self, tr("Manca la libreria lilv"),
+                    tr("SoundText usa i plugin LV2 con la libreria lilv, che non e' installata.\n\n"
+                       "Vuoi che la installi (pacchetto liblilv-0-0, chiede la password di amministratore)? "
+                       "Senza, i plugin si scaricano lo stesso ma SoundText non li vede.")) == QMessageBox.Yes:
+                keys = ["lilv"] + keys
+        return keys
+
+    def edit_sources(self):
+        from .download_sources_dialog import DownloadSourcesDialog
+        DownloadSourcesDialog(self).exec()
 
     def cancel(self):
         if self._process is not None:

@@ -2163,11 +2163,37 @@ installata; si spuntano le voci e **Installa** le scarica in sottofondo,
 con l'avanzamento e un registro; **Ferma** interrompe (il download
 riprende la volta dopo). È lo stesso lavoro di `scarica_strumenti.py` dal
 terminale. Il motore SFZ interno si compila sul computer: se mancano git,
-cmake o il compilatore la finestra lo dice prima di partire. Su Linux
+cmake o il compilatore la finestra chiede se installarli, e se rispondi sì
+li installa prima di compilare (apt su Linux, winget su Windows, gli
+strumenti di Xcode su macOS). Su Linux
 7-Zip, sfizz e Surge XT si installano con apt: la password di
 amministratore la chiede una finestra del sistema, una volta sola (se il
 sistema non ha pkexec, la voce si installa dal terminale con
 `./scarica_strumenti.sh host`).
+
+Altre cose che la finestra sa fare:
+- **Tutto un gruppo con un clic:** le righe *Strumenti campionati (SFZ)* e
+  *Altri strumenti SFZ (grandi)* hanno una casella propria che spunta o
+  toglie tutti gli strumenti del gruppo (è spuntata a metà se ne hai scelti
+  solo alcuni).
+- **SoundFont General MIDI:** *MuseScore General* (MIT, ~38 MB, il più
+  completo), *TimGM6mb* (GPL-2.0, ~6 MB, leggero) e il kit di batteria
+  *FreePats GM, percussioni* (GPL-3.0, ~15 MB). Vanno nella cartella dei
+  SoundFont di SoundText, con il file della licenza accanto: si scelgono da
+  **Suoni → SoundFont** o per un singolo strumento.
+- **Plugin VST3 gratuiti:** oltre a Dexed, Airwindows e Dragonfly Reverb,
+  il sintetizzatore *OB-Xf*, il waveshaper *Wolf Shaper* e, per la
+  chitarra, *ChowTapeModel*, *ChowCentaur* e *ChowMatrix*. Su Windows i
+  plugin Chow esistono solo con il loro installer: la finestra lo avvia e
+  Windows chiede di confermare.
+- **Plugin LV2 gratuiti** (solo Linux): *Dragonfly Reverb*, *LSP Plugins*,
+  *Wolf Shaper* e il sintetizzatore di batteria *Geonkick*, nella cartella
+  `~/.lv2`. Se manca la libreria lilv, la finestra chiede se installarla.
+- **Sorgenti...** (anche da **Opzioni → Sorgenti dei download...**): gli
+  indirizzi da cui si scarica ogni voce, modificabili con un doppio clic,
+  per esempio per usare un mirror. Quelli cambiati sono in grassetto;
+  **Ripristina l'originale** e **Ripristina tutti** tornano a quelli di
+  SoundText. Valgono per le installazioni avviate da SoundText.
 
 **Strumento SFZ interno.** Un file `.sfz` (strumento campionato, come
 quelli che scarica `scarica_strumenti.py`) si puo' suonare anche senza

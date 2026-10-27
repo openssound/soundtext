@@ -39,8 +39,8 @@ def test_catalog_has_every_category_and_reads_the_state(script):
     (script.DEST / "sfz" / "piano" / ".completo").touch()
     items = {i.key: i for i in downloads.catalog()}
     assert {i.category for i in items.values()} == {downloads.CATEGORY_SFZ, downloads.CATEGORY_SFZ_EXTRA,
-                                                  downloads.CATEGORY_AMP, downloads.CATEGORY_PLUGINS,
-                                                  downloads.CATEGORY_ENGINES}
+                                                  downloads.CATEGORY_SOUNDFONTS, downloads.CATEGORY_AMP,
+                                                  downloads.CATEGORY_PLUGINS, downloads.CATEGORY_ENGINES}
     assert items["piano"].installed is True and items["upright"].installed is False
     assert items["piano"].detail.endswith("740 MB")
     assert items["nam-plugin"].installed is False

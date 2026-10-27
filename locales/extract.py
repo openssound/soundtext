@@ -65,6 +65,9 @@ def data_strings():
     from core.nam_profiles import PROFILES, SOUNDS
     out |= set(GEAR_TYPE_LABELS.values()) | {w for words in SOUNDS.values() for w in words}
     out |= {p.use for p in PROFILES}
+    # SoundFont di "Scarica e installa"
+    from core.soundfont_downloads import SOUNDFONTS as SOUNDFONT_SOURCES
+    out |= {s.label for s in SOUNDFONT_SOURCES} | {s.detail for s in SOUNDFONT_SOURCES}
     return out
 
 

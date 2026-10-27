@@ -10,9 +10,18 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
     python3 scarica_strumenti.py host             7-Zip, sfizz, Surge XT e i plugin VST3 gratuiti
     python3 scarica_strumenti.py vst3             solo i plugin VST3 gratuiti: Dexed,
                                                   Airwindows Consolidated, Dragonfly
-                                                  Reverb, LSP Plugins (solo Linux)
+                                                  Reverb, OB-Xf, LSP Plugins (solo Linux),
+                                                  Wolf Shaper e i plugin Chow (Windows e
+                                                  macOS)
+    python3 scarica_strumenti.py lv2              solo Linux: plugin LV2 gratuiti (Dragonfly
+                                                  Reverb, LSP Plugins, Wolf Shaper, Geonkick)
+    python3 scarica_strumenti.py lilv             solo Linux: la libreria lilv, con cui
+                                                  SoundText usa i plugin LV2 (apt)
     python3 scarica_strumenti.py libreria         compila il motore SFZ sfizioso per lo
                                                   strumento SFZ interno (~5 min)
+    python3 scarica_strumenti.py strumenti-compilazione
+                                                  installa git, cmake e il compilatore che
+                                                  servono a "libreria"
     python3 scarica_strumenti.py nam-plugin       il plugin LV2 Neural Amp Modeler gia'
                                                   compilato: profili NAM 4-6 volte piu'
                                                   veloci (Linux e Windows x64)
@@ -89,6 +98,14 @@ NAM_PLUGIN_FILES = {
                 "d64aec201ae0285e0adb9f1ac22e720d62a15c9947b9506e61dd7c6f8e9ad0ef"),
 }
 NAM_PLUGIN_DIR = "neural_amp_modeler.lv2"
+
+
+# Sorgenti della voce "host" (modificabili da SoundText: Opzioni -> Sorgenti
+# dei download, vedi core.downloads.apply_source_overrides)
+SURGE_NIGHTLY_REPO = "surge-synthesizer/surge"          # Linux: il .deb Nightly
+SURGE_REPO = "surge-synthesizer/releases-xt"            # Windows e macOS
+SFIZZ_DEB_BASE = "https://download.opensuse.org/repositories/home:/sfztools:/sfizz/xUbuntu_24.04/amd64"
+SFIZZ_UI_REPO = "sfztools/sfizz-ui"                     # installer di sfizz per Windows e macOS
 
 
 # Cartella VST3 dell'utente (non servono i diritti di amministratore)
@@ -197,7 +214,11 @@ def voci_elenco() -> list:
             + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
             + [("vst3", f"plugin VST3 gratuiti nella cartella VST3 dell'utente: {vst3}"),
                ("host", host),
+               ("lv2", "solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: "
+                       + ", ".join(nome for nome, *_r in PLUGIN_LV2)),
+               ("lilv", "solo Linux: la libreria lilv per usare i plugin LV2 (apt, chiede la password)"),
                ("libreria", "motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)"),
+               ("strumenti-compilazione", "git, cmake e il compilatore che servono a 'libreria'"),
                ("nam-plugin", f"plugin LV2 Neural Amp Modeler {NAM_PLUGIN_VERSION}: profili NAM 4-6 volte piu' "
                               "veloci (Linux e Windows x64, ~2 MB)"),
                ("tutto", "tutti i gruppi SFZ (esclusi gli extra_*)")])
@@ -458,13 +479,14 @@ def asset_github(repo: str, release: str, modello: str) -> str:
     raise Errore(f"nessun file {modello} nella release {release} di {repo}")
 
 
-def copia_vst3(radice: Path, dest: Path):
-    """Copia ogni bundle .vst3 trovato sotto radice nella cartella dest."""
+def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3"):
+    """Copia ogni bundle (.vst3, o .lv2 con estensione=".lv2") trovato sotto
+    radice nella cartella dest."""
     dest.mkdir(parents=True, exist_ok=True)
     trovati = 0
     for root, dirs, files in os.walk(radice):
         for nome in list(dirs) + files:
-            if nome.lower().endswith(".vst3"):
+            if nome.lower().endswith(estensione):
                 src, dst = Path(root, nome), dest / nome
                 if dst.is_dir():
                     _rimuovi(dst)
@@ -476,7 +498,7 @@ def copia_vst3(radice: Path, dest: Path):
                 if nome in dirs:
                     dirs.remove(nome)            # dentro un bundle non si cerca
     if not trovati:
-        raise Errore("nessun plugin VST3 nell'archivio")
+        raise Errore(f"nessun plugin {estensione[1:].upper()} nell'archivio")
 
 
 def cartella_dati_surge() -> Path:
@@ -513,12 +535,12 @@ def host_linux():
         pacchetti = ["7zip"]
         if subprocess.run(["dpkg", "-s", "surge-xt"], capture_output=True).returncode != 0:
             print("== Scarico Surge XT (sintetizzatore VST3/LV2, Nightly dal GitHub ufficiale)")
-            url = asset_github("surge-synthesizer/surge", "Nightly", r"surge-xt-linux-x64-NIGHTLY-.*\.deb")
+            url = asset_github(SURGE_NIGHTLY_REPO, "Nightly", r"surge-xt-linux-x64-NIGHTLY-.*\.deb")
             scarica_file(url, tmp / "surge-xt.deb")
             pacchetti.append(tmp / "surge-xt.deb")
         if subprocess.run(["dpkg", "-s", "sfizz"], capture_output=True).returncode != 0:
             print("== Scarico sfizz (player SFZ per Ubuntu 24.04)")
-            base = "https://download.opensuse.org/repositories/home:/sfztools:/sfizz/xUbuntu_24.04/amd64"
+            base = SFIZZ_DEB_BASE.rstrip("/")
             scarica_file(f"{base}/libsfizz1_1.2.3-0_amd64.deb", tmp / "libsfizz1.deb")
             scarica_file(f"{base}/sfizz_1.2.3-0_amd64.deb", tmp / "sfizz.deb")
             pacchetti += [tmp / "libsfizz1.deb", tmp / "sfizz.deb"]
@@ -548,23 +570,21 @@ def host_windows_macos():
         print("== Surge XT (sintetizzatore VST3), nella cartella VST3 dell'utente")
         modello = (r"surge-xt-win64-[\d.]+-pluginsonly\.zip" if SISTEMA == "windows"
                    else r"surge-xt-macos-[\d.]+-pluginsonly\.zip")
-        scarica_file(asset_github("surge-synthesizer/releases-xt", "latest", modello), tmp / "surge.zip")
+        scarica_file(asset_github(SURGE_REPO, "latest", modello), tmp / "surge.zip")
         estrai(tmp / "surge.zip", tmp / "surge")
         copia_vst3(tmp / "surge", user_vst3_dir())
         print("== Dati di fabbrica di Surge XT (preset, wavetable)")
-        scarica_file(asset_github("surge-synthesizer/releases-xt", "latest",
+        scarica_file(asset_github(SURGE_REPO, "latest",
                                   r"surge-xt-portable-content-[\d.]+\.tar\.gz"), tmp / "surge-dati.tar.gz")
         estrai(tmp / "surge-dati.tar.gz", tmp / "surge-dati")
         installa_dati_surge(next((tmp / "surge-dati").rglob("SurgeXTData")))
         print("== sfizz (player SFZ, VST3): avvio il suo installer")
         if SISTEMA == "windows":
-            scarica_file(asset_github("sfztools/sfizz-ui", "latest", r"sfizz-[\d.]+-win64\.exe"), tmp / "sfizz.exe")
-            # Start-Process fa comparire la richiesta dei diritti di amministratore (subprocess no)
-            _esegui(["powershell", "-NoProfile", "-Command",
-                     f"Start-Process -Wait -FilePath '{tmp / 'sfizz.exe'}'"])
+            scarica_file(asset_github(SFIZZ_UI_REPO, "latest", r"sfizz-[\d.]+-win64\.exe"), tmp / "sfizz.exe")
+            avvia_installer_windows(tmp / "sfizz.exe")
         else:
             pkg = Path.home() / "Downloads" / "sfizz-macos.pkg"
-            scarica_file(asset_github("sfztools/sfizz-ui", "latest", r"sfizz-[\d.]+-macos\.pkg"), pkg)
+            scarica_file(asset_github(SFIZZ_UI_REPO, "latest", r"sfizz-[\d.]+-macos\.pkg"), pkg)
             _esegui(["open", "-W", pkg])
 
 
@@ -594,7 +614,28 @@ PLUGIN_VST3 = [
      "latest",
      {"linux-x86_64": r"lsp-plugins-[\d.]+-Linux-x86_64\.7z",
       "linux-aarch64": r"lsp-plugins-[\d.]+-Linux-aarch64\.7z"}),
+    ("OB-Xf", "sintetizzatore analogico stile Oberheim OB-X (GPL-3.0)", "surge-synthesizer/OB-Xf", "latest",
+     {"linux-x86_64": r"ob-xf-Linux-v[\d.]+\.zip", "windows": r"ob-xf-Windows-v[\d.]+\.zip",
+      "macos": r"ob-xf-macOS-v[\d.]+\.dmg"}),
+    ("Wolf Shaper", "waveshaper e distorsione (GPL-3.0; su Linux e' fra i plugin LV2)", "pdesaulniers/wolf-shaper",
+     "latest",
+     {"windows": r"wolf-shaper-v[\d.]+\+\d+-windows-x64\.zip", "macos": r"wolf-shaper-v[\d.]+-macos-universal\.zip"}),
+    # I plugin Chow per Windows esistono solo come installer .exe: lo si
+    # avvia (come per sfizz) e Windows chiede di confermare l'installazione
+    ("ChowTapeModel", "saturazione da registratore a nastro (GPL-3.0)", "jatinchowdhury18/AnalogTapeModel", "latest",
+     {"windows": r"ChowTapeModel-Win-64bit-[\d.]+\.exe", "macos": r"ChowTapeModel-Mac-[\d.]+\.dmg"}),
+    ("ChowCentaur", "overdrive per chitarra, emula il Klon Centaur (BSD-3)", "jatinchowdhury18/KlonCentaur",
+     "latest",
+     {"windows": r"ChowCentaur-Win-[\d.]+\.exe", "macos": r"ChowCentaur-Mac-[\d.]+\.dmg"}),
+    ("ChowMatrix", "delay a rami (BSD-3)", "Chowdhury-DSP/ChowMatrix", "latest",
+     {"windows": r"ChowMatrix-Win-[\d.]+\.exe", "macos": r"ChowMatrix-Mac-[\d.]+\.dmg"}),
 ]
+
+
+def avvia_installer_windows(installer: Path):
+    """Un installer .exe: Start-Process fa comparire la richiesta dei
+    diritti di amministratore (subprocess no) e aspetta che finisca."""
+    _esegui(["powershell", "-NoProfile", "-Command", f"Start-Process -Wait -FilePath '{installer}'"])
 
 
 def chiave_sistema() -> str:
@@ -644,6 +685,9 @@ def installa_plugin_vst3() -> list:
                 scarica_file(url, archivio)
                 if archivio.suffix == ".dmg":
                     vst3_da_dmg(archivio, tmp, dest)
+                elif archivio.suffix == ".exe":
+                    print("   avvio il suo installer: conferma l'installazione nella finestra di Windows")
+                    avvia_installer_windows(archivio)
                 else:
                     estrai(archivio, tmp / "estratto")
                     copia_vst3(tmp / "estratto", dest)
@@ -657,6 +701,86 @@ def installa_vst3():
     falliti = installa_plugin_vst3()
     if falliti:
         raise Errore("plugin VST3 non installati: " + ", ".join(falliti) + " (rilancia per riprovare)")
+
+
+# ---------------------------------------------------------------------------
+# plugin LV2 gratuiti e open source, nella cartella LV2 dell'utente: solo su
+# Linux, dove SoundText li usa con la libreria lilv (vedi core.lv2_host)
+# ---------------------------------------------------------------------------
+
+PLUGIN_LV2 = [
+    ("Dragonfly Reverb", "riverberi di sala, stanza, piastra e prime riflessioni (GPL-3.0)",
+     "michaelwillis/dragonfly-reverb", "latest",
+     {"linux-x86_64": r"dragonfly-reverb-[\d.]+-linux-x86_64\.tar\.xz",
+      "linux-aarch64": r"dragonfly-reverb-[\d.]+-linux-arm64\.tar\.xz"}),
+    ("LSP Plugins", "compressori, equalizzatori, limiter e delay da studio (LGPL-3.0)", "lsp-plugins/lsp-plugins",
+     "latest",
+     {"linux-x86_64": r"lsp-plugins-[\d.]+-Linux-x86_64\.7z",
+      "linux-aarch64": r"lsp-plugins-[\d.]+-Linux-aarch64\.7z"}),
+    ("Wolf Shaper", "waveshaper e distorsione (GPL-3.0)", "pdesaulniers/wolf-shaper", "latest",
+     {"linux-x86_64": r"wolf-shaper-v[\d.]+-linux-x64\.zip", "linux-aarch64": r"wolf-shaper-v[\d.]+-linux-arm64\.zip"}),
+    ("Geonkick", "sintetizzatore di batteria e percussioni (GPL-3.0)", "geonkick-synthesizer/geonkick", "latest",
+     {"linux-x86_64": r"GNULinux_binaries_v[\d.]+_basic\.zip"}),
+]
+
+
+def lilv_presente() -> bool:
+    """La libreria lilv con cui SoundText carica i plugin LV2 (come la
+    cerca core.lv2_host)."""
+    import ctypes.util
+    nome = ctypes.util.find_library("lilv-0") or "liblilv-0.so.0"
+    try:
+        ctypes.CDLL(nome)
+        return True
+    except OSError:
+        return False
+
+
+def installa_lilv():
+    """lilv con apt (Debian, Ubuntu e derivate), con la password di amministratore."""
+    if SISTEMA != "linux":
+        raise Errore("i plugin LV2 si usano solo su Linux")
+    if lilv_presente():
+        print("== lilv: gia' presente")
+        return
+    if not shutil.which("apt-get"):
+        raise Errore("installa la libreria lilv con il gestore di pacchetti del sistema (pacchetto lilv)")
+    admin = amministratore_linux()
+    if not admin:
+        raise Errore("serve la password di amministratore: dal terminale esegui sudo apt-get install -y liblilv-0-0")
+    print("== Installo lilv (liblilv-0-0, apt" + (": la password la chiede una finestra del sistema"
+                                                  if admin == ["pkexec"] else "") + ")")
+    _esegui(admin + ["apt-get", "install", "-y", "liblilv-0-0"])
+
+
+def installa_lv2():
+    if SISTEMA != "linux":
+        print("== lv2: i plugin LV2 si usano solo su Linux, salto")
+        return
+    dest = user_lv2_dir()
+    falliti = []
+    for nome, desc, repo, release, modelli in PLUGIN_LV2:
+        modello = modelli.get(chiave_sistema())
+        if modello is None:
+            print(f"== {nome}: non c'e' una versione per questo sistema, salto")
+            continue
+        print(f"== {nome} ({desc}), nella cartella LV2 dell'utente")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp)
+                url = asset_github(repo, release, modello)
+                archivio = tmp / url.rsplit("/", 1)[-1]
+                scarica_file(url, archivio)
+                estrai(archivio, tmp / "estratto")
+                copia_vst3(tmp / "estratto", dest, ".lv2")
+        except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
+            print(f"   non riuscito: {e}")
+            falliti.append(nome)
+    if not lilv_presente():
+        print("   Attenzione: manca la libreria lilv, senza la quale SoundText non usa i plugin LV2 "
+              f"({comando_script()} lilv, oppure sudo apt-get install -y liblilv-0-0)")
+    if falliti:
+        raise Errore("plugin LV2 non installati: " + ", ".join(falliti) + " (rilancia per riprovare)")
 
 
 def installa_host():
@@ -683,25 +807,103 @@ def visual_studio() -> str:
     return out.stdout.strip()
 
 
-def controlla_strumenti_compilazione():
+# Strumenti per compilare sfizioso che mancano, e come installarli:
+# (descrizione, comando per installarlo da se')
+def strumenti_compilazione_mancanti() -> list:
     manca = []
-    if not shutil.which("git"):
-        manca.append({"windows": "Git: winget install --id Git.Git -e",
-                      "macos": "git: xcode-select --install",
-                      "linux": "git: sudo apt-get install -y git"}[SISTEMA])
-    if SISTEMA == "windows" and not visual_studio():
-        manca.append("Visual Studio Build Tools con il carico di lavoro C++:\n"
-                     "      winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "
-                     "\"--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"")
-    if SISTEMA == "macos" and subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
-        manca.append("gli strumenti da riga di comando di Xcode: xcode-select --install")
-    if SISTEMA == "linux" and not (shutil.which("g++") and shutil.which("make")):
-        manca.append("il compilatore C++ e make: sudo apt-get install -y build-essential")
-    if SISTEMA == "linux" and not shutil.which("cmake"):
-        # da pip servirebbe python3-venv, che su Debian/Ubuntu spesso manca
-        manca.append("cmake: sudo apt-get install -y cmake")
+    if SISTEMA == "linux":
+        if not shutil.which("git"):
+            manca.append(("git", "sudo apt-get install -y git"))
+        if not (shutil.which("g++") and shutil.which("make")):
+            manca.append(("il compilatore C++ e make", "sudo apt-get install -y build-essential"))
+        if not shutil.which("cmake"):
+            manca.append(("cmake", "sudo apt-get install -y cmake"))
+    elif SISTEMA == "windows":
+        if not shutil.which("git") and not _git_windows():
+            manca.append(("Git", "winget install --id Git.Git -e"))
+        if not visual_studio():
+            manca.append(("Visual Studio Build Tools con il carico di lavoro C++",
+                          "winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "
+                          "\"--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\""))
+    elif subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
+        # danno anche git e il compilatore; cmake, se manca, arriva da pip (vedi installa_libreria)
+        manca.append(("gli strumenti da riga di comando di Xcode (git e il compilatore)", "xcode-select --install"))
+    return manca
+
+
+def _git_windows() -> str:
+    """git.exe appena installato con winget: il PATH di questo processo non
+    lo sa ancora."""
+    for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"),
+                 os.environ.get("LOCALAPPDATA") and str(Path(os.environ["LOCALAPPDATA"], "Programs"))):
+        if base and Path(base, "Git", "cmd", "git.exe").exists():
+            return str(Path(base, "Git", "cmd"))
+    return ""
+
+
+def motivo_installazione_impossibile() -> str:
+    """Perche' gli strumenti mancanti non si possono installare da qui, '' se si puo'."""
+    if SISTEMA == "linux":
+        if not shutil.which("apt-get"):
+            return "installali con il gestore di pacchetti del sistema"
+        if not amministratore_linux():
+            return "serve la password di amministratore: dal terminale esegui " + comando_script() + \
+                " strumenti-compilazione"
+    elif SISTEMA == "windows" and not shutil.which("winget"):
+        return "manca winget (App Installer, dal Microsoft Store)"
+    return ""
+
+
+def controlla_strumenti_compilazione():
+    manca = strumenti_compilazione_mancanti()
     if manca:
-        raise Errore("per compilare sfizioso servono:\n    - " + "\n    - ".join(manca))
+        raise Errore("per compilare sfizioso servono:\n    - "
+                     + "\n    - ".join(f"{nome}: {comando}" for nome, comando in manca))
+
+
+def installa_strumenti_compilazione():
+    """Installa quello che manca per compilare sfizioso (vedi
+    strumenti_compilazione_mancanti): apt su Linux (una sola password),
+    winget su Windows, l'installer di Xcode su macOS."""
+    manca = strumenti_compilazione_mancanti()
+    if not manca:
+        print("== strumenti per compilare: gia' presenti")
+        return
+    motivo = motivo_installazione_impossibile()
+    if motivo:
+        raise Errore(f"non posso installare gli strumenti per compilare: {motivo}")
+    print("== Installo gli strumenti per compilare: " + ", ".join(nome for nome, _c in manca))
+    if SISTEMA == "linux":
+        admin = amministratore_linux()
+        pacchetti = [c.rsplit(" ", 1)[-1] for _n, c in manca]
+        if admin == ["pkexec"]:
+            print("   la password di amministratore la chiede una finestra del sistema")
+        _esegui(admin + ["sh", "-c", 'apt-get update && apt-get install -y "$@"', "sh"] + pacchetti)
+    elif SISTEMA == "windows":
+        accordi = ["--accept-source-agreements", "--accept-package-agreements"]
+        if any(nome == "Git" for nome, _c in manca):
+            _esegui(["winget", "install", "--id", "Git.Git", "-e", *accordi])
+            cartella = _git_windows()
+            if cartella:
+                os.environ["PATH"] = cartella + os.pathsep + os.environ.get("PATH", "")
+        if not visual_studio():
+            print("   Visual Studio Build Tools: qualche GB, puo' volerci piu' di mezz'ora")
+            _esegui(["winget", "install", "--id", "Microsoft.VisualStudio.2022.BuildTools", "-e", *accordi,
+                     "--override", "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools "
+                     "--includeRecommended"])
+    else:
+        subprocess.run(["xcode-select", "--install"], check=False)
+        print("   Conferma l'installazione nella finestra di macOS; aspetto che finisca...")
+        fine = time.monotonic() + 3600
+        while subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
+            if time.monotonic() > fine:
+                raise Errore("gli strumenti di Xcode non risultano installati dopo un'ora: rilancia quando "
+                             "l'installazione e' finita")
+            time.sleep(10)
+    rimasti = strumenti_compilazione_mancanti()
+    if rimasti:
+        raise Errore("mancano ancora: " + ", ".join(nome for nome, _c in rimasti))
+    print("   fatto")
 
 
 def libreria_compilata(build: Path) -> Path:
@@ -758,6 +960,11 @@ def installa_libreria():
     if (lib_dir / LIB_FILE).exists() and stamp.exists() and stamp.read_text().strip() == SFIZIOSO_COMMIT:
         print(f"== libreria: sfizioso {SFIZIOSO_COMMIT[:7]} gia' installato in {lib_dir}, salto")
         return
+    if strumenti_compilazione_mancanti() and sys.stdin is not None and sys.stdin.isatty() \
+            and not motivo_installazione_impossibile():
+        nomi = ", ".join(nome for nome, _c in strumenti_compilazione_mancanti())
+        if input(f"Per compilare mancano: {nomi}. Li installo? [s/N] ").strip().lower() in ("s", "si", "y", "yes"):
+            installa_strumenti_compilazione()
     controlla_strumenti_compilazione()
     print(f"== libreria: compilo sfizioso {SFIZIOSO_COMMIT[:7]} (qualche minuto)")
     tmp = Path(tempfile.mkdtemp(prefix="sfizioso-"))
@@ -821,6 +1028,12 @@ def main(argv) -> int:
                 installa_vst3()
             elif arg == "libreria":
                 installa_libreria()
+            elif arg == "strumenti-compilazione":
+                installa_strumenti_compilazione()
+            elif arg == "lv2":
+                installa_lv2()
+            elif arg == "lilv":
+                installa_lilv()
             elif arg == "nam-plugin":
                 installa_plugin_nam()
             elif arg == "tutto":

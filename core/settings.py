@@ -425,3 +425,19 @@ def set_quantize_settings(values: dict):
     else:
         _cache.pop("quantize_settings", None)
     _save()
+
+
+def get_download_sources() -> Dict[str, str]:
+    """Indirizzi cambiati dall'utente per le voci di "Scarica e installa"
+    (Opzioni -> Sorgenti dei download, vedi core.downloads.sources): solo
+    quelli diversi dall'originale."""
+    return dict(_load().get("download_sources", {}))
+
+
+def set_download_sources(values: Dict[str, str]):
+    _load()
+    if values:
+        _cache["download_sources"] = dict(values)
+    else:
+        _cache.pop("download_sources", None)
+    _save()
