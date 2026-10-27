@@ -601,13 +601,14 @@ def _find_soundfont() -> Optional[str]:
     if env_path and os.path.exists(env_path):
         return env_path
 
-    # 3) SoundFont incluso a fianco dell'eseguibile (build portable Windows,
-    # install.sh/install-macos.sh): cartella soundfonts/ nella radice
-    # dell'app, vedi DEFAULT_SOUNDFONTS_DIR in project_io.py.
-    from .version import get_app_root
-    candidates = [
-        os.path.join(get_app_root(), "soundfonts", "FluidR3_GM.sf2"),
-    ]
+    # 3) un SoundFont General MIDI scaricato con "Scarica e installa"
+    # (core.soundfont_downloads: SoundText non ne include nessuno) nella
+    # cartella soundfonts/ dell'utente o accanto all'app, vedi
+    # DEFAULT_SOUNDFONTS_DIR e USER_SOUNDFONTS_DIR in project_io.py.
+    from .project_io import DEFAULT_SOUNDFONTS_DIR, USER_SOUNDFONTS_DIR
+    from .soundfont_downloads import general_midi_files
+    candidates = [os.path.join(folder, name) for name in general_midi_files()
+                  for folder in (USER_SOUNDFONTS_DIR, DEFAULT_SOUNDFONTS_DIR)]
 
     # 4) percorsi comuni delle principali distribuzioni Linux, piu' un paio
     # di posizioni idiomatiche su Windows e macOS (nessun SoundFont e'

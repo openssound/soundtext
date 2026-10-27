@@ -179,6 +179,8 @@ def main():
     # Copia di recupero lasciata da una sessione chiusa male (core.autosave):
     # si chiede quando la finestra e' gia' visibile.
     QTimer.singleShot(0, window.offer_recovery)
+    # SoundText non include un SoundFont: senza nessuno propone di scaricarlo
+    QTimer.singleShot(0, window.offer_soundfont_download)
     sys.exit(app.exec())
 
 

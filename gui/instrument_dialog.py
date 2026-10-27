@@ -296,8 +296,8 @@ class InstrumentManagerDialog(QDialog):
         sf_btn_row = QHBoxLayout()
         self.sf_choose_btn = QPushButton(tr("Scegli SoundFont..."))
         self.sf_choose_btn.setToolTip(
-            tr("Assegna un file .sf2 specifico a questo strumento: verra' usato al posto di quello "
-            "predefinito (Playback -> Scegli SoundFont) su ogni traccia che usa questo strumento. "
+            tr("Assegna un SoundFont specifico (.sf2 o .sf3) a questo strumento: verra' usato al posto di "
+            "quello predefinito (Suoni -> SoundFont) su ogni traccia che usa questo strumento. "
             "Richiede il motore fluidsynth persistente (libreria FluidSynth): con i fallback CLI/timidity/"
             "wildmidi/player di sistema l'override viene ignorato.")
         )
@@ -404,7 +404,7 @@ class InstrumentManagerDialog(QDialog):
             return
         from core.project_io import ensure_soundfonts_dir
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli SoundFont per '{name}'", name=name), ensure_soundfonts_dir(),
-                                              tr("SoundFont (*.sf2)"),
+                                              tr("SoundFont (*.sf2 *.sf3)"),
                                               options=file_dialog_options())
         if not path:
             return

@@ -2220,8 +2220,9 @@ Otras cosas que sabe hacer la ventana:
   y *Más instrumentos SFZ (grandes)* tienen su propia casilla, que marca
   o desmarca todos los instrumentos del grupo (aparece marcada a medias si
   solo has elegido algunos).
-- **SoundFonts General MIDI:** *MuseScore General* (MIT, ~38 MB, el más
-  completo), *TimGM6mb* (GPL-2.0, ~6 MB, ligero) y el kit de batería
+- **SoundFonts General MIDI:** *FluidR3 GM* (MIT, ~150 MB, el que
+  SoundText propone al primer inicio), *MuseScore General* (MIT, ~38 MB,
+  el más completo), *TimGM6mb* (GPL-2.0, ~6 MB, ligero) y el kit de batería
   *FreePats GM, percusión* (GPL-3.0, ~15 MB). Van a la carpeta de
   SoundFonts de SoundText, con el archivo de la licencia al lado: se eligen
   en **Sonidos → SoundFont** o para un solo instrumento.
@@ -4288,15 +4289,24 @@ que:
 
 ### 12.3 Elegir el SoundFont (p. ej. FluidR3_GM.sf2)
 
+SoundText no incluye un SoundFont: al primer inicio, si no encuentra
+ninguno, propone descargar **FluidR3 GM** (gratuito, licencia MIT, unos
+150 MB) y abre **Sonidos → Descargar e instalar...**, donde también están
+*MuseScore General* y *TimGM6mb*. Sirven tanto los archivos `.sf2` como
+los `.sf3` (comprimidos).
+
 El programa busca un SoundFont, por orden de prioridad:
 
 1. la ruta fijada a mano desde **Sonidos → SoundFont → Elegir SoundFont
-   (.sf2)...** (guardada en el archivo de ajustes:
+   (.sf2/.sf3)...** (guardada en el archivo de ajustes:
    `~/.config/soundtext/settings.json` en Linux,
    `%APPDATA%\SoundText\settings.json` en Windows,
    `~/Library/Application Support/SoundText/settings.json` en macOS);
 2. la variable de entorno `SOUNDTEXT_SOUNDFONT`, si está definida;
-3. algunas rutas habituales del sistema, entre ellas:
+3. un SoundFont General MIDI descargado con **Descargar e instalar**
+   (FluidR3 GM, luego MuseScore General, luego TimGM6mb), en la carpeta de
+   SoundFonts de SoundText;
+4. algunas rutas habituales del sistema, entre ellas:
    - `~/.local/share/soundfonts/FluidR3_GM.sf2` (Linux)
    - `/usr/share/sounds/sf2/FluidR3_GM.sf2` (Debian/Ubuntu/Fedora)
    - `/usr/share/soundfonts/FluidR3_GM.sf2` (Arch/CachyOS)
@@ -4308,8 +4318,8 @@ El programa busca un SoundFont, por orden de prioridad:
    La lista completa de las rutas buscadas en cada sistema está en la
    sección Instalación correspondiente, más abajo en esta guía.
 
-Si has descargado `FluidR3_GM.sf2` en otro sitio (o quieres usar otro),
-basta con seleccionarlo desde **Sonidos → SoundFont → Elegir SoundFont (.sf2)...**:
+Si tienes un SoundFont en otro sitio (o quieres usar otro), basta con
+seleccionarlo desde **Sonidos → SoundFont → Elegir SoundFont (.sf2/.sf3)...**:
 queda fijado para todas las reproducciones siguientes, en todos los
 proyectos. **Sonidos → SoundFont → Mostrar el SoundFont en uso** indica qué archivo
 se va a usar en este momento (y con qué motor/reproductor), y permite
@@ -4430,7 +4440,7 @@ estos programas:
 | FFmpeg (dentro de Qt Multimedia) | la lectura de mp3, m4a, flac, ogg | LGPL-2.1 |
 | ffmpeg (programa externo, opcional) | la lectura de archivos de audio si el PySide6 en uso no tiene el decodificador de Qt | LGPL-2.1 o GPL, según cómo se haya compilado |
 | Neural Amp Modeler | el formato de los perfiles `.nam`: SoundText rehace el cálculo con NumPy | MIT (el proyecto NAM) |
-| SoundFont FluidR3_GM | los sonidos General MIDI incluidos en las builds | MIT |
+| SoundFonts FluidR3 GM, MuseScore General, TimGM6mb, FreePats | los sonidos General MIDI, descargados con Descargar e instalar (no incluidos en las builds) | MIT, MIT, GPL-2.0, GPL-3.0 |
 
 Algunos formatos e ideas vienen de estándares abiertos o de la literatura:
 **General MIDI** y el archivo MIDI estándar, **MusicXML** (W3C Music
@@ -4518,7 +4528,7 @@ indicaciones sobre dónde obtener el código fuente de estas bibliotecas (por
 ejemplo un enlace a la versión usada).
 
 **Las licencias permisivas (MIT, BSD, ISC, PSF).** NumPy, mido, RtMidi,
-PortAudio, sounddevice, lilv, el proyecto NAM y el SoundFont FluidR3_GM
+PortAudio, sounddevice, lilv y el proyecto NAM
 solo piden **conservar los avisos de copyright y el texto de la licencia**
 en la distribución.
 
@@ -4540,9 +4550,12 @@ reglas propias de Steinberg.
   su propia licencia, incluso de pago: SoundText los carga, pero no los
   incluye. Para distribuirlos junto con SoundText hace falta el permiso de
   sus autores.
-- Los **SoundFonts** que elige el usuario tienen cada uno su propia
-  licencia: antes de incluir en una distribución uno distinto de
-  FluidR3_GM, hay que comprobarla.
+- Los **SoundFonts** no se incluyen en las builds: los de **Descargar e
+  instalar** (FluidR3 GM y MuseScore General: MIT; TimGM6mb: GPL-2.0;
+  FreePats percusión: GPL-3.0) se descargan en el ordenador del usuario,
+  con el texto de la licencia al lado. Los que elige el usuario tienen cada
+  uno su propia licencia: antes de incluir uno en una distribución, hay que
+  comprobarla.
 
 **La licencia de SoundText.** SoundText (Copyright © 2026 Sergio Scolaro)
 se distribuye con la licencia **GPL-3.0**: el texto está en el archivo
@@ -4674,12 +4687,11 @@ persistente, por defecto) y `fluidsynth.exe` como alternativa. Otra opción, si 
 choco install fluidsynth
 ```
 
-**SoundFont GM**: el sistema operativo no incluye ninguno (a diferencia de
-muchas distribuciones Linux). Descarga un SoundFont GM (p. ej.
-`FluidR3_GM.sf2`, disponible libremente) y selecciónalo desde
-**Sonidos → SoundFont → Elegir SoundFont (.sf2)...** en el menú de la aplicación,
-o ponlo en `%APPDATA%\SoundText\soundfonts\FluidR3_GM.sf2` para la
-detección automática.
+**SoundFont GM**: ni el sistema operativo (a diferencia de muchas
+distribuciones Linux) ni SoundText incluyen ninguno. Al primer inicio
+SoundText propone descargar FluidR3 GM con **Sonidos → Descargar e
+instalar...**; si ya tienes uno, selecciónalo desde **Sonidos → SoundFont
+→ Elegir SoundFont (.sf2/.sf3)...**.
 
 **Importación de audio**: nada que instalar. Los archivos mp3/m4a/flac/ogg
 los lee el decodificador de Qt Multimedia, ya incluido en PySide6; el
@@ -4723,11 +4735,11 @@ resto (`libfluidsynth` acaba en `/opt/homebrew/lib` en Apple Silicon o en
 sistema: SoundText la encuentra solo, también en Apple Silicon, sin
 configuración adicional).
 
-**SoundFont GM**: como en Windows, macOS no incluye ninguno de serie.
-Descarga un SoundFont GM (p. ej. `FluidR3_GM.sf2`) y selecciónalo desde
-**Sonidos → SoundFont → Elegir SoundFont (.sf2)...**, o ponlo en
-`~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2` (o, si lo instalaste con
-Homebrew, en `/opt/homebrew/share/soundfonts/`) para la detección
+**SoundFont GM**: como en Windows, ni macOS ni SoundText incluyen
+ninguno. Al primer inicio SoundText propone descargar FluidR3 GM con
+**Sonidos → Descargar e instalar...**; si ya tienes uno, selecciónalo desde
+**Sonidos → SoundFont → Elegir SoundFont (.sf2/.sf3)...**, o ponlo en
+`~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2` para la detección
 automática.
 
 **Importación de audio**: los archivos mp3/m4a/flac/ogg los lee el

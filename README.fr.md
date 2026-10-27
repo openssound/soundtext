@@ -307,7 +307,9 @@ Choisissez la méthode adaptée à votre système. Pour les **plugins et les amp
 | **Linux, AppImage** | téléchargez `SoundText-linux-*.AppImage`, `setup-appimage.sh` et `scarica_strumenti.sh`/`.py` dans le même dossier, puis `./setup-appimage.sh` (installe FUSE 2, FluidSynth, SoundFont GM, PortAudio, lilv et les bibliothèques Qt ; `--integra` ajoute une entrée de menu) | `./scarica_strumenti.sh` |
 | **Linux, portable** (`.tar.gz`) | extrayez et lancez `./setup-portable-linux.sh` (mêmes bibliothèques, sans FUSE), puis `./SoundText` | `./scarica_strumenti.sh` |
 | **Windows, installateur** (`SoundText-setup-*.exe`) ou **portable** (`.zip`) | lancez l'installateur, ou extrayez le zip et lancez `setup-windows.bat` (vérifie le Visual C++ Redistributable et Python ; FluidSynth est déjà inclus), puis `SoundText.exe` | `scarica_strumenti.bat` |
-| **macOS** | depuis le dépôt : `./install-macos.sh` (installe FluidSynth, PortAudio et Python avec Homebrew, crée le virtualenv et télécharge le SoundFont GM) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
+| **macOS** | depuis le dépôt : `./install-macos.sh` (installe FluidSynth, PortAudio et Python avec Homebrew, crée le virtualenv) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
+
+Le **SoundFont General MIDI** n'est pas inclus : au premier démarrage, SoundText propose de le télécharger (FluidR3 GM, environ 150 Mo) avec **Sons → Télécharger et installer...**, où il y a aussi d'autres SoundFonts, instruments et plugins.
 
 `scarica_strumenti.sh`/`.bat` nécessitent Python 3.8+ (inutile pour utiliser l'application). `./scarica_strumenti.sh` sans argument affiche un menu numéroté pour choisir les groupes ; `host` installe 7-Zip, sfizz, Surge XT et les plugins VST3 gratuits Dexed, Airwindows Consolidated, Dragonfly Reverb et LSP Plugins (LSP seulement sous Linux) ; `vst3` installe seulement ces plugins ; `libreria` compile le moteur SFZ interne (environ 5 minutes).
 
@@ -485,7 +487,7 @@ modifier selon les termes de la **GNU General Public License version 3**
 utile, mais **sans aucune garantie**.
 
 SoundText utilise des bibliothèques et des contenus tiers (FluidSynth,
-Qt/PySide6, pedalboard, NumPy, le SoundFont FluidR3_GM et d'autres),
+Qt/PySide6, pedalboard, NumPy et d'autres),
 chacun avec sa propre licence : auteurs, licences et textes intégraux sont
 dans [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) (en italien) et dans
 le dossier [licenses/](licenses/). Le guide (Aide → Guide de l'utilisateur,

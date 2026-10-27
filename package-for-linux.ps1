@@ -5,18 +5,16 @@
     copiare sul PC Linux (es. CachyOS) senza portarsi dietro l'intero
     repository.
 .DESCRIPTION
-    Il repository e' pesante (quasi 1 GB) soprattutto per i SoundFont
-    extra in soundfonts/ (Arachno, ColomboGMGS2, GeneralUser-GS, Timbres
-    Of Heaven) che servono solo se li scegli manualmente dentro l'app:
-    ne' build-linux-portable.sh ne' install.sh li usano. Questo script
+    Il repository puo' essere pesante soprattutto per i SoundFont in
+    soundfonts/, che non servono alla build: SoundText non ne include
+    nessuno (si scaricano da Suoni -> Scarica e installa). Questo script
     include solo:
       - main.py, requirements.txt, soundtext.spec
       - build-linux-portable.sh, install.sh
       - core/, gui/, locales/, licenses/, midi/, assets/, docs/ (senza guida_brano), songs/, examples/
-      - soundfonts/FluidR3_GM.sf2 (il solo SoundFont di default)
     escludendo __pycache__/*.pyc, tests/, il manuale .docx e la guida PDF,
     le immagini della guida PDF (docs/guida_brano), gli script di
-    Windows/macOS e i SoundFont extra.
+    Windows/macOS e i SoundFont.
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File package-for-linux.ps1
 #>
@@ -43,7 +41,6 @@ $FilesToInclude = @(
     "setup-portable-linux.sh"
 )
 $DirsToInclude = @("core", "gui", "locales", "licenses", "midi", "assets", "docs", "songs", "examples")
-$Soundfont = "soundfonts\FluidR3_GM.sf2"
 
 foreach ($f in $FilesToInclude) {
     if (-not (Test-Path (Join-Path $Root $f))) {
@@ -77,15 +74,6 @@ Get-ChildItem $Staging -Recurse -Directory -Filter "__pycache__" -ErrorAction Si
     Remove-Item -Recurse -Force
 Get-ChildItem $Staging -Recurse -File -Filter "*.pyc" -ErrorAction SilentlyContinue |
     Remove-Item -Force
-
-$sf2Src = Join-Path $Root $Soundfont
-if (Test-Path $sf2Src) {
-    Write-Info "Includo solo il SoundFont di default (FluidR3_GM.sf2)..."
-    New-Item -ItemType Directory -Path (Join-Path $Staging "soundfonts") -Force | Out-Null
-    Copy-Item $sf2Src (Join-Path $Staging $Soundfont) -Force
-} else {
-    Write-Warn "$Soundfont non trovato: lo zip non avra' un SoundFont incluso."
-}
 
 $ZipOut = Join-Path $Root "SoundText-src-for-linux.zip"
 if (Test-Path $ZipOut) { Remove-Item $ZipOut -Force }

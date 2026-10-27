@@ -100,18 +100,8 @@ jobs:
           if (-not $fluidDll) { throw "libfluidsynth*.dll non trovata nell'archivio scaricato." }
           Copy-Item (Join-Path $fluidDll.Directory.FullName "*.dll") dist\SoundText -Force
 
-      # In soundfonts\, non nella radice: e' li' che core.playback._find_soundfont()
-      # cerca un SoundFont incluso a fianco dell'eseguibile (vedi quella funzione).
-      # Il repository e' privato: un Invoke-WebRequest anonimo sull'URL
-      # pubblico dell'asset riceve la pagina di login (404) invece del file -
-      # serve un download autenticato, per cui si usa 'gh release download'
-      # (gia' installato sui runner, autenticato in automatico da GH_TOKEN).
-      - name: Scarica SoundFont (allegato alla release "resources", non versionato in git)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          New-Item -ItemType Directory -Force -Path dist\SoundText\soundfonts | Out-Null
-          gh release download resources --repo ${{ github.repository }} --pattern "FluidR3_GM.sf2" --dir dist\SoundText\soundfonts --clobber
+      # Il SoundFont non e' incluso: SoundText lo propone al primo avvio e si
+      # scarica da Suoni -> Scarica e installa (core.soundfont_downloads).
 
       - name: Crea zip
         run: |
@@ -255,18 +245,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfluidsynth3
 
-      - name: Scarica SoundFont (allegato alla release "resources", non versionato in git)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p soundfonts
-          gh release download resources --repo ${{ github.repository }} --pattern "FluidR3_GM.sf2" --dir soundfonts --clobber
-
       - name: Build portable
         run: |
           ./build-linux-portable.sh
           tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/setup-portable-linux.sh"
-          tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/soundfonts/FluidR3_GM.sf2"
           tar -tzf SoundText-portable-linux-x64.tar.gz | grep -q "SoundText/lib/libfluidsynth"
           mv SoundText-portable-linux-x64.tar.gz "SoundText-linux-portable-${TAG}.tar.gz"
 

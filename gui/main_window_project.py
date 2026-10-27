@@ -857,10 +857,13 @@ class ProjectMixin:
         from .download_sources_dialog import DownloadSourcesDialog
         DownloadSourcesDialog(self).exec()
 
-    def open_download_dialog(self):
-        """Suoni -> Scarica e installa... (gui.download_dialog)."""
+    def open_download_dialog(self, preselect=None):
+        """Suoni -> Scarica e installa... (gui.download_dialog); preselect:
+        le voci da spuntare gia' (es. il SoundFont, se non ce n'e' nessuno)."""
         from .download_dialog import DownloadDialog
         dlg = DownloadDialog(self)
+        if preselect:
+            dlg.set_checked(preselect)
         dlg.exec()
         if dlg.changed:
             # un plugin appena installato: i processi dei plugin ripartono al

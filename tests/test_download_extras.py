@@ -201,7 +201,7 @@ def test_plain_soundfont_gets_its_license_file(tmp_path, monkeypatch):
 def test_soundfonts_are_in_the_catalog():
     items = {i.key: i for i in downloads.catalog()}
     assert {k for k, i in items.items() if i.category == downloads.CATEGORY_SOUNDFONTS} == {
-        "sf-musescore", "sf-timgm6mb", "sf-freepats-drums"}
+        "sf-fluidr3", "sf-musescore", "sf-timgm6mb", "sf-freepats-drums"}
 
 
 # ------------------------------------------------------------ casella di gruppo
@@ -278,4 +278,79 @@ def test_options_menu_opens_the_sources_dialog():
     w = MainWindow()
     entries = {(c.path, c.title) for c in collect_commands(w.menuBar())}
     assert ("Opzioni", "Sorgenti dei download...") in entries
+    w.close()
+
+
+# ------------------------------------------------------------ SoundFont non incluso
+
+def _fluid_archive(data: bytes) -> bytes:
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w:gz") as tar:
+        for name, content in (("fluid-soundfont-3.1/FluidR3_GM.sf2", data),
+                              ("fluid-soundfont-3.1/FluidR3_GS.sf2", b"GS")):
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+    return archive.getvalue()
+
+
+def test_fluidr3_comes_from_debian_and_is_verified(tmp_path, monkeypatch):
+    import dataclasses
+    import hashlib
+    from core import soundfont_downloads as sf
+    monkeypatch.setattr(sf, "ensure_soundfonts_dir", lambda: str(tmp_path))
+    source = sf.find("sf-fluidr3")
+    assert "github.com/openssound" not in source.url and source.url.startswith("https://deb.debian.org/")
+    with pytest.raises(RuntimeError, match="SHA-256"):
+        sf.download(source, fetch=lambda url, dest: open(dest, "wb").write(_fluid_archive(b"non e' FluidR3")),
+                    log=lambda s: None)
+    assert not list(tmp_path.glob("FluidR3_GM.sf2*"))            # un file diverso non si installa
+    good = dataclasses.replace(source, sha256=hashlib.sha256(b"sfbk").hexdigest())
+    sf.download(good, fetch=lambda url, dest: open(dest, "wb").write(_fluid_archive(b"sfbk")), log=lambda s: None)
+    assert (tmp_path / "FluidR3_GM.sf2").read_bytes() == b"sfbk"
+    assert not (tmp_path / "FluidR3_GS.sf2").exists()             # solo il GM
+    assert "MIT" in (tmp_path / "FluidR3_GM-LICENSE.txt").read_text(encoding="utf-8")
+
+
+def test_downloaded_general_midi_soundfont_is_found_by_itself(tmp_path, monkeypatch):
+    import core.playback as playback
+    import core.project_io as project_io
+    from core import settings
+    monkeypatch.setattr(project_io, "USER_SOUNDFONTS_DIR", str(tmp_path / "utente"))
+    monkeypatch.setattr(project_io, "DEFAULT_SOUNDFONTS_DIR", str(tmp_path / "app"))
+    monkeypatch.setattr(settings, "get_soundfont_path", lambda: None)
+    monkeypatch.delenv("SOUNDTEXT_SOUNDFONT", raising=False)
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "FreePatsGM-Percussion-20200822.sf2").write_bytes(b"x")   # solo batteria: non basta
+    (tmp_path / "app" / "TimGM6mb.sf2").write_bytes(b"x")
+    assert playback._find_soundfont() == str(tmp_path / "app" / "TimGM6mb.sf2")
+    (tmp_path / "utente").mkdir()
+    (tmp_path / "utente" / "MuseScore_General.sf3").write_bytes(b"x")
+    assert playback._find_soundfont() == str(tmp_path / "utente" / "MuseScore_General.sf3")   # preferito
+
+
+def test_startup_offers_the_soundfont_only_when_there_is_none(monkeypatch):
+    import core.playback as playback
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    opened, asked = [], []
+    monkeypatch.setattr(w, "open_download_dialog", lambda preselect=None: opened.append(preselect))
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a[2]) or QMessageBox.Yes)
+    monkeypatch.setattr(playback, "_find_soundfont", lambda: "/qualcosa/FluidR3_GM.sf2")
+    w.offer_soundfont_download()
+    assert asked == [] and opened == []
+    monkeypatch.setattr(playback, "_find_soundfont", lambda: None)
+    w.offer_soundfont_download()
+    assert "FluidR3" in asked[0] and opened == [["sf-fluidr3"]]
+    w.close()
+
+
+def test_soundfont_choosers_accept_sf3(monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+    from gui.main_window import MainWindow
+    filters = []
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (filters.append(a[3]), ("", ""))[1])
+    w = MainWindow()
+    w.choose_soundfont()
+    assert "*.sf2" in filters[0] and "*.sf3" in filters[0]
     w.close()

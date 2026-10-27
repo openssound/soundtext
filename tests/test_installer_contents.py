@@ -42,7 +42,7 @@ def test_source_installers_copy_only_what_the_program_needs():
         for unwanted in ("st_language", "tests", "midi", "songs", "SoundText_Manuale_Utente.docx", "README.md", *BUILD_SCRIPTS):
             assert unwanted not in items, f"{script}: {unwanted} non va copiato"
         assert "examples/*" in text and "*.wav) continue" in text     # esempi senza i render audio
-        assert "FluidR3_GM.sf2" in text
+        assert "FluidR3_GM.sf2" not in text                    # il SoundFont lo propone l'app al primo avvio
         # la pulizia delle installazioni precedenti sta DENTRO il ramo "copia i sorgenti":
         # lanciato dalla cartella di installazione stessa, lo script non cancella file del repository
         start = text.index('if [ "$SRC_DIR" != "$INSTALL_DIR" ]; then')
@@ -108,25 +108,28 @@ def test_macos_installer_works_without_the_repository_and_reports_failures():
     assert os.access(os.path.join(ROOT, "install-macos.sh"), os.X_OK)
 
 
-def test_macos_installer_downloads_the_soundfont_and_checks_it():
-    """Il SoundFont GM non e' in git: l'installer macOS lo scarica dalla release
-    "resources" (come le build Windows/Linux) e ne verifica lo SHA-256."""
-    text = _read("install-macos.sh")
-    assert "releases/download/resources/FluidR3_GM.sf2" in text
-    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
-    assert 'mv "$part" "$SOUNDFONT"' in text                     # il file resta solo se l'hash torna
-    assert "incluso nel repository" not in text
+def test_no_installer_or_build_ships_the_soundfont():
+    """SoundText non include un SoundFont: lo propone al primo avvio e lo si
+    scarica da Suoni -> Scarica e installa (core.soundfont_downloads, con
+    lo SHA-256). Ne' gli installer ne' le build lo copiano o lo scaricano."""
+    for name in ("install.sh", "install-macos.sh", "build-linux-portable.sh", "build-windows-portable.ps1",
+                 "package-for-linux.ps1", os.path.join(".github", "workflows", "build-release.yml")):
+        text = _read(name)
+        assert "FluidR3_GM.sf2" not in text and "releases/download/resources" not in text, name
+    for name in ("install.sh", "setup-appimage.sh", "setup-portable-linux.sh"):   # neanche quello della distribuzione
+        text = _read(name)
+        assert "fluid-soundfont-gm" not in text and "soundfont-fluid" not in text, name
+    from core.soundfont_downloads import find
+    fluid = find("sf-fluidr3")
+    assert fluid.url.startswith("https://deb.debian.org/") and len(fluid.sha256) == 64   # non dal GitHub di SoundText
 
 
 def test_linux_installer_works_without_the_repository_and_reports_failures():
-    """Come install-macos.sh: sorgenti scaricati se mancano, SoundFont GM
-    scaricato (e verificato) se il sistema non ne fornisce uno, rtmidi
+    """Come install-macos.sh: sorgenti scaricati se mancano, rtmidi
     facoltativo, PATH aggiornato e avviso se l'avvio dal menu fallisce."""
     text = _read("install.sh")
     assert "has_sources \"$SRC_DIR\"" in text and "archive/refs/heads/main.tar.gz" in text
     assert '"$INSTALL_DIR/$needed"' in text
-    assert "releases/download/resources/FluidR3_GM.sf2" in text
-    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
     assert "grep -v '^python-rtmidi'" in text
     assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".bashrc" in text
     assert "soundtext.log" in text and "notify-send" in text

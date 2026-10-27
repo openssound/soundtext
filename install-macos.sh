@@ -12,10 +12,8 @@
 #     sottocartelle songs/ e soundfonts/, dove l'app salva i progetti e i
 #     SoundFont dell'utente, ne' settings.json/instruments.json che l'app
 #     salva nella stessa cartella su macOS);
-#   - se non c'e' gia' un SoundFont GM, scarica FluidR3_GM.sf2 (circa
-#     150 MB, licenza MIT, non versionato in git) dalla release "resources"
-#     del repository in ~/Library/Application Support/SoundText/soundfonts,
-#     dove l'app lo rileva automaticamente su macOS;
+#   - il SoundFont GM non lo installa: SoundText lo propone al primo
+#     avvio (Suoni -> Scarica e installa);
 #   - crea un virtualenv Python dedicato e ci installa i pacchetti pip
 #     (PySide6, mido, sounddevice, numpy, pedalboard);
 #   - installa un comando "soundtext" in ~/.local/bin (e, se manca,
@@ -54,10 +52,6 @@ APP_BUNDLE="$APPS_DIR/SoundText.app"
 # (e, se li' non ci sono i sorgenti, li si scarica: vedi sotto).
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 SOURCE_URL="https://github.com/openssound/soundtext/archive/refs/heads/main.tar.gz"
-# SoundFont GM (lo stesso degli installer Windows/Linux, allegato alla release
-# "resources" perche' troppo grande per git) e il suo SHA-256.
-SOUNDFONT_URL="https://github.com/openssound/soundtext/releases/download/resources/FluidR3_GM.sf2"
-SOUNDFONT_SHA256="74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
 
 ASSUME_YES=0
 ACTION="install"
@@ -244,10 +238,8 @@ if [ "$SRC_DIR" != "$INSTALL_DIR" ]; then
             [ -e "$f" ] && cp -a "$f" "$INSTALL_DIR/examples/"
         done
     fi
-    # soundfonts/: solo il SoundFont GM di default (gli altri sono dell'utente)
+    # soundfonts/ e songs/ sono dell'utente: si creano vuote, non si copiano
     mkdir -p "$INSTALL_DIR/soundfonts" "$INSTALL_DIR/songs"
-    [ -f "$SRC_DIR/soundfonts/FluidR3_GM.sf2" ] && \
-        cp -a "$SRC_DIR/soundfonts/FluidR3_GM.sf2" "$INSTALL_DIR/soundfonts/"
     # La guida PDF va in docs/, accanto a HELP.md
     cp -a "$SRC_DIR"/SoundText_Guida_dal_primo_accordo_al_WAV.pdf "$INSTALL_DIR/docs/" 2>/dev/null || true
     find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
@@ -289,69 +281,6 @@ fi
 # rsync/cp non cancellano mai file esistenti non presenti nella sorgente:
 # songs/, soundfonts/ e le impostazioni dell'utente restano intatti tra un
 # aggiornamento e l'altro.
-
-# SoundFont GM: senza, l'app non produce audio. Si cerca nelle stesse
-# posizioni di core.playback._find_soundfont() su macOS; se non c'e' si
-# scarica nella cartella soundfonts/ dell'app.
-SOUNDFONT="$INSTALL_DIR/soundfonts/FluidR3_GM.sf2"
-
-sha256_of() {
-    if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$1" | awk '{print $1}'
-    else
-        sha256sum "$1" | awk '{print $1}'
-    fi
-}
-
-download_soundfont() {
-    local part="$SOUNDFONT.part"
-    mkdir -p "$INSTALL_DIR/soundfonts"
-    if ! curl -fL --progress-bar -o "$part" "$SOUNDFONT_URL"; then
-        rm -f "$part"
-        return 1
-    fi
-    if [ "$(sha256_of "$part")" != "$SOUNDFONT_SHA256" ]; then
-        warn "Il SoundFont scaricato non corrisponde all'originale (SHA-256 diverso)."
-        rm -f "$part"
-        return 1
-    fi
-    mv "$part" "$SOUNDFONT"
-}
-
-existing_soundfont=""
-for candidate in \
-    "$SOUNDFONT" \
-    "$HOME/Library/Audio/Sounds/Banks/FluidR3_GM.sf2" \
-    "/Library/Audio/Sounds/Banks/FluidR3_GM.sf2" \
-    "/opt/homebrew/share/soundfonts/FluidR3_GM.sf2" \
-    "/usr/local/share/soundfonts/FluidR3_GM.sf2"
-do
-    if [ -f "$candidate" ]; then
-        existing_soundfont="$candidate"
-        break
-    fi
-done
-
-if [ -n "$existing_soundfont" ]; then
-    info "SoundFont GM gia' presente in '$existing_soundfont'."
-elif ! command -v curl >/dev/null 2>&1; then
-    warn "curl non trovato: SoundFont GM non scaricato, l'app non produrra' audio."
-    warn "Scaricalo da $SOUNDFONT_URL"
-    warn "e mettilo in '$SOUNDFONT'."
-elif confirm "Scarico il SoundFont GM FluidR3_GM.sf2 (circa 150 MB, serve per sentire l'audio)?"; then
-    info "Scarico il SoundFont GM in '$INSTALL_DIR/soundfonts/'..."
-    if download_soundfont; then
-        info "SoundFont GM installato: l'app lo rileva automaticamente."
-    else
-        warn "Download del SoundFont non riuscito: senza, l'app non produrra' audio."
-        warn "Rilancia lo script, oppure scaricalo da $SOUNDFONT_URL"
-        warn "e mettilo in '$SOUNDFONT'."
-    fi
-else
-    warn "SoundFont GM non scaricato: senza, l'app non produrra' audio. Impostane"
-    warn "uno da Riproduzione -> Scegli SoundFont (.sf2)... dentro l'app, oppure"
-    warn "mettilo in '$SOUNDFONT'."
-fi
 
 for needed in main.py requirements.txt; do
     if [ ! -f "$INSTALL_DIR/$needed" ]; then

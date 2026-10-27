@@ -4,16 +4,13 @@
 #
 # Cosa fa:
 #   - rileva la distribuzione e installa le dipendenze di sistema
-#     (fluidsynth, soundfont GM, portaudio, lilv) col package manager
+#     (fluidsynth, portaudio, lilv) col package manager
 #     giusto (apt/dnf/pacman/zypper);
 #   - copia il codice sorgente in ~/.local/share/soundtext (senza mai
 #     cancellare le sottocartelle songs/ e soundfonts/, dove l'app salva
 #     i progetti e i SoundFont dell'utente);
-#   - se il package manager non fornisce un SoundFont GM di sistema, usa
-#     soundfonts/FluidR3_GM.sf2 se c'e' accanto allo script, altrimenti lo
-#     scarica (circa 150 MB, licenza MIT, non versionato in git) dalla
-#     release "resources" del repository, in ~/.local/share/soundfonts/,
-#     dove l'app lo rileva automaticamente;
+#   - il SoundFont GM non lo installa: SoundText lo propone al primo
+#     avvio (Suoni -> Scarica e installa);
 #   - crea un virtualenv Python dedicato e ci installa i pacchetti pip
 #     (PySide6, mido, sounddevice, numpy, pedalboard);
 #   - installa un comando "soundtext" in ~/.local/bin (e, se manca,
@@ -50,10 +47,6 @@ ICON_FILE="$ICON_DIR/soundtext.png"
 # (e, se li' non ci sono i sorgenti, li si scarica: vedi sotto).
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 SOURCE_URL="https://github.com/openssound/soundtext/archive/refs/heads/main.tar.gz"
-# SoundFont GM (lo stesso degli installer Windows/macOS, allegato alla release
-# "resources" perche' troppo grande per git) e il suo SHA-256.
-SOUNDFONT_URL="https://github.com/openssound/soundtext/releases/download/resources/FluidR3_GM.sf2"
-SOUNDFONT_SHA256="74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
 
 ASSUME_YES=0
 ACTION="install"
@@ -168,11 +161,11 @@ install_system_deps() {
     case "$DISTRO_FAMILY" in
         debian)
             cmd=(sudo apt-get install -y)
-            pkgs=(python3-venv python3-pip fluidsynth fluid-soundfont-gm libportaudio2 liblilv-0-0)
+            pkgs=(python3-venv python3-pip fluidsynth libportaudio2 liblilv-0-0)
             ;;
         fedora)
             cmd=(sudo dnf install -y)
-            pkgs=(python3-pip fluidsynth fluid-soundfont-gm portaudio lilv-libs)
+            pkgs=(python3-pip fluidsynth portaudio lilv-libs)
             ;;
         arch)
             cmd=(sudo pacman -S --needed --noconfirm)
@@ -180,7 +173,7 @@ install_system_deps() {
             ;;
         opensuse)
             cmd=(sudo zypper install -y)
-            pkgs=(python3-pip fluidsynth fluid-soundfont-gm portaudio liblilv-0-0)
+            pkgs=(python3-pip fluidsynth portaudio liblilv-0-0)
             ;;
         *)
             warn "Distribuzione non riconosciuta automaticamente."
@@ -207,85 +200,12 @@ install_system_deps() {
         fi
     done
 
-    if [ "$DISTRO_FAMILY" = "arch" ]; then
-        if ! pacman -Qi soundfont-fluid >/dev/null 2>&1; then
-            local aur=""
-            command -v yay  >/dev/null 2>&1 && aur=yay
-            command -v paru >/dev/null 2>&1 && aur=paru
-            if [ -n "$aur" ]; then
-                info "Installo il SoundFont GM da AUR con $aur..."
-                "$aur" -S --needed --noconfirm soundfont-fluid || failed+=("soundfont-fluid (AUR)")
-            else
-                warn "Nessun SoundFont GM di sistema trovato e nessun helper AUR"
-                warn "(yay/paru) disponibile: lo scarico come ripiego (vedi passo"
-                warn "successivo). Per un pacchetto di sistema"
-                warn "installa 'soundfont-fluid' da AUR manualmente."
-            fi
-        fi
-    fi
-
     if [ "${#failed[@]}" -gt 0 ]; then
         warn "Pacchetti non installati (nome diverso su questa distro o non"
         warn "disponibile nei repository abilitati): ${failed[*]}"
         warn "Vedi docs/HELP.md per alternative. L'app funziona comunque; senza"
-        warn "fluidsynth/soundfont non sentirai l'audio, senza portaudio non"
+        warn "fluidsynth non sentirai l'audio, senza portaudio non"
         warn "potrai registrare ne' ascoltare con loop e salti."
-    fi
-}
-
-install_soundfont() {
-    local target_dir="$HOME/.local/share/soundfonts"
-    local target="$target_dir/FluidR3_GM.sf2"
-    local candidate
-
-    for candidate in \
-        "$target" \
-        "$HOME/.soundfonts/FluidR3_GM.sf2" \
-        /usr/share/sounds/sf2/FluidR3_GM.sf2 \
-        /usr/share/soundfonts/FluidR3_GM.sf2 \
-        /usr/share/sounds/sf2/default.sf2 \
-        /usr/share/soundfonts/default.sf2
-    do
-        if [ -f "$candidate" ]; then
-            info "SoundFont GM gia' presente in $candidate."
-            return
-        fi
-    done
-
-    local bundled="$INSTALL_DIR/soundfonts/FluidR3_GM.sf2"
-    if [ -f "$bundled" ]; then
-        info "Copio il SoundFont GM (soundfonts/FluidR3_GM.sf2) in $target..."
-        mkdir -p "$target_dir"
-        cp "$bundled" "$target"
-        return
-    fi
-
-    # Nessun SoundFont di sistema (pacchetto non disponibile o non
-    # installato) e nessuno accanto allo script: soundfonts/ non e' in git,
-    # quindi lo si scarica, verificandone lo SHA-256.
-    if ! command -v curl >/dev/null 2>&1; then
-        warn "Nessun SoundFont GM trovato e curl non disponibile per scaricarlo:"
-        warn "senza, l'app non produrra' audio. Scaricalo da $SOUNDFONT_URL"
-        warn "e mettilo in $target."
-        return
-    fi
-    if ! confirm "Nessun SoundFont GM trovato: scarico FluidR3_GM.sf2 (circa 150 MB, serve per sentire l'audio)?"; then
-        warn "SoundFont GM non scaricato: senza, l'app non produrra' audio. Impostane"
-        warn "uno da Riproduzione -> Scegli SoundFont (.sf2)... dentro l'app."
-        return
-    fi
-    info "Scarico il SoundFont GM in $target_dir..."
-    mkdir -p "$target_dir"
-    local part="$target.part"
-    if curl -fL --progress-bar -o "$part" "$SOUNDFONT_URL" \
-        && [ "$(sha256sum "$part" | awk '{print $1}')" = "$SOUNDFONT_SHA256" ]; then
-        mv "$part" "$target"
-        info "SoundFont GM installato: l'app lo rileva automaticamente."
-    else
-        rm -f "$part"
-        warn "Download del SoundFont non riuscito (o file diverso dall'originale):"
-        warn "senza, l'app non produrra' audio. Rilancia lo script, oppure scaricalo"
-        warn "da $SOUNDFONT_URL e mettilo in $target."
     fi
 }
 
@@ -315,10 +235,8 @@ if [ "$SRC_DIR" != "$INSTALL_DIR" ]; then
             [ -e "$f" ] && cp -a "$f" "$INSTALL_DIR/examples/"
         done
     fi
-    # soundfonts/: solo il SoundFont GM di default (gli altri sono dell'utente)
+    # soundfonts/ e songs/ sono dell'utente: si creano vuote, non si copiano
     mkdir -p "$INSTALL_DIR/soundfonts" "$INSTALL_DIR/songs"
-    [ -f "$SRC_DIR/soundfonts/FluidR3_GM.sf2" ] && \
-        cp -a "$SRC_DIR/soundfonts/FluidR3_GM.sf2" "$INSTALL_DIR/soundfonts/"
     # La guida PDF va in docs/, accanto a HELP.md
     cp -a "$SRC_DIR"/SoundText_Guida_dal_primo_accordo_al_WAV.pdf "$INSTALL_DIR/docs/" 2>/dev/null || true
     find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
@@ -366,8 +284,6 @@ for needed in main.py requirements.txt; do
         exit 1
     fi
 done
-
-install_soundfont
 
 info "Creo il virtualenv Python (puo' richiedere qualche minuto, PySide6 e' grande)..."
 python3 -m venv "$INSTALL_DIR/venv"

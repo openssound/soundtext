@@ -7,7 +7,7 @@
 #
 # Va eseguito DENTRO una copia completa del repository SoundText (serve
 # main.py, requirements.txt, soundtext.spec, core/, gui/, midi/, assets/,
-# docs/, songs/, examples/, soundfonts/), perche' PyInstaller compila per
+# docs/, songs/, examples/), perche' PyInstaller compila per
 # la piattaforma su cui gira: il risultato funziona solo su Linux con
 # un'architettura e una libc compatibili con quelle della macchina di
 # build (in genere: stessa distro/versione o piu' recente).
@@ -18,8 +18,8 @@
 #      pacchetti da requirements.txt + PyInstaller;
 #   2. lancia PyInstaller con soundtext.spec (modalita' onedir);
 #   3. affianca all'eseguibile le cartelle dati dell'app (assets, docs,
-#      songs demo, libreria midi, esempi) e, se presente, il SoundFont GM
-#      incluso nel repository (soundfonts/FluidR3_GM.sf2);
+#      songs demo, libreria midi, esempi); il SoundFont non e' incluso:
+#      SoundText lo propone al primo avvio (Suoni -> Scarica e installa);
 #   4. cerca libfluidsynth.so di sistema (ldconfig) e, se la trova, la
 #      copia insieme alle sue dipendenze non di sistema (via ldd) in una
 #      cartella lib/ accanto all'eseguibile; rinomina l'eseguibile vero
@@ -138,15 +138,6 @@ if [ -n "$VEROVIO_DATA" ] && [ -d "$VEROVIO_DATA" ]; then
     cp -a "$VEROVIO_DATA" "$DIST_DIR/verovio-data"
 else
     warn "Verovio non trovato: la build non avra' la vista Partitura."
-fi
-
-SF2_SRC="$ROOT/soundfonts/FluidR3_GM.sf2"
-if [ -f "$SF2_SRC" ]; then
-    info "Includo il SoundFont GM (FluidR3_GM.sf2)..."
-    mkdir -p "$DIST_DIR/soundfonts"
-    cp "$SF2_SRC" "$DIST_DIR/soundfonts/FluidR3_GM.sf2"
-else
-    warn "soundfonts/FluidR3_GM.sf2 non trovato nel repository: la build non avra' un SoundFont incluso."
 fi
 
 # ---------------------------------------------------------------------------

@@ -591,7 +591,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         sounds_menu.addAction(self._action(tr("Gestisci strumenti..."), self.manage_instruments,
                                            tooltip=tr("Crea o rimuovi strumenti personalizzati.")))
         soundfont_menu = sounds_menu.addMenu(tr("SoundFont"))
-        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2)..."), self.choose_soundfont))
+        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2/.sf3)..."), self.choose_soundfont))
         soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.reset_soundfont))
         soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.show_soundfont_info))
         sounds_menu.addAction(self._action(

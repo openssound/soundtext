@@ -59,7 +59,6 @@ lilv: la carica dal sistema con ctypes, se c'è.
 
 | Componente | Copyright | Licenza | Testo | Nelle build |
 |---|---|---|---|---|
-| SoundFont **FluidR3_GM** (`soundfonts/FluidR3_GM.sf2`) | Frank Wen (2000-2002, 2008) | MIT | `licenses/FluidR3_GM.txt` | sì |
 | [NeuralAmpModelerCore](https://github.com/sdatkinson/NeuralAmpModelerCore): il calcolo dei profili `.nam` di `core/nam.py` segue il motore ufficiale | Steven Atkinson | MIT | `licenses/NeuralAmpModelerCore.txt` | sì (come codice derivato) |
 | [neural-amp-modeler](https://github.com/sdatkinson/neural-amp-modeler): il segnale di riferimento per la loudness, `assets/nam_loudness_input.wav` | Steven Atkinson | MIT | `licenses/neural-amp-modeler.txt` | sì |
 | [MTXT](https://github.com/Daninet/mtxt): la tabella dei nomi delle voci (`voice`) per i 128 programmi General MIDI in `st_language/mtxt.py` (libreria ST-language, repository openssound/st-language, che ne riporta l'avviso) viene dall'implementazione di riferimento | Dani Biró | MIT (o Apache-2.0, a scelta) | `licenses/mtxt.txt` | sì (come dati derivati) |
@@ -78,6 +77,15 @@ lilv: la carica dal sistema con ctypes, se c'è.
   [Guitarix](https://github.com/brummer10/guitarix): SoundText le scarica
   sul computer dell'utente insieme al testo della licenza, non le
   distribuisce.
+- I **SoundFont General MIDI** di Suoni → Scarica e installa: SoundText
+  li scarica sul computer dell'utente, con il testo della licenza accanto,
+  e non li distribuisce. **FluidR3 GM** (Copyright © 2000-2002, 2008 Frank
+  Wen, licenza MIT, testo anche in `licenses/FluidR3_GM.txt`, dal
+  pacchetto sorgente Debian fluid-soundfont, verificato con lo SHA-256), **MuseScore General** (S. Christian Collins, derivato da
+  FluidR3, licenza MIT), **TimGM6mb** (Tim Brechbill e David Bolton,
+  licenza GPL-2.0, dal pacchetto Debian timgm6mb-soundfont) e **FreePats
+  GM, percussioni** (progetto FreePats, licenza GPL-3.0 con eccezione per
+  l'uso musicale).
 - I **plugin VST3 e LV2** e i **SoundFont** scelti dall'utente hanno
   ciascuno la propria licenza: SoundText li carica ma non li include.
 

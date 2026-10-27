@@ -5,9 +5,10 @@
 #
 # Cosa fa:
 #   - rileva la distribuzione e installa con sudo le librerie di sistema che
-#     l'AppImage non include: FUSE 2 (per montare l'AppImage), FluidSynth e un
-#     SoundFont GM (audio), PortAudio (registrazione), lilv (plugin LV2) e le
-#     librerie grafiche richieste da Qt (xcb, xkbcommon, EGL/GL);
+#     l'AppImage non include: FUSE 2 (per montare l'AppImage), FluidSynth
+#     (audio), PortAudio (registrazione), lilv (plugin LV2) e le librerie
+#     grafiche richieste da Qt (xcb, xkbcommon, EGL/GL); il SoundFont GM lo
+#     propone SoundText al primo avvio (Suoni -> Scarica e installa);
 #   - dà il permesso di esecuzione all'AppImage;
 #   - opzionale (--integra): crea la voce nel menu applicazioni con icona e il
 #     comando "soundtext" in ~/.local/bin.
@@ -84,13 +85,13 @@ case "$FAMILY" in
         # libfuse2 si chiama libfuse2t64 su Ubuntu 24.04 e derivate recenti
         FUSE=libfuse2
         apt-cache show libfuse2t64 >/dev/null 2>&1 && FUSE=libfuse2t64
-        pkgs=("$FUSE" fluidsynth fluid-soundfont-gm libportaudio2 liblilv-0-0
+        pkgs=("$FUSE" fluidsynth libportaudio2 liblilv-0-0
               libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libegl1 libgl1 libxcb-icccm4
               libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0)
         ;;
     fedora)
         cmd=(sudo dnf install -y)
-        pkgs=(fuse-libs fluidsynth fluid-soundfont-gm portaudio lilv-libs
+        pkgs=(fuse-libs fluidsynth portaudio lilv-libs
               xcb-util-cursor libxkbcommon-x11 mesa-libEGL mesa-libGL
               xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil)
         ;;
@@ -101,12 +102,12 @@ case "$FAMILY" in
         ;;
     opensuse)
         cmd=(sudo zypper install -y)
-        pkgs=(libfuse2 fluidsynth fluid-soundfont-gm portaudio liblilv-0-0
+        pkgs=(libfuse2 fluidsynth portaudio liblilv-0-0
               libxcb-cursor0 libxkbcommon-x11-0 libEGL1 libGL1)
         ;;
     *)
         warn "Distribuzione non riconosciuta: installa a mano FUSE 2, fluidsynth,"
-        warn "un SoundFont GM, portaudio, lilv e le librerie xcb/xkbcommon/EGL."
+        warn "portaudio, lilv e le librerie xcb/xkbcommon/EGL."
         ;;
 esac
 
@@ -121,10 +122,6 @@ if [ "${#pkgs[@]}" -gt 0 ]; then
         done
         if [ "${#failed[@]}" -gt 0 ]; then
             warn "Non installati (nome diverso o repository non abilitato): ${failed[*]}"
-        fi
-        if [ "$FAMILY" = arch ] && ! pacman -Qi soundfont-fluid >/dev/null 2>&1; then
-            warn "SoundFont GM mancante: installa 'soundfont-fluid' da AUR (yay -S soundfont-fluid),"
-            warn "oppure carica un tuo .sf2 dall'app."
         fi
     else
         warn "Salto l'installazione delle dipendenze di sistema."

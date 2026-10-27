@@ -289,7 +289,9 @@ Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve
 | **Linux, AppImage** | scarica `SoundText-linux-*.AppImage`, `setup-appimage.sh` e `scarica_strumenti.sh`/`.py` nella stessa cartella, poi `./setup-appimage.sh` (installa FUSE 2, FluidSynth, SoundFont GM, PortAudio, lilv e le librerie di Qt; `--integra` aggiunge la voce di menu) | `./scarica_strumenti.sh` |
 | **Linux, portable** (`.tar.gz`) | estrai e lancia `./setup-portable-linux.sh` (stesse librerie di sistema, senza FUSE), poi `./SoundText` | `./scarica_strumenti.sh` |
 | **Windows, installer** (`SoundText-setup-*.exe`) o **portable** (`.zip`) | esegui l'installer, oppure estrai lo zip e lancia `setup-windows.bat` (controlla il Visual C++ Redistributable e Python; FluidSynth è già incluso), poi `SoundText.exe` | `scarica_strumenti.bat` |
-| **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv e scarica il SoundFont GM) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
+| **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |
+
+Il **SoundFont General MIDI** non è incluso: al primo avvio SoundText propone di scaricarlo (FluidR3 GM, circa 150 MB) con **Suoni → Scarica e installa...**, dove ci sono anche altri SoundFont, strumenti e plugin.
 
 `scarica_strumenti.sh`/`.bat` richiedono Python 3.8+ installato (non serve per usare l'app). `./scarica_strumenti.sh` senza argomenti mostra un menu numerato per scegliere i gruppi; `host` installa 7-Zip, sfizz, Surge XT e i plugin VST3 gratuiti Dexed, Airwindows Consolidated, Dragonfly Reverb e LSP Plugins (LSP solo su Linux); `vst3` installa solo questi plugin; `libreria` compila il motore SFZ interno (circa 5 minuti).
 
@@ -465,7 +467,7 @@ i termini della **GNU General Public License versione 3** (file
 **senza alcuna garanzia**.
 
 SoundText usa librerie e contenuti di terze parti (FluidSynth, Qt/PySide6,
-pedalboard, NumPy, il SoundFont FluidR3_GM e altri), ciascuno con
+pedalboard, NumPy e altri), ciascuno con
 la propria licenza: autori, licenze e testi integrali sono in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) e nella cartella
 [licenses/](licenses/). La guida (Aiuto → Guida utente, capitolo 14)

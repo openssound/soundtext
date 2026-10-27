@@ -641,7 +641,7 @@ class PlaybackMixin:
     def choose_soundfont(self):
         from core.project_io import ensure_soundfonts_dir
         path, _ = QFileDialog.getOpenFileName(self, tr("Scegli file SoundFont"), ensure_soundfonts_dir(),
-                                              tr("SoundFont (*.sf2)"),
+                                              tr("SoundFont (*.sf2 *.sf3)"),
                                               options=file_dialog_options())
         if not path:
             return
@@ -664,13 +664,24 @@ class PlaybackMixin:
                 tr("{path}\n({origin})\n\nMotore di riproduzione: {0}", describe_playback_engine(), path=path, origin=origin)
             )
         else:
-            QMessageBox.warning(
-                self, tr("Nessun SoundFont trovato"),
-                tr("Non e' stato trovato nessun file .sf2, ne' nei percorsi standard ne' "
-                "impostato manualmente.\n\nUsa 'Playback → Scegli SoundFont (.sf2)...' "
-                "per indicarne uno (ad es. FluidR3_GM.sf2), oppure installa un pacchetto "
-                "SoundFont di sistema.")
-            )
+            self._offer_soundfont_download()
+
+    def offer_soundfont_download(self):
+        """All'avvio (main.py): SoundText non include un SoundFont, e senza
+        nessuno non suona; se non ne trova, propone di scaricarlo."""
+        from core.playback import _find_soundfont
+        if not _find_soundfont():
+            self._offer_soundfont_download()
+
+    def _offer_soundfont_download(self):
+        answer = QMessageBox.question(
+            self, tr("Nessun SoundFont trovato"),
+            tr("Per suonare, SoundText ha bisogno di un SoundFont General MIDI (.sf2 o .sf3), e non ne "
+               "ha trovato nessuno.\n\nVuoi scaricare FluidR3 GM (gratuito, licenza MIT, circa 150 MB)? "
+               "Si apre \"Scarica e installa\", dove ci sono anche altri SoundFont.\n\n"
+               "Se ne hai gia' uno, indicalo con Suoni → SoundFont → Scegli SoundFont (.sf2/.sf3)..."))
+        if answer == QMessageBox.Yes:
+            self.open_download_dialog(preselect=["sf-fluidr3"])
 
     # -------------------------------------------------------- campi Tempo/Metrica
 
