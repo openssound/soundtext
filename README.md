@@ -286,7 +286,7 @@ Scegli il metodo adatto al tuo sistema. Per **plugin e amplificatori NAM** serve
 | Sistema | Come installare | Dopo l'installazione |
 |---|---|---|
 | **Linux (consigliato)** | dal repository: `./install.sh` (installa FluidSynth, PortAudio, lilv col package manager, crea il virtualenv, aggiunge comando `soundtext` e voce di menu; `--yes` senza domande, `--uninstall` per rimuoverlo) | `~/.local/share/soundtext/scarica_strumenti.sh` |
-| **Linux, AppImage** | scarica `SoundText-linux-*.AppImage`, `setup-appimage.sh` e `scarica_strumenti.sh`/`.py` nella stessa cartella, poi `./setup-appimage.sh` (installa FUSE 2, FluidSynth, SoundFont GM, PortAudio, lilv e le librerie di Qt; `--integra` aggiunge la voce di menu) | `./scarica_strumenti.sh` |
+| **Linux, AppImage** | scarica `SoundText-linux-*.AppImage` e `setup-appimage.sh` nella stessa cartella, poi `./setup-appimage.sh` (installa FUSE 2, FluidSynth, PortAudio, lilv e le librerie di Qt; `--integra` aggiunge la voce di menu) | **Suoni → Scarica e installa...** |
 | **Linux, portable** (`.tar.gz`) | estrai e lancia `./setup-portable-linux.sh` (stesse librerie di sistema, senza FUSE), poi `./SoundText` | `./scarica_strumenti.sh` |
 | **Windows, installer** (`SoundText-setup-*.exe`) o **portable** (`.zip`) | esegui l'installer, oppure estrai lo zip e lancia `setup-windows.bat` (controlla il Visual C++ Redistributable e Python; FluidSynth è già incluso), poi `SoundText.exe` | `scarica_strumenti.bat` |
 | **macOS** | dal repository: `./install-macos.sh` (installa con Homebrew FluidSynth, PortAudio e Python, crea il virtualenv) | `~/Library/Application Support/SoundText/scarica_strumenti.sh` |

@@ -92,6 +92,10 @@ def test_the_midi_library_is_shipped_empty_and_the_users_files_are_never_deleted
     workflow = _read(".github", "workflows", "build-release.yml")
     assert 'New-Item -ItemType Directory -Force -Path "dist\\SoundText\\midi"' in workflow
     assert "mkdir -p AppDir/usr/bin/midi" in workflow
+    # "Scarica e installa" cerca lo script accanto all'eseguibile: dentro l'AppImage
+    assert "cp scarica_strumenti.py AppDir/usr/bin/" in workflow
+    release_files = workflow[workflow.index("SoundText-linux-*.AppImage"):].split("\n\n")[0]
+    assert "scarica_strumenti" not in release_files                  # non piu' allegati a parte
     assert 'test -z "$(find AppDir/usr/bin/midi -mindepth 1 -print -quit)"' in workflow
 
 

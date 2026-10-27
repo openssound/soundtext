@@ -176,6 +176,11 @@ jobs:
           rm -rf AppDir/usr/bin/docs/guida_brano
           # licenza e avvisi delle librerie di terze parti vanno distribuiti col programma
           cp LICENSE THIRD_PARTY_NOTICES.md AppDir/usr/bin/
+          # lo script di "Scarica e installa": SoundText lo cerca accanto al
+          # proprio eseguibile (core.downloads.script_path); in sola lettura va
+          # bene, perche' scarica in ~/Strumenti
+          cp scarica_strumenti.py AppDir/usr/bin/
+          test -f AppDir/usr/bin/scarica_strumenti.py
           cp -r "$(python -c "import os, verovio; print(os.path.join(os.path.dirname(verovio.__file__), 'data'))")" AppDir/usr/bin/verovio-data
           test -f AppDir/usr/bin/docs/HELP.md
           test -f AppDir/usr/bin/locales/en.json
@@ -215,8 +220,6 @@ jobs:
           files: |
             SoundText-linux-*.AppImage
             setup-appimage.sh
-            scarica_strumenti.sh
-            scarica_strumenti.py
 
   # ---------------------------------------------------------- LINUX PORTABLE
   # Il tar.gz di build-linux-portable.sh (eseguibile, dati, SoundFont GM,
