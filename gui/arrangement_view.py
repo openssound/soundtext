@@ -284,7 +284,7 @@ class BoxItem(QGraphicsRectItem):
             # _import_..._into_selected_track (main_window_mixer.py) per
             # sapere se il box selezionato, non la traccia, e' la
             # destinazione di "in questa/o".
-            sel_pen = QPen(QColor(ACCENT))
+            sel_pen = QPen(_selection_color(color))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
@@ -325,6 +325,17 @@ class BoxItem(QGraphicsRectItem):
                 rects.append(QRectF(x, y, width, thick))
         self._note_rects = (key, rects)
         return rects
+
+
+def _selection_color(box: QColor) -> QColor:
+    """Il bordo del box selezionato: l'accento, ma sui box di un colore
+    vicino (i Pianoforti #7ec9e8, i Synth Pad, gli strumenti senza famiglia
+    che hanno proprio l'accento) l'inchiostro del box, che ne contrasta
+    sempre il colore: altrimenti la selezione non si vedeva."""
+    accent = QColor(ACCENT)
+    distance = ((box.red() - accent.red()) ** 2 + (box.green() - accent.green()) ** 2
+                + (box.blue() - accent.blue()) ** 2) ** 0.5
+    return accent if distance > 90 else _ink_on(box, 255)
 
 
 def _ink_on(color: QColor, alpha: int) -> QColor:
@@ -700,7 +711,7 @@ class AudioBoxItem(BoxItem):
         if rect.width() < MIN_DETAIL_PX:
             # troppo stretto per forma d'onda ed etichetta: solo il box
             if selected:
-                painter.setPen(QPen(QColor(ACCENT), 2))
+                painter.setPen(QPen(_selection_color(self.brush().color()), 2))
                 painter.setBrush(Qt.NoBrush)
                 painter.drawRect(rect)
             return
@@ -728,7 +739,7 @@ class AudioBoxItem(BoxItem):
                     x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
                     painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
         if selected:
-            sel_pen = QPen(QColor(ACCENT))
+            sel_pen = QPen(_selection_color(self.brush().color()))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)

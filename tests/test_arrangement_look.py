@@ -110,15 +110,15 @@ def test_ruler_shows_the_sections_and_a_click_jumps_there(monkeypatch):
 
 def test_selected_box_is_redrawn_although_boxes_keep_their_image():
     from gui import arrangement_view as av
-    from gui.theme import ACCENT
     w = _window()
     view = w.arrangement_view
     item = next(it for it in view.canvas._scene.items() if isinstance(it, av.BoxItem) and it.clip.name == "Strofa")
     corner = view.canvas.mapFromScene(item.mapToScene(QPointF(0, 20)))     # il bordo sinistro del box
+    border = av._selection_color(item.brush().color()).name()
 
     def accent_at_border():
         image = view.canvas.viewport().grab().toImage()
-        return any(QColor(image.pixel(corner.x() + dx, corner.y())).name() == QColor(ACCENT).name()
+        return any(QColor(image.pixel(corner.x() + dx, corner.y())).name() == border
                    for dx in range(0, 3))
 
     assert not accent_at_border()
@@ -129,6 +129,25 @@ def test_selected_box_is_redrawn_although_boxes_keep_their_image():
     _app.processEvents()
     assert not accent_at_border()
     w.close()
+
+
+def test_selection_border_stands_out_on_every_box_color():
+    """Il bordo del box selezionato si vede su ogni colore di box: in
+    boom_bap il Rhodes (famiglia Pianoforti, #7ec9e8) aveva un box quasi
+    dello stesso azzurro dell'accento, e selezionarlo non cambiava nulla."""
+    from gui import arrangement_view as av
+    from gui.track_widget import _FAMILY_COLORS, _PERCUSSION_COLOR, AUDIO_TRACK_COLOR
+    from gui.theme import ACCENT
+
+    def distance(a, b):
+        return sum((x - y) ** 2 for x, y in zip(a.getRgb()[:3], b.getRgb()[:3])) ** 0.5
+
+    colors = list(_FAMILY_COLORS.values()) + [_PERCUSSION_COLOR, AUDIO_TRACK_COLOR, ACCENT,
+                                              av.MUTED_CLIP_COLOR]
+    for name in colors:
+        box = QColor(name)
+        assert distance(av._selection_color(box), box) > 90, name
+    assert av._selection_color(QColor("#e8c96d")).name() == QColor(ACCENT).name()   # dove si vede resta l'accento
 
 
 def test_row_height_changes_rows_and_headers_and_is_remembered():
