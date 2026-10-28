@@ -14,12 +14,21 @@ import sys
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6.QtWidgets import QApplication, QFileDialog
+import pytest
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from core.project_io import EXAMPLES_DIR
 from gui.main_window import MainWindow
 
 _app = QApplication.instance() or QApplication([])
+
+
+@pytest.fixture(autouse=True)
+def _no_modal_messages(monkeypatch):
+    # Un esempio con strumenti incorporati apre un avviso modale: senza
+    # nessuno che lo chiuda il test restava fermo.
+    for name in ("information", "warning"):
+        monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: QMessageBox.Ok))
 
 
 def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):

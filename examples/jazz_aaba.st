@@ -1,8 +1,8 @@
 // Luci sul Naviglio: un brano jazz nella forma classica AABA (32 battute).
 //
-// Un quartetto (tromba, pianoforte, chitarra, contrabbasso e batteria) che
+// Un quintetto (sax tenore, pianoforte, chitarra, contrabbasso e batteria) che
 // suona un "chorus" dopo l'altro, come in un vero club:
-//   introduzione di 4 battute, tema alla tromba, assolo di pianoforte,
+//   introduzione di 4 battute, tema al sax tenore, assolo di pianoforte,
 //   tema ripreso con la sezione ritmica piu' vivace, e una breve coda.
 // Cosa c'e' dentro:
 //   - lo swing (swing=66): le crome scritte dritte suonano "terzinate";
@@ -30,7 +30,7 @@ Tonalita: F
 Pattern %Rest:
   4: 4r |
 
-// ---------------------------------------------------------------- tema (tromba)
+// ---------------------------------------------------------------- tema (sax tenore)
 
 Pattern %HeadA1:
   key=F 8: 92@
@@ -287,19 +287,19 @@ Pattern %DrumsChorus3:
 
 // ================================================================ tracce
 
-Trumpet:
+Traccia Tenor Sax [TenorSax]:
 
-Box Trumpet "Chorus 1" |16:
-  // chorus 1: il tema
-  swing=66 $"tema" %Head
+Box Tenor Sax "Chorus 1" |16:
+  // chorus 1: il tema, un'ottava sotto la scrittura: il registro del tenore
+  swing=66 transpose=-12 $"tema" %Head
 
-Box Trumpet "Chorus 3" |272:
+Box Tenor Sax "Chorus 3" |272:
   // chorus 3: il tema ripreso, con piu' forza
-  swing=66 100@ %Head
+  swing=66 transpose=-12 100@ %Head
 
-Box Trumpet "Coda" |400:
+Box Tenor Sax "Coda" |400:
   // coda
-  swing=66 100@ key=F 8: 90@
+  swing=66 transpose=-12 100@ key=F 8: 90@
   r g*4 b*4 d*5 2f*5 e*5 c*5 |
   2a*4 c*5 f*5 3d*5 r |
   r g*4 b*4 d*5 2c*5 e*5 c*5 |
@@ -386,7 +386,7 @@ Box Drums "Coda" |400:
 
 // ================================================================ mixer
 
-Mixer Trumpet:
+Mixer Tenor Sax:
   volume: 92 pan: 0.3 mute: no solo: no reverb: 30
 
 Mixer Piano:
