@@ -47,6 +47,8 @@ class PlaybackMixin:
         if not self.playback.is_playing():
             return
         self._playback_paused_beat = self._current_elapsed_beats()
+        if self._playback_start_wall is None:   # ancora in preparazione: via "Preparazione…"
+            self.playback_progress.setFormat(self._time_text(self._playback_paused_beat))
         self._mixer_restart_timer.stop()
         self._mixer_restart_pending = False
         self.playback.stop()
@@ -92,12 +94,31 @@ class PlaybackMixin:
             return None
         return beat_at_elapsed_seconds(self._playback_tempo_map, 0.0, seconds)
 
+    def _show_preparing(self):
+        """Riscontro immediato del Play: Pausa sul pulsante e
+        "Preparazione…" sul tempo, disegnati subito. Quello che segue in
+        play() (controllo della sintassi, esportazione MIDI, mappe di tempo)
+        gira sul thread della GUI e su un brano lungo dura anche mezzo
+        secondo: senza ridisegnare qui, il pulsante cambiava solo alla fine,
+        e il rendering che viene dopo (in un thread) lasciava il tempo fermo
+        su 00:00 finche' non partiva l'audio."""
+        self._set_play_pause_button(playing=True)
+        self.playback_progress.setFormat(tr("Preparazione…"))
+        self.statusBar().showMessage(tr("Preparazione dell'ascolto…"))
+        for widget in (self.play_pause_btn, self.time_display, self.statusBar()):
+            widget.repaint()
+
     def play(self, _resume_offset_beats: float = 0.0):
         self.arrangement_view._stop_preview()   # un solo ascolto alla volta
         self.effects_panel.stop_loop()
+        previous_time = self.playback_progress.format()
+        self._show_preparing()
         for t in self.project.tracks:
             ok, msg = validate_track_text(t.text, self.project.patterns)
             if not ok:
+                self._set_play_pause_button(playing=False)
+                self.playback_progress.setFormat(previous_time)
+                self.statusBar().clearMessage()
                 QMessageBox.critical(self, tr("Errore di sintassi"),
                                       tr("Impossibile riprodurre: la traccia '{name}' contiene un errore:\n{msg}", name=t.name, msg=msg))
                 return
@@ -144,7 +165,6 @@ class PlaybackMixin:
             self.metronome_engine.start(self._metronome_tempo_map(), self._playback_metrica_map,
                                           offset_beats=_resume_offset_beats, start_immediately=False)
         self._playback_paused_beat = None
-        self._set_play_pause_button(playing=True)
         self.statusBar().showMessage(tr("Riproduzione in corso — {engine_desc}", engine_desc=engine_desc), 8000)
         from core.playback import streaming_available
         if self._active_loop_beats() is not None and not streaming_available():
@@ -219,16 +239,31 @@ class PlaybackMixin:
         seconds = max(0, int(seconds))
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
+    def _time_text(self, elapsed_beats: float) -> str:
+        """'mm:ss / mm:ss' del beat elapsed_beats sulla durata del brano."""
+        total_beats = self._playback_duration_beats
+        total_seconds = seconds_for_beats(self._playback_tempo_map, total_beats) if total_beats > 0 else 0.0
+        elapsed_seconds = seconds_for_beats(self._playback_tempo_map, elapsed_beats)
+        return f"{self._format_mmss(elapsed_seconds)} / {self._format_mmss(total_seconds)}"
+
     def _update_playback_progress(self):
         if self._playback_start_wall is None:
+            if not self.playback.is_playing():
+                # finito senza mai far partire l'audio (nessun motore, rendering
+                # fallito): non si resta su "Preparazione…" con Pausa acceso
+                self.stop()
+                return
             # l'audio non e' ancora partito: si stanno preparando le tracce
             # con effetti o strumenti plugin (con i profili NAM anche un minuto)
+            # o si renderizza il brano
             prepared = getattr(self.playback, "stem_progress", None)
             if prepared:
                 done, total = prepared
                 self.playback_progress.setValue(int(done / max(1, total) * 100))
                 self.playback_progress.setFormat(
                     tr("Preparo strumenti ed effetti… {done} di {total}", done=done, total=total))
+            else:
+                self.playback_progress.setFormat(tr("Preparazione…"))
             return
         elapsed_beats_total = self._current_elapsed_beats()
         total_beats = self._playback_duration_beats

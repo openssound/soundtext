@@ -333,3 +333,93 @@ def test_playback_time_follows_fermatas_and_waits_for_the_tail(monkeypatch):
     assert w._playback_start_wall is None and not w._playback_timer.isActive()
     w._dirty = False
     w.close()
+
+
+def test_play_shows_pause_and_preparing_before_the_slow_work(monkeypatch):
+    """Alla pressione di Play il pulsante passa a Pausa e il tempo dice
+    "Preparazione…" gia' disegnati PRIMA del lavoro sul thread della GUI
+    (sintassi, esportazione MIDI: su un brano lungo mezzo secondo), e la
+    scritta resta finche' l'audio non parte, anche senza tracce con
+    effetti da preparare (solo il rendering del brano)."""
+    from PySide6.QtCore import QEvent, QObject
+    from gui import main_window_playback
+    from gui.main_window import MainWindow
+    from core.i18n import tr
+    w = MainWindow()
+    w.project.add_track("Piano1", "Piano", "16: c*4 e*4")
+    w.show()
+    QApplication.processEvents()
+
+    class PaintCounter(QObject):
+        paints = 0
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Paint:
+                PaintCounter.paints += 1
+            return False
+    counter = PaintCounter()
+    w.play_pause_btn.installEventFilter(counter)
+
+    seen = {}
+    real_validate = main_window_playback.validate_track_text
+
+    def validate(*args):
+        seen.setdefault("validate", (w.play_pause_btn.text(), w.playback_progress.format(), PaintCounter.paints))
+        return real_validate(*args)
+    monkeypatch.setattr(main_window_playback, "validate_track_text", validate)
+    starting = {"value": False}
+
+    def fake_play(*args, **kwargs):
+        seen["engine"] = (w.play_pause_btn.text(), w.playback_progress.format())
+        starting["value"] = True        # come il thread di rendering: l'audio non e' ancora partito
+        return True
+    monkeypatch.setattr(w.playback, "play", fake_play)
+    monkeypatch.setattr(w.playback, "is_playing", lambda: starting["value"])
+
+    PaintCounter.paints = 0
+    w.toggle_play_pause()
+    assert seen["validate"][:2] == (tr("Pausa"), tr("Preparazione…"))
+    assert seen["validate"][2] > 0, "il pulsante va ridisegnato subito, non a fine play()"
+    assert seen["engine"] == (tr("Pausa"), tr("Preparazione…"))
+
+    w.playback.stem_progress = None
+    w._update_playback_progress()                   # rendering senza stem in corso
+    assert w.playback_progress.format() == tr("Preparazione…")
+    assert w.play_pause_btn.text() == tr("Pausa")
+
+    starting["value"] = False                       # finito senza mai far partire l'audio
+    w._update_playback_progress()
+    assert w.play_pause_btn.text() == tr("Play")
+    assert not w._playback_timer.isActive()
+    w._dirty = False
+    w.close()
+
+
+def test_play_right_after_stop_restarts_even_if_the_old_render_still_runs(monkeypatch):
+    """Un rendering superato da uno Stop finisce in sottofondo: non deve
+    contare come riproduzione, o il Play subito dopo lo Stop diventava una
+    Pausa (pulsante fermo su Play, nessun suono)."""
+    from core.playback import PlaybackEngine
+    from gui.main_window import MainWindow
+    from core.i18n import tr
+    engine = PlaybackEngine()
+    engine.stop()                                   # token != 0 (il rendering vale come "vero")
+    engine._rendering = engine._play_token          # un rendering in corso...
+    assert engine.is_playing()
+    engine.stop()                                   # ...che lo Stop supera
+    assert not engine.is_playing()
+
+    w = MainWindow()
+    w.project.add_track("Piano1", "Piano", "16: c*4 e*4")
+    calls = []
+    monkeypatch.setattr(w.playback, "play", lambda *a, **k: calls.append(1) or True)
+    w.playback.stop()
+    w.playback._rendering = w.playback._play_token
+    w.stop()
+    w.toggle_play_pause()
+    assert calls, "Play dopo Stop deve ripartire, non mettere in pausa"
+    assert w.play_pause_btn.text() == tr("Pausa")
+    w.playback._rendering = None
+    w.stop()
+    w._dirty = False
+    w.close()

@@ -39,6 +39,7 @@ def test_progress_bar_shows_the_preparation_and_stop_clears_it():
     from gui.main_window import MainWindow
     w = MainWindow()
     w._playback_start_wall = None
+    w.playback._starting = True          # il motore sta preparando: l'audio non e' ancora partito
     w.playback.stem_progress = (2, 5)
     w._update_playback_progress()
     assert "2" in w.playback_progress.format() and "5" in w.playback_progress.format()

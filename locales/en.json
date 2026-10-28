@@ -2181,5 +2181,7 @@
  "Scarica e installa...": "Download and install...",
  "Strumenti campionati SFZ, plugin VST3, profili e casse NAM, il motore NAM veloce e il motore SFZ interno, in un'unica finestra.": "SFZ sampled instruments, VST3 plugins, NAM profiles and cabinets, the fast NAM engine and the built-in SFZ engine, in a single window.",
  "Nessun profilo NAM nella cartella dei profili: scaricane una trentina con Suoni → Scarica e installa... (voce «Profili NAM consigliati»), oppure scegli un file con «Altro file…».": "No NAM profiles in the profiles folder: download about thirty with Sounds → Download and install... (item “Recommended NAM profiles”), or choose a file with “Other file…”.",
- "Su Linux si installano con apt: la password di amministratore la chiede una finestra del sistema.": "On Linux they are installed with apt: a system window asks for the administrator password."
+ "Su Linux si installano con apt: la password di amministratore la chiede una finestra del sistema.": "On Linux they are installed with apt: a system window asks for the administrator password.",
+ "Preparazione…": "Preparing…",
+ "Preparazione dell'ascolto…": "Getting playback ready…"
 }

@@ -1635,7 +1635,11 @@ class PlaybackEngine:
         # controllo del token e il Popen lasciava partire comunque l'audio
         # del thread vecchio, fuori dal controllo di Stop.
         self._proc_lock = threading.Lock()
-        self._rendering = False
+        # Token (vedi _play_token) del rendering in corso, None se nessuno:
+        # un rendering che uno Stop ha superato finisce in sottofondo, ma
+        # non conta piu' come riproduzione (vedi is_playing), altrimenti il
+        # Play subito dopo lo Stop diventava una Pausa senza effetto.
+        self._rendering = None
         # Da play() finche' l'audio non parte davvero (o la riproduzione
         # finisce): fra il rendering e l'apertura dello stream is_playing()
         # non deve dire False, o chi controlla se e' finita la ferma subito
@@ -1706,7 +1710,7 @@ class PlaybackEngine:
         # ancora effettivamente in corso su Windows senza un player CLI
         # installato (winsound) o senza alcun synth (player MIDI di sistema).
         player = self._pcm_player
-        return (self._starting or self._rendering or self._using_winsound
+        return (self._starting or self._rendering == self._play_token or self._using_winsound
                 or (player is not None and player.is_active())
                 or self._win_proc_handle is not None
                 or (self._proc is not None and self._proc.poll() is None))
@@ -1897,13 +1901,13 @@ class PlaybackEngine:
                     # si comincia appena e' pronto il pezzo da cui si parte;
                     # il resto si riempie mentre si ascolta (vedi SlowedMix)
                     job = slowed_mix(slow_key, entry, speed, start_seconds)
-                    self._rendering = True
+                    self._rendering = my_token
                     try:
                         while not job.wait_ready(start_seconds, timeout=0.2):
                             if self._play_token != my_token:
                                 return True
                     finally:
-                        self._rendering = False
+                        self._rendering = None
                     if job.complete:
                         _cache_put(slow_key, job.entry())
                     else:
@@ -2121,7 +2125,7 @@ class PlaybackEngine:
                 if _shared_synth and soundfont:
                     wav_path = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
                     self._render_tmp = wav_path
-                    self._rendering = True
+                    self._rendering = my_token
                     channel_levels = {}
                     try:
                         rendered = _shared_synth.render_to_wav(
@@ -2130,7 +2134,7 @@ class PlaybackEngine:
                             channel_overrides=channel_overrides, reverb_room=reverb_room,
                             channel_levels=channel_levels)
                     finally:
-                        self._rendering = False
+                        self._rendering = None
                     if self._play_token != my_token:
                         return
                     mixed = _add_audio_layers(wav_path) if rendered else None
