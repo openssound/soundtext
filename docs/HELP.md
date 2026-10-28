@@ -1,74 +1,128 @@
 # Guida utente — SoundText
 
-## Indice per argomento
+## Indice
 
-Cerca qui l'argomento che ti interessa e vai alla sezione indicata (i numeri sono quelli dei titoli di questa guida).
+La guida è divisa in sei parti; un clic su un titolo porta alla sezione.
 
-| Argomento | Sezione |
-| --- | --- |
-| [La finestra del programma, barra dei comandi, viste](#1.0) | [1.0](#1.0) |
-| [Cercare un comando (Ctrl+K) e scorciatoie da tastiera](#1.0bis) | [1.0bis](#1.0bis) |
-| [Annulla / Ripeti](#1.2) | [1.2](#1.2) |
-| [Salvataggio automatico e recupero](#1.2bis) | [1.2bis](#1.2bis) |
-| [Lingua dell'interfaccia](#1.3) | [1.3](#1.3) |
-| [Scrivere note, accordi, pause, durate, ottave, diesis e bemolle](#2) | [2](#2) |
-| [Voicing degli accordi e accordi con basso alternativo (slash)](#2.8) | [2.8](#2.8), [2.9](#2.9) |
-| [Ripetizioni e terzine / quintine](#2.1) | [2.1](#2.1), [2.1bis](#2.1bis) |
-| [Slide (pitch bend) e pedale del sustain](#2.3) | [2.3](#2.3), [2.4](#2.4) |
-| [Dinamiche, crescendo e diminuendo](#2.5) | [2.5](#2.5) |
-| [Cambi di tempo (accelerando, rallentando) e di metrica](#2.6) | [2.6](#2.6), [2.7](#2.7) |
-| [Tonalità del brano e ottave relative](#2.7bis) | [2.7bis](#2.7bis), [2.18](#2.18) |
-| [Controlli di battuta (|) e commenti (//)](#2.10) | [2.10](#2.10) |
-| [Più voci nella stessa traccia e testo cantato](#2.12) | [2.12](#2.12), [2.13](#2.13) |
-| [Automazioni (volume, pan... che cambiano nel tempo)](#2.15) | [2.15](#2.15) |
-| [Legature, swing, ritornelli, segni e indicazioni](#2.16) | [2.16](#2.16), [2.17](#2.17) |
-| [Micro-tempo, accordatura, molte tracce, MTXT](#2.19) | [2.19](#2.19) |
-| [Ancore di battuta (bar=N)](#2.20) | [2.20](#2.20) |
-| [Trasposizione (transpose=, %Nome+N)](#2.21) | [2.21](#2.21) |
-| [reset:, levare, versione del file (ST 2.6)](#2.22) | [2.22](#2.22) |
-| [Accordi, abbellimenti, D.C./D.S., strofe, titolo (ST 2.7)](#2.23) | [2.23](#2.23) |
-| [Pattern (%Nome): riutilizzare e riorganizzare parti](#4) | [4](#4) |
-| [Libreria MIDI (&"Nome") e cartella dei brani songs/](#5) | [5](#5), [5bis](#5bis) |
-| [Percussioni e batteria scritta a mano](#6) | [6](#6) |
-| [Tracce e strumenti, strumenti personalizzati](#7) | [7](#7) |
-| [Mixer: volumi, pan, mute, solo e volume master](#8) | [8](#8), [8.1](#8.1), [8.2](#8.2) |
-| [Riverbero e chorus del sintetizzatore](#8.3) | [8.3](#8.3) |
-| [Effetti: EQ, compressore, delay, riverbero, noise gate, loop di calibrazione](#8.4) | [8.4](#8.4) |
-| [Amplificatore per chitarra, distorsione, casse e file IR](#8.4) | [8.4](#8.4) |
-| [Profili NAM (amplificatori e pedali veri), dove scaricarli](#8.4) | [8.4](#8.4) |
-| [Mastering: effetti sul master e limiter](#8.5) | [8.5](#8.5) |
-| [Suoni da studio con programmi esterni (re-amping)](#8.6) | [8.6](#8.6) |
-| [Plugin VST3 e LV2, strumento SFZ interno](#8.7) | [8.7](#8.7) |
-| [Vista Struttura a box: strofe, ritornelli, spostare e copiare parti](#8bis) | [8bis](#8bis) |
-| [Congelare gli accordi, scegliere il voicing, autocompletamento](#9) | [9](#9), [9.1](#9.1), [9.2](#9.2) |
-| [Generare batteria, basso, accompagnamento e riff senza IA](#9bis) | [9bis](#9bis) |
-| [Stili personali (imparare dai tuoi brani) e melodie a frasi](#9bis.1) | [9bis.1](#9bis.1), [9bis.2](#9bis.2) |
-| [Importare ed esportare MIDI](#10) | [10](#10) |
-| [MusicXML e ABC: esportare e importare partiture](#10.1) | [10.1](#10.1), [10.2](#10.2), [10.3](#10.3) |
-| [Vedere e stampare la partitura](#10.1bis) | [10.1bis](#10.1bis) |
-| [Importazione audio: da voce, microfono o file a note](#10bis) | [10bis](#10bis) |
-| [Suonare con la tastiera del computer o una tastiera MIDI](#10ter) | [10ter](#10ter) |
-| [Tracce audio: registrare voce e chitarra, esportare](#10quater) | [10quater](#10quater) |
-| [Salvare il progetto (.st)](#11) | [11](#11) |
-| [Riproduzione, loop A-B, saltare a un punto](#12) | [12](#12) |
-| [Scegliere il SoundFont, SoundFont per singolo strumento](#12.3) | [12.3](#12.3), [12.4](#12.4) |
-| [Metronomo e umanizzazione](#12.5) | [12.5](#12.5), [12.6](#12.6) |
-| [File di log (se qualcosa non funziona)](#13.1) | [13.1](#13.1) |
-| [Tecnologie, ringraziamenti, licenze](#14) | [14](#14) |
-| [Installazione su Linux, Windows e macOS (in fondo alla guida)](#inst) | [↓](#inst) |
+**Parte 1 — Primi passi**
+
+- [1. Concetti di base](#1)
+  - [1.1 La finestra](#1.1)
+  - [1.2 Il primo brano](#1.2)
+  - [1.3 Terminologia](#1.3)
+  - [1.4 Cerca un comando (Ctrl+K) e scorciatoie](#1.4)
+  - [1.5 Evidenziazione sintattica e scorciatoie](#1.5)
+  - [1.6 Annulla/Ripeti](#1.6)
+  - [1.7 Salvataggio automatico e recupero](#1.7)
+  - [1.8 Lingua dell'interfaccia](#1.8)
+- [2. Salvataggio progetto](#2)
+- [3. Riproduzione](#3)
+  - [3.1 Barra di avanzamento ed evidenziazione del token in esecuzione](#3.1)
+  - [3.2 Modifiche al mixer durante la riproduzione](#3.2)
+  - [3.3 Metronomo](#3.3)
+  - [3.4 Umanizza](#3.4)
+
+**Parte 2 — Scrivere la musica**
+
+- [4. ST-Syntax (grammatica del SoundText Language)](#4)
+  - [4.1 Stato Corrente](#4.1)
+  - [4.2 Valori di nota espliciti (`'8.`)](#4.2)
+  - [4.3 Controlli di battuta (`|`) e commenti (`//`)](#4.3)
+  - [4.4 Gruppi di ripetizione](#4.4)
+  - [4.5 Tuplet (terzine / quintine / settimine)](#4.5)
+  - [4.6 Legature e swing](#4.6)
+  - [4.7 Modificatori della nota (e dell'accordo)](#4.7)
+  - [4.8 Piu' voci nella stessa traccia (`{ ; }`)](#4.8)
+  - [4.9 Testo cantato (`"..."`)](#4.9)
+  - [4.10 Ottave relative e tonalita'](#4.10)
+  - [4.11 Trasposizione (`transpose=`, `%Nome+N`)](#4.11)
+- [5. Accordi](#5)
+  - [5.1 Voicing esplicito sugli accordi (`.stile`)](#5.1)
+  - [5.2 Basso alternativo sugli accordi (accordo "slash")](#5.2)
+- [6. Congelare gli accordi](#6)
+  - [6.1 Scegliere il voicing con un doppio click](#6.1)
+  - [6.2 Autocompletamento durante la digitazione](#6.2)
+- [7. Espressione: dinamiche, slide, pedale e automazioni](#7)
+  - [7.1 Dinamiche classiche e rampe (crescendo/diminuendo)](#7.1)
+  - [7.2 Slide (pitch bend / portamento)](#7.2)
+  - [7.3 Pedale del sustain (SON / SOFF)](#7.3)
+  - [7.4 Automazioni (volume, espressione, pan... che cambiano nel tempo)](#7.4)
+- [8. Tempo, metrica e tonalità](#8)
+  - [8.1 Cambi di tempo (accelerando/rallentando)](#8.1)
+  - [8.2 Cambi di tempo e metrica per battuta](#8.2)
+  - [8.3 Tonalita' del brano](#8.3)
+  - [8.4 Micro-tempo, accordatura, molte tracce, MTXT](#8.4)
+- [9. Forma del brano: ritornelli, segni, levare](#9)
+  - [9.1 Ritornelli, segni e indicazioni](#9.1)
+  - [9.2 Accordi, abbellimenti, D.C./D.S., strofe e titolo (ST 2.7)](#9.2)
+  - [9.3 Ancore di battuta (`bar=`)](#9.3)
+  - [9.4 `reset:`, levare e versione del file (ST 2.6)](#9.4)
+- [10. Pattern (%Nome)](#10)
+  - [10.1 Ascoltare un pattern](#10.1)
+  - [10.2 Riorganizzare la song con i pattern](#10.2)
+  - [10.3 Menu contestuale su una selezione (tasto destro)](#10.3)
+  - [10.4 Rinominare un pattern](#10.4)
+- [11. Libreria MIDI (&"Nome")](#11)
+  - [11.1 Cartella dei brani (songs/)](#11.1)
+- [12. Percussioni](#12)
+- [13. La specifica e la libreria ST-language](#13)
+
+**Parte 3 — Organizzare il brano**
+
+- [14. Tracce e strumenti](#14)
+  - [14.1 Caricamento automatico degli strumenti personalizzati](#14.1)
+- [15. Struttura brano (vista a box)](#15)
+- [16. Genera batteria/basso (senza IA)](#16)
+  - [16.1 Stili personali: imparare dai tuoi brani](#16.1)
+  - [16.2 Melodie a frasi](#16.2)
+
+**Parte 4 — Il suono**
+
+- [17. SoundFont](#17)
+  - [17.1 Scegliere il SoundFont (es. FluidR3_GM.sf2)](#17.1)
+  - [17.2 SoundFont diversi per singolo strumento](#17.2)
+- [18. Mixer](#18)
+  - [18.1 Volume: 0-200%, scala direttamente la velocity delle note](#18.1)
+  - [18.2 Volume master](#18.2)
+  - [18.3 Riverbero e chorus (FX)](#18.3)
+- [19. Catena di effetti e pannello Effetti](#19)
+  - [19.1 Dinamica e tono](#19.1)
+  - [19.2 Amplificatore e distorsione](#19.2)
+  - [19.3 Profili NAM](#19.3)
+  - [19.4 Spazio: delay e riverbero](#19.4)
+  - [19.5 Il pannello Effetti](#19.5)
+  - [19.6 Da sapere](#19.6)
+- [20. Effetti sul master (mastering)](#20)
+- [21. Plugin esterni (VST3 e LV2)](#21)
+- [22. Re-amping: un simulatore esterno](#22)
+
+**Parte 5 — Suonare, registrare, importare ed esportare**
+
+- [23. Suona con la tastiera (tastiera del computer o tastiera MIDI)](#23)
+- [24. Tracce audio (voce, chitarra, tastiera registrate)](#24)
+- [25. Importazione audio (voce/microfono/file)](#25)
+- [26. Import/Export MIDI](#26)
+- [27. Partiture: MusicXML, ABC e stampa](#27)
+  - [27.1 Esportare la partitura (MusicXML)](#27.1)
+  - [27.2 Vedere e stampare la partitura (Vista → Partitura)](#27.2)
+  - [27.3 Importare una partitura (MusicXML)](#27.3)
+  - [27.4 Notazione ABC (importare ed esportare)](#27.4)
+
+**Parte 6 — Riferimento**
+
+- [28. Informazioni su SoundText](#28)
+  - [28.1 File di log](#28.1)
+- [29. Tecnologie, ringraziamenti e licenze](#29)
+  - [29.1 Le tecnologie usate](#29.1)
+  - [29.2 Ringraziamenti](#29.2)
+  - [29.3 Licenze e limiti alla distribuzione](#29.3)
+- [30. Installazione su Linux](#30)
+- [31. Installazione su Windows](#31)
+- [32. Installazione su macOS](#32)
 
 ---
 
-## 0. Terminologia
-
-- **SoundText Language**: il linguaggio testuale con cui si scrive la
-  partitura (note, accordi, percussioni, pattern, comandi di stato...).
-- **ST-Syntax**: la grammatica formale del SoundText Language — le regole
-  sintattiche descritte nella sezione 2.
-- **SoundText Engine**: il motore che risolve un accordo astratto (es.
-  `Cmaj7`) in note MIDI concrete, in base allo strumento della traccia
-  (spesso chiamato anche "motore di voicing" in questa guida).
-- **.st**: estensione dei file progetto.
+# Parte 1 — Primi passi
 
 ## 1. Concetti di base
 
@@ -78,7 +132,7 @@ dipendente dallo strumento) e **playback** (motore MIDI). Ogni traccia e'
 associata a uno strumento e contiene una sequenza di *token* separati da
 spazi, conformi alla ST-Syntax.
 
-### 1.0 La finestra
+### 1.1 La finestra
 
 - **Barra dei comandi**, da sinistra: il **trasporto** (torna all'inizio,
   Play/Pausa, Stop, **●** Registra nella traccia audio selezionata, loop
@@ -94,15 +148,59 @@ spazi, conformi alla ST-Syntax.
   sotto il destro), con la spia rossa **CLIP** di
   saturazione (resta accesa finche' non la si clicca); accanto la **barra
   di avanzamento**: un clic salta in quel punto.
-- **Vista Struttura brano** (8bis): le tracce a box, con il mixer nelle
-  testate delle righe (8); oppure **vista Testo**: le stesse testate in
+- **Vista Struttura brano** (15): le tracce a box, con il mixer nelle
+  testate delle righe (18); oppure **vista Testo**: le stesse testate in
   colonna a sinistra e la notazione della traccia selezionata, con i
   numeri di riga e, sotto, la riga della sintassi (un clic sugli avvisi
   delle battute porta al primo). Se la traccia e' fatta di box, una banda
   in alto lo dice: il testo si modifica aprendo un box nella vista
   Struttura.
 
-### 1.0bis Cerca un comando (Ctrl+K) e scorciatoie
+### 1.2 Il primo brano
+
+Quattro battute, per vedere come funziona:
+
+1. **Progetto → Nuovo** (Ctrl+N).
+2. **Traccia → Aggiungi → Traccia...** (Ctrl+T): chiamala "Accordi" e
+   scegli un pianoforte. Passa alla vista **Testo** (pulsante nella barra
+   dei comandi) e scrivi:
+
+   ```
+   4: 4C | 4Am | 4F | 4G |
+   ```
+
+   Le lettere maiuscole sono accordi; `4:` fissa la durata di base a un
+   quarto e `4C` dura quattro quarti, cioè tutta la battuta.
+3. Aggiungi un'altra traccia, "Melodia", con lo stesso strumento, e
+   scrivi:
+
+   ```
+   8: e g c*5 g e g c*5 g | a c*5 e*5 c*5 a c*5 e*5 c*5 | f a c*5 a f a c*5 a | g b d*5 b 4g |
+   ```
+
+   Le minuscole sono note; `8:` fa durare ogni nota un ottavo, `*5`
+   sceglie l'ottava e `|` controlla che la battuta sia completa.
+4. **F5** per ascoltare (nella vista Struttura anche Spazio); di nuovo per
+   la pausa.
+5. **Progetto → Salva** (Ctrl+S): il brano diventa un file `.st` di
+   testo.
+
+Per continuare: la grammatica completa è nel capitolo 4, la vista a
+box nel capitolo 15; gli esempi pronti si aprono da **Progetto → Apri
+esempio...**.
+
+### 1.3 Terminologia
+
+- **SoundText Language**: il linguaggio testuale con cui si scrive la
+  partitura (note, accordi, percussioni, pattern, comandi di stato...).
+- **ST-Syntax**: la grammatica formale del SoundText Language — le regole
+  sintattiche descritte nella sezione 4.
+- **SoundText Engine**: il motore che risolve un accordo astratto (es.
+  `Cmaj7`) in note MIDI concrete, in base allo strumento della traccia
+  (spesso chiamato anche "motore di voicing" in questa guida).
+- **.st**: estensione dei file progetto.
+
+### 1.4 Cerca un comando (Ctrl+K) e scorciatoie
 
 **Cerca un comando**: **Ctrl+K**, oppure la casella "Cerca un comando…" in
 alto a destra nella barra dei menu (anche **Aiuto → Cerca un comando...**).
@@ -132,14 +230,14 @@ promemoria e' in **? Come si usa**, in alto a sinistra nella vista.
 Le voci corrispondenti stanno anche nei menu **Modifica** (elimina,
 duplica, dividi), **Vista** (zoom) e **Playback**.
 
-### 1.1 Evidenziazione sintattica e scorciatoie
+### 1.5 Evidenziazione sintattica e scorciatoie
 
 L'editor colora automaticamente ogni token secondo il suo tipo: note
 (azzurro), accordi (ambra), percussioni (viola), comandi di stato `N:`/`N@`
 (verde), riferimenti `%pattern` e `&"midi"` (corallo), blocchi `[...]`
 (giallo), pause (grigio). I commenti `//` sono in grigio corsivo, i controlli di
 battuta `|` in grigio (in rosso sottolineato se non cadono su una stanghetta,
-vedi 2.10); i blocchi di voci `{ ; }` in turchese, il testo cantato in rosa
+vedi 4.3); i blocchi di voci `{ ; }` in turchese, il testo cantato in rosa
 corsivo, e dentro gruppi e voci ogni token ha il suo colore. I colori riflettono esattamente come il motore
 interpreta il testo, quindi sono anche un aiuto per individuare errori a
 colpo d'occhio.
@@ -153,7 +251,7 @@ Scorciatoie da tastiera principali: `Ctrl+N` nuovo progetto, `Ctrl+O` apri,
 `Ctrl+E` modifica traccia, `Ctrl+Z`/`Ctrl+Y` annulla/ripeti, `F5` play/pausa, `F6` stop,
 `Ctrl+[`/`Ctrl+]` inizio/fine loop, `Ctrl+L` loop on/off, `F1` questa guida.
 
-### 1.2 Annulla/Ripeti
+### 1.6 Annulla/Ripeti
 
 **Modifica → Annulla** (`Ctrl+Z`) e **Ripeti** (`Ctrl+Y` o
 `Ctrl+Shift+Z`) valgono per **ogni modifica al progetto**, da qualunque
@@ -170,7 +268,7 @@ iniziarne uno nuovo. La cronologia si azzera aprendo o creando un
 progetto. Nei dialoghi (modifica di un box, pattern...) il testo ha invece
 il proprio Annulla, indipendente.
 
-### 1.2bis Salvataggio automatico e recupero
+### 1.7 Salvataggio automatico e recupero
 
 Mentre il progetto ha **modifiche non salvate**, SoundText ne scrive una
 **copia di recupero** ogni minuto (solo se nel frattempo è cambiato
@@ -194,7 +292,7 @@ un file temporaneo e lo mette al posto del progetto solo alla fine, così
 un'interruzione a metà (disco pieno, corrente che manca) non lascia un
 file `.st` troncato.
 
-### 1.3 Lingua dell'interfaccia
+### 1.8 Lingua dell'interfaccia
 
 SoundText parla **italiano, inglese, francese e spagnolo**. La lingua si
 sceglie in **Opzioni → Lingua** e vale dal prossimo avvio: SoundText
@@ -208,7 +306,163 @@ file `.st` (`Tempo:`, `Traccia`, `Effetti`...), che sono il formato dei
 progetti: un brano scritto con l'interfaccia in italiano si apre uguale
 con l'interfaccia in inglese, e viceversa.
 
-## 2. ST-Syntax (grammatica del SoundText Language)
+## 2. Salvataggio progetto
+
+Il progetto si salva in formato testuale nativo `.st` (leggibile e
+modificabile anche a mano), che include tempo, metrica, pattern, tracce e
+le definizioni degli eventuali strumenti personalizzati usati (vedi 14.1),
+cosi' che il file sia autosufficiente e portabile tra installazioni diverse.
+La libreria MIDI (`midi/`) resta invece condivisa a livello di installazione
+e non viaggia dentro al file `.st`.
+
+Il titolo della finestra mostra sempre il nome del file attualmente aperto
+("SoundText — nomefile.st"), anche dopo un'importazione MIDI
+("SoundText — nomefile.mid"), per sapere sempre a colpo d'occhio su
+quale progetto si sta lavorando.
+
+## 3. Riproduzione
+
+Il tasto Play esporta un MIDI temporaneo. Se `fluidsynth` e un SoundFont sono
+disponibili, la sintesi avviene **offline** (rendering in un file WAV
+temporaneo, poi riprodotto con il miglior player audio trovato — su Linux
+`pw-play`, `paplay`, `aplay`, `ffplay` o `mpv`; su macOS `afplay` (incluso
+nel sistema) o, se installati, `ffplay`/`mpv`; su Windows `ffplay`/`mpv` se
+installati, altrimenti il modulo `winsound` della libreria standard di
+Python, sempre disponibile) invece che in tempo reale: questo evita i
+crepitii/dropout dovuti a underrun del driver audio, tipici della sintesi
+MIDI realtime su PulseAudio/PipeWire, e da un risultato piu' pulito. Se c'e'
+la libreria FluidSynth (SoundText la usa direttamente), questo
+rendering offline usa un'unica istanza di fluidsynth **persistente** per
+tutta la sessione, con il SoundFont caricato in memoria una sola volta
+invece che ad ogni Play: latenza di avvio molto piu' bassa (il costo di
+caricamento del SoundFont, anche centinaia di ms per un GM da decine di MB,
+si paga solo la prima volta), a parita' di strategia anti-crepitio (il
+rendering resta offline, non tocca l'output audio in tempo reale). Se il
+rendering offline non riesce (con o senza la libreria), o non c'e' un
+player WAV disponibile, si ripiega sul binario CLI `fluidsynth` e poi sulla
+riproduzione fluidsynth in tempo reale; se fluidsynth non e' disponibile
+del tutto, su `timidity` o `wildmidi`; in mancanza di tutto, sul player
+MIDI predefinito del sistema (`xdg-open` su Linux, `open` su macOS,
+apertura diretta col programma associato su Windows).
+
+Con la libreria FluidSynth **e** `sounddevice` (in requirements.txt)
+installati il brano renderizzato viene riprodotto direttamente dal
+programma invece che da un player esterno, e il rendering viene
+**memorizzato**: solo il primo Play (o il primo dopo una modifica che
+cambia il suono, come note, mixer o umanizzazione) deve attendere la
+sintesi, mentre pausa/ripresa e salti ripartono all'istante. La posizione
+mostrata da barra, evidenziazione, testina e metronomo e' quella letta dal
+dispositivo audio, quindi resta allineata a cio' che si sente.
+
+### Saltare a un punto e ripetere una sezione (loop A-B)
+
+- **Salto**: clicca sulla barra di avanzamento in fondo alla finestra,
+  oppure sul righello delle battute (o su una sezione) nella vista
+  Struttura brano. Se il brano sta
+  suonando riparte da li'; se e' fermo o in pausa, il prossimo Play
+  partira' da quel punto.
+- **Loop A-B** (menu **Riproduzione → Loop**): **Loop: inizio (A) qui** (`Ctrl+[`) e
+  **Loop: fine (B) qui** (`Ctrl+]`) fissano i due estremi sul beat in
+  riproduzione (o sul punto di pausa/salto), arrotondato al beat intero.
+  Impostare B attiva il loop; **Ripeti la sezione A-B** (`Ctrl+L`) lo
+  accende e spegne senza perdere A e B, **Cancella loop** li azzera. La
+  sezione appare come una fascia colorata sul righello della Struttura
+  brano. Si puo' attivare, spostare o togliere il loop anche mentre il
+  brano suona, senza interruzioni.
+- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%, o Riproduzione → Velocita' d'ascolto): rallenta il
+  brano senza cambiarne l'intonazione, per esercitarsi su un passaggio
+  (anche in loop); il metronomo segue. La prima volta a una velocita' nuova
+  il brano si prepara per qualche secondo. Non cambia ne' il brano ne'
+  l'esportazione.
+- Il loop richiede la riproduzione diretta descritta sopra
+  (libreria FluidSynth + `sounddevice`): con i player di ripiego il brano non
+  viene ripetuto, e un messaggio in barra di stato lo segnala.
+
+### 3.1 Barra di avanzamento ed evidenziazione del token in esecuzione
+
+Durante la riproduzione, il display del tempo nella barra dei comandi
+mostra il tempo trascorso e la durata totale del brano (es. "00:42 /
+01:30") e la posizione (battuta e movimento); la barra di avanzamento in
+fondo alla finestra avanza con il brano. Nella
+traccia visualizzata nell'editor, il token attualmente in esecuzione (nota,
+pausa, accordo, blocco, o l'intero riferimento se e' un `%pattern`/`&"midi"`)
+viene evidenziato con i colori invertiti rispetto al tema (sfondo chiaro,
+testo scuro), per seguire visivamente l'esecuzione riga per riga. L'editor
+scorre automaticamente quando necessario per tenere sempre visibile il
+token evidenziato (nessuno scroll manuale richiesto durante l'ascolto), ma
+solo quando esce dalla porzione visibile: non scorre continuamente nota
+per nota, e non sposta il cursore di modifica dell'utente. Cambiando
+traccia durante la riproduzione, l'evidenziazione si sposta sulla nuova
+traccia selezionata, sempre sincronizzata con lo stesso tempo trascorso.
+
+### 3.2 Modifiche al mixer durante la riproduzione
+
+Mute, Solo, Volume e Pan possono essere modificati anche a brano in corso:
+il programma riavvia automaticamente la riproduzione dalla posizione in cui
+si trovava (non da capo), applicando subito le nuove impostazioni. E'
+percepibile una breve interruzione al momento del riavvio (il brano va
+risintetizzato con le nuove impostazioni), ma non e' necessario fermare
+manualmente e far ripartire la riproduzione per sentire l'effetto di una
+modifica al mixer.
+
+**Se il suono non ti soddisfa nonostante un buon SoundFont**, tieni presente che:
+- **Suoni → SoundFont → Mostra SoundFont in uso** indica esattamente quale motore e
+  quale file `.sf2` verranno usati: se non mostra "fluidsynth persistente
+  (libreria) + ...sf2" o "fluidsynth (CLI) + ...sf2", il programma sta
+  silenziosamente ricorrendo a un fallback di qualita' inferiore (spesso
+  perche' `fluidsynth` non e' installato, o nessun `.sf2` e' stato trovato)
+  — installa `fluidsynth` e verifica il SoundFont da li'.
+- Anche con un buon SoundFont, il **suono General MIDI ha un limite di
+  realismo**: è pensato per una riproduzione fedele e riconoscibile della
+  partitura. Per un suono più vero usa gli **strumenti campionati SFZ** e i
+  **plugin** (capitolo 21), che si scaricano da **Suoni → Scarica e
+  installa...**, e per chitarra e basso gli amplificatori e i profili NAM
+  (capitolo 19).
+
+### 3.3 Metronomo
+
+Il pulsante **Metronomo** (icona a piramide) nella barra dei comandi fa sentire un click a tempo durante la
+riproduzione dell'ensemble, sincronizzato con gli eventuali cambi di
+tempo/metrica del progetto (stessa mappa usata da barra di avanzamento e
+campi Tempo/Metrica, vedi 8.2); lo stesso controllo, con click a
+tempo/metrica costante, e' disponibile anche nel dialogo di importazione
+audio e nel dialogo "Suona con la tastiera" (sezioni 25 e 23), utile
+per registrare/suonare a tempo.
+
+Suono e volume del click si scelgono in **Opzioni → Metronomo**: tre
+preset di suono (Click, Beep, Legno, Blocco di legno, Claves, Campanaccio, Triangolo, Hi-hat) e uno slider di volume (0-100%),
+applicati immediatamente (anche a click gia' in corso) e provabili sul
+posto col pulsante "Prova", senza bisogno di un Ok/Annulla separato. I
+file audio del click sono sintetizzati e salvati in cache alla prima
+esecuzione (nessuna dipendenza aggiuntiva), cosi' da generarli una sola
+volta per macchina.
+
+### 3.4 Umanizza
+
+La voce **Riproduzione → Umanizza** (spuntabile) aggiunge una
+piccola variazione casuale a timing e velocity delle note in riproduzione,
+per un suono meno meccanico di una griglia perfettamente quantizzata. La
+batteria riceve solo la variazione di velocity (uno spostamento di timing
+su un pattern percussivo tende a suonare "impreciso" piuttosto che
+"umano"); tutti gli altri strumenti ricevono entrambe. **Attivabile/
+disattivabile anche a riproduzione in corso**: come un cambio di
+Volume/Pan, la riproduzione si riavvia automaticamente dalla posizione
+corrente con la nuova impostazione applicata.
+
+L'intensita' si regola in **Opzioni → Umanizza** con uno slider (0-100%,
+predefinito 50%), applicato immediatamente (riavvia la riproduzione in
+corso, se Umanizza e' attivo). La variazione **non usa un seed fisso**:
+due riproduzioni consecutive con le stesse impostazioni non suoneranno mai
+identiche, proprio come due esecuzioni dal vivo dello stesso musicista.
+Riguarda solo la riproduzione/l'export MIDI (il rendering finale in tick
+assoluti): il testo della traccia e la timeline "di griglia" nell'editor
+restano quelli scritti, invariati.
+
+---
+
+# Parte 2 — Scrivere la musica
+
+## 4. ST-Syntax (grammatica del SoundText Language)
 
 | Costrutto | Significato | Esempio |
 | --- | --- | --- |
@@ -217,13 +471,13 @@ con l'interfaccia in inglese, e viceversa.
 | `*n` dopo una nota o un accordo | ottava | `c*4`, `Cmaj7*3` |
 | `/Nota` dopo un accordo | basso alternativo ("accordo slash") | `C/E` (Do col basso Mi) |
 | lettera MAIUSCOLA + suffisso | accordo astratto | `Cmaj7`, `Am`, `G7` |
-| `.stile` dopo un accordo | forza un voicing specifico (vedi 2.8) | `Cmaj7.drop2`, `C.power` |
-| parola minuscola (36 identificatori percussivi, vedi sezione 5) | evento percussivo | `kick` |
+| `.stile` dopo un accordo | forza un voicing specifico (vedi 5.1) | `Cmaj7.drop2`, `C.power` |
+| parola minuscola (36 identificatori percussivi, vedi sezione 12) | evento percussivo | `kick` |
 | numero iniziale | moltiplicatore di durata | `2c`, `4Cmaj7` |
 | `r` / `Nr` | pausa (1 o N unita' di griglia) | `r`, `3r` |
 | `[...]` | eventi/note simultanee | `[c*4 e*4 g*4]`, `[kick hihat]` |
 | `N:` | cambia la griglia ritmica corrente | `16:` (sedicesimi) |
-| `NT:` / `NQ:` / `NS:` | tuplet: terzine / quintine / settimine (vedi 2.1bis) | `8T:`, `16Q:`, `8S:` |
+| `NT:` / `NQ:` / `NS:` | tuplet: terzine / quintine / settimine (vedi 4.5) | `8T:`, `16Q:`, `8S:` |
 | `N@` | cambia la velocity corrente (1-127) | `100@` |
 | `%Nome` | richiama un pattern | `%Rock1` |
 | `&"Nome"` | richiama un file MIDI dalla libreria | `&"Intro"` |
@@ -239,33 +493,33 @@ con l'interfaccia in inglese, e viceversa.
 | `pppp@`...`ffff@` | dinamiche classiche, equivalenti a una velocity fissa | `mf@` = `75@` |
 | `>>` dopo `N@`/dinamica | crescendo fino al prossimo valore di velocity | `p@ >> c*4 ff@` |
 | `<<` dopo `N@`/dinamica | diminuendo fino al prossimo valore di velocity | `110@ << c*4 30@` |
-| **\|** | controllo di battuta: qui finisce una battuta (non suona, avvisa se non torna, vedi 2.10) | `c d e f` **\|** `g a b c` **\|** |
+| **\|** | controllo di battuta: qui finisce una battuta (non suona, avvisa se non torna, vedi 4.3) | `c d e f` **\|** `g a b c` **\|** |
 | `//` | commento fino a fine riga (ignorato) | `c d e f // strofa` |
-| `'N` dopo un token | valore di nota esplicito, senza cambiare griglia (vedi 2.11) | `c'8.` (croma puntata), `[c e g]'2`, `r'4`, `e'8T` |
-| `{ ... ; ... }` | voci che partono insieme nella stessa traccia (vedi 2.12) | `{ c*5 d*5 e*5 f*5 ; 4c*4 }` |
-| `"..."` | testo cantato: una sillaba per nota, sulle note che precedono (vedi 2.13) | `c d e 2f "Ma- ri- a, sei"` |
-| `vol=N` `expr=N` `pan=N` `mod=N` `rev=N` `cho=N` | automazioni: volume, espressione, pan (-1..1), modulazione, mandate di riverbero e chorus (vedi 2.15) | `vol=80`, `pan=-0.5` |
+| `'N` dopo un token | valore di nota esplicito, senza cambiare griglia (vedi 4.2) | `c'8.` (croma puntata), `[c e g]'2`, `r'4`, `e'8T` |
+| `{ ... ; ... }` | voci che partono insieme nella stessa traccia (vedi 4.8) | `{ c*5 d*5 e*5 f*5 ; 4c*4 }` |
+| `"..."` | testo cantato: una sillaba per nota, sulle note che precedono (vedi 4.9) | `c d e 2f "Ma- ri- a, sei"` |
+| `vol=N` `expr=N` `pan=N` `mod=N` `rev=N` `cho=N` | automazioni: volume, espressione, pan (-1..1), modulazione, mandate di riverbero e chorus (vedi 7.4) | `vol=80`, `pan=-0.5` |
 | `>>` dopo un'automazione | rampa continua fino al prossimo valore dello stesso nome; `>>exp`, `>>log`, `>>s` scelgono la curva | `vol=0 >>exp 4c vol=100` |
 | `<` / `>` in fondo a una nota | crescendo / diminuendo durante la nota tenuta (forcella) | `2c<`, `c'2>` |
-| `~` in fondo a una nota | legatura di valore: la nota continua nella successiva uguale, anche oltre la stanghetta (vedi 2.16) | `2c~ \| 2c` |
-| `(` ... `)` in fondo alle note | legatura di portamento: le note in mezzo suonano legate (vedi 2.16) | `c( d e f)` |
+| `~` in fondo a una nota | legatura di valore: la nota continua nella successiva uguale, anche oltre la stanghetta (vedi 4.6) | `2c~ \| 2c` |
+| `(` ... `)` in fondo alle note | legatura di portamento: le note in mezzo suonano legate (vedi 4.6) | `c( d e f)` |
 | `swing=N` / `swing16=N` | swing delle crome / delle semicrome (50 = diritto, 66 = terzinato) | `swing=62 8: c d e f` |
-| `bar=N` | ancora di battuta: porta il cursore all'inizio della battuta N, con i silenzi che servono (vedi 2.20) | `bar=29 c d e f` |
-| `transpose=N` | trasposizione: le note, gli accordi e gli slide che seguono suonano N semitoni sopra o sotto (vedi 2.21); `%Nome+N` trasporta un pattern | `transpose=-2 c d e` |
-| `\|:` ... `:\|` | ritornello: la parte fra i due segni si suona due volte (vedi 2.17) | `\|: c d e f :\|` |
-| `\|1.` `\|2.` `\|\|` | caselle del ritornello: finali diversi per ogni passaggio (vedi 2.17) | `\|1. g a :\| \|2. 4c \|\|` |
-| `$segno` in fondo a una nota | accento, corona, trillo, mordente, gruppetto, tenuto, marcato (vedi 2.17) | `c$fermata`, `d$tr`, `e$accent` |
+| `bar=N` | ancora di battuta: porta il cursore all'inizio della battuta N, con i silenzi che servono (vedi 9.3) | `bar=29 c d e f` |
+| `transpose=N` | trasposizione: le note, gli accordi e gli slide che seguono suonano N semitoni sopra o sotto (vedi 4.11); `%Nome+N` trasporta un pattern | `transpose=-2 c d e` |
+| `\|:` ... `:\|` | ritornello: la parte fra i due segni si suona due volte (vedi 9.1) | `\|: c d e f :\|` |
+| `\|1.` `\|2.` `\|\|` | caselle del ritornello: finali diversi per ogni passaggio (vedi 9.1) | `\|1. g a :\| \|2. 4c \|\|` |
+| `$segno` in fondo a una nota | accento, corona, trillo, mordente, gruppetto, tenuto, marcato (vedi 9.1) | `c$fermata`, `d$tr`, `e$accent` |
 | `$"testo"` | indicazione sopra il pentagramma | `$"rit."`, `$"dolce"` |
-| `rel:` / `abs:` | ottave relative (ogni nota va vicino alla precedente) / assolute (vedi 2.18) | `rel: c d e f g a b c` |
+| `rel:` / `abs:` | ottave relative (ogni nota va vicino alla precedente) / assolute (vedi 4.10) | `rel: c d e f g a b c` |
 | `*+` / `*-` dopo una nota (in `rel:`) | un'ottava sopra / sotto | `rel: g c*+ c*-` |
-| `key=K` | le note prendono le alterazioni della tonalita' K (vedi 2.18) | `key=G f` (= fa diesis) |
+| `key=K` | le note prendono le alterazioni della tonalita' K (vedi 4.10) | `key=G f` (= fa diesis) |
 | `n` dopo una nota | bequadro: toglie l'alterazione della tonalita' | `key=G fn` |
 
-Il carattere `|` e' il **controllo di battuta** (vedi 2.10): non suona e non
+Il carattere `|` e' il **controllo di battuta** (vedi 4.3): non suona e non
 sposta nulla, serve solo a dichiarare dove finisce una battuta. Le durate si
 accumulano comunque lungo la timeline, quindi le `|` sono facoltative. Nel
 file di progetto `.st` il carattere compare anche nell'intestazione di un
-box della vista "Struttura brano" (sezione 8bis), per indicarne la
+box della vista "Struttura brano" (sezione 15), per indicarne la
 posizione in beat, es. `Box Basso1 "Intro" |4:` — un dettaglio del formato
 di salvataggio.
 
@@ -315,7 +569,357 @@ scriverebbe "a naso" leggendo un chart reale:
   l'11, come da prassi jazz comune per evitare la dissonanza col terzo
   maggiore).
 
-### 2.8 Voicing esplicito sugli accordi (`.stile`)
+### 4.1 Stato Corrente
+
+Griglia e velocity restano attive finche' non vengono cambiate di nuovo:
+
+```
+100@ 8: c e 60@ g a 100@ c
+```
+`c` ed `e` durano un ottavo a velocity 100; `g` e `a` a velocity 60; l'ultima
+`c` torna a velocity 100. Nessun evento viene generato dai comandi di stato:
+non consumano tempo sulla timeline.
+
+### 4.2 Valori di nota espliciti (`'8.`)
+
+Oltre alla griglia (`N:` seguito da moltiplicatori), una durata si puo'
+scrivere come **valore di nota**, con un apostrofo in fondo al token:
+
+| Scrittura | Valore | Durata in quarti |
+| --- | --- | --- |
+| `c'1` | semibreve | 4 |
+| `c'2` | minima | 2 |
+| `c'4` | semiminima | 1 |
+| `c'8` | croma | 1/2 |
+| `c'16`, `c'32`, `c'64` | semicroma, biscroma, semibiscroma | 1/4, 1/8, 1/16 |
+| `c'4.` / `c'8.` | semiminima / croma **puntata** | 1 e 1/2 / 3/4 |
+| `c'2..` | minima con due punti | 3 e 1/2 |
+| `c'8T` / `c'4T` | croma / semiminima di **terzina** | 1/3 / 2/3 |
+| `c'16Q`, `c'8S` | quintina, settimina (come le griglie `NQ:`, `NS:`) | |
+
+```
+8: c*4'8. d*4'16 e*4 e*4 [c e g]'2    // ritmo puntato senza cambiare griglia
+```
+
+Il valore vale **solo per quel token**: la griglia corrente resta quella di
+prima (nell'esempio, `e*4 e*4` sono crome della griglia `8:`). Funziona con
+note, accordi (`C7'2`), blocchi (`[c e g]'2`), pause (`r'4`), percussioni
+(`kick'16`) e slide. Un moltiplicatore davanti si somma: `2c'8` dura due
+crome. L'articolazione puo' stare prima o dopo: `c'8!` e `c!'8` sono la
+stessa croma staccata. La griglia resta comoda per i ritmi regolari; il
+valore esplicito e' piu' leggibile per le frasi irregolari e per chi viene
+dallo spartito.
+
+### 4.3 Controlli di battuta (`|`) e commenti (`//`)
+
+**Controlli di battuta.** Una `|` fra due token dichiara "qui finisce una
+battuta". Non suona e non sposta il tempo: il programma controlla solo che
+in quel punto ci sia davvero una stanghetta, secondo la **Metrica** del
+progetto e i suoi cambi per battuta (sezione 8.2). Puo' stare anche
+attaccata a una nota (`d*4|`).
+
+```
+4: c d e f | g a b c | 2c 2e |
+8: c d e f g a b c | 2: c c |
+```
+
+Se una `|` non cade su una stanghetta, la barra sotto l'editor diventa
+arancione e dice quale battuta non torna e di quanto, per esempio
+`battuta 2: manca 1 croma` o `battuta 3: 1 semiminima di troppo`; la `|`
+sbagliata diventa rossa e sottolineata. Il suggerimento sulla barra elenca
+tutti gli avvisi. **Non e' un errore di sintassi**: il brano suona ed
+esporta lo stesso, e' un aiuto per accorgersi di una nota mancante o di una
+durata sbagliata. Una nota che manca sposta tutto quel che segue, ma viene
+segnalata una volta sola: le `|` successive si misurano tenendone conto e
+avvisano solo se c'e' un altro errore.
+
+- Le stanghette sono quelle del **brano**: in un box della vista Struttura
+  brano contano dalla posizione del box (un box che inizia a meta' battuta
+  ha la prima `|` dopo mezza battuta).
+- Dentro un pattern o un gruppo `N(...)` la `|` viene controllata a ogni
+  ripetizione; l'avviso indica il riferimento `%Nome` o il gruppo.
+- Dentro un blocco `[...]` la `|` non e' ammessa (errore di sintassi).
+
+**Commenti.** Da `//` alla fine della riga il testo e' ignorato: serve per
+annotare sezioni, accordi, idee. Una barra sola (`C/E`, `&"Blues/basso"`)
+resta quella di sempre.
+
+```
+// Strofa
+4: Am | F | C | G |     // giro di quattro accordi
+```
+
+I commenti e gli a capo si conservano nel file `.st`, nei box, nella
+trasposizione dei box e nel congelamento degli accordi. Non si conservano
+invece nel corpo dei pattern (che sono salvati come sequenza di token) ne'
+nelle operazioni che riscrivono tutto il testo della traccia (Riorganizza
+con i pattern, Espandi i pattern). Nel file `.st` una riga vuota chiude un
+blocco: le righe vuote dentro il testo di una traccia si tolgono al
+salvataggio (prima troncavano il resto della traccia).
+
+### 4.4 Gruppi di ripetizione
+
+Una sequenza di token racchiusa tra parentesi tonde, preceduta da un
+numero, viene ripetuta quel numero di volte:
+
+```
+4(2C7 2e c d 2A7)   -> ripete 4 volte la sequenza: 2C7 2e c d 2A7
+```
+
+I gruppi possono essere annidati (`2(c 2(d e))`) e possono contenere
+qualunque token valido, inclusi pattern e riferimenti MIDI.
+
+### 4.5 Tuplet (terzine / quintine / settimine)
+
+Una lettera opzionale dopo il numero di un comando griglia (`N:`, sezione
+3) attiva un raggruppamento irregolare invece della normale suddivisione
+binaria, riducendo la durata di ciascuna nota in proporzione:
+
+| Lettera | Tuplet | Rapporto | Esempio |
+| --- | --- | --- | --- |
+| `T` | terzina | 3 note nello spazio di 2 | `8T:` (terzine di ottavi: 3 in un quarto) |
+| `Q` | quintina | 5 note nello spazio di 4 | `16Q:` (quintine di sedicesimi: 5 in un quarto) |
+| `S` | settimina | 7 note nello spazio di 4 | `8S:` (settimine di ottavi: 7 in due quarti) |
+
+```
+8T: c d e            -> terzina di ottavi: le tre note riempiono un quarto
+16Q: c d e f g       -> quintina di sedicesimi: le cinque note riempiono un quarto
+8S: c d e f g a b    -> settimina di ottavi: le sette note riempiono due quarti
+```
+
+Come per la griglia binaria, il comando resta attivo finche' non viene
+cambiato di nuovo (sezione 4.1): non serve ripeterlo prima di ogni singola
+nota del gruppo. Si puo' tornare alla suddivisione binaria in qualunque
+momento con un comando `N:` senza lettera (es. `16:` dopo `16Q:`).
+
+### 4.6 Legature e swing
+
+**Legatura di valore `~`.** Un `~` in fondo a una nota, un accordo o un
+blocco la **unisce** alla successiva uguale: suonano come una nota sola,
+lunga quanto le due insieme. Serve soprattutto per tenere una nota oltre
+la stanghetta, dove la divisione in battute non lascia scriverla tutta
+intera:
+
+```
+4: c d 2f~ | 2f g a |        // il fa dura 4 quarti, a cavallo della battuta
+4: 4C7~ | 4C7 | 4F |         // un accordo tenuto per due battute
+4: c'2~ c'8 r'8 d'4          // anche con i valori di nota
+```
+
+La nota dopo il `~` deve essere la stessa (`c#~ db` va bene: e' lo stesso
+suono), altrimenti e' un errore; le percussioni, le pause e gli slide non
+si legano.
+
+**Legatura di portamento `( )`.** Un `(` in fondo alla prima nota e un
+`)` in fondo all'ultima collegano una frase: le note in mezzo suonano
+**legate** (attaccate l'una all'altra, come in un fraseggio cantabile),
+l'ultima come scritta. In partitura compare l'arco sopra le note.
+
+```
+4: c( d e f) g( a b c*5)
+4: 2(c( d) e)                // dentro un gruppo, la legatura si ripete
+```
+
+Una nota con un'articolazione propria (`d!` staccato) la tiene anche dentro
+la legatura. Le legature non si annidano e non attraversano un blocco di
+voci `{ ; }`.
+
+**Swing.** `swing=N` fa "dondolare" le crome dal punto in cui lo scrivi: in
+ogni battito la prima croma si allunga e la seconda si accorcia, come si
+suona nel jazz, nel blues e nello shuffle. N e' la parte del battito data
+alla prima croma: 50 e' diritto, 66 e' terzinato (lo swing classico), fino
+a 80. `swing16=N` fa lo stesso con le semicrome (funk, hip hop).
+`swing=50` toglie lo swing.
+
+```
+swing=62 8: c d e f g a b c*5   // si scrive diritto, suona in swing
+swing16=58 16: kick hihat snare hihat kick kick snare hihat
+```
+
+Si scrive tutto diritto: i controlli di battuta e la partitura restano
+regolari (in partitura compare l'indicazione "Swing"), cambia solo come
+suona, nella riproduzione e nel MIDI esportato.
+
+### 4.7 Modificatori della nota (e dell'accordo)
+
+Un singolo carattere in fondo a una nota o a un accordo (dopo l'eventuale
+ottava `*n`, e dopo l'eventuale `.stile` di voicing su un accordo) ne
+cambia l'articolazione, senza alterare la posizione delle note successive
+sulla timeline (la nota/accordo occupa comunque l'intera unita' di
+griglia, cambia solo per quanto tempo resta udibile):
+
+- **`!` staccato**: suona per il 50% della durata nominale, il resto e'
+  silenzio.
+- **`x` mute**: viene "stoppato" quasi subito (~15% della durata
+  nominale), per un effetto smorzato/percussivo.
+- **`_` legato**: viene prolungato leggermente oltre la durata nominale
+  (~115%), per farlo "legare" dolcemente al successivo.
+
+Sugli accordi si puo' combinare con il voicing esplicito (5.1), es.
+`Cmaj7.drop2!` (voicing Drop-2 + staccato). Lo stesso modificatore
+applicato a un accordo agisce su **tutte** le note del voicing, non solo
+sulla fondamentale. Nota: i blocchi simultanei `[...]` non supportano
+ancora questo modificatore finale; per un "power chord staccato" si usa
+un accordo nominale con voicing `.power`, es. `E.power!`.
+
+### 4.8 Piu' voci nella stessa traccia (`{ ; }`)
+
+Un **blocco di voci** contiene due o piu' sequenze, separate da `;`, che
+**partono insieme**, ognuna con le sue durate. Il blocco dura quanto la
+voce piu' lunga, poi la traccia prosegue:
+
+```
+4: { c*5 d*5 e*5 f*5 ; 4c*4 } g*4           // melodia sopra una nota tenuta
+4: {
+  8: e*5 d*5 c*5 d*5 e*5 e*5 2e*5            // mano destra
+  ;
+  2c*4 2g*3                                  // mano sinistra
+}
+```
+
+A differenza di `[...]`, dove tutto inizia e finisce insieme, ogni voce ha
+il suo ritmo: e' quello che serve per il pianoforte a due mani, una
+melodia sopra un accordo tenuto, la chitarra classica.
+
+- Ogni voce parte con lo **stato** (griglia, velocity) del punto in cui si
+  apre il blocco; i cambi fatti **dentro** una voce restano li'.
+- Dentro una voce vale tutta la grammatica: gruppi `N(...)`, pattern
+  `%Nome`, controlli di battuta `|` (ogni voce si controlla per conto suo),
+  testo cantato, anche altri blocchi di voci.
+- Il blocco puo' andare a capo; un `;` fuori da un blocco e' un errore.
+- Nell'editor ogni voce ha uno **sfondo colorato** diverso (azzurro la
+  prima, ambra la seconda, poi lilla e verde; un blocco annidato parte da
+  un altro colore): si vede subito dove inizia e finisce ciascuna, anche
+  quando il blocco va a capo. Le parentesi e i `;` restano senza sfondo.
+- In partitura (sezioni 27.1 e 27.2) le voci diventano **voci dello
+  stesso pentagramma**, con i gambi in su e in giu'.
+
+### 4.9 Testo cantato (`"..."`)
+
+Una stringa fra virgolette e' il **testo cantato** delle note che la
+**precedono**, a partire dalla nota dopo il testo precedente (o
+dall'inizio): una sillaba per nota, separate da spazi. Si scrive come
+sotto un rigo di spartito:
+
+```
+4: c*4 d*4 e*4 2f*4
+"Ma- ri- a, sei"
+```
+
+- Un trattino in fondo (`Ma-`) dice che la parola continua nella sillaba
+  dopo; in partitura le sillabe vengono unite dal trattino.
+- `_` lascia la nota senza una sillaba nuova: la sillaba precedente si
+  **prolunga** (melisma, con la linea di estensione in partitura).
+- `*` salta una nota (nessuna sillaba).
+- Pause e percussioni non ricevono sillabe.
+- La sillaba si puo' anche attaccare alla nota: `c"Ma-" d"ri-" e"a"`.
+- Dentro un gruppo `2(...)` il testo si ripete con le note; dopo un blocco
+  di voci va sulla **prima voce** (una voce puo' avere anche il suo testo,
+  dentro il blocco).
+- Il testo non si sente: va nella partitura (sotto le note), nel MusicXML e
+  nel MIDI esportato (eventi *lyrics*, letti dai programmi karaoke).
+- Se ci sono **piu' sillabe che note** l'editor lo segnala come avviso
+  (arancione), come i controlli di battuta. Un `//` dentro le virgolette fa
+  parte del testo, non apre un commento.
+
+### 4.10 Ottave relative e tonalita'
+
+Due comandi rendono le melodie molto piu' corte da scrivere. Si possono
+usare insieme, ed entrambi sono facoltativi: senza, tutto funziona come
+prima.
+
+**Ottave relative (`rel:`).** Dopo `rel:` non serve piu' scrivere
+l'ottava: ogni nota va all'ottava **piu' vicina alla nota precedente**
+(al massimo una quarta sopra o sotto, contando le lettere). Per saltare
+piu' lontano si aggiunge `*+` (un'ottava sopra) o `*-` (un'ottava sotto),
+anche ripetuti (`*++` due ottave sopra, `*--` due sotto); `*n` resta valido e fissa l'ottava esatta.
+
+```
+rel: c d e f g a b c          // scala di Do salendo fino al Do sopra
+rel: c*5 b a g f e d c        // e scendendo
+rel: g c*+ c*- c                // c*+ salta in alto, c*- torna giu'
+```
+
+La prima nota dopo `rel:` va vicino al Do dell'ottava di default dello
+strumento. Dopo un blocco `[...]` si riparte dalla sua prima nota;
+accordi e percussioni non contano. `abs:` torna alle ottave assolute.
+Nei ritornelli e nei gruppi ogni ripetizione riparte dalla stessa nota,
+cosi' suona uguale.
+
+**Tonalita' (`key=`).** Dopo `key=G` ogni nota **senza** alterazione
+prende quella della tonalita': in sol maggiore `f` e' fa diesis. Un
+diesis o un bemolle scritto vale solo per quella nota; `n` (o `♮`) e' il
+bequadro e toglie l'alterazione della tonalita'.
+
+```
+key=G rel: g a b c d e f g    // sol maggiore senza scrivere il diesis
+key=Bb rel: b c d e f g a b   // si bemolle maggiore: b ed e sono bemolli
+key=Dm rel: d e f g a b c# d  // re minore (b bemolle) con il do diesis
+key=G f fn f#                 // fa diesis, fa naturale, fa diesis
+```
+
+`key=off` toglie la tonalita'. Gli accordi (`C`, `F7`...) non cambiano:
+le sigle sono sempre assolute. La tonalita' del brano (nella barra in
+alto) serve all'armatura della partitura; `key=` dice come leggere le
+note della traccia.
+
+I **pattern** (`%Nome`) si leggono sempre con ottave assolute e senza
+tonalita', qualunque sia il modo della traccia che li usa: suonano uguali
+ovunque.
+
+**Riscrivere una traccia esistente.** Il pulsante **Altezze relative e
+tonalita'**, sotto l'editor, riscrive la traccia corrente con `rel:` e,
+se il brano ha una tonalita', `key=`: le note restano le stesse, il testo
+diventa piu' corto. E' comodo dopo un'importazione da MIDI, MusicXML o
+ABC. Anche **Trasponi** (nei box) conosce i due modi: in `rel:` le note
+restano relative, e con `key=` si traspone anche la tonalita'.
+
+### 4.11 Trasposizione (`transpose=`, `%Nome+N`)
+
+**Trasporre senza riscrivere.** `transpose=N` fa suonare note, accordi,
+slide e blocchi che seguono N semitoni **sopra** (N positivo) o **sotto**
+(N negativo) rispetto a come sono scritti; `transpose=0` torna all'altezza
+scritta. Va da -60 a 60.
+
+```
+4: c d e f g a b c*5        // in Do
+transpose=2 4: c d e f g a b c*5  // la stessa melodia in Re
+transpose=0
+```
+
+**Un pattern in un'altra tonalita'.** Dopo il nome di un pattern si scrive
+di quanti semitoni trasporlo: `%Tema+7` lo suona una quinta sopra,
+`%Tema-12` un'ottava sotto, `2%Tema+3` due volte, tre semitoni sopra.
+Non servono pattern copiati: il tema si scrive una volta sola.
+
+```
+Pattern %Tema:
+  key=Eb 8: 90@ g*5 b*5 e*6 2d*6 2b*5 |
+
+Violini1:
+  %Tema  %Tema-3  %Tema+12     // Mi bemolle, poi Do (-3), poi un'ottava sopra
+```
+
+- La trasposizione vale per **tutto** quello che c'e' dentro il pattern, anche
+  per i pattern che richiama, e si **somma** a quella gia' in vigore
+  (`transpose=3 %Tema+4` suona 7 semitoni sopra).
+- Un `transpose=` scritto dentro un pattern finisce con il pattern.
+- Lo stesso vale per la libreria MIDI: `&"Basso"+7`, `&"Basso"-12`
+  (sezione 11).
+- Con `key=` le note trasposte si scrivono nella tonalita' nuova: `key=G`
+  con `transpose=2` e' La maggiore (il fa diesis scritto diventa sol
+  diesis, il sol diventa la). Senza tonalita', un bemolle resta un bemolle
+  e le altre note alterate prendono il diesis. Anche nella partitura.
+- Gli accordi cambiano nome (`C7/E` +5 e' `F7/A`) e salgono di ottava
+  quando scavalcano il Do; con +12 ogni accordo sale di un'ottava.
+- Le percussioni e le pause non cambiano. Se una nota trasposta esce
+  dall'estensione MIDI, il programma lo segnala come errore.
+- Nel pulsante **Estrai pattern** i blocchi con un `transpose=` non vengono
+  estratti: nel pattern la trasposizione finirebbe alla fine del pattern.
+
+## 5. Accordi
+
+### 5.1 Voicing esplicito sugli accordi (`.stile`)
 
 Un suffisso opzionale `.stile` dopo la qualita' dell'accordo (prima
 dell'eventuale `/ottava`) forza il motore di voicing a usare un algoritmo
@@ -365,7 +969,7 @@ mani).
 Esempi validi: `Cmaj7`, `Cmaj7.drop2`, `C7.cagEd`, `C.power`,
 `Am7.open`, `F.barre`.
 
-### 2.9 Basso alternativo sugli accordi (accordo "slash")
+### 5.2 Basso alternativo sugli accordi (accordo "slash")
 
 Un suffisso opzionale `/Nota` dopo la qualita' (e dopo l'eventuale `.stile`,
 prima dell'eventuale `*ottava`) specifica un basso diverso dalla
@@ -390,115 +994,52 @@ l'ottava si scrive sempre con `*n` (vedi sez. 2), anche insieme al basso
 (`C/E*3`). La vecchia forma con le cifre dopo la barra (`C7/3`, `c/4`) non
 e' piu' valida.
 
-### 2.1 Gruppi di ripetizione
+## 6. Congelare gli accordi
 
-Una sequenza di token racchiusa tra parentesi tonde, preceduta da un
-numero, viene ripetuta quel numero di volte:
+Il pulsante **Congela accordi**, sopra l'editor della vista Testo, sostituisce ogni
+accordo astratto della traccia corrente con il blocco `[...]` di note
+concrete generato dal motore di voicing per lo strumento assegnato.
 
-```
-4(2C7 2e c d 2A7)   -> ripete 4 volte la sequenza: 2C7 2e c d 2A7
-```
+### 6.1 Scegliere il voicing con un doppio click
 
-I gruppi possono essere annidati (`2(c 2(d e))`) e possono contenere
-qualunque token valido, inclusi pattern e riferimenti MIDI.
+Un **doppio click su un accordo** — sia in forma compatta (`Cmaj7`, anche
+con un moltiplicatore, es. `2Cmaj7`) sia già "congelato" in note esplicite
+(`[c*3 g*3 b*3 e*4]`, se riconoscibile come accordo standard), **anche se
+l'accordo si trova dentro un gruppo di ripetizione `N(...)`** (vedi 4.4) —
+nell'editor della traccia o nel corpo di un pattern apre un piccolo menu
+con tutte le alternative di voicing sensate per lo strumento corrente
+(vedi 5.1), ciascuna con un'anteprima testuale delle note risultanti.
+Scorrendo le voci con le frecce si sente un'anteprima audio di ognuna (con
+un breve ritardo, dovuto al rendering); **Invio** o click su una voce
+applica la scelta (sul token implicito aggiunge/cambia solo il suffisso
+`.stile`; sul blocco esplicito ricalcola le note), **Esc** o click fuori
+dal menu annulla senza modificare nulla. Se il blocco `[...]` non
+corrisponde a nessuna qualità di accordo nota (es. una semplice quinta
+`[c*3 g*3]`, ambigua tra maggiore e minore), un tooltip lo segnala e il
+menu non si apre.
 
-### 2.1bis Tuplet (terzine / quintine / settimine)
+### 6.2 Autocompletamento durante la digitazione
 
-Una lettera opzionale dopo il numero di un comando griglia (`N:`, sezione
-3) attiva un raggruppamento irregolare invece della normale suddivisione
-binaria, riducendo la durata di ciascuna nota in proporzione:
+Mentre si scrive, l'editor propone in un popup i token completi
+pertinenti al frammento già digitato, per velocizzare le notazioni più
+lunghe o meno immediate da ricordare a memoria:
 
-| Lettera | Tuplet | Rapporto | Esempio |
-| --- | --- | --- | --- |
-| `T` | terzina | 3 note nello spazio di 2 | `8T:` (terzine di ottavi: 3 in un quarto) |
-| `Q` | quintina | 5 note nello spazio di 4 | `16Q:` (quintine di sedicesimi: 5 in un quarto) |
-| `S` | settimina | 7 note nello spazio di 4 | `8S:` (settimine di ottavi: 7 in due quarti) |
+- qualità d'accordo (`C7`, `Dm7b5`...) a partire dalla fondamentale;
+- stili di voicing (`Cmaj7.drop2`, `C7.cagEd`...) dopo il `.`, limitati a
+  quelli applicabili allo strumento della traccia corrente (vedi 5.1);
+- nomi di percussione, dinamiche (`mf`, `ff`...) e comandi di stato
+  (`SON`, `SOFF`, `r`);
+- riferimenti `%Nome` a pattern definiti nel progetto e `&"Nome"` alla
+  libreria MIDI (vedi 10 e 11).
 
-```
-8T: c d e            -> terzina di ottavi: le tre note riempiono un quarto
-16Q: c d e f g       -> quintina di sedicesimi: le cinque note riempiono un quarto
-8S: c d e f g a b    -> settimina di ottavi: le sette note riempiono due quarti
-```
+Frecce su/giù per scorrere le proposte, **Invio** o **Tab** per accettare
+quella evidenziata, **Esc** o click fuori per chiudere il popup senza
+modificare nulla. Le singole note (es. `c`, `g#*4`) non generano
+suggerimenti propri, essendo già brevi quanto un suggerimento.
 
-Come per la griglia binaria, il comando resta attivo finche' non viene
-cambiato di nuovo (sezione 3): non serve ripeterlo prima di ogni singola
-nota del gruppo. Si puo' tornare alla suddivisione binaria in qualunque
-momento con un comando `N:` senza lettera (es. `16:` dopo `16Q:`).
+## 7. Espressione: dinamiche, slide, pedale e automazioni
 
-### 2.2 Modificatori della nota (e dell'accordo)
-
-Un singolo carattere in fondo a una nota o a un accordo (dopo l'eventuale
-ottava `*n`, e dopo l'eventuale `.stile` di voicing su un accordo) ne
-cambia l'articolazione, senza alterare la posizione delle note successive
-sulla timeline (la nota/accordo occupa comunque l'intera unita' di
-griglia, cambia solo per quanto tempo resta udibile):
-
-- **`!` staccato**: suona per il 50% della durata nominale, il resto e'
-  silenzio.
-- **`x` mute**: viene "stoppato" quasi subito (~15% della durata
-  nominale), per un effetto smorzato/percussivo.
-- **`_` legato**: viene prolungato leggermente oltre la durata nominale
-  (~115%), per farlo "legare" dolcemente al successivo.
-
-Sugli accordi si puo' combinare con il voicing esplicito (2.8), es.
-`Cmaj7.drop2!` (voicing Drop-2 + staccato). Lo stesso modificatore
-applicato a un accordo agisce su **tutte** le note del voicing, non solo
-sulla fondamentale. Nota: i blocchi simultanei `[...]` non supportano
-ancora questo modificatore finale; per un "power chord staccato" si usa
-un accordo nominale con voicing `.power`, es. `E.power!`.
-
-### 2.3 Slide (pitch bend / portamento)
-
-Due o piu' note collegate da `>` (senza spazi) producono uno scivolamento
-continuo di altezza da una all'altra:
-
-```
-c*4>d*4        -> scivola da Do4 a Re4 in un'unita' di griglia (come una nota)
-c*4>d*4>c*4    -> sale da Do4 a Re4 in un'unita' e torna a Do4 in un'altra
-                  (bend-and-release, 2 unita' in tutto)
-```
-
-La regola e' una sola: il moltiplicatore di una tappa e' la durata della
-rampa che **parte** da quella tappa verso la successiva (1 se manca); il
-moltiplicatore dell'**ultima** tappa e' quanto la nota resta ferma
-sull'altezza raggiunta (0 se manca: lo slide finisce arrivando).
-
-```
-5c*4>d*4       -> rampa lenta da Do4 a Re4 per 5 unita'
-2c*4>3d*4      -> sale in 2 unita', poi resta ferma su Re4 per altre 3
-                  (bend rapido poi tenuto)
-2c*4>2d*4>3c*4 -> sale in 2 unita', scende in altre 2, poi resta ferma
-                  sull'altezza di arrivo per altre 3
-```
-
-Una catena puo' avere quante tappe si vuole (`c*4>d*4>c#*4>c*4`...). Uno
-slide che durerebbe zero (`0c*4>d*4`) e' un errore.
-
-Tecnicamente viene esportato come una singola nota MIDI (un solo note_on/
-note_off per l'intera catena) con una sequenza di messaggi di Pitch Bend
-che interpolano progressivamente da una tappa alla successiva (con
-l'ampiezza del pitch bend impostata automaticamente via RPN per coprire
-correttamente slide anche oltre un'ottava). Vedi anche la sezione 10 per
-come l'import MIDI riconosce automaticamente un bending (incluso un
-bend-and-release) da un file esistente e lo traduce in questa sintassi.
-
-### 2.4 Pedale del sustain (SON / SOFF)
-
-I token `SON` e `SOFF`, inseriti liberamente nel flusso delle note,
-attivano/disattivano il pedale del sustain (pianoforte) per tutto cio'
-che segue, finche' non si incontra il comando opposto:
-
-```
-Piano — AcousticPiano:
-  8: SON c*3 g*3 c*4 e*4 g*4 e*4 c*4 g*3 SOFF
-  8: SON a*2 e*3 a*3 c*4 e*4 c*4 a*3 e*3 SOFF
-```
-
-Se un `SOFF` viene dimenticato, il programma rilascia comunque
-automaticamente il pedale alla fine della traccia, per evitare che una
-nota resti incastrata in un riverbero infinito.
-
-### 2.5 Dinamiche classiche e rampe (crescendo/diminuendo)
+### 7.1 Dinamiche classiche e rampe (crescendo/diminuendo)
 
 Oltre al valore numerico esplicito (`100@`), la velocity accetta le
 indicazioni dinamiche classiche:
@@ -529,266 +1070,60 @@ incontrato:
 Dopo le frecce si puo' scegliere la **curva** della rampa: `>>exp` parte
 piano e accelera, `>>log` parte veloce e rallenta, `>>s` e' morbida
 all'inizio e alla fine (`p@ >>exp c d e f ff@`). Vale anche per le rampe
-di tempo e per le automazioni (sezione 2.15).
+di tempo e per le automazioni (sezione 7.4).
 
-### 2.6 Cambi di tempo (accelerando/rallentando)
+### 7.2 Slide (pitch bend / portamento)
 
-All'interno di una traccia, il comando `tempo=N` (1-999) imposta
-il tempo (BPM) istantaneamente da quel punto in poi:
-
-```
-tempo=120 c*4 d*4    -> tempo impostato a 120 BPM
-```
-
-Come per la dinamica, `>>` (accelerando) o `<<` (rallentando) dopo un
-comando `tempo=N` interpola progressivamente il tempo fino al prossimo `tempo=N`:
+Due o piu' note collegate da `>` (senza spazi) producono uno scivolamento
+continuo di altezza da una all'altra:
 
 ```
-tempo=100 >> c*4 d*4 e*4 f*4 tempo=140    -> accelerando da 100 a 140 BPM
-tempo=140 << c*4 d*4 e*4 f*4 tempo=80      -> rallentando da 140 a 80 BPM
+c*4>d*4        -> scivola da Do4 a Re4 in un'unita' di griglia (come una nota)
+c*4>d*4>c*4    -> sale da Do4 a Re4 in un'unita' e torna a Do4 in un'altra
+                  (bend-and-release, 2 unita' in tutto)
 ```
 
-Nota: il tempo e' per natura un concetto condiviso da tutto il progetto
-(tutte le tracce suonano sulla stessa timeline); un cambio di tempo
-dichiarato in una traccia si applica quindi all'intero brano a partire da
-quel punto, non solo a quella traccia.
-
-### 2.7 Cambi di tempo e metrica per battuta
-
-Oltre alla forma semplice (`Tempo: 120 BPM`, `Metrica: 4/4`, un solo
-valore per tutto il brano), l'intestazione del progetto accetta anche un
-elenco di cambi indicizzati per numero di battuta:
+La regola e' una sola: il moltiplicatore di una tappa e' la durata della
+rampa che **parte** da quella tappa verso la successiva (1 se manca); il
+moltiplicatore dell'**ultima** tappa e' quanto la nota resta ferma
+sull'altezza raggiunta (0 se manca: lo slide finisce arrivando).
 
 ```
-Tempo: 1: 120, 5: 140, 9: 100
-Metrica: 1: 4/4, 5: 3/4, 8: 4/4
+5c*4>d*4       -> rampa lenta da Do4 a Re4 per 5 unita'
+2c*4>3d*4      -> sale in 2 unita', poi resta ferma su Re4 per altre 3
+                  (bend rapido poi tenuto)
+2c*4>2d*4>3c*4 -> sale in 2 unita', scende in altre 2, poi resta ferma
+                  sull'altezza di arrivo per altre 3
 ```
 
-Significa: tempo 120 BPM dalla battuta 1, 140 BPM dalla battuta 5, 100 BPM
-dalla battuta 9; metrica 4/4 dalla battuta 1, 3/4 dalla battuta 5, 4/4
-dalla battuta 8. Le posizioni (in beat) delle battute successive alla
-prima vengono calcolate automaticamente tenendo conto della metrica in
-vigore in ciascun tratto.
+Una catena puo' avere quante tappe si vuole (`c*4>d*4>c#*4>c*4`...). Uno
+slide che durerebbe zero (`0c*4>d*4`) e' un errore.
 
-I tempi possono avere un decimale (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
-101.4`), come i marcatori `tempo=72.5`; anche il campo **Tempo** della
-barra lo accetta (101,4). Un brano con un tempo decimale si salva con
-`ST: 2.9` in cima: SoundText 1.8.0 e precedenti non leggerebbero quella
-riga `Tempo:` (e lo segnalano all'apertura). Con i soli tempi interi il
-file resta `ST: 2.8`, leggibile da tutte.
+Tecnicamente viene esportato come una singola nota MIDI (un solo note_on/
+note_off per l'intera catena) con una sequenza di messaggi di Pitch Bend
+che interpolano progressivamente da una tappa alla successiva (con
+l'ampiezza del pitch bend impostata automaticamente via RPN per coprire
+correttamente slide anche oltre un'ottava). Vedi anche la sezione 26 per
+come l'import MIDI riconosce automaticamente un bending (incluso un
+bend-and-release) da un file esistente e lo traduce in questa sintassi.
 
-**Barra di avanzamento, evidenziazione e campi Tempo/Metrica durante la
-riproduzione**: il file MIDI esportato, la barra di avanzamento,
-l'evidenziazione del token in esecuzione nell'editor e i campi **Tempo
-(BPM)** e **Metrica** nella toolbar principale usano tutti la stessa mappa
-di tempo/metrica del progetto (tutti i cambi per battuta piu' i marcatori
-inline `tempo=N`): mostrano quindi sempre il valore realmente in vigore in quel
-punto del brano, non una stima basata sul solo tempo/metrica iniziale.
-Fermata la riproduzione, i campi Tempo/Metrica tornano al valore "a
-riposo" del progetto (quello della battuta 1).
+### 7.3 Pedale del sustain (SON / SOFF)
 
-### 2.7bis Tonalita' del brano
-
-L'intestazione del progetto puo' anche dichiarare la tonalita' del brano
-(riga `Tonalita: <valore>`), impostabile anche dal campo **Tonalita'**
-nella toolbar principale, accanto a Tempo e Metrica:
+I token `SON` e `SOFF`, inseriti liberamente nel flusso delle note,
+attivano/disattivano il pedale del sustain (pianoforte) per tutto cio'
+che segue, finche' non si incontra il comando opposto:
 
 ```
-Tonalita: Am
+Piano — AcousticPiano:
+  8: SON c*3 g*3 c*4 e*4 g*4 e*4 c*4 g*3 SOFF
+  8: SON a*2 e*3 a*3 c*4 e*4 c*4 a*3 e*3 SOFF
 ```
 
-Formato: lettera nota (A-G) + alterazione opzionale (`#` o `b`) + `m`
-opzionale per il minore, es. `C`, `F#`, `Ebm`, `Am` (maggiore se `m` e'
-assente). E' un'informazione descrittiva/di riferimento (non influenza
-voicing o riconoscimento accordi); importando un file MIDI che dichiara una
-tonalita' (evento meta *key signature*) viene riconosciuta e impostata
-automaticamente. Se il file dichiara Do maggiore o non dichiara nulla (Do e'
-il valore predefinito di molti sequencer, quindi non e' affidabile), la
-tonalita' viene stimata dalle note come fa **Analizza tonalita'**. Viene usata anche da **Suona con la tastiera** (sezione
-10ter) dai layout tastiera "Scala della tonalita'".
+Se un `SOFF` viene dimenticato, il programma rilascia comunque
+automaticamente il pedale alla fine della traccia, per evitare che una
+nota resti incastrata in un riverbero infinito.
 
-Se non la conosci gia' (o non sei sicuro), **Componi → Analizza
-tonalita'...** la stima automaticamente analizzando le note effettivamente
-scritte in tutte le tracce non percussive del progetto (batteria esclusa),
-con l'algoritmo classico di Krumhansl-Schmuckler: confronta la distribuzione
-delle 12 classi di altezza usate (pesata per durata) con i profili tonali
-tipici di ciascuna delle 24 tonalita' possibili e sceglie quella piu'
-somigliante, impostandola automaticamente nel campo Tonalita' (sovrascrive
-un eventuale valore gia' presente). E' una stima statistica, non
-un'analisi armonica vera e propria: puo' sbagliare su brani molto brevi,
-cromatici o che modulano — un buon punto di partenza, non un verdetto
-infallibile. Se il progetto non contiene note intonate (nessuna traccia, o
-solo percussive), lo segnala invece di indovinare.
-
-### 2.10 Controlli di battuta (`|`) e commenti (`//`)
-
-**Controlli di battuta.** Una `|` fra due token dichiara "qui finisce una
-battuta". Non suona e non sposta il tempo: il programma controlla solo che
-in quel punto ci sia davvero una stanghetta, secondo la **Metrica** del
-progetto e i suoi cambi per battuta (sezione 2.7). Puo' stare anche
-attaccata a una nota (`d*4|`).
-
-```
-4: c d e f | g a b c | 2c 2e |
-8: c d e f g a b c | 2: c c |
-```
-
-Se una `|` non cade su una stanghetta, la barra sotto l'editor diventa
-arancione e dice quale battuta non torna e di quanto, per esempio
-`battuta 2: manca 1 croma` o `battuta 3: 1 semiminima di troppo`; la `|`
-sbagliata diventa rossa e sottolineata. Il suggerimento sulla barra elenca
-tutti gli avvisi. **Non e' un errore di sintassi**: il brano suona ed
-esporta lo stesso, e' un aiuto per accorgersi di una nota mancante o di una
-durata sbagliata. Una nota che manca sposta tutto quel che segue, ma viene
-segnalata una volta sola: le `|` successive si misurano tenendone conto e
-avvisano solo se c'e' un altro errore.
-
-- Le stanghette sono quelle del **brano**: in un box della vista Struttura
-  brano contano dalla posizione del box (un box che inizia a meta' battuta
-  ha la prima `|` dopo mezza battuta).
-- Dentro un pattern o un gruppo `N(...)` la `|` viene controllata a ogni
-  ripetizione; l'avviso indica il riferimento `%Nome` o il gruppo.
-- Dentro un blocco `[...]` la `|` non e' ammessa (errore di sintassi).
-
-**Commenti.** Da `//` alla fine della riga il testo e' ignorato: serve per
-annotare sezioni, accordi, idee. Una barra sola (`C/E`, `&"Blues/basso"`)
-resta quella di sempre.
-
-```
-// Strofa
-4: Am | F | C | G |     // giro di quattro accordi
-```
-
-I commenti e gli a capo si conservano nel file `.st`, nei box, nella
-trasposizione dei box e nel congelamento degli accordi. Non si conservano
-invece nel corpo dei pattern (che sono salvati come sequenza di token) ne'
-nelle operazioni che riscrivono tutto il testo della traccia (Riorganizza
-con i pattern, Espandi i pattern). Nel file `.st` una riga vuota chiude un
-blocco: le righe vuote dentro il testo di una traccia si tolgono al
-salvataggio (prima troncavano il resto della traccia).
-
-### 2.11 Valori di nota espliciti (`'8.`)
-
-Oltre alla griglia (`N:` seguito da moltiplicatori), una durata si puo'
-scrivere come **valore di nota**, con un apostrofo in fondo al token:
-
-| Scrittura | Valore | Durata in quarti |
-| --- | --- | --- |
-| `c'1` | semibreve | 4 |
-| `c'2` | minima | 2 |
-| `c'4` | semiminima | 1 |
-| `c'8` | croma | 1/2 |
-| `c'16`, `c'32`, `c'64` | semicroma, biscroma, semibiscroma | 1/4, 1/8, 1/16 |
-| `c'4.` / `c'8.` | semiminima / croma **puntata** | 1 e 1/2 / 3/4 |
-| `c'2..` | minima con due punti | 3 e 1/2 |
-| `c'8T` / `c'4T` | croma / semiminima di **terzina** | 1/3 / 2/3 |
-| `c'16Q`, `c'8S` | quintina, settimina (come le griglie `NQ:`, `NS:`) | |
-
-```
-8: c*4'8. d*4'16 e*4 e*4 [c e g]'2    // ritmo puntato senza cambiare griglia
-```
-
-Il valore vale **solo per quel token**: la griglia corrente resta quella di
-prima (nell'esempio, `e*4 e*4` sono crome della griglia `8:`). Funziona con
-note, accordi (`C7'2`), blocchi (`[c e g]'2`), pause (`r'4`), percussioni
-(`kick'16`) e slide. Un moltiplicatore davanti si somma: `2c'8` dura due
-crome. L'articolazione puo' stare prima o dopo: `c'8!` e `c!'8` sono la
-stessa croma staccata. La griglia resta comoda per i ritmi regolari; il
-valore esplicito e' piu' leggibile per le frasi irregolari e per chi viene
-dallo spartito.
-
-### 2.12 Piu' voci nella stessa traccia (`{ ; }`)
-
-Un **blocco di voci** contiene due o piu' sequenze, separate da `;`, che
-**partono insieme**, ognuna con le sue durate. Il blocco dura quanto la
-voce piu' lunga, poi la traccia prosegue:
-
-```
-4: { c*5 d*5 e*5 f*5 ; 4c*4 } g*4           // melodia sopra una nota tenuta
-4: {
-  8: e*5 d*5 c*5 d*5 e*5 e*5 2e*5            // mano destra
-  ;
-  2c*4 2g*3                                  // mano sinistra
-}
-```
-
-A differenza di `[...]`, dove tutto inizia e finisce insieme, ogni voce ha
-il suo ritmo: e' quello che serve per il pianoforte a due mani, una
-melodia sopra un accordo tenuto, la chitarra classica.
-
-- Ogni voce parte con lo **stato** (griglia, velocity) del punto in cui si
-  apre il blocco; i cambi fatti **dentro** una voce restano li'.
-- Dentro una voce vale tutta la grammatica: gruppi `N(...)`, pattern
-  `%Nome`, controlli di battuta `|` (ogni voce si controlla per conto suo),
-  testo cantato, anche altri blocchi di voci.
-- Il blocco puo' andare a capo; un `;` fuori da un blocco e' un errore.
-- Nell'editor ogni voce ha uno **sfondo colorato** diverso (azzurro la
-  prima, ambra la seconda, poi lilla e verde; un blocco annidato parte da
-  un altro colore): si vede subito dove inizia e finisce ciascuna, anche
-  quando il blocco va a capo. Le parentesi e i `;` restano senza sfondo.
-- In partitura (sezioni 10.1 e 10.1bis) le voci diventano **voci dello
-  stesso pentagramma**, con i gambi in su e in giu'.
-
-### 2.13 Testo cantato (`"..."`)
-
-Una stringa fra virgolette e' il **testo cantato** delle note che la
-**precedono**, a partire dalla nota dopo il testo precedente (o
-dall'inizio): una sillaba per nota, separate da spazi. Si scrive come
-sotto un rigo di spartito:
-
-```
-4: c*4 d*4 e*4 2f*4
-"Ma- ri- a, sei"
-```
-
-- Un trattino in fondo (`Ma-`) dice che la parola continua nella sillaba
-  dopo; in partitura le sillabe vengono unite dal trattino.
-- `_` lascia la nota senza una sillaba nuova: la sillaba precedente si
-  **prolunga** (melisma, con la linea di estensione in partitura).
-- `*` salta una nota (nessuna sillaba).
-- Pause e percussioni non ricevono sillabe.
-- La sillaba si puo' anche attaccare alla nota: `c"Ma-" d"ri-" e"a"`.
-- Dentro un gruppo `2(...)` il testo si ripete con le note; dopo un blocco
-  di voci va sulla **prima voce** (una voce puo' avere anche il suo testo,
-  dentro il blocco).
-- Il testo non si sente: va nella partitura (sotto le note), nel MusicXML e
-  nel MIDI esportato (eventi *lyrics*, letti dai programmi karaoke).
-- Se ci sono **piu' sillabe che note** l'editor lo segnala come avviso
-  (arancione), come i controlli di battuta. Un `//` dentro le virgolette fa
-  parte del testo, non apre un commento.
-
-### 2.14 La specifica e la libreria ST-language
-
-La notazione ha una **specifica formale pubblica**:
-[docs/spec/ST-language.it.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.it.md) (in inglese
-[ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)), con licenza **CC BY 4.0** (si puo'
-copiare, tradurre e adattare citando la fonte). Descrive la grammatica
-completa, come il testo diventa note nel tempo, gli errori e gli avvisi, il
-formato dei file `.st` e la corrispondenza con il MIDI, con una **suite di
-conformita'** ([`docs/spec/conformance/`](https://github.com/openssound/st-language/tree/main/docs/spec/conformance)): i casi di prova che un altro
-programma deve superare per leggere ST-language come SoundText.
-
-Il motore della notazione e' anche una **libreria Python autonoma**,
-`st_language`, senza dipendenze esterne: e' la stessa che usa SoundText,
-quindi i due danno sempre lo stesso risultato. Si installa con
-`pip install st-language` e offre dei comandi da terminale:
-
-```
-st-language check brano.st           # errori e avvisi (battute, testo cantato)
-st-language midi brano.st -o brano.mid
-st-language musicxml brano.st        # partitura brano.musicxml
-st-language events brano.st          # gli eventi in JSON
-echo "4: c d e f | 2g 2g" | st2mid - -o melodia.mid --instrument Trumpet
-```
-
-Un file senza intestazioni di traccia e' un brano di una traccia sola
-(`--instrument` ne sceglie lo strumento). Da Python: `import st_language as
-st`, poi `st.parse(testo)`, `st.validate(testo)`, `st.check(testo)`,
-`st.load_song("brano.st")`, `st.to_midi(brano, "brano.mid")`. Cosi' i brani
-scritti in ST si possono controllare ed esportare anche senza aprire
-SoundText (per esempio da uno script, o in un repository di canzoni).
-
-### 2.15 Automazioni (volume, espressione, pan... che cambiano nel tempo)
+### 7.4 Automazioni (volume, espressione, pan... che cambiano nel tempo)
 
 Le dinamiche (`p@`, `>>`) cambiano la **velocity**, cioe' la forza con cui
 viene suonata ogni nota: una nota gia' partita resta com'e'. Le
@@ -847,57 +1182,143 @@ meta' al valore corrente o viceversa), che poi torna com'era:
   change: CC7, CC11, CC10, CC1, CC91, CC93); in partitura le rampe di
   `vol=`/`expr=` e le forcelle compaiono come forcelle di crescendo e
   diminuendo.
-- Fanno parte della specifica ST-language dalla versione 1.1 (2.14).
+- Fanno parte della specifica ST-language dalla versione 1.1 (13).
 
-### 2.16 Legature e swing
+## 8. Tempo, metrica e tonalità
 
-**Legatura di valore `~`.** Un `~` in fondo a una nota, un accordo o un
-blocco la **unisce** alla successiva uguale: suonano come una nota sola,
-lunga quanto le due insieme. Serve soprattutto per tenere una nota oltre
-la stanghetta, dove la divisione in battute non lascia scriverla tutta
-intera:
+### 8.1 Cambi di tempo (accelerando/rallentando)
 
-```
-4: c d 2f~ | 2f g a |        // il fa dura 4 quarti, a cavallo della battuta
-4: 4C7~ | 4C7 | 4F |         // un accordo tenuto per due battute
-4: c'2~ c'8 r'8 d'4          // anche con i valori di nota
-```
-
-La nota dopo il `~` deve essere la stessa (`c#~ db` va bene: e' lo stesso
-suono), altrimenti e' un errore; le percussioni, le pause e gli slide non
-si legano.
-
-**Legatura di portamento `( )`.** Un `(` in fondo alla prima nota e un
-`)` in fondo all'ultima collegano una frase: le note in mezzo suonano
-**legate** (attaccate l'una all'altra, come in un fraseggio cantabile),
-l'ultima come scritta. In partitura compare l'arco sopra le note.
+All'interno di una traccia, il comando `tempo=N` (1-999) imposta
+il tempo (BPM) istantaneamente da quel punto in poi:
 
 ```
-4: c( d e f) g( a b c*5)
-4: 2(c( d) e)                // dentro un gruppo, la legatura si ripete
+tempo=120 c*4 d*4    -> tempo impostato a 120 BPM
 ```
 
-Una nota con un'articolazione propria (`d!` staccato) la tiene anche dentro
-la legatura. Le legature non si annidano e non attraversano un blocco di
-voci `{ ; }`.
-
-**Swing.** `swing=N` fa "dondolare" le crome dal punto in cui lo scrivi: in
-ogni battito la prima croma si allunga e la seconda si accorcia, come si
-suona nel jazz, nel blues e nello shuffle. N e' la parte del battito data
-alla prima croma: 50 e' diritto, 66 e' terzinato (lo swing classico), fino
-a 80. `swing16=N` fa lo stesso con le semicrome (funk, hip hop).
-`swing=50` toglie lo swing.
+Come per la dinamica, `>>` (accelerando) o `<<` (rallentando) dopo un
+comando `tempo=N` interpola progressivamente il tempo fino al prossimo `tempo=N`:
 
 ```
-swing=62 8: c d e f g a b c*5   // si scrive diritto, suona in swing
-swing16=58 16: kick hihat snare hihat kick kick snare hihat
+tempo=100 >> c*4 d*4 e*4 f*4 tempo=140    -> accelerando da 100 a 140 BPM
+tempo=140 << c*4 d*4 e*4 f*4 tempo=80      -> rallentando da 140 a 80 BPM
 ```
 
-Si scrive tutto diritto: i controlli di battuta e la partitura restano
-regolari (in partitura compare l'indicazione "Swing"), cambia solo come
-suona, nella riproduzione e nel MIDI esportato.
+Nota: il tempo e' per natura un concetto condiviso da tutto il progetto
+(tutte le tracce suonano sulla stessa timeline); un cambio di tempo
+dichiarato in una traccia si applica quindi all'intero brano a partire da
+quel punto, non solo a quella traccia.
 
-### 2.17 Ritornelli, segni e indicazioni
+### 8.2 Cambi di tempo e metrica per battuta
+
+Oltre alla forma semplice (`Tempo: 120 BPM`, `Metrica: 4/4`, un solo
+valore per tutto il brano), l'intestazione del progetto accetta anche un
+elenco di cambi indicizzati per numero di battuta:
+
+```
+Tempo: 1: 120, 5: 140, 9: 100
+Metrica: 1: 4/4, 5: 3/4, 8: 4/4
+```
+
+Significa: tempo 120 BPM dalla battuta 1, 140 BPM dalla battuta 5, 100 BPM
+dalla battuta 9; metrica 4/4 dalla battuta 1, 3/4 dalla battuta 5, 4/4
+dalla battuta 8. Le posizioni (in beat) delle battute successive alla
+prima vengono calcolate automaticamente tenendo conto della metrica in
+vigore in ciascun tratto.
+
+I tempi possono avere un decimale (`Tempo: 101.4 BPM`, `Tempo: 1: 96.5, 5:
+101.4`), come i marcatori `tempo=72.5`; anche il campo **Tempo** della
+barra lo accetta (101,4). Un brano con un tempo decimale si salva con
+`ST: 2.9` in cima: SoundText 1.8.0 e precedenti non leggerebbero quella
+riga `Tempo:` (e lo segnalano all'apertura). Con i soli tempi interi il
+file resta `ST: 2.8`, leggibile da tutte.
+
+**Barra di avanzamento, evidenziazione e campi Tempo/Metrica durante la
+riproduzione**: il file MIDI esportato, la barra di avanzamento,
+l'evidenziazione del token in esecuzione nell'editor e i campi **Tempo
+(BPM)** e **Metrica** nella toolbar principale usano tutti la stessa mappa
+di tempo/metrica del progetto (tutti i cambi per battuta piu' i marcatori
+inline `tempo=N`): mostrano quindi sempre il valore realmente in vigore in quel
+punto del brano, non una stima basata sul solo tempo/metrica iniziale.
+Fermata la riproduzione, i campi Tempo/Metrica tornano al valore "a
+riposo" del progetto (quello della battuta 1).
+
+### 8.3 Tonalita' del brano
+
+L'intestazione del progetto puo' anche dichiarare la tonalita' del brano
+(riga `Tonalita: <valore>`), impostabile anche dal campo **Tonalita'**
+nella toolbar principale, accanto a Tempo e Metrica:
+
+```
+Tonalita: Am
+```
+
+Formato: lettera nota (A-G) + alterazione opzionale (`#` o `b`) + `m`
+opzionale per il minore, es. `C`, `F#`, `Ebm`, `Am` (maggiore se `m` e'
+assente). E' un'informazione descrittiva/di riferimento (non influenza
+voicing o riconoscimento accordi); importando un file MIDI che dichiara una
+tonalita' (evento meta *key signature*) viene riconosciuta e impostata
+automaticamente. Se il file dichiara Do maggiore o non dichiara nulla (Do e'
+il valore predefinito di molti sequencer, quindi non e' affidabile), la
+tonalita' viene stimata dalle note come fa **Analizza tonalita'**. Viene usata anche da **Suona con la tastiera** (sezione
+10ter) dai layout tastiera "Scala della tonalita'".
+
+Se non la conosci gia' (o non sei sicuro), **Componi → Analizza
+tonalita'...** la stima automaticamente analizzando le note effettivamente
+scritte in tutte le tracce non percussive del progetto (batteria esclusa),
+con l'algoritmo classico di Krumhansl-Schmuckler: confronta la distribuzione
+delle 12 classi di altezza usate (pesata per durata) con i profili tonali
+tipici di ciascuna delle 24 tonalita' possibili e sceglie quella piu'
+somigliante, impostandola automaticamente nel campo Tonalita' (sovrascrive
+un eventuale valore gia' presente). E' una stima statistica, non
+un'analisi armonica vera e propria: puo' sbagliare su brani molto brevi,
+cromatici o che modulano — un buon punto di partenza, non un verdetto
+infallibile. Se il progetto non contiene note intonate (nessuna traccia, o
+solo percussive), lo segnala invece di indovinare.
+
+### 8.4 Micro-tempo, accordatura, molte tracce, MTXT
+
+**Micro-tempo (`shift=`).** `shift=N` fa suonare le note che seguono N
+millisecondi **dopo** (N positivo) o **prima** (N negativo) di dove sono
+scritte; `shift=0` le riporta a tempo. Il ritmo scritto non cambia:
+controlli di battuta e partitura restano uguali, cambia solo il momento
+in cui le note suonano. Va da -500 a 500.
+
+```
+4: kick shift=20 snare shift=0 kick shift=20 snare   // rullante un po' indietro
+shift=-10 8: c c g g a a g g                          // basso che spinge in avanti
+```
+
+Serve per il "feeling" e per allineare una parte a una registrazione;
+i ritmi veri si scrivono con i valori, i gruppi irregolari e lo swing.
+
+**Accordatura (`tune=`).** `tune=N` accorda lo strumento di N cent
+(da -100 a 100: 100 cent sono un semitono). E' un'automazione come
+`vol=` o `bend=`: vale per tutta la traccia, anche durante una nota, e
+accetta le rampe.
+
+```
+tune=-20 4: c d e f              // per suonare con un disco accordato un po' basso
+tune=0 >> 4: c d e f tune=50     // sale di un quarto di tono in quattro note
+```
+
+**Piu' di 15 tracce.** Ogni traccia ha sempre il suo canale MIDI: dalla
+sedicesima traccia melodica l'export MIDI usa una seconda "porta" (16
+canali in piu'), poi una terza e cosi' via. SoundText le suona e le
+reimporta correttamente; qualche lettore MIDI molto vecchio ignora le
+porte e suona quelle tracce sui canali delle prime.
+
+**MTXT.** **Progetto → Esporta → MTXT...** scrive il brano in
+[MTXT](https://github.com/Daninet/mtxt), un formato di testo con un
+evento per riga e i tempi in quarti (`1.5 note C4 dur=0.5 vel=0.8`),
+comodo da leggere, confrontare e far modificare a un'IA. Contiene note,
+strumenti, automazioni, tempo e metrica, come il MIDI. **Progetto → Importa → MTXT...** fa il contrario: legge il file come un MIDI (una traccia per
+canale, con i nomi dei canali). La libreria fa lo stesso da terminale
+con `st-language mtxt brano.st` e `st-language mtxt file.mtxt` (che
+diventa un `.mid`).
+
+## 9. Forma del brano: ritornelli, segni, levare
+
+### 9.1 Ritornelli, segni e indicazioni
 
 **Ritornelli.** Si scrivono come sullo spartito: `|:` apre la parte da
 ripetere, `:|` la chiude, e la parte si suona due volte. Se manca `|:`,
@@ -950,220 +1371,9 @@ blocchi restano un segno in partitura).
 **Indicazioni di testo.** `$"testo"` scrive un'indicazione sopra il
 pentagramma nel punto in cui si trova: `$"rit."`, `$"dolce"`,
 `$"a tempo"`. Non cambia il suono: per rallentare davvero si usa una
-rampa di tempo (`tempo=100 << ... tempo=70`, sezione 2.6).
+rampa di tempo (`tempo=100 << ... tempo=70`, sezione 8.1).
 
-### 2.18 Ottave relative e tonalita'
-
-Due comandi rendono le melodie molto piu' corte da scrivere. Si possono
-usare insieme, ed entrambi sono facoltativi: senza, tutto funziona come
-prima.
-
-**Ottave relative (`rel:`).** Dopo `rel:` non serve piu' scrivere
-l'ottava: ogni nota va all'ottava **piu' vicina alla nota precedente**
-(al massimo una quarta sopra o sotto, contando le lettere). Per saltare
-piu' lontano si aggiunge `*+` (un'ottava sopra) o `*-` (un'ottava sotto),
-anche ripetuti (`*++` due ottave sopra, `*--` due sotto); `*n` resta valido e fissa l'ottava esatta.
-
-```
-rel: c d e f g a b c          // scala di Do salendo fino al Do sopra
-rel: c*5 b a g f e d c        // e scendendo
-rel: g c*+ c*- c                // c*+ salta in alto, c*- torna giu'
-```
-
-La prima nota dopo `rel:` va vicino al Do dell'ottava di default dello
-strumento. Dopo un blocco `[...]` si riparte dalla sua prima nota;
-accordi e percussioni non contano. `abs:` torna alle ottave assolute.
-Nei ritornelli e nei gruppi ogni ripetizione riparte dalla stessa nota,
-cosi' suona uguale.
-
-**Tonalita' (`key=`).** Dopo `key=G` ogni nota **senza** alterazione
-prende quella della tonalita': in sol maggiore `f` e' fa diesis. Un
-diesis o un bemolle scritto vale solo per quella nota; `n` (o `♮`) e' il
-bequadro e toglie l'alterazione della tonalita'.
-
-```
-key=G rel: g a b c d e f g    // sol maggiore senza scrivere il diesis
-key=Bb rel: b c d e f g a b   // si bemolle maggiore: b ed e sono bemolli
-key=Dm rel: d e f g a b c# d  // re minore (b bemolle) con il do diesis
-key=G f fn f#                 // fa diesis, fa naturale, fa diesis
-```
-
-`key=off` toglie la tonalita'. Gli accordi (`C`, `F7`...) non cambiano:
-le sigle sono sempre assolute. La tonalita' del brano (nella barra in
-alto) serve all'armatura della partitura; `key=` dice come leggere le
-note della traccia.
-
-I **pattern** (`%Nome`) si leggono sempre con ottave assolute e senza
-tonalita', qualunque sia il modo della traccia che li usa: suonano uguali
-ovunque.
-
-**Riscrivere una traccia esistente.** Il pulsante **Altezze relative e
-tonalita'**, sotto l'editor, riscrive la traccia corrente con `rel:` e,
-se il brano ha una tonalita', `key=`: le note restano le stesse, il testo
-diventa piu' corto. E' comodo dopo un'importazione da MIDI, MusicXML o
-ABC. Anche **Trasponi** (nei box) conosce i due modi: in `rel:` le note
-restano relative, e con `key=` si traspone anche la tonalita'.
-
-### 2.19 Micro-tempo, accordatura, molte tracce, MTXT
-
-**Micro-tempo (`shift=`).** `shift=N` fa suonare le note che seguono N
-millisecondi **dopo** (N positivo) o **prima** (N negativo) di dove sono
-scritte; `shift=0` le riporta a tempo. Il ritmo scritto non cambia:
-controlli di battuta e partitura restano uguali, cambia solo il momento
-in cui le note suonano. Va da -500 a 500.
-
-```
-4: kick shift=20 snare shift=0 kick shift=20 snare   // rullante un po' indietro
-shift=-10 8: c c g g a a g g                          // basso che spinge in avanti
-```
-
-Serve per il "feeling" e per allineare una parte a una registrazione;
-i ritmi veri si scrivono con i valori, i gruppi irregolari e lo swing.
-
-**Accordatura (`tune=`).** `tune=N` accorda lo strumento di N cent
-(da -100 a 100: 100 cent sono un semitono). E' un'automazione come
-`vol=` o `bend=`: vale per tutta la traccia, anche durante una nota, e
-accetta le rampe.
-
-```
-tune=-20 4: c d e f              // per suonare con un disco accordato un po' basso
-tune=0 >> 4: c d e f tune=50     // sale di un quarto di tono in quattro note
-```
-
-**Piu' di 15 tracce.** Ogni traccia ha sempre il suo canale MIDI: dalla
-sedicesima traccia melodica l'export MIDI usa una seconda "porta" (16
-canali in piu'), poi una terza e cosi' via. SoundText le suona e le
-reimporta correttamente; qualche lettore MIDI molto vecchio ignora le
-porte e suona quelle tracce sui canali delle prime.
-
-**MTXT.** **Progetto → Esporta → MTXT...** scrive il brano in
-[MTXT](https://github.com/Daninet/mtxt), un formato di testo con un
-evento per riga e i tempi in quarti (`1.5 note C4 dur=0.5 vel=0.8`),
-comodo da leggere, confrontare e far modificare a un'IA. Contiene note,
-strumenti, automazioni, tempo e metrica, come il MIDI. **Progetto → Importa → MTXT...** fa il contrario: legge il file come un MIDI (una traccia per
-canale, con i nomi dei canali). La libreria fa lo stesso da terminale
-con `st-language mtxt brano.st` e `st-language mtxt file.mtxt` (che
-diventa un `.mid`).
-
-### 2.20 Ancore di battuta (`bar=`)
-
-**Dove entra una parte.** `bar=N` porta il cursore all'**inizio della
-battuta N**, con i silenzi che servono: invece di contare le pause
-(`28%Rest`) si scrive la battuta in cui la parte entra.
-
-```
-Guitar 2:
-  bar=29                          // la seconda chitarra entra alla battuta 29
-  8: 100@ c d e f g a b c
-```
-
-- Se la traccia e' **prima** di quel punto, il vuoto si riempie di
-  silenzio; se e' **esattamente** li', non succede nulla.
-- Se la traccia e' **gia' oltre** (una parte piu' lunga del previsto),
-  l'ancora non torna indietro: la parte continua dov'e', e l'editor
-  mostra un **avviso** sull'ancora ("battuta 29: la traccia e' gia' 2
-  quarti oltre l'inizio"), come per i controlli di battuta `|`.
-- Le battute si contano come nel resto del programma: dalla 1, secondo
-  la metrica del brano e i suoi cambi. Dentro un pattern o un gruppo
-  ripetuto vale la battuta del brano a ogni ripetizione.
-- Una legatura `~` non puo' attraversare un'ancora che richiede un
-  silenzio.
-
-`bar=` posiziona e `|` verifica: insieme dicono dove deve stare ogni
-parte e avvisano quando una si e' spostata. Nella finestra di
-**Estrai pattern** i blocchi con un'ancora non vengono estratti, perche'
-un pattern non sa in che battuta si trova.
-
-### 2.21 Trasposizione (`transpose=`, `%Nome+N`)
-
-**Trasporre senza riscrivere.** `transpose=N` fa suonare note, accordi,
-slide e blocchi che seguono N semitoni **sopra** (N positivo) o **sotto**
-(N negativo) rispetto a come sono scritti; `transpose=0` torna all'altezza
-scritta. Va da -60 a 60.
-
-```
-4: c d e f g a b c*5        // in Do
-transpose=2 4: c d e f g a b c*5  // la stessa melodia in Re
-transpose=0
-```
-
-**Un pattern in un'altra tonalita'.** Dopo il nome di un pattern si scrive
-di quanti semitoni trasporlo: `%Tema+7` lo suona una quinta sopra,
-`%Tema-12` un'ottava sotto, `2%Tema+3` due volte, tre semitoni sopra.
-Non servono pattern copiati: il tema si scrive una volta sola.
-
-```
-Pattern %Tema:
-  key=Eb 8: 90@ g*5 b*5 e*6 2d*6 2b*5 |
-
-Violini1:
-  %Tema  %Tema-3  %Tema+12     // Mi bemolle, poi Do (-3), poi un'ottava sopra
-```
-
-- La trasposizione vale per **tutto** quello che c'e' dentro il pattern, anche
-  per i pattern che richiama, e si **somma** a quella gia' in vigore
-  (`transpose=3 %Tema+4` suona 7 semitoni sopra).
-- Un `transpose=` scritto dentro un pattern finisce con il pattern.
-- Lo stesso vale per la libreria MIDI: `&"Basso"+7`, `&"Basso"-12`
-  (sezione 5).
-- Con `key=` le note trasposte si scrivono nella tonalita' nuova: `key=G`
-  con `transpose=2` e' La maggiore (il fa diesis scritto diventa sol
-  diesis, il sol diventa la). Senza tonalita', un bemolle resta un bemolle
-  e le altre note alterate prendono il diesis. Anche nella partitura.
-- Gli accordi cambiano nome (`C7/E` +5 e' `F7/A`) e salgono di ottava
-  quando scavalcano il Do; con +12 ogni accordo sale di un'ottava.
-- Le percussioni e le pause non cambiano. Se una nota trasposta esce
-  dall'estensione MIDI, il programma lo segnala come errore.
-- Nel pulsante **Estrai pattern** i blocchi con un `transpose=` non vengono
-  estratti: nel pattern la trasposizione finirebbe alla fine del pattern.
-
-### 2.22 `reset:`, levare e versione del file (ST 2.6)
-
-**`reset:` — ripartire da zero.** Riporta tutto allo stato iniziale:
-griglia `4:`, velocity 80, niente swing ne' spostamento, trasposizione 0,
-ottave assolute, nessuna tonalita'. Le automazioni (`vol=`, `pan=`...)
-restano dove sono. Serve quando un pezzo di testo deve suonare uguale
-qualunque cosa ci sia prima:
-
-```
-rel: key=G 8: 100@ transpose=2 g a b c
-reset: c d e f           // di nuovo semiminime, velocity 80, Do maggiore
-```
-
-Ogni box della vista Struttura comincia con un `reset:`: cosi' un
-`transpose=` o un `key=` scritto in un box non passa mai al box dopo.
-
-**Battuta in levare.** Se il brano comincia con un levare, scrivi quanti
-quarti dura nel campo **Levare** della barra del brano (o `Levare: 1` nel
-file). La battuta 1 diventa la prima intera: i controlli di battuta `|`,
-le ancore `bar=N`, i cambi di tempo e di metrica per battuta, il righello
-della vista Struttura, il metronomo e la partitura contano da li'. Il
-levare e' la battuta 0.
-
-```
-Levare: 1
-Metrica: 3/4
-
-Violino:
-  4: g | c e g | c*5 2r |      // un quarto in levare, poi battute da 3/4
-```
-
-**Nomi dei file MIDI fra virgolette.** Il nome di un file della libreria
-MIDI si scrive sempre fra virgolette: `&"Riff"`, `&"Blues/bass-line"`,
-anche con spazi (`&"intro take 2"`). Quello che segue le virgolette e'
-sempre la trasposizione: `&"Riff"-2` e' il file `Riff` due semitoni sotto,
-`&"take-2"` e' il file che si chiama `take-2`. I brani scritti prima (con
-`&Riff`) si convertono da soli quando li apri, e restano uguali; scrivendo
-`&Riff` senza virgolette l'editor ti dice come correggerlo.
-
-**Versione e parole inglesi nel file.** Il file `.st` comincia con
-`ST: 2.7`, la versione del linguaggio con cui e' scritto; aprendo un file
-di una versione piu' recente il programma avvisa. Il programma legge anche
-le parole chiave in inglese (`Track`, `Instrument`, `Meter`, `Key`,
-`Pickup`, `percussion=`, `octave=`, `yes`), comodo per chi scrive i file a
-mano; salvando usa sempre le forme italiane.
-
-### 2.23 Accordi, abbellimenti, D.C./D.S., strofe e titolo (ST 2.7)
+### 9.2 Accordi, abbellimenti, D.C./D.S., strofe e titolo (ST 2.7)
 
 **Altri accordi.** Oltre a quelli di sempre: `C7#5` (anche `Caug7`),
 `C7b5`, `Cm11`, `Cm13`, `C69` (sesta e nona: la barra di `C6/9` sarebbe il
@@ -1216,18 +1426,82 @@ nella partitura), e la tonalita' per battuta come il tempo:
 contralto in Mi♭: -9): si scrive sempre in suoni reali e la partitura
 scrive la sua parte trasportata. Il file salvato dichiara `ST: 2.7`.
 
-## 3. Stato Corrente
+### 9.3 Ancore di battuta (`bar=`)
 
-Griglia e velocity restano attive finche' non vengono cambiate di nuovo:
+**Dove entra una parte.** `bar=N` porta il cursore all'**inizio della
+battuta N**, con i silenzi che servono: invece di contare le pause
+(`28%Rest`) si scrive la battuta in cui la parte entra.
 
 ```
-100@ 8: c e 60@ g a 100@ c
+Guitar 2:
+  bar=29                          // la seconda chitarra entra alla battuta 29
+  8: 100@ c d e f g a b c
 ```
-`c` ed `e` durano un ottavo a velocity 100; `g` e `a` a velocity 60; l'ultima
-`c` torna a velocity 100. Nessun evento viene generato dai comandi di stato:
-non consumano tempo sulla timeline.
 
-## 4. Pattern (%Nome)
+- Se la traccia e' **prima** di quel punto, il vuoto si riempie di
+  silenzio; se e' **esattamente** li', non succede nulla.
+- Se la traccia e' **gia' oltre** (una parte piu' lunga del previsto),
+  l'ancora non torna indietro: la parte continua dov'e', e l'editor
+  mostra un **avviso** sull'ancora ("battuta 29: la traccia e' gia' 2
+  quarti oltre l'inizio"), come per i controlli di battuta `|`.
+- Le battute si contano come nel resto del programma: dalla 1, secondo
+  la metrica del brano e i suoi cambi. Dentro un pattern o un gruppo
+  ripetuto vale la battuta del brano a ogni ripetizione.
+- Una legatura `~` non puo' attraversare un'ancora che richiede un
+  silenzio.
+
+`bar=` posiziona e `|` verifica: insieme dicono dove deve stare ogni
+parte e avvisano quando una si e' spostata. Nella finestra di
+**Estrai pattern** i blocchi con un'ancora non vengono estratti, perche'
+un pattern non sa in che battuta si trova.
+
+### 9.4 `reset:`, levare e versione del file (ST 2.6)
+
+**`reset:` — ripartire da zero.** Riporta tutto allo stato iniziale:
+griglia `4:`, velocity 80, niente swing ne' spostamento, trasposizione 0,
+ottave assolute, nessuna tonalita'. Le automazioni (`vol=`, `pan=`...)
+restano dove sono. Serve quando un pezzo di testo deve suonare uguale
+qualunque cosa ci sia prima:
+
+```
+rel: key=G 8: 100@ transpose=2 g a b c
+reset: c d e f           // di nuovo semiminime, velocity 80, Do maggiore
+```
+
+Ogni box della vista Struttura comincia con un `reset:`: cosi' un
+`transpose=` o un `key=` scritto in un box non passa mai al box dopo.
+
+**Battuta in levare.** Se il brano comincia con un levare, scrivi quanti
+quarti dura nel campo **Levare** della barra del brano (o `Levare: 1` nel
+file). La battuta 1 diventa la prima intera: i controlli di battuta `|`,
+le ancore `bar=N`, i cambi di tempo e di metrica per battuta, il righello
+della vista Struttura, il metronomo e la partitura contano da li'. Il
+levare e' la battuta 0.
+
+```
+Levare: 1
+Metrica: 3/4
+
+Violino:
+  4: g | c e g | c*5 2r |      // un quarto in levare, poi battute da 3/4
+```
+
+**Nomi dei file MIDI fra virgolette.** Il nome di un file della libreria
+MIDI si scrive sempre fra virgolette: `&"Riff"`, `&"Blues/bass-line"`,
+anche con spazi (`&"intro take 2"`). Quello che segue le virgolette e'
+sempre la trasposizione: `&"Riff"-2` e' il file `Riff` due semitoni sotto,
+`&"take-2"` e' il file che si chiama `take-2`. I brani scritti prima (con
+`&Riff`) si convertono da soli quando li apri, e restano uguali; scrivendo
+`&Riff` senza virgolette l'editor ti dice come correggerlo.
+
+**Versione e parole inglesi nel file.** Il file `.st` comincia con
+`ST: 2.7`, la versione del linguaggio con cui e' scritto; aprendo un file
+di una versione piu' recente il programma avvisa. Il programma legge anche
+le parole chiave in inglese (`Track`, `Instrument`, `Meter`, `Key`,
+`Pickup`, `percussion=`, `octave=`, `yes`), comodo per chi scrive i file a
+mano; salvando usa sempre le forme italiane.
+
+## 10. Pattern (%Nome)
 
 Si definiscono nella libreria pattern (menu **Componi → Gestisci
 libreria pattern**) o direttamente nel file `.st`:
@@ -1244,7 +1518,7 @@ e si richiamano in qualsiasi traccia con `%GtrArp`.
 3%GtrArp        -> esegue %GtrArp per tre volte di seguito
 ```
 
-### 4.1 Ascoltare un pattern
+### 10.1 Ascoltare un pattern
 
 Nel dialogo **Componi → Gestisci libreria pattern**, ogni pattern
 selezionato puo' essere ascoltato con il pulsante **▶ Ascolta**, scegliendo
@@ -1255,7 +1529,7 @@ Mentre suona, nel corpo del pattern è evidenziato il punto che stai
 ascoltando, come nell'editor principale e nei dialoghi di modifica del box,
 di generazione, di "Suona con la tastiera" e di conversione audio.
 
-### 4.2 Riorganizzare la song con i pattern
+### 10.2 Riorganizzare la song con i pattern
 
 Menu **Componi → Estrai pattern dalle tracce...**: analizza tutte le
 tracce del progetto corrente, individua blocchi di eventi che si ripetono
@@ -1288,7 +1562,7 @@ tempo di ricerca dei blocchi ripetuti e' comunque sempre limitato (per
 traccia), cosi' che anche su tracce molto lunghe la riorganizzazione non
 resti mai bloccata a tempo indefinito.
 
-### 4.3 Menu contestuale su una selezione (tasto destro)
+### 10.3 Menu contestuale su una selezione (tasto destro)
 
 Selezionando con il mouse una sequenza di token nell'editor (traccia,
 corpo di un pattern o di un box) e facendo click con il **tasto destro**,
@@ -1302,14 +1576,14 @@ ferma prima l'eventuale ascolto dell'anteprima intera:
   velocity attive prima della selezione (cosi' suona come suonerebbe nel
   contesto originale, non sempre a 1/4 e velocity 80).
 - **Raggruppa**: racchiude la selezione tra parentesi tonde, trasformandola
-  in un gruppo `(...)` (vedi sezione 2.1); utile prima di applicarvi un
+  in un gruppo `(...)` (vedi sezione 4.4); utile prima di applicarvi un
   moltiplicatore di ripetizione a mano (es. trasformare `(...)` in
   `4(...)`).
 - **Trasforma in pattern...**: chiede un nome, crea un nuovo pattern
   contenente la selezione e sostituisce la selezione stessa con
   `%NomePattern` — un modo rapido per estrarre manualmente un singolo
   frammento in pattern, in alternativa alla ricerca automatica di **Estrai
-  pattern dalle tracce...** (sezione 4.2).
+  pattern dalle tracce...** (sezione 10.2).
 
 La selezione fatta con il mouse viene sempre "agganciata" ai confini dei
 token interi che tocca (non serve selezionare con precisione millimetrica);
@@ -1322,7 +1596,7 @@ file MIDI (`&"Nome"`), nel menu compare **solo Play**: raggruppare o
 trasformare in un nuovo pattern un'indirezione gia' esistente non e'
 consentito.
 
-### 4.4 Rinominare un pattern
+### 10.4 Rinominare un pattern
 
 Il pulsante **Rinomina** (accanto a "Nuovo" nel dialogo **Componi →
 Gestisci libreria pattern**) rinomina il pattern selezionato e aggiorna
@@ -1333,7 +1607,7 @@ deve rispettare la stessa sintassi di un riferimento a pattern (lettere,
 cifre e underscore, senza spazi) e non puo' coincidere con quello di un
 pattern gia' esistente.
 
-## 5. Libreria MIDI (&"Nome")
+## 11. Libreria MIDI (&"Nome")
 
 Nella cartella `midi/` (accanto al programma, vuota alla prima
 installazione: la libreria e' tua) puoi conservare brevi frasi musicali come
@@ -1381,10 +1655,9 @@ trovate; per risolverlo basta qualificare il percorso:
 **Trasposizione:** come per i pattern, un numero dopo il nome trasporta il
 file di quel numero di semitoni: `&"Intro"+7` lo suona una quinta sopra,
 `&"Intro"-12` un'ottava sotto, `2&"Intro"+2` due volte, due semitoni sopra
-(sezione 2.21). Il nome sta fra le virgolette, quindi trattini e spazi
+(sezione 4.11). Il nome sta fra le virgolette, quindi trattini e spazi
 non danno problemi: `&"Blues/bass-line"-2` e' `Blues/bass-line` due
-semitoni sotto (sezione 2.22).
-
+semitoni sotto (sezione 9.4).
 
 Gestione dalla GUI: menu **Componi → Gestisci libreria MIDI**. Da li'
 puoi importare un file `.mid` esistente (anche indicando una sottocartella
@@ -1401,18 +1674,18 @@ Nota: `&"Nome"` importa solo il canale piu' significativo del file MIDI (in
 genere quello con piu' note); per un import multitraccia completo usa invece
 **Progetto → Importa → MIDI...**, che crea una traccia per ciascun canale.
 
-## 5bis. Cartella dei brani (songs/)
+### 11.1 Cartella dei brani (songs/)
 
 I dialoghi **Apri progetto** e **Salva con nome** si aprono per default sulla
 cartella `songs/` (accanto al programma): e' il posto pensato per le tue
 composizioni, distinto da `examples/`, che contiene invece i progetti
 dimostrativi delle funzionalita' del programma.
 
-## 6. Percussioni
+## 12. Percussioni
 
 36 identificatori fissi, mappati sul General MIDI Drum Map (canale 10) e
 senza supporto alle ottave. Corrispondono, nell'ordine, ai tasti usati in "Suona con la tastiera"
-(sezione 10ter): riga numerica (1-9, poi 0 ' ì), riga Q, riga A.
+(sezione 23): riga numerica (1-9, poi 0 ' ì), riga Q, riga A.
 
 - Kit base (riga numerica): `kick`, `snare`, `hihat`, `hihat_open`,
   `tom1`, `tom2`, `floor`, `crash`, `ride`, `kick2`, `rimshot`, `clap`.
@@ -1423,7 +1696,42 @@ senza supporto alle ottave. Corrispondono, nell'ordine, ai tasti usati in "Suona
   `conga_open`, `conga_low`, `timbale_hi`, `timbale_low`, `cabasa`,
   `maracas`, `claves`, `woodblock_hi`, `woodblock_low`.
 
-## 7. Tracce e strumenti
+## 13. La specifica e la libreria ST-language
+
+La notazione ha una **specifica formale pubblica**:
+[docs/spec/ST-language.it.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.it.md) (in inglese
+[ST-language.md](https://github.com/openssound/st-language/blob/main/docs/spec/ST-language.md)), con licenza **CC BY 4.0** (si puo'
+copiare, tradurre e adattare citando la fonte). Descrive la grammatica
+completa, come il testo diventa note nel tempo, gli errori e gli avvisi, il
+formato dei file `.st` e la corrispondenza con il MIDI, con una **suite di
+conformita'** ([`docs/spec/conformance/`](https://github.com/openssound/st-language/tree/main/docs/spec/conformance)): i casi di prova che un altro
+programma deve superare per leggere ST-language come SoundText.
+
+Il motore della notazione e' anche una **libreria Python autonoma**,
+`st_language`, senza dipendenze esterne: e' la stessa che usa SoundText,
+quindi i due danno sempre lo stesso risultato. Si installa con
+`pip install st-language` e offre dei comandi da terminale:
+
+```
+st-language check brano.st           # errori e avvisi (battute, testo cantato)
+st-language midi brano.st -o brano.mid
+st-language musicxml brano.st        # partitura brano.musicxml
+st-language events brano.st          # gli eventi in JSON
+echo "4: c d e f | 2g 2g" | st2mid - -o melodia.mid --instrument Trumpet
+```
+
+Un file senza intestazioni di traccia e' un brano di una traccia sola
+(`--instrument` ne sceglie lo strumento). Da Python: `import st_language as
+st`, poi `st.parse(testo)`, `st.validate(testo)`, `st.check(testo)`,
+`st.load_song("brano.st")`, `st.to_midi(brano, "brano.mid")`. Cosi' i brani
+scritti in ST si possono controllare ed esportare anche senza aprire
+SoundText (per esempio da uno script, o in un repository di canzoni).
+
+---
+
+# Parte 3 — Organizzare il brano
+
+## 14. Tracce e strumenti
 
 - **Aggiungi traccia**: pulsante **+ Aggiungi traccia** (sotto l'ultima
   testata, sia nella vista Struttura brano sia nella vista Testo) o
@@ -1465,9 +1773,9 @@ senza supporto alle ottave. Corrispondono, nell'ordine, ai tasti usati in "Suona
 - **SoundFont per singolo strumento**: da **Suoni → Gestisci
   strumenti...** puoi anche assegnare un file `.sf2` diverso da quello
   predefinito a un singolo strumento (predefinito o personalizzato) — vedi
-  sezione 12.4 piu' sotto.
+  sezione 17.2 piu' sotto.
 
-### 7.1 Caricamento automatico degli strumenti personalizzati
+### 14.1 Caricamento automatico degli strumenti personalizzati
 
 Quando salvi un progetto che usa uno o piu' strumenti personalizzati, la
 loro definizione (program GM, ottava, estensione, voicing...) viene
@@ -1493,770 +1801,14 @@ strumento), il file usa automaticamente un'intestazione esplicita
 (`Traccia SoloRinominato [Bass]:`) invece della forma abbreviata, cosi' che
 niente vada perso al salvataggio.
 
-## 8. Mixer
-
-Ogni traccia ha **Mute (M)**, **Solo (S)**, **Volume** e **Pan**. Se almeno
-una traccia e' in Solo, in riproduzione/esportazione suonano solo le tracce
-in Solo (che non siano anche Mute).
-
-I controlli stanno nella **testata** di ogni traccia, uguale nelle due
-viste: nella vista Struttura brano a sinistra di ogni riga, nella vista
-Testo nella colonna **Tracce** a sinistra (li' serve anche a scegliere la
-traccia di cui modificare il testo). La testata contiene:
-
-- nome e strumento (lo strumento solo se e' diverso dal nome), **M**,
-  **S**, **●** (solo tracce audio: registra),
-  **FX** (apre il pannello Effetti, vedi 8.3 e 8.4) e il menu
-  **⋯** con tutte le azioni della traccia (genera, suona con la tastiera,
-  importa MIDI o audio, nome e strumento, esporta MIDI, rimuovi);
-- a destra, due manopole: **Vol** (volume, il valore in %) e **Pan**
-  (C = centro, S/D = sinistra/destra). Si girano trascinando su/giu' (con
-  Maiusc piu' fine), con la rotellina o con le frecce; doppio click = torna
-  a 100% / al centro.
-
-Click sulla testata = seleziona la traccia; doppio click = rinomina/cambia
-strumento; tasto destro = stesso menu di ⋯. Sotto l'ultima testata,
-**+ Aggiungi traccia** (vedi sezione 7).
-
-### 8.1 Volume: 0-200%, scala direttamente la velocity delle note
-
-La manopola Volume va da 0% a 200%, dove **100% e' l'intensita' originale**
-delle note cosi' come scritte nella traccia (nessuna modifica). Girare la
-manopola scala direttamente la velocity di ogni nota della traccia in
-esportazione/riproduzione — non solo il Channel Volume MIDI (CC7), la cui
-curva di risposta su molti synth e' debole o poco percepibile. Questo rende
-il controllo efficace su qualunque motore di riproduzione:
-
-- sotto 100%: la traccia suona piu' piano dell'originale;
-- sopra 100% (fino a 200%): la traccia viene rinforzata oltre l'originale,
-  utile per far emergere uno strumento troppo debole nel missaggio;
-- la velocity risultante resta comunque nei limiti MIDI validi (1-127).
-
-**Tracce con uno strumento campionato o plugin** (SFZ, VST3, LV2: Traccia →
-Strumento plugin): qui il Volume e il Master sono un **guadagno sull'audio**,
-come un fader, e le velocity restano quelle scritte. Con i campioni la
-velocity sceglie la registrazione (un colpo leggero non e' un colpo forte
-piu' piano): scalarla cambierebbe il timbro, e sopra 100% schiaccerebbe
-accenti e colpi leggeri tutti sul campione piu' forte.
-
-Le impostazioni di Volume, Pan, Mute e Solo di ogni traccia vengono salvate
-nel file `.st` (blocco `Mixer <Nome traccia>:`) e ripristinate
-automaticamente alla riapertura del progetto.
-
-### 8.2 Volume master
-
-Oltre al Volume di ogni singola traccia (8.1), la riga **Master** in fondo alla
-colonna delle tracce ha uno slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
-guadagno originale) che scala insieme il volume di **tutte** le tracce, in
-aggiunta al volume gia' impostato su ciascuna — utile per un aggiustamento
-generale del livello senza dover toccare ogni traccia singolarmente. Come
-per Mute/Solo/Volume/Pan di traccia, una modifica al Master a riproduzione
-in corso riavvia automaticamente la riproduzione dalla posizione corrente
-con il nuovo valore applicato (con un breve debounce se lo si trascina col
-mouse, per non accodare un riavvio per ogni singolo tick). Il valore
-master si salva nel file `.st` (riga `Master: N`, scritta solo se diversa
-dal 100% predefinito) e si ripristina alla riapertura del progetto.
-
-### 8.3 Riverbero e chorus (FX)
-
-Il pulsante **FX** di ogni traccia, nella sua testata (in entrambe le
-viste), apre in fondo alla finestra il **pannello Effetti** (vedi 8.4). Per
-le tracce di testo la prima card, **Invio rapido**, contiene gli effetti
-del synth:
-- **Riverbero** (0-100%): quanta parte della traccia va al riverbero, da
-  asciutta (0%) a molto "bagnata";
-- **Chorus** (0-100%): allarga e "raddoppia" il suono (archi, pad, chitarre
-  pulite, cori);
-- **Ambiente**, uno per **tutto il brano**: lo spazio in cui tutte le tracce
-  mandano il loro riverbero. Stanza piccola (predefinito), Sala, Sala grande
-  o Chiesa.
-
-Riverbero e chorus valgono anche per le tracce suonate da uno strumento
-campionato o plugin (SFZ, VST3, LV2), con lo stesso ambiente del brano;
-non per quelle che passano da un profilo NAM, che come le altre tracce
-vanno nell'amplificatore senza riverbero.
-
-Il pulsante FX ha il contorno azzurro quando la traccia ha riverbero, chorus
-o effetti della catena, e il suo suggerimento ne mostra i valori; e'
-azzurro pieno quando il pannello Effetti e' aperto su quella traccia. La
-traccia selezionata ha la testata appena tinta del suo colore.
-
-Sono gli effetti già presenti nel synth (fluidsynth): si sentono subito con
-il normale ascolto, senza rielaborazioni in più, e a riproduzione in corso
-l'ascolto riparte da solo come per volume e pan.
-- **Salvataggio:** riverbero e chorus finiscono nel blocco `Mixer` della
-  traccia (`riverbero: 35 chorus: 10`), l'ambiente nella riga
-  `Ambiente: sala` in testa al file. Entrambi si scrivono solo se diversi dal
-  predefinito, quindi i progetti che non li usano restano identici.
-- **Export:** riverbero e chorus valgono per l'ascolto e per gli export WAV
-  e MIDI (controller CC91 e CC93). L'ambiente vale solo per ascolto e WAV:
-  il file MIDI non lo può contenere, e il lettore che lo apre usa il suo.
-- **Import MIDI:** un file con riverbero e chorus impostati sui canali
-  (CC91/CC93 a inizio brano) li porta nelle tracce importate.
-
-Da sapere:
-- **Stanza piccola:** è l'ambiente di sempre di fluidsynth (così i progetti
-  esistenti suonano come prima), ma il riverbero ci si sente appena. Per un
-  effetto chiaro scegli **Sala** o **Sala grande**: la card lo ricorda
-  quando alzi il riverbero con la stanza piccola.
-- **Cambio di ambiente:** anche con il riverbero a 0 cambiare ambiente può
-  modificare leggermente il suono, perché alcuni SoundFont mandano già da
-  soli una parte dei loro strumenti al riverbero.
-- **Tracce audio:** non hanno l'Invio rapido, perché questi effetti
-  appartengono al synth, che suona solo le tracce di testo; hanno però la
-  catena di effetti (8.4).
-- **Suona con la tastiera:** l'ascolto dal vivo non applica ancora
-  riverbero e chorus della traccia.
-
-### 8.4 Catena di effetti e pannello Effetti
-
-Ogni traccia, di testo o audio, può avere una **catena di effetti**: il
-suono della traccia passa da un effetto al successivo, da sinistra a
-destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
-
-- **Dinamica:**
-  - **Compressore** (soglia, rapporto, attacco, rilascio, guadagno): rende
-    il livello più uniforme (voce, basso, batteria);
-  - **Limiter** (guadagno, tetto, rilascio): alza il volume della traccia
-    di "Guadagno" senza che i picchi superino mai il "Tetto" (es. −1 dB).
-    Preset Sicurezza (solo protezione dai picchi), Più forte, Molto forte;
-  - **Noise gate** (soglia, rapporto, attacco, rilascio): ammutolisce la
-    traccia quando scende sotto la soglia, per togliere fruscio, ronzio e
-    rumori tra una frase e l'altra nelle tracce audio registrate. Se taglia
-    l'inizio o la fine delle note, abbassa la soglia o allunga il rilascio.
-  - **Riduzione rumore** (riduzione, soglia): toglie il fruscio costante
-    (ventola, amplificatore, preamplificatore) anche mentre si suona, al
-    contrario del noise gate. Lo impara da solo dal tratto piu' silenzioso
-    della traccia (non dai silenzi digitali fra una clip e l'altra): basta
-    che la ripresa abbia mezzo secondo di solo rumore, all'inizio o alla
-    fine. Preset Leggera, Fruscio, Forte.
-  - **Volume** (guadagno, ±24 dB): alza o abbassa il livello e basta. Per
-    esempio −6 dB (preset "Margine per il master") all'inizio della catena
-    del master quando le tracce sommate superano 0 dB: compressore e
-    limiter lavorano meno e la batteria non viene schiacciata. A differenza
-    del volume della traccia, che scala la velocity delle note, non cambia
-    il timbro dello strumento.
-- **Tono:**
-  - **EQ a 3 bande** (bassi, medi, alti, ±12 dB ciascuno);
-  - **Filtro passa-alto** (frequenza 20 Hz–2 kHz, pendenza 6–24 dB/ottava):
-    toglie i bassi sotto la frequenza. Il classico uso è "Pulizia bassi"
-    (80 Hz) su voce e chitarre, per lasciare spazio a basso e cassa;
-  - **Filtro passa-basso** (frequenza 200 Hz–20 kHz, pendenza 6–24
-    dB/ottava): toglie gli acuti sopra la frequenza, per un suono più
-    scuro, ovattato o "dietro una porta". Più alta la pendenza, più netto
-    il taglio.
-- **Saturazione:**
-  - **Amplificatore** (modello, cassa, guadagno, bassi, medi, alti,
-    presenza, potenza, livello): un amplificatore da chitarra completo,
-    nell'ordine preamplificatore → controlli di tono → stadio di potenza →
-    cassa. I **modelli**: *Pulito* (quasi senza saturazione), *Crunch*
-    (blues, rock leggero), *British* (rock classico, medi in evidenza, due
-    stadi di saturazione), *High gain* (metal, bassi stretti e molta
-    saturazione).
-
-    **Bassi, Medi, Alti** (da 0 a 10, come sugli amplificatori veri) sono
-    il circuito dei toni ("tone stack") degli amplificatori reali, calcolato
-    dai valori dei suoi componenti: quello **Fender** per Pulito e Crunch,
-    quello **Marshall** per British e High gain. Come negli originali le
-    manopole si influenzano a vicenda (alzare gli Alti tocca anche i medi),
-    a metà corsa i medi sono già un po' "scavati" (di più nel Fender), i
-    Medi a 0 danno lo scavo profondo del metal e il volume cambia un po'
-    girandole, come su un amplificatore vero.
-
-    **Saturazione che dipende dalla frequenza.** Come negli stadi a valvole
-    veri, i bassi saturano meno dei medi e degli acuti: le note basse e gli
-    accordi sulle corde gravi (power chord) restano definiti invece di
-    "impastarsi", mentre le note medie distorcono come ti aspetti. Più il
-    modello è spinto (British, High gain) più l'effetto è marcato. Non
-    toglie bassi al suono: cambia come distorcono, non quanti ce ne sono.
-
-    **Risposta al tocco.** Anche il punto di lavoro delle valvole si sposta
-    come negli amplificatori veri: sui colpi forti lo stadio perde per un
-    attimo un po' di guadagno e distorce in modo asimmetrico (armoniche
-    pari, più "calde"), poi in circa un decimo di secondo "respira" e torna
-    com'era. Suonando piano il suono resta pulito, attaccando forte si
-    sporca in modo dinamico: è l'effetto più evidente con Crunch e British
-    (il suono "che risponde al plettro"), più contenuto con High gain e
-    quasi assente con Pulito. Dopo ogni stadio c'è anche il filtro dei
-    condensatori di accoppiamento, che toglie il "brontolio" in sub-basso
-    che la distorsione asimmetrica creerebbe sotto gli accordi bassi.
-
-    **Presenza** (0-10) regola gli acuti dopo lo stadio di potenza, come la
-    manopola omonima degli amplificatori valvolari: più "aria" e mordente
-    senza rendere aspro il preamplificatore.
-
-    **Potenza** (0-100%) è quanto si spinge lo stadio finale: le valvole di
-    potenza saturano in modo morbido e asimmetrico (con armoniche pari, il
-    suono "caldo" valvolare) e l'alimentazione che cede sui colpi forti
-    ("sag") comprime un po' gli accordi tenuti. 0% = stadio finale pulito;
-    30-50% è il suono di un amplificatore suonato a volume; oltre, il suono
-    si arrotonda e comprime.
-
-    Le **casse**: *Combo 1×12*, *2×12*, *4×12
-    chiusa* (più corpo sui bassi), *Vintage 1×10* (più sottile e nasale),
-    oppure *Nessuna* per il suono diretto dell'amplificatore. Le casse sono
-    simulate da SoundText (nessun file da scaricare) e, come quelle vere,
-    tagliano gli acuti sopra i 5-6 kHz: per questo un amplificatore suona
-    "caldo" anche con molto guadagno. Preset: Pulito brillante, Blues,
-    Vintage, Rock classico, Metal. "Livello" compensa il volume: più
-    guadagno significa più volume, quindi abbassalo salendo col guadagno.
-    Funziona su tracce di chitarra (di testo o registrate) e anche sul
-    basso o su un organo per un suono più sporco.
-
-    **Cassa da file IR.** Con la cassa **File IR…** si usa la risposta
-    all'impulso (IR) di una cassa vera, registrata con un microfono: un
-    piccolo file WAV (se ne trovano moltissimi gratuiti, di casse famose e
-    con microfoni diversi). Scegliendo "File IR…" si apre la finestra per
-    indicare il file; il pulsante **Scegli IR…** sotto i menu lo cambia, e
-    accanto compare il nome del file. Il file viene letto in mono (media dei
-    canali), portato a 48 kHz se ha un'altra frequenza, al massimo 1 secondo,
-    e normalizzato come le casse interne, così cambiare cassa non fa saltare
-    il volume. Nel file `.st` si salva il percorso (relativo alla cartella
-    del progetto, come per le clip audio: `ir="ir/cassa.wav"`): tieni l'IR
-    vicino al progetto se lo sposti su un altro computer. Se il file non si
-    trova più, la card lo scrive in rosso e si usa la cassa Combo 1×12 finché
-    non ne scegli un altro.
-
-    **Qualità della saturazione.** Amplificatore e Distorsione saturano il
-    suono a 4 volte la frequenza di campionamento (192 kHz; lo stadio di
-    potenza, più morbido, a 2 volte) e poi tornano a
-    48 kHz con filtri a fase lineare ("sovracampionamento"): così le
-    armoniche generate dalla distorsione non si ripiegano in frequenze
-    spurie, il classico "frizzare" digitale sulle note acute con molto
-    guadagno. Non aggiunge ritardo; l'elaborazione è un po' più lenta
-    (qualche decimo di secondo per il loop di calibrazione, qualche secondo
-    in sottofondo per una traccia intera);
-  - **Profilo NAM** (ingresso, cassa, livello): usa un amplificatore o un
-    pedale **vero**, "catturato" con **Neural Amp Modeler** (NAM). Un
-    profilo è un file `.nam`: una rete neurale addestrata ascoltando
-    l'apparecchio originale, che ne riproduce il suono con grande fedeltà.
-    Se ne trovano migliaia, quasi tutti gratuiti, su **Tone3000**
-    (tone3000.com): amplificatori famosi, pedali di overdrive e distorsione,
-    preamplificatori, a volte anche con la cassa inclusa. Per cominciare,
-    **Suoni → Scarica e installa...**, voce *Profili NAM consigliati*, ne scarica una
-    trentina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
-
-    Aggiungendo l'effetto (**+ Effetto → Saturazione → Profilo NAM**) si
-    apre la finestra **Scegli un profilo NAM**: i profili della cartella
-    `profili_nam` divisi per tipologia (amplificatori senza cassa,
-    amplificatori con la cassa, pedali), ciascuno con il tipo, il suono
-    (pulito, crunch, lead, high gain, overdrive, distorsione, boost) e
-    l'uso, e una casella per cercarli; **Altro file…** apre un file `.nam`
-    qualsiasi. Annullando, l'effetto non viene aggiunto. Sulla card compaiono il nome del profilo e, se il file li
-    dichiara, marca, modello, tipo (amplificatore, pedale, amplificatore con
-    cassa…) e autore; il pulsante **Scegli profilo…** lo cambia.
-    - **Ingresso** è la manopola "input" del plugin NAM: quanto forte arriva
-      la chitarra. Più alto = più saturazione (come suonare più forte o
-      alzare il gain dell'apparecchio originale, fin dove la cattura lo
-      permette), più basso = più pulito.
-    - **Cassa**: *Nessuna / inclusa* se il profilo contiene già la cassa
-      (tipo "amplificatore con cassa") o se è un pedale da mettere davanti a
-      un Amplificatore; una delle **casse interne** dell'Amplificatore
-      (Combo 1×12, 2×12, 4×12 chiusa, Vintage 1×10); **File IR…** per la
-      risposta di una cassa vera, come nell'Amplificatore (vedi sopra). Un
-      profilo di sola testata senza cassa suona aspro e sfrigolante: quando
-      scegli un profilo che il file dichiara senza cassa (amplificatore o
-      preamplificatore, non i pedali e non quelli per basso), SoundText gli
-      mette da solo una cassa, se la Cassa era su *Nessuna*: per le testate
-      rock e metal la **cassa vera** della loro famiglia, se hai scaricato
-      le casse IR (vedi sotto: Marshall JMP 2203 per Marshall, Orange,
-      Friedman e simili, EVH 5150 III per Peavey 5150 e 6505, Mesa Boogie
-      Mark V per Mesa, e Engl, Splawn, Laney, Krank per le loro); altrimenti
-      una cassa interna adatta (4×12 per le testate, Combo 1×12 per Vox,
-      Magnatone e simili, altrimenti 2×12). Per i combo puliti (Fender, Vox,
-      Magnatone) fra le casse IR non ce n'è una adatta e resta la cassa
-      interna. Se il file IR di una cassa manca, si sente la cassa interna
-      adatta al profilo invece di nessuna. Scegliendo un profilo con la
-      cassa inclusa torna su *Nessuna / inclusa*.
-    - **Il synth suona "secco":** una traccia di note che va in un profilo
-      NAM viene suonata dal synth senza il suo riverbero e il suo chorus,
-      come una chitarra collegata direttamente all'amplificatore. Un
-      amplificatore ad alto guadagno alzerebbe la coda del riverbero di
-      40-50 dB, facendola sfrigolare nelle pause; se vuoi il riverbero,
-      aggiungi l'effetto **Riverbero** dopo il profilo, come su un banco
-      vero.
-    - **Livello** compensa il volume. Come nel plugin, SoundText porta già
-      ogni profilo alla stessa sonorità di riferimento (−18 dB) usando il
-      valore scritto nel file; i profili più vecchi, che non lo scrivono,
-      vengono misurati nello stesso modo in cui lo fa NAM (con il suo
-      segnale di riferimento), una volta sola. Così cambiare profilo non fa
-      saltare il volume.
-
-    Preset: Neutro, Più spinto (+6 dB d'ingresso), Più pulito (−6 dB).
-
-    Da sapere sui profili NAM:
-    - **Formati:** si usano i profili WaveNet di entrambe le generazioni,
-      **A1** (i classici *standard*, *lite*, *feather* e *nano*, la grande
-      maggioranza dei file pubblicati) e **A2** (la più recente), e anche i
-      profili **LSTM**, le reti ricorrenti dei primi tempi di NAM. Molti
-      file A2 contengono **più misure** dello stesso modello, dalla più
-      leggera alla più completa, perché il plugin possa risparmiare CPU in
-      diretta: SoundText non suona in tempo reale e usa sempre la misura
-      **completa**, la migliore. Sulla card, accanto alla descrizione,
-      compare "formato A2" o "formato LSTM". Il calcolo segue quello del
-      motore ufficiale di NAM, verificato confrontando le uscite; con gli
-      LSTM le differenze restano sotto i −80 dB (arrotondamenti dei
-      calcoli, che una rete ricorrente si porta dietro nel tempo), quindi
-      non udibili. Un file di un altro tipo (per esempio le rarissime
-      architetture sperimentali ConvNet o Linear) non viene usato e il
-      pannello spiega il motivo.
-    - **Mono:** il profilo lavora in mono, come il plugin (i due canali
-      vengono sommati); gli effetti "spaziali" vanno messi dopo.
-    - **Velocità:** una rete neurale è più pesante dell'Amplificatore
-      interno: circa un secondo per ogni ritocco nel loop di calibrazione e
-      una trentina di secondi, in sottofondo e su più core, per una traccia
-      di 3 minuti (profili A1 *standard* e A2; *lite*, *feather* e *nano*
-      sono più rapidi, gli LSTM ancora di più: pochi secondi per 3 minuti).
-      Il risultato resta in memoria: ritoccare il **Livello**, la **Cassa**
-      o gli effetti che vengono dopo non fa ricalcolare la rete, che riparte
-      solo se cambia quello che le arriva (le note della traccia,
-      l'**Ingresso** o gli effetti prima).
-    - **Frequenza:** i profili sono di solito a 48 kHz, come SoundText; se
-      un profilo ha un'altra frequenza il suono viene convertito prima e
-      dopo.
-    - **Salvataggio:** nel file `.st` si salva il percorso, relativo alla
-      cartella del progetto: `nam: ingresso=3 cassa=file livello=-2
-      nam="profili/Plexi.nam" ir="ir/4x12.wav"`. Tieni i profili vicino al
-      progetto se lo sposti; se il file non si trova più, la card lo scrive
-      in rosso e il suono passa invariato.
-
-    **Dove trovare i profili NAM.**
-    - **Profili consigliati, in un colpo:** **Suoni → Scarica e installa...**, voce *Profili NAM consigliati* (oppure, da terminale nella cartella di
-      SoundText, `python3 scarica_profili_nam.py`) scarica 34 profili di
-      amplificatori e pedali famosi, circa 11 MB in tutto, nella cartella
-      **`profili_nam`** accanto a SoundText (o in `~/SoundText/profili_nam`
-      se lì non si può scrivere). La cartella non fa parte del repository:
-      ognuno la scarica sul proprio computer. Il comando riscarica solo i
-      file che mancano e scrive nella cartella un `LEGGIMI.txt` con
-      provenienza e autori. La finestra "Scegli profilo…" si apre già lì.
-      I profili vengono dalla raccolta della comunità di NAM su GitHub
-      (github.com/pelennor2170/NAM_models, licenza GNU GPL v3):
-      - amplificatori (senza cassa: SoundText gliene mette una interna,
-        oppure scegline una vera con **Cassa → File IR…**). Puliti e
-        crunch: *Fender Twin Reverb* (pulito e vibrato: funk, pop, arpeggi),
-        *Vox AC15 - Top Boost* (il "chime" britannico), *Magnatone Super 59*
-        (pulito e spinto: blues e country), *Marshall JCM2000* (pulito e
-        crunch: rock classico), *Friedman Dirty Shirley Mini* (pulito e
-        crunch), *Orange Rockerverb* e *Sovtek MIG50* (stoner e doom). Lead
-        e high gain: *Marshall JCM900 - lead* (hard rock e assoli), *Splawn
-        Pro Mod* (hard rock e metal anni '80), *Mesa Boogie Mark IV - lead*,
-        *Peavey 5150* e *6505+*, *Engl Savage* (metal) e *Meshuggah - djent*
-        (metal moderno). *Orange Rockerverb* ed *Engl Savage* sono catture
-        del modello di un Axe-FX II, non dell'amplificatore vero;
-      - amplificatori **con cassa** (pronti, niente IR): *Bugera 333*
-        (pulito e crunch) e *Marshall JVM* (pulito e distorto);
-      - pedali, da mettere **prima** di un amplificatore (interno o
-        profilo): gli overdrive *Ibanez TS9 Tube Screamer*, *Maxon OD808*
-        (l'originale del Tube Screamer), *Boss SD-1*, *Klon Centaur (clone)*
-        ed *EarthQuaker Plumes (clone)*; *Boss OS-2* (overdrive e
-        distorsione) e *Boss DS-1* (distorsione); i boost per il metal *MXR
-        M77*, *Horizon Precision Drive* e *Fortin Grind*; *Boss HM-2 -
-        svedese* (death metal), e per il basso *Tech 21 dUg DP3X*. *Maxon
-        OD808*, *Boss SD-1*, *MXR M77* e *Precision Drive* sono reti
-        "feather", le più leggere: circa metà del tempo di calcolo.
-    - **Motore NAM veloce:** i profili NAM si calcolano dentro SoundText;
-      con il plugin **Neural Amp Modeler** (LV2, GPL-3.0, voce *Motore NAM
-      veloce* della finestra **Suoni → Scarica e installa...**,
-      per Linux e Windows a 64 bit) il calcolo è 4-6 volte più veloce, e il
-      primo ascolto di un brano con chitarre NAM parte molto prima. Il suono
-      è lo stesso (differenza dello 0,2% circa). Senza il plugin, o se non
-      risponde, SoundText calcola i profili da sé come prima.
-    - **Casse per gli amplificatori senza cassa:** **Suoni → Scarica e installa...**, voce *Casse IR per gli amplificatori NAM*, scarica 20 casse per chitarra
-      (risposte all'impulso, meno di 1 MB) nella sottocartella
-      **`profili_nam/casse`**, con il testo della licenza e un
-      `LEGGIMI.txt`; la finestra "Scegli IR…" si apre già lì. Sono il
-      pacchetto *BestPlugins Mega Pack 2* di David Fau Casquel (licenza GNU
-      GPL v2 o successiva), preso dal repository di Guitarix
-      (github.com/brummer10/guitarix). Ogni file porta il nome
-      dell'amplificatore di cui riproduce la cassa (*Mesa Boogie Mark V*,
-      *EVH 5150 III*, *Marshall JMP 2203*, *Engl Retro Tube*...). Il
-      pacchetto è pensato soprattutto per i suoni distorti: con i profili
-      puliti (Fender Twin, Vox AC15) prova più casse, o cercane una adatta
-      su Tone3000.
-    - **Tone3000** (tone3000.com), il sito di riferimento, con decine di
-      migliaia di profili gratuiti (per scaricare può chiedere di creare un
-      account gratuito):
-      1. cerca l'apparecchio (per esempio "Plexi", "Dumble", "Rectifier",
-         "Tube Screamer");
-      2. tra i filtri scegli la piattaforma **NAM** e il tipo: *amp* (solo
-         amplificatore: serve un IR), *full rig* (amplificatore con cassa,
-         pronto) o *pedal*; ordinando per download trovi i più usati;
-      3. nella pagina del profilo scarica il file (spesso uno ZIP con più
-         varianti: *standard* è la qualità piena, *lite*, *feather* e *nano*
-         più leggeri; SoundText li legge tutti, anche A2 e LSTM);
-      4. estrai i file `.nam` nella cartella `profili_nam` (o in una
-         cartella accanto al progetto) e sceglili dalla card con **Scegli
-         profilo…**.
-      Su Tone3000 ci sono anche gli **IR** delle casse (tipo *IR*), da usare
-      con **Cassa → File IR…**.
-    - **Tutta la raccolta su GitHub** (circa 260 profili, 108 MB): nella
-      pagina github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
-      poi estrai i `.nam` che ti interessano in `profili_nam`.
-
-    Se un profilo scaricato non suona come ti aspetti: un amplificatore
-    senza cassa suona aspro finché non gli dai un IR; un pedale da solo
-    suona "piccolo", va messo davanti a un amplificatore; con **Ingresso**
-    trovi il punto in cui il profilo reagisce meglio al tuo segnale.
-  - **Distorsione** (spinta, tono, livello, mix): da un colore
-  caldo appena accennato fino al fuzz. "Spinta" è quanto si satura,
-  "Tono" schiarisce o scurisce il risultato, "Livello" compensa il volume
-  (la distorsione alza molto il livello), "Mix" sotto il 100% mescola il
-  suono pulito a quello distorto (preset "Parallela"). Adatta a chitarre,
-  basso e synth; per un suono d'amplificatore completo usa invece
-  l'Amplificatore.
-- **Spazio — Delay** (a tempo, tempo, ripetizioni, mix), **Riverbero** (stanza,
-  smorzamento, ampiezza, mix), **Chorus** (velocità, profondità, mix) e
-  **Phaser** (velocità, profondità, ritorno, mix).
-
-  Il **Delay a tempo**: nel menu "A tempo" scegli una suddivisione (1/2,
-  1/4, 1/4 puntato, 1/4 terzina, 1/8, 1/8 puntato, 1/8 terzina, 1/16) e le
-  ripetizioni cadono a tempo col brano, calcolate dal suo BPM; la manopola
-  Tempo si spegne e mostra i millisecondi che ne risultano. Cambiando il
-  BPM del brano il delay si adegua da solo. Con "Libera (ms)" il tempo si
-  regola a mano. Il calcolo usa il tempo **iniziale** del brano: con cambi
-  di tempo a metà brano le ripetizioni restano quelle del tempo iniziale.
-  L'1/8 puntato (preset "A tempo 1/8 puntato") è il classico eco "a
-  cavallo" delle chitarre rock.
-
-Il **pannello Effetti** si apre dal pulsante FX della traccia (per il
-master, dal pulsante FX della riga Master: vedi 8.5) e resta in
-fondo alla finestra (si può ridimensionare trascinando il bordo). Ogni
-effetto è una **card** con:
-- **⏻** per accenderlo o spegnerlo senza perdere le regolazioni;
-- **◀ ▶** per spostarlo prima o dopo nella catena, **✕** per toglierlo;
-- i **preset** (es. Compressore "Voce", Delay "Slapback", Riverbero
-  "Cattedrale"): scelto un preset puoi ritoccarlo con le manopole, e il
-  menu mostra allora **Personalizzato**;
-- le **manopole**, con il valore sotto; doppio click sul valore per
-  tornare al predefinito.
-
-Nella testata del pannello:
-- **Loop** (10 s, da 2 a 30): aprendo il pannello viene scelto un tratto
-  da risentire mentre regoli, che diventa anche il loop A-B del brano
-  (sul righello). Parte dal box selezionato della traccia, altrimenti dalla
-  posizione della testina (o dal primo box della traccia);
-- **▶ Ascolta il loop**: ripete il tratto; ogni ritocco si sente **dal
-  giro successivo**, senza rifare il resto del brano;
-- **Con le altre tracce**: nel loop suona tutto il brano, come nel mix
-  finale; togliendolo si sente solo la traccia;
-- **Prima / Dopo**: premuto, il loop si sente senza la catena, per
-  confrontare (non cambia la traccia);
-- **Copia su…**: copia la catena su un'altra traccia;
-- **Annulla modifiche**: riporta effetti, riverbero, chorus e ambiente a
-  com'erano quando hai aperto il pannello (le singole modifiche restano
-  anche in Modifica → Annulla);
-- **✕** chiude il pannello: il loop A-B torna quello di prima e la catena
-  viene applicata a **tutta la traccia in sottofondo**, così il prossimo
-  Play è già pronto (la barra di stato avvisa quando ha finito).
-
-Il pulsante FX mostra quanti effetti sono accesi (es. **FX 3**).
-
-Da sapere:
-- **Come suona:** una traccia con effetti accesi viene sintetizzata a parte
-  e poi elaborata; il risultato resta in memoria, quindi girare una
-  manopola rifà solo l'elaborazione (frazioni di secondo), e cambiare
-  un'altra traccia non la tocca. Delay e riverbero possono allungare il
-  brano con la loro coda.
-- **Export:** la catena vale per l'ascolto e l'export WAV; il file MIDI
-  non la contiene (il lettore MIDI non ha questi effetti).
-- **Salvataggio:** la catena si salva nel file `.st`, in un blocco per
-  traccia:
-  ```
-  Effetti Chitarra:
-    compressore: soglia=-20 rapporto=4 attacco=5 rilascio=120 guadagno=4 preset="Voce"
-    delay: tempo=250 ripetizioni=25 mix=20 spento
-  ```
-  (`spento` = effetto presente ma spento). Valori fuori dai limiti vengono
-  riportati nei limiti, effetti sconosciuti ignorati.
-- **Requisiti:** la catena usa il pacchetto Python `pedalboard`
-  (`pip install pedalboard`, già nei requisiti); senza, il pannello mostra
-  solo l'Invio rapido e un avviso. L'ascolto del loop richiede lo
-  streaming audio (`sounddevice`), come il loop A-B.
-- **Un ascolto alla volta:** avviare il loop ferma il brano e l'ascolto
-  dei box; premere Play ferma il loop.
-
-### 8.5 Effetti sul master (mastering)
-
-Oltre alle singole tracce, anche il **mix finale** del brano può passare
-per una catena di effetti: è il "mastering", l'ultimo ritocco che rende
-il brano più compatto, equilibrato e forte. Il pulsante **FX** della riga
-**Master**, in fondo alla colonna delle tracce, apre il pannello Effetti
-sul master (etichetta "Master · mix finale"). Si usano gli stessi effetti
-e le stesse card delle tracce; quelli più adatti al master sono:
-- **EQ a 3 bande:** piccoli ritocchi al tono generale (±1-3 dB);
-- **Compressore**, preset **Colla del mix**: compressione leggera
-  (rapporto 2:1, attacco lento) che amalgama le tracce;
-- **Limiter**, preset **Più forte**: alza il volume del brano senza che i
-  picchi superino il tetto di −1 dB. È di solito l'ultimo della catena.
-
-Il pulsante **+ Catena di mastering** aggiunge in un colpo questi tre
-effetti, come punto di partenza da regolare a orecchio. Il pulsante FX
-del master si accende e mostra quanti effetti sono attivi (es. **FX 3**).
-
-Come per le tracce:
-- il **loop di calibrazione** (10 s, dalla testina) fa risentire il mix
-  di tutto il brano a ogni ritocco; **Prima / Dopo** confronta il mix con
-  e senza la catena del master;
-- **Annulla modifiche** riporta la catena a com'era all'apertura, e ogni
-  modifica è anche in Modifica → Annulla;
-- **Copia su…** copia la catena del master su una traccia; da una traccia
-  si può copiare la sua catena sul master ("Master (mix finale)").
-
-Da sapere:
-- **Dove vale:** il master si applica all'ascolto del brano, all'export
-  WAV del brano e alla base che si sente mentre si registra. Non si
-  applica all'export di una singola traccia né all'export MIDI.
-- **Anche il loop delle tracce passa per il master:** calibrando una
-  traccia la senti già con la catena del master, cioè come nel brano
-  finito.
-- **Veloce:** il mix prima del master resta in memoria, quindi dopo un
-  ritocco al solo master il Play successivo rielabora il mix già pronto,
-  senza risintetizzare il brano.
-- **Volume master e catena:** lo slider Master (8.2) agisce prima della
-  catena, sul volume delle tracce: con un limiter sul master, alzarlo
-  rende il brano più "schiacciato" ma non più forte oltre il tetto.
-- **Salvataggio:** nel file `.st` la catena del master sta nel blocco
-  ```
-  Catena master:
-    compressore: soglia=-14 rapporto=2 attacco=30 rilascio=200 guadagno=1 preset="Colla del mix"
-    limiter: guadagno=6 tetto=-1 rilascio=80 preset="Più forte"
-  ```
-  (parola diversa da `Effetti`, così non si confonde con una traccia che
-  si chiami "Master"). Senza catena il blocco non si scrive.
-
-### 8.6 Suoni da studio con programmi esterni (re-amping)
-
-L'amplificatore di SoundText (8.4) va bene per bozze, basi e demo. Per un
-suono di chitarra da studio la via più semplice è il **Profilo NAM** (8.4),
-che usa dentro SoundText le catture di amplificatori veri. In alternativa
-si può far passare la traccia in un simulatore di amplificatore esterno e
-poi riportarla nel brano: è il **re-amping**, utile per usare programmi
-come Guitarix o i plugin commerciali.
-
-**Il flusso, su qualunque sistema:**
-1. Registra la chitarra **pulita** (ingresso INST/Hi-Z della scheda audio,
-   senza amplificatore) in una traccia audio, oppure scrivila a note.
-2. Tasto destro sul nome della traccia → **Esporta WAV asciutto (per il
-   re-amping)...**
-3. Nel programma esterno applica al file il simulatore scelto e salva il
-   risultato in un nuovo WAV.
-4. In SoundText crea una **traccia audio** (es. "Chitarra ampli") e
-   **Importa file audio...**: su una traccia vuota la clip va all'inizio,
-   quindi a tempo col brano. Metti in **Mute** la traccia originale (o
-   tienile entrambe, per mescolare pulito e amplificato).
-
-Se il simulatore aggiunge un ritardo (succede in tempo reale, non
-nell'elaborazione offline), sposta di poco la clip o accorciane l'inizio
-trascinandone il bordo.
-
-**Linux — Guitarix** (gratuito, simulazione dei circuiti a valvole di
-amplificatori e pedali, casse e IR): si installa dai repository della
-distribuzione (`sudo apt install guitarix`, `sudo dnf install guitarix`,
-`sudo pacman -S guitarix`; su alcune, come Debian e Ubuntu, i plugin LV2
-sono in un pacchetto a parte, `guitarix-lv2`). I plugin LV2 di Guitarix
-si possono usare **direttamente in SoundText** come effetti (8.7), senza
-re-amping. Per usare Guitarix fuori da SoundText ci sono due modi:
-- **offline (consigliato):** apri il WAV asciutto in **Audacity** o in
-  **Ardour** e applica i plugin LV2 di Guitarix come effetto, poi esporta;
-  nessun collegamento audio da configurare;
-- **in diretta:** avvia Guitarix (con PipeWire, se serve, `pw-jack
-  guitarix`), collega con **qpwgraph** o **Helvum** la chitarra all'ingresso
-  di Guitarix e la sua uscita al registratore; per registrare
-  direttamente in SoundText scegli come scheda audio l'ingresso di PipeWire.
-
-**Windows e macOS** (Guitarix funziona solo su Linux):
-- **Neural Amp Modeler (NAM)**: gratuito, plugin VST3/AU e programma a sé,
-  con modelli "catturati" da amplificatori veri (file `.nam`, migliaia
-  gratuiti su Tone3000) e caricamento di IR per la cassa. I profili NAM
-  si possono usare anche direttamente in SoundText (Profilo NAM, 8.4), su
-  tutti i sistemi, senza re-amping (A1, A2 e LSTM); il plugin serve per
-  suonare in diretta;
-- **AIDA-X**: gratuito, simile a NAM e più leggero, anche su Linux;
-- **GarageBand** (macOS): gratuito, amplificatori e pedali già inclusi;
-- per applicare un plugin al WAV asciutto va bene **Audacity** (gratuito,
-  VST3 su tutti i sistemi, AU su macOS), oppure un programma di
-  registrazione come **Reaper**.
-
-In diretta, NAM e AIDA-X funzionano anche come programmi a sé: la chitarra
-entra nel simulatore e SoundText registra l'uscita (con un collegamento
-audio virtuale, o registrando in un altro programma e importando il file).
-
-### 8.7 Plugin esterni (VST3 e LV2)
-
-SoundText puo' usare i **plugin audio installati sul computer**, sia come
-**effetti** nella catena di una traccia o del master, sia come
-**strumenti virtuali** che suonano le note di una traccia al posto del
-SoundFont.
-
-- **VST3**: su Linux, Windows e macOS. SoundText li cerca nelle cartelle
-  standard del sistema (su Linux `~/.vst3` e `/usr/lib/vst3`, su Windows
-  `C:\Program Files\Common Files\VST3`, su macOS
-  `/Library/Audio/Plug-Ins/VST3`); altre cartelle si aggiungono da
-  **Suoni → Cartelle dei plugin VST3...**
-
-  **Plugin VST3 gratuiti consigliati**, per Linux, Windows e macOS: il
-  comando `vst3` di `scarica_strumenti` (compreso anche in `host`) li
-  scarica dalle pagine ufficiali e li copia nella cartella VST3
-  dell'utente, senza diritti di amministratore:
-  - **Dexed**: sintetizzatore FM che emula lo Yamaha DX7 (strumento);
-  - **Airwindows Consolidated**: oltre 400 effetti Airwindows in un solo
-    plugin;
-  - **Dragonfly Reverb**: riverberi di sala, stanza e piastra;
-  - **LSP Plugins**: compressori, equalizzatori, limiter e delay da studio
-    (solo su Linux: non esistono versioni per Windows e macOS).
-
-  ```bash
-  ./scarica_strumenti.sh vst3
-  ```
-
-  Su Windows `scarica_strumenti.bat vst3`, su macOS
-  `python3 scarica_strumenti.py vst3`.
-- **LV2**: solo su Linux, e serve la libreria di sistema `lilv` (su
-  Debian/Ubuntu il pacchetto `liblilv-0-0`, gia' presente se sono
-  installati Ardour, Carla o Guitarix). I plugin LV2 si trovano da soli.
-  Per esempio, con `guitarix-lv2` si hanno decine di amplificatori e pedali.
-
-  **Plugin LV2 consigliati su Linux** (gratuiti, nei pacchetti della
-  distribuzione):
-  - `dragonfly-reverb-lv2`: riverberi di sala, stanza e piastra di ottima
-    qualità;
-  - `guitarix-lv2`: amplificatori, pedali (Tube Screamer, fuzz, wah,
-    tremolo), casse ed effetti per chitarra;
-  - `calf-plugins`: Leslie (Rotary Speaker), riverbero, delay, phaser,
-    chorus, compressori, equalizzatori, simulatore di nastro;
-  - `lsp-plugins-lv2`: compressori, equalizzatori, limiter e delay da
-    studio, più campionatori come strumenti;
-  - `x42-plugins`: strumenti di misura, equalizzatori e la batteria AVL
-    Drums (strumento plugin);
-  - `setbfree`: l'organo Hammond con il Leslie, come strumento plugin.
-
-  Su Debian, Ubuntu e derivate si installano tutti insieme con:
-
-  ```bash
-  sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
-  ```
-- I formati **CLAP** e **VST2** non sono supportati.
-
-**Un plugin come effetto**: nel pannello Effetti (8.4) **+ Effetto →
-Plugin (VST3/LV2)** apre l'elenco dei plugin di effetti installati, con la
-ricerca per nome. La card del plugin ha:
-- le manopole **Mix** (quanto suono elaborato mescolare a quello
-  originale) e **Livello** (il volume in uscita), come gli altri effetti;
-- **Parametri...**, che apre una finestra con tutti i controlli del
-  plugin; le modifiche si sentono subito nel loop di ascolto del
-  pannello;
-- **Cambia...** per sostituirlo con un altro plugin.
-
-Nella finestra dei parametri, **Interfaccia del plugin...** apre la
-finestra grafica del plugin stesso (solo VST3). Quando la chiudi, le
-regolazioni fatte li' restano nel progetto.
-
-**Un plugin come strumento**: **Traccia → Strumento plugin → Scegli (VST3/LV2)...**,
-oppure il tasto destro sul nome della traccia. Scegli uno strumento
-virtuale (synth, pianoforte campionato...) e poi regola i suoi parametri.
-Le note della traccia le suona il plugin: il **volume** della traccia
-agisce sulla forza delle note, il **pan** sulla posizione nello stereo, e
-gli effetti della traccia si applicano dopo il plugin. Per tornare al
-SoundFont scegli **Nessuno: usa il SoundFont**. Sotto il nome della
-traccia compare il nome del plugin.
-
-Alcuni plugin LV2 caricano un file: per esempio sfizz LV2 suona un
-**file SFZ**. Nella finestra dei parametri queste proprieta' hanno una
-riga con **Sfoglia...** e **Togli**; il file scelto resta nel progetto.
-
-**Scarica e installa.** **Suoni → Scarica e installa...** apre
-una finestra con tutto quello che SoundText sa scaricare: gli strumenti
-campionati SFZ (piano, Rhodes, sax, batterie, bassi, archi e altri), i
-plugin VST3 gratuiti, i profili NAM e le casse IR, il motore NAM veloce e
-il motore SFZ interno. Per ogni voce dice dimensione, licenza e se è già
-installata; si spuntano le voci e **Installa** le scarica in sottofondo,
-con l'avanzamento e un registro; **Ferma** interrompe (il download
-riprende la volta dopo). È lo stesso lavoro di `scarica_strumenti.py` dal
-terminale. Il motore SFZ interno si compila sul computer: se mancano git,
-cmake o il compilatore la finestra chiede se installarli, e se rispondi sì
-li installa prima di compilare (apt su Linux, winget su Windows, gli
-strumenti di Xcode su macOS). Su Linux
-7-Zip, sfizz e Surge XT si installano con apt: la password di
-amministratore la chiede una finestra del sistema, una volta sola (se il
-sistema non ha pkexec, la voce si installa dal terminale con
-`./scarica_strumenti.sh host`).
-
-Altre cose che la finestra sa fare:
-- **Tutto un gruppo con un clic:** le righe *Strumenti campionati (SFZ)* e
-  *Altri strumenti SFZ (grandi)* hanno una casella propria che spunta o
-  toglie tutti gli strumenti del gruppo (è spuntata a metà se ne hai scelti
-  solo alcuni).
-- **SoundFont General MIDI:** *FluidR3 GM* (MIT, ~150 MB, quello che
-  SoundText propone al primo avvio), *MuseScore General* (MIT, ~38 MB, il
-  più completo), *TimGM6mb* (GPL-2.0, ~6 MB, leggero) e il kit di batteria
-  *FreePats GM, percussioni* (GPL-3.0, ~15 MB). Vanno nella cartella dei
-  SoundFont di SoundText, con il file della licenza accanto: si scelgono da
-  **Suoni → SoundFont** o per un singolo strumento.
-- **Plugin VST3 gratuiti:** oltre a Dexed, Airwindows e Dragonfly Reverb,
-  il sintetizzatore *OB-Xf*, il waveshaper *Wolf Shaper* e, per la
-  chitarra, *ChowTapeModel*, *ChowCentaur* e *ChowMatrix*. Su Windows i
-  plugin Chow esistono solo con il loro installer: la finestra lo avvia e
-  Windows chiede di confermare.
-- **Plugin LV2 gratuiti** (solo Linux): *Dragonfly Reverb*, *LSP Plugins*,
-  *Wolf Shaper* e il sintetizzatore di batteria *Geonkick*, nella cartella
-  `~/.lv2`. Se manca la libreria lilv, la finestra chiede se installarla.
-- **Sorgenti...** (anche da **Opzioni → Sorgenti dei download...**): gli
-  indirizzi da cui si scarica ogni voce, modificabili con un doppio clic,
-  per esempio per usare un mirror. Quelli cambiati sono in grassetto;
-  **Ripristina l'originale** e **Ripristina tutti** tornano a quelli di
-  SoundText. Valgono per le installazioni avviate da SoundText.
-
-**Strumento SFZ interno.** Un file `.sfz` (strumento campionato, come
-quelli che scarica `scarica_strumenti.py`) si puo' suonare anche senza
-plugin: nell'elenco degli strumenti scegli **Strumento SFZ (interno)...**
-e poi il file. Lo suona la libreria del motore **sfizioso** (o di
-**sfizz**), che si installa una volta con `python3 scarica_strumenti.py
-libreria` (su Linux anche `./scarica_strumenti.sh libreria`; su Windows
-`py scarica_strumenti.py libreria`, che richiede Visual Studio Build Tools
-con il C++); senza, la voce compare in grigio. Questo strumento non ha
-parametri: "Parametri dello strumento plugin..." fa scegliere un altro
-file. Sotto il nome della traccia compare il nome del file con "(SFZ)";
-se modifichi il file `.sfz`, il brano viene ricalcolato.
-
-Il progetto `.st` ricorda il plugin di ogni traccia e di ogni effetto,
-con i suoi parametri. Aprendo il progetto su un altro computer, i VST3
-vengono cercati per nome del file nelle cartelle dei plugin.
-
-**Se un plugin non funziona.** I plugin girano in un processo separato da
-SoundText: se uno si blocca o si chiude in modo anomalo, SoundText resta
-aperto. Il plugin viene segnato come **"non risponde"** fino al prossimo
-avvio dell'app. Un effetto che non funziona lascia passare il suono
-invariato. Una traccia il cui strumento plugin non funziona suona con il
-SoundFont, e il motivo finisce nel file di log (Aiuto). Alcuni plugin non
-si possono proprio caricare: nell'elenco compaiono in grigio, con il
-motivo accanto: passa il mouse sul nome per leggerlo (per esempio "non
-risponde", o un plugin che accetta solo audio mono). Un plugin che non ha
-risposto o si e' chiuso alla prima ricerca (succede con plugin grandi,
-come Surge XT, su un computer lento) si riprova da solo alla ricerca
-seguente; per gli altri errori usa **Aggiorna elenco**.
-
-**Limiti**:
-- gli strumenti plugin suonano nell'ascolto del brano, nel loop del
-  pannello Effetti e nell'export WAV; le anteprime veloci (nota della
-  tastiera, ascolto di un pattern, accordo scelto con il doppio click)
-  usano ancora il SoundFont;
-- l'export MIDI e MusicXML contiene le note, non il suono del plugin;
-- dei plugin LV2 si salvano i valori dei parametri e i file scelti, non
-  il resto dello "stato" interno;
-- alla prima ricerca SoundText deve sapere che cosa e' ogni VST3: lo legge
-  dal bundle quando il bundle lo dice (file `moduleinfo.json`, come in
-  Dexed, Airwindows e LSP), altrimenti carica il plugin una volta, e puo'
-  volerci un po'; intanto la finestra mostra gia' i plugin noti. Poi l'elenco si ricorda finche' un plugin non cambia
-  (**Aggiorna elenco** rifa' la ricerca).
-
-## 8bis. Struttura brano (vista a box)
+## 15. Struttura brano (vista a box)
 
 Un modo alternativo all'editor di testo lineare per lavorare sulla
 **struttura** del brano (intro/verse/chorus/assolo...) invece che nota per
 nota: ogni traccia diventa una riga su un unico asse del tempo condiviso,
 e il suo contenuto e' suddiviso in **box** — rettangoli trascinabili
 orizzontalmente, ciascuno autosufficiente come il corpo di un pattern
-(sezione 4), con un proprio nome e una propria posizione nel tempo. Il
+(sezione 10), con un proprio nome e una propria posizione nel tempo. Il
 contenuto effettivo di ogni traccia (`Track.text`, quello che
 playback/export/validazione leggono davvero) resta sempre ricalcolato
 automaticamente dalla sequenza dei suoi box: lavorare a box non e' "un
@@ -2269,8 +1821,8 @@ classico. E' la vista con cui SoundText si apre di default.
 
 Il colore di ogni box (e della striscia a sinistra della testata della
 traccia) riflette la famiglia dello strumento (basso, chitarra, fiati,
-ecc.), la stessa convenzione usata altrove nell'app (es. sezione 7). Le
-testate contengono anche il mixer della traccia (vedi sezione 8).
+ecc.), la stessa convenzione usata altrove nell'app (es. sezione 14). Le
+testate contengono anche il mixer della traccia (vedi sezione 18).
 
 Dentro ogni box si vedono le **note** in miniatura: trattini alla loro
 altezza per melodie e accordi, una riga per suono per la batteria; il nome
@@ -2290,11 +1842,11 @@ tasto destro su un punto vuoto offre in piu':
 
 - **Nuovo box da tastiera qui** / **Nuovo box da audio qui** / **Importa
   MIDI qui**: stessi flussi di "Suona con la tastiera"/"Importa
-  audio"/"Importa MIDI" della sezione traccia (sezioni 10, 10bis, 10ter),
+  audio"/"Importa MIDI" della sezione traccia (sezioni 26, 25, 23),
   ma il risultato diventa un nuovo box invece di sostituire tutta la
   traccia.
 - **Genera batteria in questa traccia...** / **Genera basso da accordi in
-  questa traccia...** (sezione 9bis): visibili solo se lo strumento della
+  questa traccia...** (sezione 16): visibili solo se lo strumento della
   traccia e' rispettivamente percussivo o un basso; il box generato viene
   accodato subito dopo l'ultimo box gia' presente.
 - **Incolla qui**: solo se e' stato prima tagliato o copiato un box (vedi
@@ -2317,12 +1869,12 @@ tasto destro sull'etichetta della traccia a sinistra.
   sovrapporsi.
 - **Click singolo** seleziona un box (bordo evidenziato in colore
   d'accento) senza spostarlo, anche se il box non era già su un beat
-  intero (es. dopo una tuplet, sezione 2.1bis): un piccolo movimento
+  intero (es. dopo una tuplet, sezione 4.5): un piccolo movimento
   involontario del mouse tra la pressione e il rilascio non conta come
   trascinamento.
 - **Doppio click** su un box apre l'editor dedicato del suo contenuto
   (stesso editor di testo con evidenziazione sintattica, autocompletamento
-  e Play/Stop di anteprima usato per i pattern, sezione 4) con nome e
+  e Play/Stop di anteprima usato per i pattern, sezione 10) con nome e
   testo del box, validati prima di poter confermare.
 
 - Nell'editor del box, la casella **Espandi i pattern** (visibile solo se
@@ -2418,7 +1970,7 @@ sempre visibile — indipendentemente da quale box sia selezionato.
 
 **Esporta come .box...** (menu di un box) salva il suo contenuto in un
 file di testo leggibile a mano (stesso stile del formato `.st`, sezione
-11, ma a blocco singolo) nella cartella `songs/` (sezione 5bis).
+11, ma a blocco singolo) nella cartella `songs/` (sezione 11.1).
 **Importa da .box...** (menu di un punto vuoto) lo ricarica come nuovo
 box in qualunque punto/traccia — utile per riusare una sezione (es. un
 ritornello) tra progetti diversi.
@@ -2456,50 +2008,7 @@ cambia, cambia solo il modo di editarlo. È irreversibile solo nel senso che
 non tornerà automaticamente a essere suddivisa in box: il testo resta
 comunque libero di essere ri-suddiviso a mano.
 
-## 9. Congelare gli accordi
-
-Il pulsante **Congela accordi**, sopra l'editor della vista Testo, sostituisce ogni
-accordo astratto della traccia corrente con il blocco `[...]` di note
-concrete generato dal motore di voicing per lo strumento assegnato.
-
-### 9.1 Scegliere il voicing con un doppio click
-
-Un **doppio click su un accordo** — sia in forma compatta (`Cmaj7`, anche
-con un moltiplicatore, es. `2Cmaj7`) sia già "congelato" in note esplicite
-(`[c*3 g*3 b*3 e*4]`, se riconoscibile come accordo standard), **anche se
-l'accordo si trova dentro un gruppo di ripetizione `N(...)`** (vedi 2.1) —
-nell'editor della traccia o nel corpo di un pattern apre un piccolo menu
-con tutte le alternative di voicing sensate per lo strumento corrente
-(vedi 2.8), ciascuna con un'anteprima testuale delle note risultanti.
-Scorrendo le voci con le frecce si sente un'anteprima audio di ognuna (con
-un breve ritardo, dovuto al rendering); **Invio** o click su una voce
-applica la scelta (sul token implicito aggiunge/cambia solo il suffisso
-`.stile`; sul blocco esplicito ricalcola le note), **Esc** o click fuori
-dal menu annulla senza modificare nulla. Se il blocco `[...]` non
-corrisponde a nessuna qualità di accordo nota (es. una semplice quinta
-`[c*3 g*3]`, ambigua tra maggiore e minore), un tooltip lo segnala e il
-menu non si apre.
-
-### 9.2 Autocompletamento durante la digitazione
-
-Mentre si scrive, l'editor propone in un popup i token completi
-pertinenti al frammento già digitato, per velocizzare le notazioni più
-lunghe o meno immediate da ricordare a memoria:
-
-- qualità d'accordo (`C7`, `Dm7b5`...) a partire dalla fondamentale;
-- stili di voicing (`Cmaj7.drop2`, `C7.cagEd`...) dopo il `.`, limitati a
-  quelli applicabili allo strumento della traccia corrente (vedi 2.8);
-- nomi di percussione, dinamiche (`mf`, `ff`...) e comandi di stato
-  (`SON`, `SOFF`, `r`);
-- riferimenti `%Nome` a pattern definiti nel progetto e `&"Nome"` alla
-  libreria MIDI (vedi 6 e 11.1).
-
-Frecce su/giù per scorrere le proposte, **Invio** o **Tab** per accettare
-quella evidenziata, **Esc** o click fuori per chiudere il popup senza
-modificare nulla. Le singole note (es. `c`, `g#*4`) non generano
-suggerimenti propri, essendo già brevi quanto un suggerimento.
-
-## 9bis. Genera batteria/basso (senza IA)
+## 16. Genera batteria/basso (senza IA)
 
 Generazione di una linea di batteria o basso senza modelli/download/GPU:
 algoritmica, basata su una piccola libreria di pattern per genere (batteria)
@@ -2759,7 +2268,7 @@ slide verso la nota dell'accordo dopo.
 **Melodia dal testo...** (menu della traccia, strumenti a una voce): si
 scrivono le parole, una riga per frase, e nasce una melodia con una nota per
 sillaba sugli accordi della traccia scelta, con gli accenti delle parole sui
-tempi forti e le sillabe gia' sotto le note (vedi 2.13). Le parole si
+tempi forti e le sillabe gia' sotto le note (vedi 4.9). Le parole si
 dividono con le regole dell'italiano; per dividerle a modo proprio si
 scrivono i trattini (Ma-ri-a).
 
@@ -2825,7 +2334,7 @@ troppo dal registro di partenza. Vale per gli accordi di almeno tre note
   All'inizio di ogni accordo c'e' sempre una nota.
 
 Entrambi mostrano un'anteprima modificabile a mano prima di confermare
-(come l'importazione audio, sezione 10bis), e il risultato viene accodato
+(come l'importazione audio, sezione 25), e il risultato viene accodato
 al contenuto già presente nella traccia di destinazione, non lo sostituisce.
 
 **Metrica**: si usa la metrica iniziale del progetto. Basso, accompagnamento
@@ -2835,11 +2344,11 @@ metrica; uno stile pensato per il 4/4 viene troncato alla battuta piu'
 corta, e ci sono stili pensati apposta: **Valzer** per il basso (fondamentale
 sul 1), **Valzer** e **Arpeggio in 6/8** per l'accompagnamento. La batteria
 richiede invece uno stile scritto per quella metrica (4/4, 3/4, 5/4, 6/8,
-7/8, 12/8, o uno stile personale salvato in quella metrica, vedi 9bis.1):
+7/8, 12/8, o uno stile personale salvato in quella metrica, vedi 16.1):
 con una metrica senza stili (es. 9/8) il dialogo lo segnala e disattiva la
 conferma.
 
-### 9bis.1 Stili personali: imparare dai tuoi brani
+### 16.1 Stili personali: imparare dai tuoi brani
 
 Oltre agli stili già pronti, i generatori possono usare stili ricavati da
 una tua parte: un giro di batteria o una linea di basso che ti piace diventa
@@ -2892,7 +2401,7 @@ elenca per rinominarli o eliminarli. Sono salvati nella cartella di
 configurazione (`generator_styles.json`, accanto agli strumenti
 personalizzati), quindi valgono per tutti i progetti.
 
-### 9bis.2 Melodie a frasi
+### 16.2 Melodie a frasi
 
 In **Genera riff/melodia** (strumenti monofonici: tromba, sax, flauto,
 voce, synth lead...), oltre ai riff che ripetono un disegno sulle note
@@ -2941,586 +2450,853 @@ altri stili:
   mossa, In crescendo sempre più mossa lungo il brano.
 - **Rigenera solo le battute** vale anche qui.
 
-## 10. Import/Export MIDI
+---
 
-- **Progetto → Esporta → MIDI**: l'intero ensemble (tracce udibili secondo
-  Solo/Mute) in un unico file MIDI multitraccia.
-- **Progetto → Importa → MIDI**: crea un nuovo progetto con una traccia per
-  ogni canale del file MIDI; il canale 10 diventa sempre Batteria.
-- **Traccia → Esporta questa traccia / Importa in questa traccia → MIDI**: esporta solo la
-  traccia selezionata, oppure importa un file MIDI (con scelta del canale,
-  se il file ne contiene piu' di uno) sostituendo il contenuto della
-  traccia corrente; viene proposto di aggiornare anche lo strumento in base
-  al riconoscimento automatico.
+# Parte 4 — Il suono
 
-**Riconoscimento/creazione automatica dello strumento**: per ogni canale,
-se uno strumento gia' disponibile (predefinito o personalizzato) ha
-esattamente il Program Change GM del canale, viene usato quello;
-altrimenti viene **creato e registrato automaticamente un nuovo strumento
-personalizzato** con quel programma esatto (nome derivato dal nome
-ufficiale General MIDI, es. programma 81 → `Lead2sawtooth`; parametri di
-ottava/estensione/voicing suggeriti in base alla famiglia, come nella
-creazione manuale da **Suoni → Gestisci strumenti**), cosi' la traccia
-importata riflette sempre fedelmente lo strumento originale invece di
-limitarsi al piu' vicino approssimato. Al termine dell'import, se sono
-stati creati nuovi strumenti, un avviso ne mostra l'elenco (sono comunque
-sempre modificabili a posteriori da **Suoni → Gestisci strumenti**).
-Questa creazione automatica avviene solo per un import effettivamente
-confermato (non per la sola anteprima nel selettore canale, che continua a
-mostrare il nome dello strumento gia' disponibile piu' vicino).
+## 17. SoundFont
 
-**Canali che cambiano strumento**: se un canale cambia strumento a meta'
-brano (un Program Change fra le note: in *Layla* il riff dell'intro e' in
-chitarra overdrive e poi passa al pianoforte, sullo stesso canale),
-l'import multitraccia crea **una traccia per ogni strumento**, ciascuna con
-le sole note suonate con quello strumento e con il volume e il pan in
-vigore quando attacca. Se il canale torna piu' volte allo stesso strumento,
-quelle parti stanno nella stessa traccia. Il canale della batteria non si
-divide (li' il programma sceglie il kit).
+### 17.1 Scegliere il SoundFont (es. FluidR3_GM.sf2)
 
-Nota sulla precisione dell'import: la notazione supporta note cromatiche
-(`c#`, `eb`, ecc.), quindi l'altezza viene preservata; la ritmica viene
-quantizzata su una griglia di sedicesimi, oppure, battuta per battuta, su
-una griglia a **terzine** quando gli attacchi lo richiedono (vedi sotto).
+SoundText non include un SoundFont: al primo avvio, se non ne trova
+nessuno, propone di scaricare **FluidR3 GM** (gratuito, licenza MIT,
+circa 150 MB) e apre **Suoni → Scarica e installa...**, dove ci sono
+anche *MuseScore General* e *TimGM6mb*. Vanno bene sia i file `.sf2` sia
+i `.sf3` (compressi).
 
-**Terzine e tuplet**: per ogni beat l'import sceglie la suddivisione che
-spiega meglio gli attacchi. La griglia binaria (sedicesimi) vince se li
-spiega tutti; altrimenti una terzina di ottavi (`8T:`, sezione 2.1bis) viene
-usata quando li spiega e la binaria no — tipico di shuffle, swing 2:1 e
-blues in 12/8, dove prima le note venivano spostate sul sedicesimo piu'
-vicino. Sestine (`16T:`), quintine (`16Q:`) e settimine (`16S:`) hanno soglie
-molto piu' severe (servono piu' attacchi nel beat e uno scarto molto
-ridotto), altrimenti un suonato umano poco preciso verrebbe scambiato per
-una tuplet. Gli attacchi quasi simultanei (kick e ride con qualche tick di scarto) contano
-come un solo punto ritmico, e le quintine/settimine sono di fatto
-riconosciute solo su passaggi molto regolari. Il comando griglia viene
-scritto solo quando cambia. Una nota
-che partendo da una griglia finirebbe dentro un beat con un'altra griglia,
-in un punto che non e' un confine di beat, viene chiusa sul confine: puo'
-quindi risultare leggermente piu' corta dell'originale, ma il resto della
-traccia non si sposta mai. Un file solo binario produce gli stessi token di
-prima.
+Il programma cerca un SoundFont, in ordine di priorita':
 
-**Note sovrapposte e voci**: in ST le uniche note simultanee sono quelle di
-uno stesso blocco `[...]` (stessa durata), mentre nel MIDI una nota tenuta
-sotto una melodia, o un accordo che continua sotto una voce, si
-sovrappongono. Prima l'import saltava ogni attacco che cadeva dentro una nota
-piu' lunga: in una libreria di prova circa l'8% delle note spariva, e in
-alcuni file quasi la meta'. Ora l'**import di un file intero** separa ogni
-canale in **voci monofoniche** (al massimo 2 per canale, sempre: se a uno
-stesso attacco iniziano piu' gruppi di durate diverse che voci, i gruppi in
-eccesso si fondono con quello dalla durata piu' vicina; la batteria mai): le note che iniziano insieme e finiscono (entro un sedicesimo) insieme
-restano un unico blocco, ogni gruppo va nella prima voce libera, e una
-sovrapposizione minima (legato entro un sedicesimo) accorcia la nota
-precedente invece di aprire una voce. Le voci restano **nella stessa
-traccia**: dove suona solo la prima il testo e' quello di sempre, dove
-suonano anche le altre diventa un **blocco di voci** `{ ; }` (sezione 2.12)
-su una riga a se', che comincia e finisce sulle stanghette quando non
-taglia nessuna nota; il testo unito suona esattamente come le voci
-separate. (Fino alla versione precedente ogni voce diventava una traccia a
-parte, `Piano voce 2`.) Vale anche per l'import di un **singolo canale** in
-una traccia. Il tempo (`tempo=N`) sta nella prima voce. Quando le voci sono
-esaurite la nota precedente viene **accorciata** all'attacco successivo: si
-perde la durata tenuta, mai la nota.
+1. il percorso impostato manualmente da **Suoni → SoundFont → Scegli SoundFont
+   (.sf2/.sf3)...** (salvato nel file di impostazioni: `~/.config/soundtext/
+   settings.json` su Linux, `%APPDATA%\SoundText\settings.json` su
+   Windows, `~/Library/Application Support/SoundText/settings.json` su
+   macOS);
+2. la variabile d'ambiente `SOUNDTEXT_SOUNDFONT`, se impostata;
+3. un SoundFont General MIDI scaricato con **Scarica e installa**
+   (FluidR3 GM, poi MuseScore General, poi TimGM6mb), nella cartella dei
+   SoundFont di SoundText;
+4. alcuni percorsi comuni di sistema, tra cui:
+   - `~/.local/share/soundfonts/FluidR3_GM.sf2` (Linux)
+   - `/usr/share/sounds/sf2/FluidR3_GM.sf2` (Debian/Ubuntu/Fedora)
+   - `/usr/share/soundfonts/FluidR3_GM.sf2` (Arch/CachyOS)
+   - `%APPDATA%\SoundText\soundfonts\FluidR3_GM.sf2` (Windows)
+   - `~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2` (macOS)
+   - `/opt/homebrew/share/soundfonts/FluidR3_GM.sf2` (macOS, Homebrew su
+     Apple Silicon)
 
-**Testo cantato**: gli eventi *lyrics* del file, e il testo dei file
-karaoke (`.kar`, eventi di testo in una traccia senza note), diventano
-testo fra virgolette (sezione 2.13) sulla prima voce del canale che li
-canta (quello delle note nella stessa traccia MIDI, oppure quello le cui
-note attaccano dove cadono le sillabe): una riga per battuta dopo le sue
-note, `*` per una nota senza sillaba e `""` prima di un tratto cantato che
-segue un passaggio strumentale.
+Se hai un SoundFont in una posizione diversa (o vuoi usarne un altro),
+basta selezionarlo da **Suoni → SoundFont → Scegli SoundFont (.sf2/.sf3)...**:
+resta impostato per tutte le riproduzioni successive, in tutti i progetti.
+**Suoni → SoundFont → Mostra SoundFont in uso** indica quale file verra' usato in
+questo momento (e con quale motore/player), e permette di verificare al
+volo se il problema e' davvero il SoundFont o un fallback silenzioso.
+**Suoni → SoundFont → Usa rilevamento automatico del SoundFont** rimuove
+l'impostazione manuale e torna alla ricerca automatica.
 
- **Canali MIDI con molte tracce**: un file MIDI ha solo 15 canali melodici
-(il 10 e' della batteria) e su ogni canale c'e' un solo strumento, un solo
-volume/pan e un solo pitch bend. Con piu' di 15 tracce (facile con le voci
-dell'import) l'export assegna prima un canale a ogni strumento *diverso*,
-poi i canali che avanzano alle voci extra, e le restanti condividono il canale
-del proprio strumento: nessuna traccia suona mai con lo strumento di
-un'altra. Le voci dello stesso strumento che condividono un canale hanno il
-pitch bend in comune (uno slide di una si sente anche sulle note dell'altra
-mentre suonano insieme).
+### 17.2 SoundFont diversi per singolo strumento
 
-Note identiche allo stesso tick (raddoppi) e attacchi
-sulla stessa altezza dentro lo stesso sedicesimo si fondono in una.
+Oltre al SoundFont predefinito (sezione 17.1, usato per tutta la
+riproduzione), puoi assegnare un file `.sf2` diverso a un singolo
+strumento — utile per usare un piano dedicato di buona qualita' insieme a
+un font generico per il resto, o una batteria diversa da tutto il resto
+dell'ensemble.
 
-**Velocity delle note simultanee**: in ST ogni token (nota, accordo o
-blocco `[...]`) ha una sola velocity, quindi le velocity diverse delle note
-di uno stesso gruppo (per esempio un accento sul cantabile di un accordo, o
-kick e hi-hat della batteria colpiti insieme) non si possono conservare una
-per una: il gruppo importato prende la **media arrotondata** delle velocity,
-che mantiene l'intensita' complessiva. Con velocity tutte uguali non cambia
-nulla.
+Da **Suoni → Gestisci strumenti...**, seleziona uno strumento
+nell'elenco (predefinito o personalizzato: qui la scelta non e' limitata
+ai soli personalizzati) e usa il pannello **SoundFont per lo strumento
+selezionato**:
+- **Scegli SoundFont...** assegna un file `.sf2` a quello strumento: verra'
+  usato al posto del predefinito su ogni traccia che lo usa, in qualunque
+  progetto.
+- **Usa predefinito** rimuove l'assegnazione e torna al SoundFont
+  generale.
 
-**Dinamiche da volume ed espressione (CC7/CC11)**: crescendo, diminuendo e
-fade del file MIDI sono automazioni continue, che ST esprime solo come
-velocity delle note (sezione 2.5). L'import calcola il livello CC7 x CC11 al
-momento di ogni attacco, lo normalizza al massimo del canale e lo applica
-alla velocity della nota: la nota piu' forte del canale mantiene la velocity
-originale, le altre scendono in proporzione, e il risultato compare come
-serie di `N@` (a scalini, uno per ogni nota che cambia, non come rampa
-`>>`). Un volume costante (tipicamente CC7 = 100) o una variazione sotto il
-15% del massimo non e' una dinamica e viene ignorata. Il volume *assoluto*
-del canale rispetto agli altri non viene importato (si regola dal mixer).
+L'elenco degli strumenti mostra un'indicazione (`· SoundFont: nome.sf2`)
+per quelli con un override attivo.
 
-**Articolazioni (`!`, `x`, `_`)**: per le note singole e gli accordi
-impliciti (opzione "Riconosci accordi") l'import confronta la durata reale
-della nota con l'intervallo fino all'attacco successivo: circa la meta'
-→ staccato `!` (sezione 2.2), meno del 30% → mute `x`, oltre il 105% (nota
-che si sovrappone alla successiva) → legato `_`. In quel caso il token
-occupa tutto l'intervallo fino alla nota successiva (es. `2c*4!`) invece di
-una nota corta seguita da pause, cosi' resta modificabile come la scrisse
-un musicista. Una nota corta seguita da una lunga pausa (oltre un beat, o
-mezzo beat per il mute) resta nota + pausa: non e' un'articolazione. Le
-note normali (circa 70%-105%), i blocchi espliciti `[...]` (senza
-modificatore finale, sezione 2.2), gli slide e la batteria non cambiano.
+**Limite**: effettivo solo con il motore fluidsynth persistente
+(la libreria FluidSynth, usata di default se disponibile — vedi sezione 3 sopra):
+con i fallback (CLI `fluidsynth`, `timidity`, `wildmidi`, player MIDI di
+sistema) l'override viene ignorato e si usa comunque il SoundFont
+predefinito su tutta la riproduzione. Con piu' strumenti overridati
+contemporaneamente, la riproduzione richiede un rendering separato per
+ciascun SoundFont coinvolto (poi ricombinati): brani con molti strumenti
+diversamente assegnati impiegano quindi qualche istante in piu' a partire.
 
-**Tempo, metrica e pedale**: i cambi di tempo del file diventano marcatori
-`tempo=N` (sezione 2.6) — in **una sola** traccia, perche' il tempo e' globale in
-ST: viene scelta quella su cui i marcatori slittano meno (in genere la
-batteria, fatta di colpi brevi; un marcatore che cadrebbe dentro una nota
-lunga viene emesso alla sua fine). Il tempo iniziale resta quello del
-progetto e le oscillazioni piccole (meno di 2 BPM o del 2%: il rumore di un
-tempo registrato dal vivo) non sono cambi di tempo e vengono ignorate.
-La metrica (evento *time signature*) imposta il campo **Metrica** del
-progetto; se cambia lungo il brano diventa l'elenco per battuta
-(`Metrica: 1: 3/4, 3: 4/4`, sezione 2.7). Il pedale del sustain (CC64,
-acceso da 64 in su) diventa `SON`/`SOFF` (sezione 2.4), solo alle
-transizioni effettive; un pedale ancora premuto a fine canale viene chiuso
-con un `SOFF` finale. L'export MIDI scrive ora anche la metrica, cosi' un
-giro export→import la conserva. Nell'import di un singolo canale in una
-traccia esistente i cambi di tempo e di metrica NON vengono importati
-(sono globali al progetto), il pedale si'.
+## 18. Mixer
 
-**Bending (pitch bend)**: una nota singola (mai un accordo) il cui pitch
-bend raggiunge almeno un semitono pieno durante la sua durata viene
-importata come uno **slide** (`c*4>d*4`, sezione 2) dall'altezza di
-partenza al picco del bending, invece di essere appiattita all'altezza
-nominale — utile in particolare per i MIDI di chitarra blues/rock, dove il
-bending e' spesso parte integrante della frase. Se il pitch wheel rientra
-poi in modo significativo verso un semitono diverso prima della fine della
-nota (bend-and-release, tecnica comune: sale e poi rilascia), lo slide
-importato ha una terza tappa (`c*4>d*4>c*4`, sezione 2.3) invece di
-fermarsi al solo picco. Le durate delle singole tappe (sezione 2.3)
-riflettono il timing REALE del bending rilevato nel MIDI sorgente — quando
-il picco viene raggiunto rispetto alla durata della nota — invece di
-assumere sempre una divisione a meta' fra rampa e mantenimento/rilascio:
-un bend rapido seguito da un lungo mantenimento (es. `1c*4>3d*4`) suona
-percio' diverso, e piu' fedele all'originale, da un bend lento che
-raggiunge il picco solo verso la fine (es. `3c*4>1d*4`). La sensibilita' del pitch bend dichiarata nel file
-(RPN 0, Pitch Bend Sensitivity) viene rispettata; se il file non la
-dichiara si assume il default General MIDI (±2 semitoni). Un bending che
-arrotonda a 0 semitoni (vibrato o imprecisioni di registrazione), troppo
-piccolo rispetto al fondo scala del pitch wheel (un'automazione continua
-di espressione/umanizzazione, non un bending deliberato) o implausibilmente
-ampio (oltre 12 semitoni: i bending chitarristici reali restano
-quasi sempre entro 2-3 semitoni, e un salto piu' ampio non e' un bending su
-nessuno strumento — sarebbe una nota diversa, non una piegatura della
-stessa; capita quando la sensibilita' RPN dichiarata riflette una capacita'
-tecnica del canale, non l'intenzione di bending di quella nota specifica)
-resta una nota normale, per evitare uno slide senza senso musicale.
+Ogni traccia ha **Mute (M)**, **Solo (S)**, **Volume** e **Pan**. Se almeno
+una traccia e' in Solo, in riproduzione/esportazione suonano solo le tracce
+in Solo (che non siano anche Mute).
 
-**Slide guitar (Opzioni → Import MIDI → Slide nell'import MIDI...)**: su un canale con
-sensibilita' del pitch bend ampia (12 semitoni, tipica dei MIDI di chitarra
-slide) la soglia di sempre e' di circa 1,2 semitoni, e i bend brevi di un
-semitono restano note normali. Spuntando **Slide** nel dialogo si attiva il
-campo **Soglia** (0,5-1,2 semitoni, predefinito 0,8): l'import riconosce come
-slide anche i bend piu' piccoli. La soglia puo' solo scendere, quindi sui
-canali con sensibilita' stretta (es. 2 semitoni) non cambia nulla. Piu' e'
-bassa, piu' slide si trovano ma piu' cresce il rischio di scambiare per uno
-slide un'espressione del pitch wheel (visto su brani jazz): tienila alta per
-i brani non slide. L'impostazione vale dal prossimo import e senza la spunta
-l'import resta identico a prima. Il **timing del rilascio** e' quello reale del file: un bend che sale
-subito, resta sul picco per quasi tutta la nota e rilascia solo alla fine
-diventa una catena a 4 tappe con la tenuta come rampa piatta
-(`1f*5>11g*5>1g*5>3f*5`: sale, tiene il sol, rilascia, resta sul fa); uno
-che rilascia subito e poi resta sull'altezza scritta ha la lunga tenuta
-finale (`1e*5>1d#*5>2e*5`), invece di essere steso linearmente su tutta la
-nota (che faceva scivolare l'intonazione per tutta la durata). Se il
-rilascio inizia solo nell'ultimo istante, la nota finisce mentre sta ancora
-rilasciando e si scrive un semplice bend con tenuta (`1f*5>3g*5`). Una
-**coda di rilascio** della nota precedente (il wheel sta ancora scendendo
-verso il centro quando la nota inizia) non e' un bend: il riferimento resta
-il centro.
+I controlli stanno nella **testata** di ogni traccia, uguale nelle due
+viste: nella vista Struttura brano a sinistra di ogni riga, nella vista
+Testo nella colonna **Tracce** a sinistra (li' serve anche a scegliere la
+traccia di cui modificare il testo). La testata contiene:
 
-**Bend che parte tardi e bend a due direzioni** (tipici dello slide/
-bottleneck): se il wheel resta quasi fermo per un tratto (almeno il 15% della
-nota, con piccole derive) prima di muoversi, lo slide ha una tenuta iniziale
-(`7d*4>1d*4>8c#*4`: sta fermo, poi scende) invece di partire dall'attacco.
-Se il wheel ha escursioni significative da *entrambi* i lati della nota
-scritta (sale di un tono e poi scende sotto), il bend viene importato come
-percorso a tappe — la curva del wheel semplificata (scarto massimo 0,7
-semitoni) e arrotondata ai semitoni — invece di tenere solo l'escursione piu'
-grande. Su note di pochi sedicesimi la griglia limita la precisione: ogni
-rampa occupa almeno un sedicesimo.
+- nome e strumento (lo strumento solo se e' diverso dal nome), **M**,
+  **S**, **●** (solo tracce audio: registra),
+  **FX** (apre il pannello Effetti, vedi 18.3 e 19) e il menu
+  **⋯** con tutte le azioni della traccia (genera, suona con la tastiera,
+  importa MIDI o audio, nome e strumento, esporta MIDI, rimuovi);
+- a destra, due manopole: **Vol** (volume, il valore in %) e **Pan**
+  (C = centro, S/D = sinistra/destra). Si girano trascinando su/giu' (con
+  Maiusc piu' fine), con la rotellina o con le frecce; doppio click = torna
+  a 100% / al centro.
 
-**Bend ampi (fino a un'ottava)**: prima il limite era di 4 semitoni; ora e'
-di **12** (un'ottava), perche' con una sensibilita' del wheel dichiarata
-(RPN) ampia esistono glissando e piegature vere di 5-12 semitoni — slide/
-bottleneck, il calo a nastro degli archi in *Strawberry Fields Forever*, i
-"dive" di leva. Oltre l'ottava resta una nota normale (non e' una
-piegatura). Se un canale parte gia' piegato (scoop) e dentro la nota il
-wheel si tuffa **piu' lontano** dal centro di dove era partito di almeno
-1,5 semitoni (parte a -4, scende a -12, poi risale), il tuffo si conserva:
-percorso a tappe con il centro come riferimento, non un semplice scoop. Un
-tuffo tardivo (oltre meta' nota, con almeno 3 eventi nella discesa) lascia
-la nota ferma fin li'.
+Click sulla testata = seleziona la traccia; doppio click = rinomina/cambia
+strumento; tasto destro = stesso menu di ⋯. Sotto l'ultima testata,
+**+ Aggiungi traccia** (vedi sezione 14).
 
-**Pre-bend della nota successiva**: quando il wheel si allontana dal centro
-negli ultimi tick di una nota (entro un decimo di beat) ed e' ancora fuori
-centro all'attacco della successiva, quel movimento e' il pre-bend
-dell'ALTRA nota e non un bend fantasma in coda alla prima. Se invece torna a
-0 proprio all'attacco successivo (un fall-off che si azzera), appartiene alla
-nota che sta finendo.
+### 18.1 Volume: 0-200%, scala direttamente la velocity delle note
 
-Un **pre-bend / scoop** (il pitch wheel e' gia' fuori centro *prima*
-dell'attacco e rientra sul centro durante la nota: corda gia' piegata e poi
-rilasciata, o nota "presa dal basso", tipico dei MIDI di chitarra e di
-voce) viene importato come slide dall'altezza di partenza *reale* verso la
-nota scritta: un wheel a -1 semitono che risale a 0 su un re diventa
-`c#*4>d*4` (do# che sale a re), e uno a +1 che scende diventa `d#*4>d*4`.
-L'altezza scritta nel MIDI e' sempre quella d'arrivo. Un wheel fuori centro
-che NON rientra mai sul centro durante la nota resta un offset statico del
-canale (nota normale). Attenzione: gli slide di ST lavorano a semitoni
-interi, quindi una piegatura reale di circa mezzo tono viene arrotondata al
-semitono piu' vicino.
+La manopola Volume va da 0% a 200%, dove **100% e' l'intensita' originale**
+delle note cosi' come scritte nella traccia (nessuna modifica). Girare la
+manopola scala direttamente la velocity di ogni nota della traccia in
+esportazione/riproduzione — non solo il Channel Volume MIDI (CC7), la cui
+curva di risposta su molti synth e' debole o poco percepibile. Questo rende
+il controllo efficace su qualunque motore di riproduzione:
 
-**Opzione "Riconosci accordi nell'import MIDI"** (**Opzioni** → casella
-omonima, disattivata per default): quando un gruppo di note simultanee
-corrisponde a una qualita' di accordo standard (es. Do maggiore), viene
-importato nella forma implicita equivalente (`C*4`) invece che come blocco
-esplicito (`[c*4 e*4 g*4]`) — piu' leggibile e facile da trasporre a mano.
-Un accordo non riconoscibile (es. una semplice quinta, ambigua tra
-maggiore e minore) resta comunque un blocco esplicito. **Attenzione**: a
-differenza del blocco esplicito, che riproduce sempre fedelmente il
-voicing e il registro originali del MIDI, la forma implicita viene
-**ri-vocalizzata automaticamente dal motore** in base allo strumento della
-traccia al successivo export — utile per adattare l'accordo allo
-strumento di destinazione, ma un giro import→export non riprodurra' piu'
-necessariamente le stesse identiche note del file originale. Il
-comportamento predefinito (blocco esplicito) resta quindi il piu' fedele.
+- sotto 100%: la traccia suona piu' piano dell'originale;
+- sopra 100% (fino a 200%): la traccia viene rinforzata oltre l'originale,
+  utile per far emergere uno strumento troppo debole nel missaggio;
+- la velocity risultante resta comunque nei limiti MIDI validi (1-127).
 
-### 10.1 Esportare la partitura (MusicXML)
+**Tracce con uno strumento campionato o plugin** (SFZ, VST3, LV2: Traccia →
+Strumento plugin): qui il Volume e il Master sono un **guadagno sull'audio**,
+come un fader, e le velocity restano quelle scritte. Con i campioni la
+velocity sceglie la registrazione (un colpo leggero non e' un colpo forte
+piu' piano): scalarla cambierebbe il timbro, e sopra 100% schiaccerebbe
+accenti e colpi leggeri tutti sul campione piu' forte.
 
-**Progetto → Esporta → Partitura MusicXML...** salva il brano come
-partitura in formato **MusicXML** (`.musicxml`), che si apre con i
-programmi di notazione: MuseScore (gratuito), Finale, Sibelius, Dorico e
-molti altri. Da li' si puo' stampare, esportare in PDF, correggere la
-grafica o aggiungere il testo. Come l'export MIDI, contiene le **tracce
-udibili** (tiene conto di Solo e Mute); le tracce audio non hanno note e
-restano fuori.
+Le impostazioni di Volume, Pan, Mute e Solo di ogni traccia vengono salvate
+nel file `.st` (blocco `Mixer <Nome traccia>:`) e ripristinate
+automaticamente alla riapertura del progetto.
 
-Cosa c'e' nella partitura:
+### 18.2 Volume master
 
-- **una parte per traccia**, con il nome della traccia;
-- **le note** esattamente come le suona SoundText: gli accordi compaiono
-  con le note scelte dal motore di voicing, i blocchi `[...]` come
-  accordi scritti;
-- **le sigle degli accordi** (`Am7`, `C/E`...) sopra il pentagramma,
-  scritte solo quando l'accordo cambia, come in un lead sheet;
-- **la tonalita'** del progetto (sezione 2.7bis) come armatura di chiave;
-  le note degli accordi usano i bemolle nelle tonalita' con i bemolle;
-- **metrica e tempo**, compresi i cambi per battuta (sezione 2.7) e i
-  marcatori di tempo nelle tracce;
-- **terzine, quintine e settimine** con la loro parentesi;
-- **dinamiche** ricavate dalla velocity (`p`, `mf`, `f`...), scritte solo
-  quando il nuovo livello dura almeno quattro note, **articolazioni**
-  (staccato, stoppato, legato) e **pedale** del sustain.
-- **le voci** dei blocchi `{ ; }` (sezione 2.12) come voci dello stesso
-  pentagramma, con i gambi in su e in giu';
-- **il testo cantato** (sezione 2.13) sotto le note, con trattini e
-  linee di estensione.
+Oltre al Volume di ogni singola traccia (18.1), la riga **Master** in fondo alla
+colonna delle tracce ha uno slider **Master** (0-200%, stessa scala e stessa convenzione: 100% =
+guadagno originale) che scala insieme il volume di **tutte** le tracce, in
+aggiunta al volume gia' impostato su ciascuna — utile per un aggiustamento
+generale del livello senza dover toccare ogni traccia singolarmente. Come
+per Mute/Solo/Volume/Pan di traccia, una modifica al Master a riproduzione
+in corso riavvia automaticamente la riproduzione dalla posizione corrente
+con il nuovo valore applicato (con un breve debounce se lo si trascina col
+mouse, per non accodare un riavvio per ogni singolo tick). Il valore
+master si salva nel file `.st` (riga `Master: N`, scritta solo se diversa
+dal 100% predefinito) e si ripristina alla riapertura del progetto.
 
-Le chiavi seguono le convenzioni delle parti stampate: pianoforti e organi
-su due pentagrammi (violino e basso, divisi al Do centrale), chitarre in
-chiave di violino e bassi in chiave di basso con l'**8 sotto** (suonano
-un'ottava sotto lo scritto), gli altri strumenti in chiave di violino o di
-basso secondo il registro. La batteria usa il pentagramma a percussione
-con le posizioni usuali (cassa in basso, rullante al centro, piatti in
-alto con la testa a **x**).
+### 18.3 Riverbero e chorus (FX)
 
-Una durata che non corrisponde a un valore di nota (per esempio 5 crome)
-viene scritta come note **legate**, e una nota che scavalca la stanghetta
-prosegue legata nella battuta successiva.
+Il pulsante **FX** di ogni traccia, nella sua testata (in entrambe le
+viste), apre in fondo alla finestra il **pannello Effetti** (vedi 19). Per
+le tracce di testo la prima card, **Invio rapido**, contiene gli effetti
+del synth:
+- **Riverbero** (0-100%): quanta parte della traccia va al riverbero, da
+  asciutta (0%) a molto "bagnata";
+- **Chorus** (0-100%): allarga e "raddoppia" il suono (archi, pad, chitarre
+  pulite, cori);
+- **Ambiente**, uno per **tutto il brano**: lo spazio in cui tutte le tracce
+  mandano il loro riverbero. Stanza piccola (predefinito), Sala, Sala grande
+  o Chiesa.
 
-**Limiti**: dentro una stessa voce due note che si sovrappongono
-(succede nei brani importati da MIDI) non possono convivere: la prima
-viene accorciata fino all'attacco della seconda. Per scrivere davvero piu'
-voci si usano i blocchi `{ ; }`. Gli slide compaiono con la sola nota di
-partenza.
+Riverbero e chorus valgono anche per le tracce suonate da uno strumento
+campionato o plugin (SFZ, VST3, LV2), con lo stesso ambiente del brano;
+non per quelle che passano da un profilo NAM, che come le altre tracce
+vanno nell'amplificatore senza riverbero.
 
-### 10.1bis Vedere e stampare la partitura (Vista → Partitura)
+Il pulsante FX ha il contorno azzurro quando la traccia ha riverbero, chorus
+o effetti della catena, e il suo suggerimento ne mostra i valori; e'
+azzurro pieno quando il pannello Effetti e' aperto su quella traccia. La
+traccia selezionata ha la testata appena tinta del suo colore.
 
-**Vista → Partitura...** (`Ctrl+Shift+P`) apre una finestra con le tracce
-su pentagramma, impaginate in pagine A4: le stesse note, sigle, voci e
-testo dell'esportazione MusicXML, **senza programmi esterni**. La finestra
-resta aperta accanto all'editor e si **aggiorna mentre scrivi** (dopo una
-breve pausa nella digitazione).
+Sono gli effetti già presenti nel synth (fluidsynth): si sentono subito con
+il normale ascolto, senza rielaborazioni in più, e a riproduzione in corso
+l'ascolto riparte da solo come per volume e pan.
+- **Salvataggio:** riverbero e chorus finiscono nel blocco `Mixer` della
+  traccia (`riverbero: 35 chorus: 10`), l'ambiente nella riga
+  `Ambiente: sala` in testa al file. Entrambi si scrivono solo se diversi dal
+  predefinito, quindi i progetti che non li usano restano identici.
+- **Export:** riverbero e chorus valgono per l'ascolto e per gli export WAV
+  e MIDI (controller CC91 e CC93). L'ambiente vale solo per ascolto e WAV:
+  il file MIDI non lo può contenere, e il lettore che lo apre usa il suo.
+- **Import MIDI:** un file con riverbero e chorus impostati sui canali
+  (CC91/CC93 a inizio brano) li porta nelle tracce importate.
 
-- **Tutte le tracce udibili** oppure **Solo la traccia selezionata**.
-- **−** / **+**: zoom.
-- **Esporta PDF...** salva la partitura in PDF (vettoriale, stampabile a
-  qualsiasi dimensione); **Stampa...** la manda alla stampante.
-- Se una traccia ha un errore di sintassi resta visibile l'ultima
-  partitura valida, con l'avviso dell'errore.
+Da sapere:
+- **Stanza piccola:** è l'ambiente di sempre di fluidsynth (così i progetti
+  esistenti suonano come prima), ma il riverbero ci si sente appena. Per un
+  effetto chiaro scegli **Sala** o **Sala grande**: la card lo ricorda
+  quando alzi il riverbero con la stanza piccola.
+- **Cambio di ambiente:** anche con il riverbero a 0 cambiare ambiente può
+  modificare leggermente il suono, perché alcuni SoundFont mandano già da
+  soli una parte dei loro strumenti al riverbero.
+- **Tracce audio:** non hanno l'Invio rapido, perché questi effetti
+  appartengono al synth, che suona solo le tracce di testo; hanno però la
+  catena di effetti (19).
+- **Suona con la tastiera:** l'ascolto dal vivo non applica ancora
+  riverbero e chorus della traccia.
 
-**Progetto → Esporta → Partitura PDF...** fa lo stesso senza aprire la
-finestra.
+## 19. Catena di effetti e pannello Effetti
 
-L'impaginazione e' di **Verovio**, una libreria libera di incisione
-musicale (LGPL) installata insieme a SoundText. Se manca, la finestra
-spiega come installarla (`pip install verovio`); l'esportazione MusicXML
-funziona comunque. Per ritocchi grafici (spaziature, testo libero sulla
-pagina) resta la via MusicXML → MuseScore.
+Ogni traccia, di testo o audio, può avere una **catena di effetti**: il
+suono della traccia passa da un effetto al successivo, da sinistra a
+destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
 
-### 10.2 Importare una partitura (MusicXML)
+### 19.1 Dinamica e tono
 
-**Progetto → Importa → MusicXML...** crea un nuovo progetto da una partitura
-**MusicXML** (`.musicxml`, `.mxl` compresso o `.xml`), il formato di
-scambio di MuseScore, Finale, Sibelius, Dorico e di quasi tutti i
-programmi di notazione; molte partiture gratuite online si scaricano in
-questo formato. Si puo' anche aprire direttamente dalla riga di comando
-(`soundtext brano.musicxml`).
+- **Dinamica:**
+  - **Compressore** (soglia, rapporto, attacco, rilascio, guadagno): rende
+    il livello più uniforme (voce, basso, batteria);
+  - **Limiter** (guadagno, tetto, rilascio): alza il volume della traccia
+    di "Guadagno" senza che i picchi superino mai il "Tetto" (es. −1 dB).
+    Preset Sicurezza (solo protezione dai picchi), Più forte, Molto forte;
+  - **Noise gate** (soglia, rapporto, attacco, rilascio): ammutolisce la
+    traccia quando scende sotto la soglia, per togliere fruscio, ronzio e
+    rumori tra una frase e l'altra nelle tracce audio registrate. Se taglia
+    l'inizio o la fine delle note, abbassa la soglia o allunga il rilascio.
+  - **Riduzione rumore** (riduzione, soglia): toglie il fruscio costante
+    (ventola, amplificatore, preamplificatore) anche mentre si suona, al
+    contrario del noise gate. Lo impara da solo dal tratto piu' silenzioso
+    della traccia (non dai silenzi digitali fra una clip e l'altra): basta
+    che la ripresa abbia mezzo secondo di solo rumore, all'inizio o alla
+    fine. Preset Leggera, Fruscio, Forte.
+  - **Volume** (guadagno, ±24 dB): alza o abbassa il livello e basta. Per
+    esempio −6 dB (preset "Margine per il master") all'inizio della catena
+    del master quando le tracce sommate superano 0 dB: compressore e
+    limiter lavorano meno e la batteria non viene schiacciata. A differenza
+    del volume della traccia, che scala la velocity delle note, non cambia
+    il timbro dello strumento.
+- **Tono:**
+  - **EQ a 3 bande** (bassi, medi, alti, ±12 dB ciascuno);
+  - **Filtro passa-alto** (frequenza 20 Hz–2 kHz, pendenza 6–24 dB/ottava):
+    toglie i bassi sotto la frequenza. Il classico uso è "Pulizia bassi"
+    (80 Hz) su voce e chitarre, per lasciare spazio a basso e cassa;
+  - **Filtro passa-basso** (frequenza 200 Hz–20 kHz, pendenza 6–24
+    dB/ottava): toglie gli acuti sopra la frequenza, per un suono più
+    scuro, ovattato o "dietro una porta". Più alta la pendenza, più netto
+    il taglio.
 
-Cosa diventa la partitura:
+### 19.2 Amplificatore e distorsione
 
-- **una traccia per parte**, con il nome della parte ("Flauto",
-  "Violino I"...) e lo strumento indicato nella partitura (o riconosciuto
-  dal nome della parte); due voci sullo stesso pentagramma diventano voci
-  della stessa traccia (blocchi `{ ; }`, sezione 2.12), come nell'import
-  MIDI (sezione 10);
-- **le note all'altezza reale**: gli strumenti traspositori (sax,
-  clarinetto, tromba in Si♭, chitarra scritta all'ottava) suonano come si
-  sentono, non come sono scritti;
-- **tempo, metrica e tonalita'**, con i cambi di tempo e di metrica, e le
-  **dinamiche** (`p`, `mf`, `f`...) come velocity;
-- **ritornelli, finali 1./2., D.C., D.S., Fine e Coda** svolti
-  nell'ordine in cui si suonano; dopo un D.C. o un D.S. i ritornelli non
-  si ripetono e si suona l'ultimo finale, come d'uso;
-- **le note legate** diventano una nota sola; una battuta **in levare**
-  all'inizio viene completata con una pausa, cosi' le battute restano al
-  loro posto;
-- **le sigle degli accordi** (`Am7`, `G7b9`, `C/E`...) diventano una
-  traccia **Accordi**: in un lead sheet (melodia e sigle) si sente e
-  accompagna la melodia; se la partitura ha gia' altre parti che suonano
-  l'armonia, la traccia e' muta (basta togliere il Mute per sentirla).
-  Le sigle che SoundText non ha diventano la piu' vicina (per esempio
-  `m11` diventa `m9`).
+- **Saturazione:**
+  - **Amplificatore** (modello, cassa, guadagno, bassi, medi, alti,
+    presenza, potenza, livello): un amplificatore da chitarra completo,
+    nell'ordine preamplificatore → controlli di tono → stadio di potenza →
+    cassa. I **modelli**: *Pulito* (quasi senza saturazione), *Crunch*
+    (blues, rock leggero), *British* (rock classico, medi in evidenza, due
+    stadi di saturazione), *High gain* (metal, bassi stretti e molta
+    saturazione).
 
-La batteria scritta sul pentagramma a percussione diventa una traccia di
-percussioni, con i suoni indicati nella partitura. Le note di
-abbellimento (acciaccature, appoggiature scritte piccole) si ignorano. Il
-**testo cantato** diventa testo fra virgolette (sezione 2.13), con
-trattini ed elisioni; nei ritornelli si usa la strofa del passaggio (la 1
-la prima volta, la 2 la seconda), se c'e'. L'opzione **Riconosci accordi** dell'import MIDI
-vale anche qui.
+    **Bassi, Medi, Alti** (da 0 a 10, come sugli amplificatori veri) sono
+    il circuito dei toni ("tone stack") degli amplificatori reali, calcolato
+    dai valori dei suoi componenti: quello **Fender** per Pulito e Crunch,
+    quello **Marshall** per British e High gain. Come negli originali le
+    manopole si influenzano a vicenda (alzare gli Alti tocca anche i medi),
+    a metà corsa i medi sono già un po' "scavati" (di più nel Fender), i
+    Medi a 0 danno lo scavo profondo del metal e il volume cambia un po'
+    girandole, come su un amplificatore vero.
 
-### 10.3 Notazione ABC (importare ed esportare)
+    **Saturazione che dipende dalla frequenza.** Come negli stadi a valvole
+    veri, i bassi saturano meno dei medi e degli acuti: le note basse e gli
+    accordi sulle corde gravi (power chord) restano definiti invece di
+    "impastarsi", mentre le note medie distorcono come ti aspetti. Più il
+    modello è spinto (British, High gain) più l'effetto è marcato. Non
+    toglie bassi al suono: cambia come distorcono, non quanti ce ne sono.
 
-L'**ABC** e' una notazione musicale in solo testo (standard 2.1), usata
-dalle grandi raccolte di musica tradizionale e folk e da programmi come
-abcjs, EasyABC, abcm2ps e abc2midi: un brano `.abc` si legge e si scrive
-anche a mano.
+    **Risposta al tocco.** Anche il punto di lavoro delle valvole si sposta
+    come negli amplificatori veri: sui colpi forti lo stadio perde per un
+    attimo un po' di guadagno e distorce in modo asimmetrico (armoniche
+    pari, più "calde"), poi in circa un decimo di secondo "respira" e torna
+    com'era. Suonando piano il suono resta pulito, attaccando forte si
+    sporca in modo dinamico: è l'effetto più evidente con Crunch e British
+    (il suono "che risponde al plettro"), più contenuto con High gain e
+    quasi assente con Pulito. Dopo ogni stadio c'è anche il filtro dei
+    condensatori di accoppiamento, che toglie il "brontolio" in sub-basso
+    che la distorsione asimmetrica creerebbe sotto gli accordi bassi.
 
-**Progetto → Esporta → Partitura ABC...** salva le tracce udibili come un
-brano ABC:
+    **Presenza** (0-10) regola gli acuti dopo lo stadio di potenza, come la
+    manopola omonima degli amplificatori valvolari: più "aria" e mordente
+    senza rendere aspro il preamplificatore.
 
-- ogni traccia e' una **voce** (`V:`) con il suo nome e lo strumento
-  (`%%MIDI program`); pianoforte e organo hanno due pentagrammi uniti da
-  una graffa, le voci dei blocchi `{ ; }` stanno sullo stesso pentagramma
-  (`%%score`); la batteria e' sul canale 10, con le note dei suoni General
-  MIDI;
-- **tonalita'** (`K:`), **metrica** (`M:`, con i cambi in tutte le voci),
-  **tempo** (`Q:`), **sigle degli accordi** fra virgolette, **dinamiche**
-  (`!mf!`), staccato e tenuto, **terzine** e le altre tuplet, le note
-  legate da una battuta all'altra e il **testo cantato** (`w:`);
-- chitarre e bassi usano la chiave all'ottava bassa (`treble-8`,
-  `bass-8`), con le note scritte un'ottava sopra come vuole lo standard.
+    **Potenza** (0-100%) è quanto si spinge lo stadio finale: le valvole di
+    potenza saturano in modo morbido e asimmetrico (con armoniche pari, il
+    suono "caldo" valvolare) e l'alimentazione che cede sui colpi forti
+    ("sag") comprime un po' gli accordi tenuti. 0% = stadio finale pulito;
+    30-50% è il suono di un amplificatore suonato a volume; oltre, il suono
+    si arrotonda e comprime.
 
-Gli slide diventano la loro prima nota; il pedale e le automazioni
-(`vol=`, `pan=`... sezione 2.15) non si scrivono (non sono nello standard).
+    Le **casse**: *Combo 1×12*, *2×12*, *4×12
+    chiusa* (più corpo sui bassi), *Vintage 1×10* (più sottile e nasale),
+    oppure *Nessuna* per il suono diretto dell'amplificatore. Le casse sono
+    simulate da SoundText (nessun file da scaricare) e, come quelle vere,
+    tagliano gli acuti sopra i 5-6 kHz: per questo un amplificatore suona
+    "caldo" anche con molto guadagno. Preset: Pulito brillante, Blues,
+    Vintage, Rock classico, Metal. "Livello" compensa il volume: più
+    guadagno significa più volume, quindi abbassalo salendo col guadagno.
+    Funziona su tracce di chitarra (di testo o registrate) e anche sul
+    basso o su un organo per un suono più sporco.
 
-**Progetto → Importa → ABC...** crea un nuovo progetto dal primo brano del
-file (si puo' anche aprire dalla riga di comando: `soundtext brano.abc`).
-Si leggono note, pause, accordi `[CEG]`, unita' di nota (`L:`, o quella
-che deriva dalla metrica), ritmo puntato (`>` `<`), tuplet `(3`,
-`(p:q:r`, legature (anche fra battute, con le alterazioni), alterazioni
-che valgono fino alla stanghetta, tonalita' con i modi (`Dmix`, `Ador`...:
-diventano la tonalita' con la stessa armatura), cambi `[K:]` `[M:]` `[L:]`
-`[Q:]`, **ritornelli e finali 1./2.** svolti, la battuta **in levare**,
-dinamiche, sigle degli accordi (nella traccia **Accordi**, come per il
-MusicXML) e testo cantato con piu' strofe. Ogni voce e' una traccia; le
-voci sullo stesso pentagramma (`%%score (S A)`) stanno in una traccia
-sola, e cosi' i due pentagrammi del pianoforte (`{RH | LH}`). Lo
-strumento viene da `%%MIDI program` (`%%MIDI channel 10` o `clef=perc`
-per la batteria), altrimenti dal nome della voce. Le chiavi all'ottava,
-`transpose=` e `octave=` suonano all'altezza reale. Si ignorano le note
-di abbellimento, le parti (`P:`) e le decorazioni che non cambiano il
-suono.
+    **Cassa da file IR.** Con la cassa **File IR…** si usa la risposta
+    all'impulso (IR) di una cassa vera, registrata con un microfono: un
+    piccolo file WAV (se ne trovano moltissimi gratuiti, di casse famose e
+    con microfoni diversi). Scegliendo "File IR…" si apre la finestra per
+    indicare il file; il pulsante **Scegli IR…** sotto i menu lo cambia, e
+    accanto compare il nome del file. Il file viene letto in mono (media dei
+    canali), portato a 48 kHz se ha un'altra frequenza, al massimo 1 secondo,
+    e normalizzato come le casse interne, così cambiare cassa non fa saltare
+    il volume. Nel file `.st` si salva il percorso (relativo alla cartella
+    del progetto, come per le clip audio: `ir="ir/cassa.wav"`): tieni l'IR
+    vicino al progetto se lo sposti su un altro computer. Se il file non si
+    trova più, la card lo scrive in rosso e si usa la cassa Combo 1×12 finché
+    non ne scegli un altro.
 
-## 10bis. Importazione audio (voce/microfono/file)
+    **Qualità della saturazione.** Amplificatore e Distorsione saturano il
+    suono a 4 volte la frequenza di campionamento (192 kHz; lo stadio di
+    potenza, più morbido, a 2 volte) e poi tornano a
+    48 kHz con filtri a fase lineare ("sovracampionamento"): così le
+    armoniche generate dalla distorsione non si ripiegano in frequenze
+    spurie, il classico "frizzare" digitale sulle note acute con molto
+    guadagno. Non aggiunge ritardo; l'elaborazione è un po' più lenta
+    (qualche decimo di secondo per il loop di calibrazione, qualche secondo
+    in sottofondo per una traccia intera);
 
-Menu **Traccia → Importa in questa traccia → Audio → notazione (microfono o file)...**
-(anche dal menu **⋯** della traccia, voce "Importa audio → note...", e
-come "Importa audio (in questo pattern)" nel dialogo **Componi →
-Gestisci libreria pattern**, per catturare direttamente un pattern
-riutilizzabile invece che una traccia): converte un'idea musicale
-catturata via microfono o file audio (`.wav`/`.mp3`/`.m4a`) direttamente
-in notazione testuale, inserita nella traccia (o nel corpo del pattern)
-dopo un'anteprima testuale e un ascolto opzionale.
+  - **Distorsione** (spinta, tono, livello, mix): da un colore
+  caldo appena accennato fino al fuzz. "Spinta" è quanto si satura,
+  "Tono" schiarisce o scurisce il risultato, "Livello" compensa il volume
+  (la distorsione alza molto il livello), "Mix" sotto il 100% mescola il
+  suono pulito a quello distorto (preset "Parallela"). Adatta a chitarre,
+  basso e synth; per un suono d'amplificatore completo usa invece
+  l'Amplificatore.
 
-La finestra procede in tre passi: **1. Cosa riconoscere** (Melodia,
-Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
-**2. Audio** (registrazione o file, tempo e metrica) e **3. Risultato**.
+### 19.3 Profili NAM
 
-- **Sorgente**: pulsante di registrazione (Start/Stop) dal microfono,
-  oppure trascina un file nell'area dedicata (drag-and-drop) o usa
-  "Scegli file...". Registrando con il **Metronomo** acceso, il click
-  riparte insieme alla registrazione: il primo battito coincide con
-  l'inizio del file e la trascrizione segue il metronomo (una pausa prima
-  della prima nota resta una pausa). Senza metronomo la trascrizione parte
-  dalla prima nota, qualunque sia il momento in cui hai premuto Registra. Il microfono richiede
-  `libportaudio2` installato a livello di sistema su Linux (vedi sezione
-  Installazione); i file mp3, m4a, flac e ogg li legge il decodificatore
-  di Qt Multimedia, gia' incluso in PySide6 (o `ffmpeg`, se il PySide6
-  della distribuzione non lo include). Se manca qualcosa il dialogo lo
-  segnala con un messaggio esplicito invece di fallire silenziosamente.
-- **Quantizzazione**: selettore con Off, 1/4, 1/8, 1/16 (predefinito),
-  1/32, piu' una casella "Ternario" (terzine 8T/16T) abilitata solo per
-  1/8 e 1/16. "Off" non introduce un nuovo tipo di timing libero: usa
-  internamente una griglia finissima (1/64), sotto la soglia di
-  quantizzazione percepibile, restando comunque dentro la normale
-  sintassi `N:`. L'ultima combinazione usata viene ricordata alla
-  riapertura del dialogo.
-- **Regola la quantizzazione** (sotto la griglia, chiuso di base; c'e'
-  anche in "Suona con la tastiera" e in "Converti la traccia in
-  notazione"), per chi suona impreciso senza voler perdere il suo modo di
-  suonare:
-  - **Forza**: di quanto ogni nota si sposta verso la griglia (100% =
-    tutta, 50% = a meta' strada);
-  - **Finestra**: si correggono solo le note vicine alla griglia; quelle
-    piu' lontane (anticipi e ritardi voluti) restano dove sono;
-  - **Swing** (griglie da 1/8 e 1/16): la seconda suddivisione di ogni
-    coppia va piu' tardi, 66% = shuffle in terzine, cosi' un'esecuzione
-    swing non viene raddrizzata;
-  - **Scarta le note piu' corte di** e **Unisci le note uguali entro**:
-    tolgono le corde sfiorate e gli attacchi riconosciuti due volte.
-  Se le note non finiscono esattamente sulla griglia (forza o finestra
-  sotto il 100%, swing), il testo si scrive a 1/64, come con "Off". I
-  valori si ricordano come la griglia.
-- **Modalita' di analisi**: Melodica (pitch detection, per voce o
-  strumenti che suonano una nota alla volta; per gli accordi c'e' la
-  modalita' Accordi, qui sotto) oppure Percussiva (rilevamento transienti per
-  batteria/beatbox, classificati automaticamente in `kick`/`snare`/
-  `hihat`). Precompilata in base allo strumento della traccia corrente,
-  ma sempre modificabile manualmente. In modalità Percussiva la
-  quantizzazione scelta conta anche per il rilevamento: due colpi più
-  vicini di circa metà slot della griglia vengono considerati un colpo
-  solo (con 1/16 a 120 BPM, 75 ms), quindi scegli una griglia fine almeno
-  quanto le note più veloci che hai suonato (1/8 per hihat in crome, 1/16
-  per i sedicesimi).
-- **Accordi (armonia)**: riconosce gli accordi di una chitarra, di un
-  pianoforte o di un brano intero e li scrive come sigle, un accordo per
-  quarto al tempo del brano (impostalo prima), a battute con le
-  legature: `4: 4G | 2C 2D | 4G~ | 4G`. Riconosce triadi maggiori,
-  minori, diminuite e sus4, i rivolti (`C/E`, dal basso) e scrive le
-  alterazioni secondo la tonalita' (D#dim in Mi, Bb in Fa). Le settime
-  (7, maj7, m7) si cercano solo con **Riconosci le settime**: si
-  confondono con gli armonici delle altre note, e qualcuna si perde.
-- **Algoritmi**: gli attacchi si trovano con SuperFlux (flusso spettrale
-  che non scambia il vibrato per una nota nuova), l'altezza con YIN;
-  sono scritti dentro SoundText (in numpy), senza librerie da installare.
-- **Parametri avanzati del pitch tracking** (solo modalita' Melodica), in
-  **Opzioni → Import audio**: valgono per tutti gli import e di solito non
-  servono. Permettono di adattare il riconoscimento a un audio specifico —
-  cambia i valori e la conversione riparte da sola per riprovare
-  sullo stesso file, ripeti finche' il risultato non convince. La finestra
-  di import dice se sono in uso valori personalizzati:
-  - **Frequenza minima**: automatica (dedotta dall'estensione grave dello
-    strumento di destinazione) oppure un valore in Hz scelto a mano.
-  - **Finestra di analisi**: numero di campioni per stima — piu' ampia
-    aiuta sui bassi/note gravi ma peggiora la risoluzione temporale
-    (attacchi/note brevi meno precisi).
-  - **Passo di analisi (hop size)**: distanza in campioni tra una stima e
-    la successiva — piu' piccolo da' piu' risoluzione temporale ma
-    un'analisi piu' lenta.
-  - **Soglia di confidenza**: confidenza minima per accettare una stima.
-  - **Durata minima nota**: scarta le note piu' brevi di questa soglia,
-    quasi sempre artefatti (onset spuri ravvicinati, tipici del vibrato
-    marcato).
-  - **Ripristina valori standard**: riporta tutti i valori ai default.
-- **Sorgente: voce/beatbox**: casella da attivare quando si sta cantando/
-  canticchiando la parte (basso, melodia...) o imitando la batteria con la
-  bocca, invece di registrare lo strumento vero. La voce umana ha
-  caratteristiche acustiche diverse da uno strumento reale: intonazione
-  meno stabile nota per nota (frammenta facilmente in note brevi ed
-  erratiche) e, per la batteria, nessuna vera risonanza grave come quella
-  di una cassa (il tratto vocale e' fisicamente troppo corto per
-  produrla). Con la casella attiva: per la parte melodica non si allarga
-  la finestra di analisi sull'estensione grave dello strumento di
-  destinazione (inutile se si sta comunque cantando nella propria
-  estensione vocale, e dannosa per la risoluzione temporale); per la
-  batteria le soglie kick/snare/hihat vengono ricalibrate su un "boom" di
-  bocca invece che su una cassa vera.
-- **Conversione**: parte da sola appena scegli o registri l'audio, e si
-  rifa' da sola quando cambi modalita', opzioni, tempo o metrica. Gira in
-  background, con la barra di avanzamento e "Annulla" accanto, e mostra il
-  risultato in un'anteprima con evidenziazione sintattica, prima di un
-  eventuale inserimento; il testo generato viene sempre validato e non
-  viene mai inserito se risultasse sintatticamente non valido. "Converti
-  di nuovo" la rifa' a comando.
-- **Anteprima modificabile**: una volta completata la conversione,
-  l'anteprima non e' piu' di sola lettura: si puo' correggere a mano una
-  nota sbagliata o provare un'alternativa direttamente nel testo, prima di
-  confermare. "Ascolta" riproduce sempre il contenuto ATTUALE
-  dell'editor (comprese le modifiche fatte a mano, non il testo originale
-  generato dall'analisi); se le modifiche rompono la sintassi, sia
-  "Ascolta" sia "Inserisci nella traccia" segnalano l'errore invece di
-  procedere. Un'anteprima modificata a mano non viene sovrascritta dalla
-  conversione automatica: per rifarla si preme "Converti di nuovo" (lo
-  stesso succede scegliendo un altro audio).
-- **Ascolta**: il pulsante "▶ Ascolta" (con "■ Stop"
-  accanto), abilitato dopo una conversione riuscita, riproduce il
-  contenuto attuale dell'anteprima con lo strumento di destinazione prima
-  di confermare con "Inserisci nella traccia" — utile per verificare a orecchio la conversione
-  (o una propria variante) prima di sostituire il contenuto della
-  traccia/pattern.
-- **Confronto**: accanto ad "▶ Ascolta" si sceglie cosa sentire: **solo il
-  risultato**, **prima l'audio, poi il risultato** oppure **audio e
-  risultato insieme** (a meta' volume ciascuno), per sentire cosa la
-  conversione ha lasciato fuori.
+  - **Profilo NAM** (ingresso, cassa, livello): usa un amplificatore o un
+    pedale **vero**, "catturato" con **Neural Amp Modeler** (NAM). Un
+    profilo è un file `.nam`: una rete neurale addestrata ascoltando
+    l'apparecchio originale, che ne riproduce il suono con grande fedeltà.
+    Se ne trovano migliaia, quasi tutti gratuiti, su **Tone3000**
+    (tone3000.com): amplificatori famosi, pedali di overdrive e distorsione,
+    preamplificatori, a volte anche con la cassa inclusa. Per cominciare,
+    **Suoni → Scarica e installa...**, voce *Profili NAM consigliati*, ne scarica una
+    trentina in un colpo (vedi "Dove trovare i profili NAM", più sotto).
 
-Nota sulla qualita' del riconoscimento: il rilevamento delle note melodiche
-segmenta l'audio con un rilevatore di attacchi dedicato (affidabile anche
-in registro grave e sulle transizioni "legato" tipiche del canto, senza
-silenzio tra una nota e l'altra) e stima l'altezza di ciascuna nota con la
-mediana delle misure nell'intervallo — piu' robusta al vibrato e alle
-piccole imprecisioni di intonazione di una voce non professionale rispetto
-a una singola misura istantanea. Ogni nota finisce quando il suono si
-spegne (non per forza all'attacco successivo), quindi le note staccate
-lasciano le pause; la stessa nota suonata più volte di fila (tipica del
-basso) resta una serie di note distinte, anche senza pausa in mezzo,
-mentre una nota tenuta con vibrato o tremolo resta una nota sola. La
-dinamica è relativa: la nota (o il colpo) più forte della registrazione
-diventa `110@` e le altre scendono in proporzione, a passi di 10, così
-anche una registrazione a volume basso suona piena e il testo non si
-riempie di piccoli cambi di `@`. Per le note piu' gravi (es. basso) la
-finestra di analisi si allarga automaticamente in base all'estensione
-minima dello strumento di destinazione, per una stima di altezza piu'
-precisa (non incide sul rilevamento dell'attacco, gestito a parte). La
-classificazione percussiva automatica riconosce solo `kick`/`snare`/
-`hihat` dallo spettro del "corpo" del colpo (subito dopo il transiente
-d'attacco, non tom/crash/ride/hihat_open, inaffidabile senza un modello
-dedicato); il testo generato resta comunque modificabile a mano come
-qualunque altro token. Le soglie della modalita' "voce/beatbox" sono una
-stima ragionata sul comportamento acustico del tratto vocale, non
-calibrata su registrazioni reali: se i risultati non sono soddisfacenti,
-lo script `diagnose_audio.py` (nella cartella del programma) permette di
-ispezionare i dati grezzi usati dalla classificazione su una tua
-registrazione, per una calibrazione mirata invece che a tentativi;
-correggere a mano il testo generato resta comunque sempre possibile.
+    Aggiungendo l'effetto (**+ Effetto → Saturazione → Profilo NAM**) si
+    apre la finestra **Scegli un profilo NAM**: i profili della cartella
+    `profili_nam` divisi per tipologia (amplificatori senza cassa,
+    amplificatori con la cassa, pedali), ciascuno con il tipo, il suono
+    (pulito, crunch, lead, high gain, overdrive, distorsione, boost) e
+    l'uso, e una casella per cercarli; **Altro file…** apre un file `.nam`
+    qualsiasi. Annullando, l'effetto non viene aggiunto. Sulla card compaiono il nome del profilo e, se il file li
+    dichiara, marca, modello, tipo (amplificatore, pedale, amplificatore con
+    cassa…) e autore; il pulsante **Scegli profilo…** lo cambia.
+    - **Ingresso** è la manopola "input" del plugin NAM: quanto forte arriva
+      la chitarra. Più alto = più saturazione (come suonare più forte o
+      alzare il gain dell'apparecchio originale, fin dove la cattura lo
+      permette), più basso = più pulito.
+    - **Cassa**: *Nessuna / inclusa* se il profilo contiene già la cassa
+      (tipo "amplificatore con cassa") o se è un pedale da mettere davanti a
+      un Amplificatore; una delle **casse interne** dell'Amplificatore
+      (Combo 1×12, 2×12, 4×12 chiusa, Vintage 1×10); **File IR…** per la
+      risposta di una cassa vera, come nell'Amplificatore (vedi sopra). Un
+      profilo di sola testata senza cassa suona aspro e sfrigolante: quando
+      scegli un profilo che il file dichiara senza cassa (amplificatore o
+      preamplificatore, non i pedali e non quelli per basso), SoundText gli
+      mette da solo una cassa, se la Cassa era su *Nessuna*: per le testate
+      rock e metal la **cassa vera** della loro famiglia, se hai scaricato
+      le casse IR (vedi sotto: Marshall JMP 2203 per Marshall, Orange,
+      Friedman e simili, EVH 5150 III per Peavey 5150 e 6505, Mesa Boogie
+      Mark V per Mesa, e Engl, Splawn, Laney, Krank per le loro); altrimenti
+      una cassa interna adatta (4×12 per le testate, Combo 1×12 per Vox,
+      Magnatone e simili, altrimenti 2×12). Per i combo puliti (Fender, Vox,
+      Magnatone) fra le casse IR non ce n'è una adatta e resta la cassa
+      interna. Se il file IR di una cassa manca, si sente la cassa interna
+      adatta al profilo invece di nessuna. Scegliendo un profilo con la
+      cassa inclusa torna su *Nessuna / inclusa*.
+    - **Il synth suona "secco":** una traccia di note che va in un profilo
+      NAM viene suonata dal synth senza il suo riverbero e il suo chorus,
+      come una chitarra collegata direttamente all'amplificatore. Un
+      amplificatore ad alto guadagno alzerebbe la coda del riverbero di
+      40-50 dB, facendola sfrigolare nelle pause; se vuoi il riverbero,
+      aggiungi l'effetto **Riverbero** dopo il profilo, come su un banco
+      vero.
+    - **Livello** compensa il volume. Come nel plugin, SoundText porta già
+      ogni profilo alla stessa sonorità di riferimento (−18 dB) usando il
+      valore scritto nel file; i profili più vecchi, che non lo scrivono,
+      vengono misurati nello stesso modo in cui lo fa NAM (con il suo
+      segnale di riferimento), una volta sola. Così cambiare profilo non fa
+      saltare il volume.
 
-## 10ter. Suona con la tastiera (tastiera del computer o tastiera MIDI)
+    Preset: Neutro, Più spinto (+6 dB d'ingresso), Più pulito (−6 dB).
+
+    Da sapere sui profili NAM:
+    - **Formati:** si usano i profili WaveNet di entrambe le generazioni,
+      **A1** (i classici *standard*, *lite*, *feather* e *nano*, la grande
+      maggioranza dei file pubblicati) e **A2** (la più recente), e anche i
+      profili **LSTM**, le reti ricorrenti dei primi tempi di NAM. Molti
+      file A2 contengono **più misure** dello stesso modello, dalla più
+      leggera alla più completa, perché il plugin possa risparmiare CPU in
+      diretta: SoundText non suona in tempo reale e usa sempre la misura
+      **completa**, la migliore. Sulla card, accanto alla descrizione,
+      compare "formato A2" o "formato LSTM". Il calcolo segue quello del
+      motore ufficiale di NAM, verificato confrontando le uscite; con gli
+      LSTM le differenze restano sotto i −80 dB (arrotondamenti dei
+      calcoli, che una rete ricorrente si porta dietro nel tempo), quindi
+      non udibili. Un file di un altro tipo (per esempio le rarissime
+      architetture sperimentali ConvNet o Linear) non viene usato e il
+      pannello spiega il motivo.
+    - **Mono:** il profilo lavora in mono, come il plugin (i due canali
+      vengono sommati); gli effetti "spaziali" vanno messi dopo.
+    - **Velocità:** una rete neurale è più pesante dell'Amplificatore
+      interno: circa un secondo per ogni ritocco nel loop di calibrazione e
+      una trentina di secondi, in sottofondo e su più core, per una traccia
+      di 3 minuti (profili A1 *standard* e A2; *lite*, *feather* e *nano*
+      sono più rapidi, gli LSTM ancora di più: pochi secondi per 3 minuti).
+      Il risultato resta in memoria: ritoccare il **Livello**, la **Cassa**
+      o gli effetti che vengono dopo non fa ricalcolare la rete, che riparte
+      solo se cambia quello che le arriva (le note della traccia,
+      l'**Ingresso** o gli effetti prima).
+    - **Frequenza:** i profili sono di solito a 48 kHz, come SoundText; se
+      un profilo ha un'altra frequenza il suono viene convertito prima e
+      dopo.
+    - **Salvataggio:** nel file `.st` si salva il percorso, relativo alla
+      cartella del progetto: `nam: ingresso=3 cassa=file livello=-2
+      nam="profili/Plexi.nam" ir="ir/4x12.wav"`. Tieni i profili vicino al
+      progetto se lo sposti; se il file non si trova più, la card lo scrive
+      in rosso e il suono passa invariato.
+
+    **Dove trovare i profili NAM.**
+    - **Profili consigliati, in un colpo:** **Suoni → Scarica e installa...**, voce *Profili NAM consigliati* (oppure, da terminale nella cartella di
+      SoundText, `python3 scarica_profili_nam.py`) scarica 34 profili di
+      amplificatori e pedali famosi, circa 11 MB in tutto, nella cartella
+      **`profili_nam`** accanto a SoundText (o in `~/SoundText/profili_nam`
+      se lì non si può scrivere). La cartella non fa parte del repository:
+      ognuno la scarica sul proprio computer. Il comando riscarica solo i
+      file che mancano e scrive nella cartella un `LEGGIMI.txt` con
+      provenienza e autori. La finestra "Scegli profilo…" si apre già lì.
+      I profili vengono dalla raccolta della comunità di NAM su GitHub
+      (github.com/pelennor2170/NAM_models, licenza GNU GPL v3):
+      - amplificatori (senza cassa: SoundText gliene mette una interna,
+        oppure scegline una vera con **Cassa → File IR…**). Puliti e
+        crunch: *Fender Twin Reverb* (pulito e vibrato: funk, pop, arpeggi),
+        *Vox AC15 - Top Boost* (il "chime" britannico), *Magnatone Super 59*
+        (pulito e spinto: blues e country), *Marshall JCM2000* (pulito e
+        crunch: rock classico), *Friedman Dirty Shirley Mini* (pulito e
+        crunch), *Orange Rockerverb* e *Sovtek MIG50* (stoner e doom). Lead
+        e high gain: *Marshall JCM900 - lead* (hard rock e assoli), *Splawn
+        Pro Mod* (hard rock e metal anni '80), *Mesa Boogie Mark IV - lead*,
+        *Peavey 5150* e *6505+*, *Engl Savage* (metal) e *Meshuggah - djent*
+        (metal moderno). *Orange Rockerverb* ed *Engl Savage* sono catture
+        del modello di un Axe-FX II, non dell'amplificatore vero;
+      - amplificatori **con cassa** (pronti, niente IR): *Bugera 333*
+        (pulito e crunch) e *Marshall JVM* (pulito e distorto);
+      - pedali, da mettere **prima** di un amplificatore (interno o
+        profilo): gli overdrive *Ibanez TS9 Tube Screamer*, *Maxon OD808*
+        (l'originale del Tube Screamer), *Boss SD-1*, *Klon Centaur (clone)*
+        ed *EarthQuaker Plumes (clone)*; *Boss OS-2* (overdrive e
+        distorsione) e *Boss DS-1* (distorsione); i boost per il metal *MXR
+        M77*, *Horizon Precision Drive* e *Fortin Grind*; *Boss HM-2 -
+        svedese* (death metal), e per il basso *Tech 21 dUg DP3X*. *Maxon
+        OD808*, *Boss SD-1*, *MXR M77* e *Precision Drive* sono reti
+        "feather", le più leggere: circa metà del tempo di calcolo.
+    - **Motore NAM veloce:** i profili NAM si calcolano dentro SoundText;
+      con il plugin **Neural Amp Modeler** (LV2, GPL-3.0, voce *Motore NAM
+      veloce* della finestra **Suoni → Scarica e installa...**,
+      per Linux e Windows a 64 bit) il calcolo è 4-6 volte più veloce, e il
+      primo ascolto di un brano con chitarre NAM parte molto prima. Il suono
+      è lo stesso (differenza dello 0,2% circa). Senza il plugin, o se non
+      risponde, SoundText calcola i profili da sé come prima.
+    - **Casse per gli amplificatori senza cassa:** **Suoni → Scarica e installa...**, voce *Casse IR per gli amplificatori NAM*, scarica 20 casse per chitarra
+      (risposte all'impulso, meno di 1 MB) nella sottocartella
+      **`profili_nam/casse`**, con il testo della licenza e un
+      `LEGGIMI.txt`; la finestra "Scegli IR…" si apre già lì. Sono il
+      pacchetto *BestPlugins Mega Pack 2* di David Fau Casquel (licenza GNU
+      GPL v2 o successiva), preso dal repository di Guitarix
+      (github.com/brummer10/guitarix). Ogni file porta il nome
+      dell'amplificatore di cui riproduce la cassa (*Mesa Boogie Mark V*,
+      *EVH 5150 III*, *Marshall JMP 2203*, *Engl Retro Tube*...). Il
+      pacchetto è pensato soprattutto per i suoni distorti: con i profili
+      puliti (Fender Twin, Vox AC15) prova più casse, o cercane una adatta
+      su Tone3000.
+    - **Tone3000** (tone3000.com), il sito di riferimento, con decine di
+      migliaia di profili gratuiti (per scaricare può chiedere di creare un
+      account gratuito):
+      1. cerca l'apparecchio (per esempio "Plexi", "Dumble", "Rectifier",
+         "Tube Screamer");
+      2. tra i filtri scegli la piattaforma **NAM** e il tipo: *amp* (solo
+         amplificatore: serve un IR), *full rig* (amplificatore con cassa,
+         pronto) o *pedal*; ordinando per download trovi i più usati;
+      3. nella pagina del profilo scarica il file (spesso uno ZIP con più
+         varianti: *standard* è la qualità piena, *lite*, *feather* e *nano*
+         più leggeri; SoundText li legge tutti, anche A2 e LSTM);
+      4. estrai i file `.nam` nella cartella `profili_nam` (o in una
+         cartella accanto al progetto) e sceglili dalla card con **Scegli
+         profilo…**.
+      Su Tone3000 ci sono anche gli **IR** delle casse (tipo *IR*), da usare
+      con **Cassa → File IR…**.
+    - **Tutta la raccolta su GitHub** (circa 260 profili, 108 MB): nella
+      pagina github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
+      poi estrai i `.nam` che ti interessano in `profili_nam`.
+
+    Se un profilo scaricato non suona come ti aspetti: un amplificatore
+    senza cassa suona aspro finché non gli dai un IR; un pedale da solo
+    suona "piccolo", va messo davanti a un amplificatore; con **Ingresso**
+    trovi il punto in cui il profilo reagisce meglio al tuo segnale.
+
+### 19.4 Spazio: delay e riverbero
+
+- **Spazio — Delay** (a tempo, tempo, ripetizioni, mix), **Riverbero** (stanza,
+  smorzamento, ampiezza, mix), **Chorus** (velocità, profondità, mix) e
+  **Phaser** (velocità, profondità, ritorno, mix).
+
+  Il **Delay a tempo**: nel menu "A tempo" scegli una suddivisione (1/2,
+  1/4, 1/4 puntato, 1/4 terzina, 1/8, 1/8 puntato, 1/8 terzina, 1/16) e le
+  ripetizioni cadono a tempo col brano, calcolate dal suo BPM; la manopola
+  Tempo si spegne e mostra i millisecondi che ne risultano. Cambiando il
+  BPM del brano il delay si adegua da solo. Con "Libera (ms)" il tempo si
+  regola a mano. Il calcolo usa il tempo **iniziale** del brano: con cambi
+  di tempo a metà brano le ripetizioni restano quelle del tempo iniziale.
+  L'1/8 puntato (preset "A tempo 1/8 puntato") è il classico eco "a
+  cavallo" delle chitarre rock.
+
+### 19.5 Il pannello Effetti
+
+Il **pannello Effetti** si apre dal pulsante FX della traccia (per il
+master, dal pulsante FX della riga Master: vedi 20) e resta in
+fondo alla finestra (si può ridimensionare trascinando il bordo). Ogni
+effetto è una **card** con:
+- **⏻** per accenderlo o spegnerlo senza perdere le regolazioni;
+- **◀ ▶** per spostarlo prima o dopo nella catena, **✕** per toglierlo;
+- i **preset** (es. Compressore "Voce", Delay "Slapback", Riverbero
+  "Cattedrale"): scelto un preset puoi ritoccarlo con le manopole, e il
+  menu mostra allora **Personalizzato**;
+- le **manopole**, con il valore sotto; doppio click sul valore per
+  tornare al predefinito.
+
+Nella testata del pannello:
+- **Loop** (10 s, da 2 a 30): aprendo il pannello viene scelto un tratto
+  da risentire mentre regoli, che diventa anche il loop A-B del brano
+  (sul righello). Parte dal box selezionato della traccia, altrimenti dalla
+  posizione della testina (o dal primo box della traccia);
+- **▶ Ascolta il loop**: ripete il tratto; ogni ritocco si sente **dal
+  giro successivo**, senza rifare il resto del brano;
+- **Con le altre tracce**: nel loop suona tutto il brano, come nel mix
+  finale; togliendolo si sente solo la traccia;
+- **Prima / Dopo**: premuto, il loop si sente senza la catena, per
+  confrontare (non cambia la traccia);
+- **Copia su…**: copia la catena su un'altra traccia;
+- **Annulla modifiche**: riporta effetti, riverbero, chorus e ambiente a
+  com'erano quando hai aperto il pannello (le singole modifiche restano
+  anche in Modifica → Annulla);
+- **✕** chiude il pannello: il loop A-B torna quello di prima e la catena
+  viene applicata a **tutta la traccia in sottofondo**, così il prossimo
+  Play è già pronto (la barra di stato avvisa quando ha finito).
+
+Il pulsante FX mostra quanti effetti sono accesi (es. **FX 3**).
+
+### 19.6 Da sapere
+
+- **Come suona:** una traccia con effetti accesi viene sintetizzata a parte
+  e poi elaborata; il risultato resta in memoria, quindi girare una
+  manopola rifà solo l'elaborazione (frazioni di secondo), e cambiare
+  un'altra traccia non la tocca. Delay e riverbero possono allungare il
+  brano con la loro coda.
+- **Export:** la catena vale per l'ascolto e l'export WAV; il file MIDI
+  non la contiene (il lettore MIDI non ha questi effetti).
+- **Salvataggio:** la catena si salva nel file `.st`, in un blocco per
+  traccia:
+  ```
+  Effetti Chitarra:
+    compressore: soglia=-20 rapporto=4 attacco=5 rilascio=120 guadagno=4 preset="Voce"
+    delay: tempo=250 ripetizioni=25 mix=20 spento
+  ```
+  (`spento` = effetto presente ma spento). Valori fuori dai limiti vengono
+  riportati nei limiti, effetti sconosciuti ignorati.
+- **Requisiti:** la catena usa il pacchetto Python `pedalboard`
+  (`pip install pedalboard`, già nei requisiti); senza, il pannello mostra
+  solo l'Invio rapido e un avviso. L'ascolto del loop richiede lo
+  streaming audio (`sounddevice`), come il loop A-B.
+- **Un ascolto alla volta:** avviare il loop ferma il brano e l'ascolto
+  dei box; premere Play ferma il loop.
+
+## 20. Effetti sul master (mastering)
+
+Oltre alle singole tracce, anche il **mix finale** del brano può passare
+per una catena di effetti: è il "mastering", l'ultimo ritocco che rende
+il brano più compatto, equilibrato e forte. Il pulsante **FX** della riga
+**Master**, in fondo alla colonna delle tracce, apre il pannello Effetti
+sul master (etichetta "Master · mix finale"). Si usano gli stessi effetti
+e le stesse card delle tracce; quelli più adatti al master sono:
+- **EQ a 3 bande:** piccoli ritocchi al tono generale (±1-3 dB);
+- **Compressore**, preset **Colla del mix**: compressione leggera
+  (rapporto 2:1, attacco lento) che amalgama le tracce;
+- **Limiter**, preset **Più forte**: alza il volume del brano senza che i
+  picchi superino il tetto di −1 dB. È di solito l'ultimo della catena.
+
+Il pulsante **+ Catena di mastering** aggiunge in un colpo questi tre
+effetti, come punto di partenza da regolare a orecchio. Il pulsante FX
+del master si accende e mostra quanti effetti sono attivi (es. **FX 3**).
+
+Come per le tracce:
+- il **loop di calibrazione** (10 s, dalla testina) fa risentire il mix
+  di tutto il brano a ogni ritocco; **Prima / Dopo** confronta il mix con
+  e senza la catena del master;
+- **Annulla modifiche** riporta la catena a com'era all'apertura, e ogni
+  modifica è anche in Modifica → Annulla;
+- **Copia su…** copia la catena del master su una traccia; da una traccia
+  si può copiare la sua catena sul master ("Master (mix finale)").
+
+Da sapere:
+- **Dove vale:** il master si applica all'ascolto del brano, all'export
+  WAV del brano e alla base che si sente mentre si registra. Non si
+  applica all'export di una singola traccia né all'export MIDI.
+- **Anche il loop delle tracce passa per il master:** calibrando una
+  traccia la senti già con la catena del master, cioè come nel brano
+  finito.
+- **Veloce:** il mix prima del master resta in memoria, quindi dopo un
+  ritocco al solo master il Play successivo rielabora il mix già pronto,
+  senza risintetizzare il brano.
+- **Volume master e catena:** lo slider Master (18.2) agisce prima della
+  catena, sul volume delle tracce: con un limiter sul master, alzarlo
+  rende il brano più "schiacciato" ma non più forte oltre il tetto.
+- **Salvataggio:** nel file `.st` la catena del master sta nel blocco
+  ```
+  Catena master:
+    compressore: soglia=-14 rapporto=2 attacco=30 rilascio=200 guadagno=1 preset="Colla del mix"
+    limiter: guadagno=6 tetto=-1 rilascio=80 preset="Più forte"
+  ```
+  (parola diversa da `Effetti`, così non si confonde con una traccia che
+  si chiami "Master"). Senza catena il blocco non si scrive.
+
+## 21. Plugin esterni (VST3 e LV2)
+
+SoundText puo' usare i **plugin audio installati sul computer**, sia come
+**effetti** nella catena di una traccia o del master, sia come
+**strumenti virtuali** che suonano le note di una traccia al posto del
+SoundFont.
+
+- **VST3**: su Linux, Windows e macOS. SoundText li cerca nelle cartelle
+  standard del sistema (su Linux `~/.vst3` e `/usr/lib/vst3`, su Windows
+  `C:\Program Files\Common Files\VST3`, su macOS
+  `/Library/Audio/Plug-Ins/VST3`); altre cartelle si aggiungono da
+  **Suoni → Cartelle dei plugin VST3...**
+
+  **Plugin VST3 gratuiti consigliati**, per Linux, Windows e macOS: la voce
+  *Plugin VST3 gratuiti* di **Suoni → Scarica e installa...** li scarica
+  dalle pagine ufficiali e li copia nella cartella VST3 dell'utente, senza
+  diritti di amministratore (da terminale: `scarica_strumenti vst3`):
+  - **Dexed**: sintetizzatore FM che emula lo Yamaha DX7 (strumento);
+  - **Airwindows Consolidated**: oltre 400 effetti Airwindows in un solo
+    plugin;
+  - **Dragonfly Reverb**: riverberi di sala, stanza e piastra;
+  - **LSP Plugins**: compressori, equalizzatori, limiter e delay da studio
+    (solo su Linux: non esistono versioni per Windows e macOS).
+- **LV2**: solo su Linux, e serve la libreria di sistema `lilv` (su
+  Debian/Ubuntu il pacchetto `liblilv-0-0`, gia' presente se sono
+  installati Ardour, Carla o Guitarix). I plugin LV2 si trovano da soli.
+  Per esempio, con `guitarix-lv2` si hanno decine di amplificatori e pedali.
+
+  **Plugin LV2 consigliati su Linux** (gratuiti, nei pacchetti della
+  distribuzione):
+  - `dragonfly-reverb-lv2`: riverberi di sala, stanza e piastra di ottima
+    qualità;
+  - `guitarix-lv2`: amplificatori, pedali (Tube Screamer, fuzz, wah,
+    tremolo), casse ed effetti per chitarra;
+  - `calf-plugins`: Leslie (Rotary Speaker), riverbero, delay, phaser,
+    chorus, compressori, equalizzatori, simulatore di nastro;
+  - `lsp-plugins-lv2`: compressori, equalizzatori, limiter e delay da
+    studio, più campionatori come strumenti;
+  - `x42-plugins`: strumenti di misura, equalizzatori e la batteria AVL
+    Drums (strumento plugin);
+  - `setbfree`: l'organo Hammond con il Leslie, come strumento plugin.
+
+  Su Debian, Ubuntu e derivate si installano tutti insieme con:
+
+  ```bash
+  sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
+  ```
+- I formati **CLAP** e **VST2** non sono supportati.
+
+**Un plugin come effetto**: nel pannello Effetti (19) **+ Effetto →
+Plugin (VST3/LV2)** apre l'elenco dei plugin di effetti installati, con la
+ricerca per nome. La card del plugin ha:
+- le manopole **Mix** (quanto suono elaborato mescolare a quello
+  originale) e **Livello** (il volume in uscita), come gli altri effetti;
+- **Parametri...**, che apre una finestra con tutti i controlli del
+  plugin; le modifiche si sentono subito nel loop di ascolto del
+  pannello;
+- **Cambia...** per sostituirlo con un altro plugin.
+
+Nella finestra dei parametri, **Interfaccia del plugin...** apre la
+finestra grafica del plugin stesso (solo VST3). Quando la chiudi, le
+regolazioni fatte li' restano nel progetto.
+
+**Un plugin come strumento**: **Traccia → Strumento plugin → Scegli (VST3/LV2)...**,
+oppure il tasto destro sul nome della traccia. Scegli uno strumento
+virtuale (synth, pianoforte campionato...) e poi regola i suoi parametri.
+Le note della traccia le suona il plugin: il **volume** della traccia
+agisce sulla forza delle note, il **pan** sulla posizione nello stereo, e
+gli effetti della traccia si applicano dopo il plugin. Per tornare al
+SoundFont scegli **Nessuno: usa il SoundFont**. Sotto il nome della
+traccia compare il nome del plugin.
+
+Alcuni plugin LV2 caricano un file: per esempio sfizz LV2 suona un
+**file SFZ**. Nella finestra dei parametri queste proprieta' hanno una
+riga con **Sfoglia...** e **Togli**; il file scelto resta nel progetto.
+
+**Scarica e installa.** **Suoni → Scarica e installa...** apre
+una finestra con tutto quello che SoundText sa scaricare: gli strumenti
+campionati SFZ (piano, Rhodes, sax, batterie, bassi, archi e altri), i
+plugin VST3 gratuiti, i profili NAM e le casse IR, il motore NAM veloce e
+il motore SFZ interno. Per ogni voce dice dimensione, licenza e se è già
+installata; si spuntano le voci e **Installa** le scarica in sottofondo,
+con l'avanzamento e un registro; **Ferma** interrompe (il download
+riprende la volta dopo). È lo stesso lavoro di `scarica_strumenti.py` dal
+terminale. Il motore SFZ interno si compila sul computer: se mancano git,
+cmake o il compilatore la finestra chiede se installarli, e se rispondi sì
+li installa prima di compilare (apt su Linux, winget su Windows, gli
+strumenti di Xcode su macOS). Su Linux
+7-Zip, sfizz e Surge XT si installano con apt: la password di
+amministratore la chiede una finestra del sistema, una volta sola (se il
+sistema non ha pkexec, la voce si installa dal terminale con
+`./scarica_strumenti.sh host`).
+
+Altre cose che la finestra sa fare:
+- **Tutto un gruppo con un clic:** le righe *Strumenti campionati (SFZ)* e
+  *Altri strumenti SFZ (grandi)* hanno una casella propria che spunta o
+  toglie tutti gli strumenti del gruppo (è spuntata a metà se ne hai scelti
+  solo alcuni).
+- **SoundFont General MIDI:** *FluidR3 GM* (MIT, ~150 MB, quello che
+  SoundText propone al primo avvio), *MuseScore General* (MIT, ~38 MB, il
+  più completo), *TimGM6mb* (GPL-2.0, ~6 MB, leggero) e il kit di batteria
+  *FreePats GM, percussioni* (GPL-3.0, ~15 MB). Vanno nella cartella dei
+  SoundFont di SoundText, con il file della licenza accanto: si scelgono da
+  **Suoni → SoundFont** o per un singolo strumento.
+- **Plugin VST3 gratuiti:** oltre a Dexed, Airwindows e Dragonfly Reverb,
+  il sintetizzatore *OB-Xf*, il waveshaper *Wolf Shaper* e, per la
+  chitarra, *ChowTapeModel*, *ChowCentaur* e *ChowMatrix*. Su Windows i
+  plugin Chow esistono solo con il loro installer: la finestra lo avvia e
+  Windows chiede di confermare.
+- **Plugin LV2 gratuiti** (solo Linux): *Dragonfly Reverb*, *LSP Plugins*,
+  *Wolf Shaper* e il sintetizzatore di batteria *Geonkick*, nella cartella
+  `~/.lv2`. Se manca la libreria lilv, la finestra chiede se installarla.
+- **Sorgenti...** (anche da **Opzioni → Sorgenti dei download...**): gli
+  indirizzi da cui si scarica ogni voce, modificabili con un doppio clic,
+  per esempio per usare un mirror. Quelli cambiati sono in grassetto;
+  **Ripristina l'originale** e **Ripristina tutti** tornano a quelli di
+  SoundText. Valgono per le installazioni avviate da SoundText.
+
+**Strumento SFZ interno.** Un file `.sfz` (strumento campionato, come
+quelli di **Suoni → Scarica e installa...**) si puo' suonare anche senza
+plugin: nell'elenco degli strumenti scegli **Strumento SFZ (interno)...**
+e poi il file. Lo suona la libreria del motore **sfizioso** (o di
+**sfizz**), che si installa una volta da **Suoni → Scarica e installa...**,
+voce *Motore SFZ interno*: si compila sul computer in circa 5 minuti e, se
+mancano git, cmake o il compilatore, la finestra propone di installarli;
+senza, la voce compare in grigio. Questo strumento non ha parametri:
+"Parametri dello strumento plugin..." fa scegliere un altro file. Sotto il
+nome della traccia compare il nome del file con "(SFZ)"; se modifichi il
+file `.sfz`, il brano viene ricalcolato.
+
+Il progetto `.st` ricorda il plugin di ogni traccia e di ogni effetto,
+con i suoi parametri. Aprendo il progetto su un altro computer, i VST3
+vengono cercati per nome del file nelle cartelle dei plugin.
+
+**Se un plugin non funziona.** I plugin girano in un processo separato da
+SoundText: se uno si blocca o si chiude in modo anomalo, SoundText resta
+aperto. Il plugin viene segnato come **"non risponde"** fino al prossimo
+avvio dell'app. Un effetto che non funziona lascia passare il suono
+invariato. Una traccia il cui strumento plugin non funziona suona con il
+SoundFont, e il motivo finisce nel file di log (Aiuto). Alcuni plugin non
+si possono proprio caricare: nell'elenco compaiono in grigio, con il
+motivo accanto: passa il mouse sul nome per leggerlo (per esempio "non
+risponde", o un plugin che accetta solo audio mono). Un plugin che non ha
+risposto o si e' chiuso alla prima ricerca (succede con plugin grandi,
+come Surge XT, su un computer lento) si riprova da solo alla ricerca
+seguente; per gli altri errori usa **Aggiorna elenco**.
+
+**Limiti**:
+- gli strumenti plugin suonano nell'ascolto del brano, nel loop del
+  pannello Effetti e nell'export WAV; le anteprime veloci (nota della
+  tastiera, ascolto di un pattern, accordo scelto con il doppio click)
+  usano ancora il SoundFont;
+- l'export MIDI e MusicXML contiene le note, non il suono del plugin;
+- dei plugin LV2 si salvano i valori dei parametri e i file scelti, non
+  il resto dello "stato" interno;
+- alla prima ricerca SoundText deve sapere che cosa e' ogni VST3: lo legge
+  dal bundle quando il bundle lo dice (file `moduleinfo.json`, come in
+  Dexed, Airwindows e LSP), altrimenti carica il plugin una volta, e puo'
+  volerci un po'; intanto la finestra mostra gia' i plugin noti. Poi l'elenco si ricorda finche' un plugin non cambia
+  (**Aggiorna elenco** rifa' la ricerca).
+
+## 22. Re-amping: un simulatore esterno
+
+Per chitarra e basso SoundText ha già tutto dentro:
+- l'**Amplificatore** e la **Distorsione** (19.2), per bozze e basi;
+- i **Profili NAM** (19.3), catture di amplificatori e pedali veri, con le
+  casse IR: la strada per un suono da studio;
+- i **plugin VST3 e LV2** come effetti (21): per esempio gli amplificatori
+  e i pedali di Guitarix (`guitarix-lv2`, su Linux) o un simulatore VST3,
+  su ogni sistema.
+
+Il **re-amping** serve quando il simulatore che vuoi usare non si può
+caricare in SoundText: un programma a sé (Guitarix completo, GarageBand),
+un plugin in un formato che SoundText non apre (AU su macOS, CLAP, VST2),
+oppure quando preferisci rifinire la chitarra in un altro programma di
+registrazione. La traccia esce da SoundText senza effetti, passa dal
+simulatore e rientra nel brano come traccia audio.
+
+**Il flusso, su qualunque sistema:**
+1. Registra la chitarra **pulita** (ingresso INST/Hi-Z della scheda audio,
+   senza amplificatore) in una traccia audio, oppure scrivila a note.
+2. Tasto destro sul nome della traccia → **Esporta WAV asciutto (per il
+   re-amping)...**
+3. Nel programma esterno applica al file il simulatore scelto e salva il
+   risultato in un nuovo WAV.
+4. In SoundText crea una **traccia audio** (es. "Chitarra ampli") e
+   **Importa file audio...**: su una traccia vuota la clip va all'inizio,
+   quindi a tempo col brano. Metti in **Mute** la traccia originale (o
+   tienile entrambe, per mescolare pulito e amplificato).
+
+Se il simulatore aggiunge un ritardo (succede in tempo reale, non
+nell'elaborazione offline), sposta di poco la clip o accorciane l'inizio
+trascinandone il bordo.
+
+**Linux — Guitarix** (gratuito, simulazione dei circuiti a valvole di
+amplificatori e pedali, casse e IR). I suoi plugin LV2 si usano
+**direttamente in SoundText** come effetti (21), senza re-amping: sono nel
+pacchetto `guitarix-lv2` su Debian e Ubuntu, insieme al programma
+(`guitarix`) su altre distribuzioni (`sudo dnf install guitarix`,
+`sudo pacman -S guitarix`). Il re-amping serve per il programma Guitarix
+completo, in due modi:
+- **offline (consigliato):** apri il WAV asciutto in **Audacity** o in
+  **Ardour** e applica i plugin di Guitarix come effetto, poi esporta;
+  nessun collegamento audio da configurare;
+- **in diretta:** avvia Guitarix (con PipeWire, se serve, `pw-jack
+  guitarix`), collega con **qpwgraph** o **Helvum** la chitarra all'ingresso
+  di Guitarix e la sua uscita al registratore; per registrare
+  direttamente in SoundText scegli come scheda audio l'ingresso di PipeWire.
+
+**Windows e macOS** (Guitarix funziona solo su Linux):
+- **Neural Amp Modeler (NAM)**: i profili `.nam` si usano già in SoundText
+  (19.3), su tutti i sistemi. Il plugin NAM (VST3/AU) e il programma a sé
+  servono per suonare in diretta, con la chitarra collegata;
+- **AIDA-X**: gratuito, simile a NAM e più leggero, anche su Linux;
+- **GarageBand** (macOS): gratuito, amplificatori e pedali già inclusi;
+- per applicare un plugin al WAV asciutto va bene **Audacity** (gratuito,
+  VST3 su tutti i sistemi, AU su macOS), oppure un programma di
+  registrazione come **Reaper**.
+
+In diretta, NAM e AIDA-X funzionano anche come programmi a sé: la chitarra
+entra nel simulatore e SoundText registra l'uscita (con un collegamento
+audio virtuale, o registrando in un altro programma e importando il file).
+
+---
+
+# Parte 5 — Suonare, registrare, importare ed esportare
+
+## 23. Suona con la tastiera (tastiera del computer o tastiera MIDI)
 
 Menu **Traccia → Suona con la tastiera in questa traccia...** (anche come
 voce "Suona con la tastiera..." del menu **⋯** della traccia, e come
@@ -3529,7 +3305,7 @@ Gestisci libreria pattern**): registra una performance suonata dal vivo con
 la tastiera del computer — usata come se fosse un piccolo strumento
 musicale — e la converte in notazione, con lo stesso flusso finale
 (anteprima modificabile, "Ascolta anteprima", Ok/Annulla) del dialogo di
-importazione audio (sezione 10bis), di cui e' il pendant "strumento suonato
+importazione audio (sezione 25), di cui e' il pendant "strumento suonato
 dal vivo" invece che "audio registrato/caricato".
 
 - **Disposizione tastiera** (layout italiano): tre righe di 12 tasti
@@ -3633,13 +3409,13 @@ dal vivo" invece che "audio registrato/caricato".
 - **Traccia percussiva**: se lo strumento di destinazione e' percussivo, le
   tre righe fisiche (numerica, Q, A - le stesse usate per le note, vedi
   sopra) suonano invece i 36 identificatori percussivi elencati nella
-  sezione 6, nello stesso ordine con cui compaiono nella legenda del
+  sezione 12, nello stesso ordine con cui compaiono nella legenda del
   dialogo (che mostra a video quale tasto produce quale suono), senza
   ottava.
 - **Feedback sonoro immediato**: mentre si registra o si preme "Suona"
   (prova senza registrare), ogni tasto premuto si sente subito, sintetizzato
   in tempo reale con lo strumento di destinazione — a differenza del resto
-  della riproduzione dell'app, sempre offline (vedi sezione 12), qui serve
+  della riproduzione dell'app, sempre offline (vedi sezione 3), qui serve
   latenza minima. Se la traccia ha uno strumento plugin (Strumento SFZ
   interno, LV2 o VST3), i tasti li suona quello, con il suono che avra' la
   traccia; lo strumento si comincia a caricare all'apertura del dialogo e,
@@ -3647,10 +3423,10 @@ dal vivo" invece che "audio registrato/caricato".
   puo' comunque registrare/suonare, semplicemente senza sentire i tasti (il
   dialogo lo segnala).
 - **Tempo, Metrica, Metronomo e Quantizzazione**: stessi controlli e stesso
-  significato del dialogo di importazione audio (sezione 10bis) — il
-  metronomo (sezione 12.5) e' particolarmente utile qui per suonare a tempo
+  significato del dialogo di importazione audio (sezione 25) — il
+  metronomo (sezione 3.3) e' particolarmente utile qui per suonare a tempo
   prima della quantizzazione.
-- **Tonalità**: mostra la tonalità del progetto (sezione 2.7bis) già
+- **Tonalità**: mostra la tonalità del progetto (sezione 8.3) già
   all'apertura del dialogo, e si può cambiare direttamente da qui — stesso
   campo `project.key` della toolbar principale (non una copia): modificarla
   nel dialogo si riflette anche nella toolbar una volta chiuso il dialogo, e
@@ -3663,7 +3439,7 @@ dal vivo" invece che "audio registrato/caricato".
   - **Cromatica** (predefinita): comportamento descritto sopra, 12 semitoni
     per riga, 3 ottave totali.
   - **Scala della tonalita' (diatonica/pentatonica/blues)**: richiede una
-    tonalita' impostata nella toolbar principale (sezione 2.7bis) — se non
+    tonalita' impostata nella toolbar principale (sezione 8.3) — se non
     impostata (o non valida), ricade automaticamente sulla cromatica, senza
     bloccare la selezione. Ogni riga di tasti percorre solo le note della
     scala scelta invece delle 12 cromatiche, cosi' i tasti suonano sempre
@@ -3745,12 +3521,12 @@ MIDI visti dal sistema. Una tastiera aperta da un altro programma (per
 esempio un sequencer) su Windows può risultare occupata: chiudi l'altro
 programma.
 
-## 10quater. Tracce audio (voce, chitarra, tastiera registrate)
+## 24. Tracce audio (voce, chitarra, tastiera registrate)
 
 Oltre alle tracce con notazione, un brano puo' contenere **tracce audio**:
 file audio veri (una voce registrata al microfono, una chitarra elettrica
 o una tastiera collegate con il jack alla scheda audio) che suonano insieme
-alle altre tracce. A differenza dell'importazione audio (10bis) il file
+alle altre tracce. A differenza dell'importazione audio (25) il file
 **non viene convertito in note**: si sente cosi' com'e'.
 
 Una traccia audio si riempie in due modi: **registrando** direttamente in
@@ -3875,7 +3651,7 @@ oppure **importando** file registrati con un altro programma.
   Tutte queste voci non toccano il file e si annullano con Ctrl+Z.
 - **Converti in notazione...** (tasto destro su una clip): trasforma in note
   la parte che suona della clip, con lo stesso motore di "Importa audio"
-  (10bis), in una **nuova traccia** con lo strumento scelto
+  (25), in una **nuova traccia** con lo strumento scelto
   (proposto in base a cosa hai registrato: chitarra, tastiera, voce) e un
   box che parte dove parte la clip. Funziona bene con parti monofoniche
   (voce, linea di chitarra o basso); la clip audio resta.
@@ -4077,7 +3853,7 @@ i rendering usati meno di recente) e si puo' cancellare quando si vuole.
   o lo stesso comando col tasto destro sul nome della traccia, esporta la traccia **senza** catena di effetti, senza
   riverbero/chorus del synth, con il pan al centro e senza master (il
   volume resta): è il suono "pulito" da far passare in un simulatore di
-  amplificatore esterno (vedi 8.6). Il file parte dall'inizio del brano,
+  amplificatore esterno (vedi 22). Il file parte dall'inizio del brano,
   così reimportandolo all'inizio di una traccia audio resta a tempo.
 - **Esporta MIDI** contiene solo note: le tracce audio non ci sono, e un
   messaggio lo ricorda.
@@ -4085,238 +3861,600 @@ i rendering usati meno di recente) e si puo' cancellare quando si vuole.
   progetto (le esportazioni di una sola traccia quello della traccia), nella
   cartella in cui il progetto e' salvato.
 
-## 11. Salvataggio progetto
+## 25. Importazione audio (voce/microfono/file)
 
-Il progetto si salva in formato testuale nativo `.st` (leggibile e
-modificabile anche a mano), che include tempo, metrica, pattern, tracce e
-le definizioni degli eventuali strumenti personalizzati usati (vedi 7.1),
-cosi' che il file sia autosufficiente e portabile tra installazioni diverse.
-La libreria MIDI (`midi/`) resta invece condivisa a livello di installazione
-e non viaggia dentro al file `.st`.
+Menu **Traccia → Importa in questa traccia → Audio → notazione (microfono o file)...**
+(anche dal menu **⋯** della traccia, voce "Importa audio → note...", e
+come "Importa audio (in questo pattern)" nel dialogo **Componi →
+Gestisci libreria pattern**, per catturare direttamente un pattern
+riutilizzabile invece che una traccia): converte un'idea musicale
+catturata via microfono o file audio (`.wav`/`.mp3`/`.m4a`) direttamente
+in notazione testuale, inserita nella traccia (o nel corpo del pattern)
+dopo un'anteprima testuale e un ascolto opzionale.
 
-Il titolo della finestra mostra sempre il nome del file attualmente aperto
-("SoundText — nomefile.st"), anche dopo un'importazione MIDI
-("SoundText — nomefile.mid"), per sapere sempre a colpo d'occhio su
-quale progetto si sta lavorando.
+La finestra procede in tre passi: **1. Cosa riconoscere** (Melodia,
+Percussioni o Accordi, con sotto solo le opzioni di quella modalita'),
+**2. Audio** (registrazione o file, tempo e metrica) e **3. Risultato**.
 
-## 12. Riproduzione
+- **Sorgente**: pulsante di registrazione (Start/Stop) dal microfono,
+  oppure trascina un file nell'area dedicata (drag-and-drop) o usa
+  "Scegli file...". Registrando con il **Metronomo** acceso, il click
+  riparte insieme alla registrazione: il primo battito coincide con
+  l'inizio del file e la trascrizione segue il metronomo (una pausa prima
+  della prima nota resta una pausa). Senza metronomo la trascrizione parte
+  dalla prima nota, qualunque sia il momento in cui hai premuto Registra. Il microfono richiede
+  `libportaudio2` installato a livello di sistema su Linux (capitolo 30); i file mp3, m4a, flac e ogg li legge il decodificatore
+  di Qt Multimedia, gia' incluso in PySide6 (o `ffmpeg`, se il PySide6
+  della distribuzione non lo include). Se manca qualcosa il dialogo lo
+  segnala con un messaggio esplicito invece di fallire silenziosamente.
+- **Quantizzazione**: selettore con Off, 1/4, 1/8, 1/16 (predefinito),
+  1/32, piu' una casella "Ternario" (terzine 8T/16T) abilitata solo per
+  1/8 e 1/16. "Off" non introduce un nuovo tipo di timing libero: usa
+  internamente una griglia finissima (1/64), sotto la soglia di
+  quantizzazione percepibile, restando comunque dentro la normale
+  sintassi `N:`. L'ultima combinazione usata viene ricordata alla
+  riapertura del dialogo.
+- **Regola la quantizzazione** (sotto la griglia, chiuso di base; c'e'
+  anche in "Suona con la tastiera" e in "Converti la traccia in
+  notazione"), per chi suona impreciso senza voler perdere il suo modo di
+  suonare:
+  - **Forza**: di quanto ogni nota si sposta verso la griglia (100% =
+    tutta, 50% = a meta' strada);
+  - **Finestra**: si correggono solo le note vicine alla griglia; quelle
+    piu' lontane (anticipi e ritardi voluti) restano dove sono;
+  - **Swing** (griglie da 1/8 e 1/16): la seconda suddivisione di ogni
+    coppia va piu' tardi, 66% = shuffle in terzine, cosi' un'esecuzione
+    swing non viene raddrizzata;
+  - **Scarta le note piu' corte di** e **Unisci le note uguali entro**:
+    tolgono le corde sfiorate e gli attacchi riconosciuti due volte.
+  Se le note non finiscono esattamente sulla griglia (forza o finestra
+  sotto il 100%, swing), il testo si scrive a 1/64, come con "Off". I
+  valori si ricordano come la griglia.
+- **Modalita' di analisi**: Melodica (pitch detection, per voce o
+  strumenti che suonano una nota alla volta; per gli accordi c'e' la
+  modalita' Accordi, qui sotto) oppure Percussiva (rilevamento transienti per
+  batteria/beatbox, classificati automaticamente in `kick`/`snare`/
+  `hihat`). Precompilata in base allo strumento della traccia corrente,
+  ma sempre modificabile manualmente. In modalità Percussiva la
+  quantizzazione scelta conta anche per il rilevamento: due colpi più
+  vicini di circa metà slot della griglia vengono considerati un colpo
+  solo (con 1/16 a 120 BPM, 75 ms), quindi scegli una griglia fine almeno
+  quanto le note più veloci che hai suonato (1/8 per hihat in crome, 1/16
+  per i sedicesimi).
+- **Accordi (armonia)**: riconosce gli accordi di una chitarra, di un
+  pianoforte o di un brano intero e li scrive come sigle, un accordo per
+  quarto al tempo del brano (impostalo prima), a battute con le
+  legature: `4: 4G | 2C 2D | 4G~ | 4G`. Riconosce triadi maggiori,
+  minori, diminuite e sus4, i rivolti (`C/E`, dal basso) e scrive le
+  alterazioni secondo la tonalita' (D#dim in Mi, Bb in Fa). Le settime
+  (7, maj7, m7) si cercano solo con **Riconosci le settime**: si
+  confondono con gli armonici delle altre note, e qualcuna si perde.
+- **Algoritmi**: gli attacchi si trovano con SuperFlux (flusso spettrale
+  che non scambia il vibrato per una nota nuova), l'altezza con YIN;
+  sono scritti dentro SoundText (in numpy), senza librerie da installare.
+- **Parametri avanzati del pitch tracking** (solo modalita' Melodica), in
+  **Opzioni → Import audio**: valgono per tutti gli import e di solito non
+  servono. Permettono di adattare il riconoscimento a un audio specifico —
+  cambia i valori e la conversione riparte da sola per riprovare
+  sullo stesso file, ripeti finche' il risultato non convince. La finestra
+  di import dice se sono in uso valori personalizzati:
+  - **Frequenza minima**: automatica (dedotta dall'estensione grave dello
+    strumento di destinazione) oppure un valore in Hz scelto a mano.
+  - **Finestra di analisi**: numero di campioni per stima — piu' ampia
+    aiuta sui bassi/note gravi ma peggiora la risoluzione temporale
+    (attacchi/note brevi meno precisi).
+  - **Passo di analisi (hop size)**: distanza in campioni tra una stima e
+    la successiva — piu' piccolo da' piu' risoluzione temporale ma
+    un'analisi piu' lenta.
+  - **Soglia di confidenza**: confidenza minima per accettare una stima.
+  - **Durata minima nota**: scarta le note piu' brevi di questa soglia,
+    quasi sempre artefatti (onset spuri ravvicinati, tipici del vibrato
+    marcato).
+  - **Ripristina valori standard**: riporta tutti i valori ai default.
+- **Sorgente: voce/beatbox**: casella da attivare quando si sta cantando/
+  canticchiando la parte (basso, melodia...) o imitando la batteria con la
+  bocca, invece di registrare lo strumento vero. La voce umana ha
+  caratteristiche acustiche diverse da uno strumento reale: intonazione
+  meno stabile nota per nota (frammenta facilmente in note brevi ed
+  erratiche) e, per la batteria, nessuna vera risonanza grave come quella
+  di una cassa (il tratto vocale e' fisicamente troppo corto per
+  produrla). Con la casella attiva: per la parte melodica non si allarga
+  la finestra di analisi sull'estensione grave dello strumento di
+  destinazione (inutile se si sta comunque cantando nella propria
+  estensione vocale, e dannosa per la risoluzione temporale); per la
+  batteria le soglie kick/snare/hihat vengono ricalibrate su un "boom" di
+  bocca invece che su una cassa vera.
+- **Conversione**: parte da sola appena scegli o registri l'audio, e si
+  rifa' da sola quando cambi modalita', opzioni, tempo o metrica. Gira in
+  background, con la barra di avanzamento e "Annulla" accanto, e mostra il
+  risultato in un'anteprima con evidenziazione sintattica, prima di un
+  eventuale inserimento; il testo generato viene sempre validato e non
+  viene mai inserito se risultasse sintatticamente non valido. "Converti
+  di nuovo" la rifa' a comando.
+- **Anteprima modificabile**: una volta completata la conversione,
+  l'anteprima non e' piu' di sola lettura: si puo' correggere a mano una
+  nota sbagliata o provare un'alternativa direttamente nel testo, prima di
+  confermare. "Ascolta" riproduce sempre il contenuto ATTUALE
+  dell'editor (comprese le modifiche fatte a mano, non il testo originale
+  generato dall'analisi); se le modifiche rompono la sintassi, sia
+  "Ascolta" sia "Inserisci nella traccia" segnalano l'errore invece di
+  procedere. Un'anteprima modificata a mano non viene sovrascritta dalla
+  conversione automatica: per rifarla si preme "Converti di nuovo" (lo
+  stesso succede scegliendo un altro audio).
+- **Ascolta**: il pulsante "▶ Ascolta" (con "■ Stop"
+  accanto), abilitato dopo una conversione riuscita, riproduce il
+  contenuto attuale dell'anteprima con lo strumento di destinazione prima
+  di confermare con "Inserisci nella traccia" — utile per verificare a orecchio la conversione
+  (o una propria variante) prima di sostituire il contenuto della
+  traccia/pattern.
+- **Confronto**: accanto ad "▶ Ascolta" si sceglie cosa sentire: **solo il
+  risultato**, **prima l'audio, poi il risultato** oppure **audio e
+  risultato insieme** (a meta' volume ciascuno), per sentire cosa la
+  conversione ha lasciato fuori.
 
-Il tasto Play esporta un MIDI temporaneo. Se `fluidsynth` e un SoundFont sono
-disponibili, la sintesi avviene **offline** (rendering in un file WAV
-temporaneo, poi riprodotto con il miglior player audio trovato — su Linux
-`pw-play`, `paplay`, `aplay`, `ffplay` o `mpv`; su macOS `afplay` (incluso
-nel sistema) o, se installati, `ffplay`/`mpv`; su Windows `ffplay`/`mpv` se
-installati, altrimenti il modulo `winsound` della libreria standard di
-Python, sempre disponibile) invece che in tempo reale: questo evita i
-crepitii/dropout dovuti a underrun del driver audio, tipici della sintesi
-MIDI realtime su PulseAudio/PipeWire, e da un risultato piu' pulito. Se c'e'
-la libreria FluidSynth (SoundText la usa direttamente), questo
-rendering offline usa un'unica istanza di fluidsynth **persistente** per
-tutta la sessione, con il SoundFont caricato in memoria una sola volta
-invece che ad ogni Play: latenza di avvio molto piu' bassa (il costo di
-caricamento del SoundFont, anche centinaia di ms per un GM da decine di MB,
-si paga solo la prima volta), a parita' di strategia anti-crepitio (il
-rendering resta offline, non tocca l'output audio in tempo reale). Se il
-rendering offline non riesce (con o senza la libreria), o non c'e' un
-player WAV disponibile, si ripiega sul binario CLI `fluidsynth` e poi sulla
-riproduzione fluidsynth in tempo reale; se fluidsynth non e' disponibile
-del tutto, su `timidity` o `wildmidi`; in mancanza di tutto, sul player
-MIDI predefinito del sistema (`xdg-open` su Linux, `open` su macOS,
-apertura diretta col programma associato su Windows).
+Nota sulla qualita' del riconoscimento: il rilevamento delle note melodiche
+segmenta l'audio con un rilevatore di attacchi dedicato (affidabile anche
+in registro grave e sulle transizioni "legato" tipiche del canto, senza
+silenzio tra una nota e l'altra) e stima l'altezza di ciascuna nota con la
+mediana delle misure nell'intervallo — piu' robusta al vibrato e alle
+piccole imprecisioni di intonazione di una voce non professionale rispetto
+a una singola misura istantanea. Ogni nota finisce quando il suono si
+spegne (non per forza all'attacco successivo), quindi le note staccate
+lasciano le pause; la stessa nota suonata più volte di fila (tipica del
+basso) resta una serie di note distinte, anche senza pausa in mezzo,
+mentre una nota tenuta con vibrato o tremolo resta una nota sola. La
+dinamica è relativa: la nota (o il colpo) più forte della registrazione
+diventa `110@` e le altre scendono in proporzione, a passi di 10, così
+anche una registrazione a volume basso suona piena e il testo non si
+riempie di piccoli cambi di `@`. Per le note piu' gravi (es. basso) la
+finestra di analisi si allarga automaticamente in base all'estensione
+minima dello strumento di destinazione, per una stima di altezza piu'
+precisa (non incide sul rilevamento dell'attacco, gestito a parte). La
+classificazione percussiva automatica riconosce solo `kick`/`snare`/
+`hihat` dallo spettro del "corpo" del colpo (subito dopo il transiente
+d'attacco, non tom/crash/ride/hihat_open, inaffidabile senza un modello
+dedicato); il testo generato resta comunque modificabile a mano come
+qualunque altro token. Le soglie della modalita' "voce/beatbox" sono una
+stima ragionata sul comportamento acustico del tratto vocale, non
+calibrata su registrazioni reali: se i risultati non sono soddisfacenti,
+lo script `diagnose_audio.py` (nella cartella del programma) permette di
+ispezionare i dati grezzi usati dalla classificazione su una tua
+registrazione, per una calibrazione mirata invece che a tentativi;
+correggere a mano il testo generato resta comunque sempre possibile.
 
-Con la libreria FluidSynth **e** `sounddevice` (in requirements.txt)
-installati il brano renderizzato viene riprodotto direttamente dal
-programma invece che da un player esterno, e il rendering viene
-**memorizzato**: solo il primo Play (o il primo dopo una modifica che
-cambia il suono, come note, mixer o umanizzazione) deve attendere la
-sintesi, mentre pausa/ripresa e salti ripartono all'istante. La posizione
-mostrata da barra, evidenziazione, testina e metronomo e' quella letta dal
-dispositivo audio, quindi resta allineata a cio' che si sente.
+## 26. Import/Export MIDI
 
-### Saltare a un punto e ripetere una sezione (loop A-B)
+- **Progetto → Esporta → MIDI**: l'intero ensemble (tracce udibili secondo
+  Solo/Mute) in un unico file MIDI multitraccia.
+- **Progetto → Importa → MIDI**: crea un nuovo progetto con una traccia per
+  ogni canale del file MIDI; il canale 10 diventa sempre Batteria.
+- **Traccia → Esporta questa traccia / Importa in questa traccia → MIDI**: esporta solo la
+  traccia selezionata, oppure importa un file MIDI (con scelta del canale,
+  se il file ne contiene piu' di uno) sostituendo il contenuto della
+  traccia corrente; viene proposto di aggiornare anche lo strumento in base
+  al riconoscimento automatico.
 
-- **Salto**: clicca sulla barra di avanzamento in fondo alla finestra,
-  oppure sul righello delle battute (o su una sezione) nella vista
-  Struttura brano. Se il brano sta
-  suonando riparte da li'; se e' fermo o in pausa, il prossimo Play
-  partira' da quel punto.
-- **Loop A-B** (menu **Riproduzione → Loop**): **Loop: inizio (A) qui** (`Ctrl+[`) e
-  **Loop: fine (B) qui** (`Ctrl+]`) fissano i due estremi sul beat in
-  riproduzione (o sul punto di pausa/salto), arrotondato al beat intero.
-  Impostare B attiva il loop; **Ripeti la sezione A-B** (`Ctrl+L`) lo
-  accende e spegne senza perdere A e B, **Cancella loop** li azzera. La
-  sezione appare come una fascia colorata sul righello della Struttura
-  brano. Si puo' attivare, spostare o togliere il loop anche mentre il
-  brano suona, senza interruzioni.
-- **Velocita' d'ascolto** (menu a tendina in barra, 100%-50%, o Riproduzione → Velocita' d'ascolto): rallenta il
-  brano senza cambiarne l'intonazione, per esercitarsi su un passaggio
-  (anche in loop); il metronomo segue. La prima volta a una velocita' nuova
-  il brano si prepara per qualche secondo. Non cambia ne' il brano ne'
-  l'esportazione.
-- Il loop richiede la riproduzione diretta descritta sopra
-  (libreria FluidSynth + `sounddevice`): con i player di ripiego il brano non
-  viene ripetuto, e un messaggio in barra di stato lo segnala.
+**Riconoscimento/creazione automatica dello strumento**: per ogni canale,
+se uno strumento gia' disponibile (predefinito o personalizzato) ha
+esattamente il Program Change GM del canale, viene usato quello;
+altrimenti viene **creato e registrato automaticamente un nuovo strumento
+personalizzato** con quel programma esatto (nome derivato dal nome
+ufficiale General MIDI, es. programma 81 → `Lead2sawtooth`; parametri di
+ottava/estensione/voicing suggeriti in base alla famiglia, come nella
+creazione manuale da **Suoni → Gestisci strumenti**), cosi' la traccia
+importata riflette sempre fedelmente lo strumento originale invece di
+limitarsi al piu' vicino approssimato. Al termine dell'import, se sono
+stati creati nuovi strumenti, un avviso ne mostra l'elenco (sono comunque
+sempre modificabili a posteriori da **Suoni → Gestisci strumenti**).
+Questa creazione automatica avviene solo per un import effettivamente
+confermato (non per la sola anteprima nel selettore canale, che continua a
+mostrare il nome dello strumento gia' disponibile piu' vicino).
 
-### 12.1 Barra di avanzamento ed evidenziazione del token in esecuzione
+**Canali che cambiano strumento**: se un canale cambia strumento a meta'
+brano (un Program Change fra le note: in *Layla* il riff dell'intro e' in
+chitarra overdrive e poi passa al pianoforte, sullo stesso canale),
+l'import multitraccia crea **una traccia per ogni strumento**, ciascuna con
+le sole note suonate con quello strumento e con il volume e il pan in
+vigore quando attacca. Se il canale torna piu' volte allo stesso strumento,
+quelle parti stanno nella stessa traccia. Il canale della batteria non si
+divide (li' il programma sceglie il kit).
 
-Durante la riproduzione, il display del tempo nella barra dei comandi
-mostra il tempo trascorso e la durata totale del brano (es. "00:42 /
-01:30") e la posizione (battuta e movimento); la barra di avanzamento in
-fondo alla finestra avanza con il brano. Nella
-traccia visualizzata nell'editor, il token attualmente in esecuzione (nota,
-pausa, accordo, blocco, o l'intero riferimento se e' un `%pattern`/`&"midi"`)
-viene evidenziato con i colori invertiti rispetto al tema (sfondo chiaro,
-testo scuro), per seguire visivamente l'esecuzione riga per riga. L'editor
-scorre automaticamente quando necessario per tenere sempre visibile il
-token evidenziato (nessuno scroll manuale richiesto durante l'ascolto), ma
-solo quando esce dalla porzione visibile: non scorre continuamente nota
-per nota, e non sposta il cursore di modifica dell'utente. Cambiando
-traccia durante la riproduzione, l'evidenziazione si sposta sulla nuova
-traccia selezionata, sempre sincronizzata con lo stesso tempo trascorso.
+Nota sulla precisione dell'import: la notazione supporta note cromatiche
+(`c#`, `eb`, ecc.), quindi l'altezza viene preservata; la ritmica viene
+quantizzata su una griglia di sedicesimi, oppure, battuta per battuta, su
+una griglia a **terzine** quando gli attacchi lo richiedono (vedi sotto).
 
-### 12.2 Modifiche al mixer durante la riproduzione
+**Terzine e tuplet**: per ogni beat l'import sceglie la suddivisione che
+spiega meglio gli attacchi. La griglia binaria (sedicesimi) vince se li
+spiega tutti; altrimenti una terzina di ottavi (`8T:`, sezione 4.5) viene
+usata quando li spiega e la binaria no — tipico di shuffle, swing 2:1 e
+blues in 12/8, dove prima le note venivano spostate sul sedicesimo piu'
+vicino. Sestine (`16T:`), quintine (`16Q:`) e settimine (`16S:`) hanno soglie
+molto piu' severe (servono piu' attacchi nel beat e uno scarto molto
+ridotto), altrimenti un suonato umano poco preciso verrebbe scambiato per
+una tuplet. Gli attacchi quasi simultanei (kick e ride con qualche tick di scarto) contano
+come un solo punto ritmico, e le quintine/settimine sono di fatto
+riconosciute solo su passaggi molto regolari. Il comando griglia viene
+scritto solo quando cambia. Una nota
+che partendo da una griglia finirebbe dentro un beat con un'altra griglia,
+in un punto che non e' un confine di beat, viene chiusa sul confine: puo'
+quindi risultare leggermente piu' corta dell'originale, ma il resto della
+traccia non si sposta mai. Un file solo binario produce gli stessi token di
+prima.
 
-Mute, Solo, Volume e Pan possono essere modificati anche a brano in corso:
-il programma riavvia automaticamente la riproduzione dalla posizione in cui
-si trovava (non da capo), applicando subito le nuove impostazioni. E'
-percepibile una breve interruzione al momento del riavvio (il brano va
-risintetizzato con le nuove impostazioni), ma non e' necessario fermare
-manualmente e far ripartire la riproduzione per sentire l'effetto di una
-modifica al mixer.
+**Note sovrapposte e voci**: in ST le uniche note simultanee sono quelle di
+uno stesso blocco `[...]` (stessa durata), mentre nel MIDI una nota tenuta
+sotto una melodia, o un accordo che continua sotto una voce, si
+sovrappongono. Prima l'import saltava ogni attacco che cadeva dentro una nota
+piu' lunga: in una libreria di prova circa l'8% delle note spariva, e in
+alcuni file quasi la meta'. Ora l'**import di un file intero** separa ogni
+canale in **voci monofoniche** (al massimo 2 per canale, sempre: se a uno
+stesso attacco iniziano piu' gruppi di durate diverse che voci, i gruppi in
+eccesso si fondono con quello dalla durata piu' vicina; la batteria mai): le note che iniziano insieme e finiscono (entro un sedicesimo) insieme
+restano un unico blocco, ogni gruppo va nella prima voce libera, e una
+sovrapposizione minima (legato entro un sedicesimo) accorcia la nota
+precedente invece di aprire una voce. Le voci restano **nella stessa
+traccia**: dove suona solo la prima il testo e' quello di sempre, dove
+suonano anche le altre diventa un **blocco di voci** `{ ; }` (sezione 4.8)
+su una riga a se', che comincia e finisce sulle stanghette quando non
+taglia nessuna nota; il testo unito suona esattamente come le voci
+separate. (Fino alla versione precedente ogni voce diventava una traccia a
+parte, `Piano voce 2`.) Vale anche per l'import di un **singolo canale** in
+una traccia. Il tempo (`tempo=N`) sta nella prima voce. Quando le voci sono
+esaurite la nota precedente viene **accorciata** all'attacco successivo: si
+perde la durata tenuta, mai la nota.
 
-**Se il suono non ti soddisfa nonostante un buon SoundFont**, tieni presente che:
-- **Suoni → SoundFont → Mostra SoundFont in uso** indica esattamente quale motore e
-  quale file `.sf2` verranno usati: se non mostra "fluidsynth persistente
-  (libreria) + ...sf2" o "fluidsynth (CLI) + ...sf2", il programma sta
-  silenziosamente ricorrendo a un fallback di qualita' inferiore (spesso
-  perche' `fluidsynth` non e' installato, o nessun `.sf2` e' stato trovato)
-  — installa `fluidsynth` e verifica il SoundFont da li'.
-- Anche con un buon SoundFont, il **suono General MIDI ha un limite
-  intrinseco di realismo**: non e' pensato per competere con librerie di
-  campionamento professionali, ma per una riproduzione fedele e riconoscibile
-  della partitura. Un salto di qualita' significativo richiederebbe
-  campionamenti multi-velocity per strumento (fuori dallo scopo di questo
-  motore basato su MIDI/GM standard).
+**Testo cantato**: gli eventi *lyrics* del file, e il testo dei file
+karaoke (`.kar`, eventi di testo in una traccia senza note), diventano
+testo fra virgolette (sezione 4.9) sulla prima voce del canale che li
+canta (quello delle note nella stessa traccia MIDI, oppure quello le cui
+note attaccano dove cadono le sillabe): una riga per battuta dopo le sue
+note, `*` per una nota senza sillaba e `""` prima di un tratto cantato che
+segue un passaggio strumentale.
 
-### 12.3 Scegliere il SoundFont (es. FluidR3_GM.sf2)
+ **Canali MIDI con molte tracce**: un file MIDI ha solo 15 canali melodici
+(il 10 e' della batteria) e su ogni canale c'e' un solo strumento, un solo
+volume/pan e un solo pitch bend. Con piu' di 15 tracce (facile con le voci
+dell'import) l'export assegna prima un canale a ogni strumento *diverso*,
+poi i canali che avanzano alle voci extra, e le restanti condividono il canale
+del proprio strumento: nessuna traccia suona mai con lo strumento di
+un'altra. Le voci dello stesso strumento che condividono un canale hanno il
+pitch bend in comune (uno slide di una si sente anche sulle note dell'altra
+mentre suonano insieme).
 
-SoundText non include un SoundFont: al primo avvio, se non ne trova
-nessuno, propone di scaricare **FluidR3 GM** (gratuito, licenza MIT,
-circa 150 MB) e apre **Suoni → Scarica e installa...**, dove ci sono
-anche *MuseScore General* e *TimGM6mb*. Vanno bene sia i file `.sf2` sia
-i `.sf3` (compressi).
+Note identiche allo stesso tick (raddoppi) e attacchi
+sulla stessa altezza dentro lo stesso sedicesimo si fondono in una.
 
-Il programma cerca un SoundFont, in ordine di priorita':
+**Velocity delle note simultanee**: in ST ogni token (nota, accordo o
+blocco `[...]`) ha una sola velocity, quindi le velocity diverse delle note
+di uno stesso gruppo (per esempio un accento sul cantabile di un accordo, o
+kick e hi-hat della batteria colpiti insieme) non si possono conservare una
+per una: il gruppo importato prende la **media arrotondata** delle velocity,
+che mantiene l'intensita' complessiva. Con velocity tutte uguali non cambia
+nulla.
 
-1. il percorso impostato manualmente da **Suoni → SoundFont → Scegli SoundFont
-   (.sf2/.sf3)...** (salvato nel file di impostazioni: `~/.config/soundtext/
-   settings.json` su Linux, `%APPDATA%\SoundText\settings.json` su
-   Windows, `~/Library/Application Support/SoundText/settings.json` su
-   macOS);
-2. la variabile d'ambiente `SOUNDTEXT_SOUNDFONT`, se impostata;
-3. un SoundFont General MIDI scaricato con **Scarica e installa**
-   (FluidR3 GM, poi MuseScore General, poi TimGM6mb), nella cartella dei
-   SoundFont di SoundText;
-4. alcuni percorsi comuni di sistema, tra cui:
-   - `~/.local/share/soundfonts/FluidR3_GM.sf2` (Linux)
-   - `/usr/share/sounds/sf2/FluidR3_GM.sf2` (Debian/Ubuntu/Fedora)
-   - `/usr/share/soundfonts/FluidR3_GM.sf2` (Arch/CachyOS)
-   - `%APPDATA%\SoundText\soundfonts\FluidR3_GM.sf2` (Windows)
-   - `~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2` (macOS)
-   - `/opt/homebrew/share/soundfonts/FluidR3_GM.sf2` (macOS, Homebrew su
-     Apple Silicon)
+**Dinamiche da volume ed espressione (CC7/CC11)**: crescendo, diminuendo e
+fade del file MIDI sono automazioni continue, che ST esprime solo come
+velocity delle note (sezione 7.1). L'import calcola il livello CC7 x CC11 al
+momento di ogni attacco, lo normalizza al massimo del canale e lo applica
+alla velocity della nota: la nota piu' forte del canale mantiene la velocity
+originale, le altre scendono in proporzione, e il risultato compare come
+serie di `N@` (a scalini, uno per ogni nota che cambia, non come rampa
+`>>`). Un volume costante (tipicamente CC7 = 100) o una variazione sotto il
+15% del massimo non e' una dinamica e viene ignorata. Il volume *assoluto*
+del canale rispetto agli altri non viene importato (si regola dal mixer).
 
-   L'elenco completo dei percorsi cercati per ciascun sistema e' nella
-   sezione Installazione corrispondente, piu' sotto in questa guida.
+**Articolazioni (`!`, `x`, `_`)**: per le note singole e gli accordi
+impliciti (opzione "Riconosci accordi") l'import confronta la durata reale
+della nota con l'intervallo fino all'attacco successivo: circa la meta'
+→ staccato `!` (sezione 4.7), meno del 30% → mute `x`, oltre il 105% (nota
+che si sovrappone alla successiva) → legato `_`. In quel caso il token
+occupa tutto l'intervallo fino alla nota successiva (es. `2c*4!`) invece di
+una nota corta seguita da pause, cosi' resta modificabile come la scrisse
+un musicista. Una nota corta seguita da una lunga pausa (oltre un beat, o
+mezzo beat per il mute) resta nota + pausa: non e' un'articolazione. Le
+note normali (circa 70%-105%), i blocchi espliciti `[...]` (senza
+modificatore finale, sezione 4.7), gli slide e la batteria non cambiano.
 
-Se hai un SoundFont in una posizione diversa (o vuoi usarne un altro),
-basta selezionarlo da **Suoni → SoundFont → Scegli SoundFont (.sf2/.sf3)...**:
-resta impostato per tutte le riproduzioni successive, in tutti i progetti.
-**Suoni → SoundFont → Mostra SoundFont in uso** indica quale file verra' usato in
-questo momento (e con quale motore/player), e permette di verificare al
-volo se il problema e' davvero il SoundFont o un fallback silenzioso.
-**Suoni → SoundFont → Usa rilevamento automatico del SoundFont** rimuove
-l'impostazione manuale e torna alla ricerca automatica.
+**Tempo, metrica e pedale**: i cambi di tempo del file diventano marcatori
+`tempo=N` (sezione 8.1) — in **una sola** traccia, perche' il tempo e' globale in
+ST: viene scelta quella su cui i marcatori slittano meno (in genere la
+batteria, fatta di colpi brevi; un marcatore che cadrebbe dentro una nota
+lunga viene emesso alla sua fine). Il tempo iniziale resta quello del
+progetto e le oscillazioni piccole (meno di 2 BPM o del 2%: il rumore di un
+tempo registrato dal vivo) non sono cambi di tempo e vengono ignorate.
+La metrica (evento *time signature*) imposta il campo **Metrica** del
+progetto; se cambia lungo il brano diventa l'elenco per battuta
+(`Metrica: 1: 3/4, 3: 4/4`, sezione 8.2). Il pedale del sustain (CC64,
+acceso da 64 in su) diventa `SON`/`SOFF` (sezione 7.3), solo alle
+transizioni effettive; un pedale ancora premuto a fine canale viene chiuso
+con un `SOFF` finale. L'export MIDI scrive ora anche la metrica, cosi' un
+giro export→import la conserva. Nell'import di un singolo canale in una
+traccia esistente i cambi di tempo e di metrica NON vengono importati
+(sono globali al progetto), il pedale si'.
 
-### 12.4 SoundFont diversi per singolo strumento
+**Bending (pitch bend)**: una nota singola (mai un accordo) il cui pitch
+bend raggiunge almeno un semitono pieno durante la sua durata viene
+importata come uno **slide** (`c*4>d*4`, sezione 4) dall'altezza di
+partenza al picco del bending, invece di essere appiattita all'altezza
+nominale — utile in particolare per i MIDI di chitarra blues/rock, dove il
+bending e' spesso parte integrante della frase. Se il pitch wheel rientra
+poi in modo significativo verso un semitono diverso prima della fine della
+nota (bend-and-release, tecnica comune: sale e poi rilascia), lo slide
+importato ha una terza tappa (`c*4>d*4>c*4`, sezione 7.2) invece di
+fermarsi al solo picco. Le durate delle singole tappe (sezione 7.2)
+riflettono il timing REALE del bending rilevato nel MIDI sorgente — quando
+il picco viene raggiunto rispetto alla durata della nota — invece di
+assumere sempre una divisione a meta' fra rampa e mantenimento/rilascio:
+un bend rapido seguito da un lungo mantenimento (es. `1c*4>3d*4`) suona
+percio' diverso, e piu' fedele all'originale, da un bend lento che
+raggiunge il picco solo verso la fine (es. `3c*4>1d*4`). La sensibilita' del pitch bend dichiarata nel file
+(RPN 0, Pitch Bend Sensitivity) viene rispettata; se il file non la
+dichiara si assume il default General MIDI (±2 semitoni). Un bending che
+arrotonda a 0 semitoni (vibrato o imprecisioni di registrazione), troppo
+piccolo rispetto al fondo scala del pitch wheel (un'automazione continua
+di espressione/umanizzazione, non un bending deliberato) o implausibilmente
+ampio (oltre 12 semitoni: i bending chitarristici reali restano
+quasi sempre entro 2-3 semitoni, e un salto piu' ampio non e' un bending su
+nessuno strumento — sarebbe una nota diversa, non una piegatura della
+stessa; capita quando la sensibilita' RPN dichiarata riflette una capacita'
+tecnica del canale, non l'intenzione di bending di quella nota specifica)
+resta una nota normale, per evitare uno slide senza senso musicale.
 
-Oltre al SoundFont predefinito (sezione 12.3, usato per tutta la
-riproduzione), puoi assegnare un file `.sf2` diverso a un singolo
-strumento — utile per usare un piano dedicato di buona qualita' insieme a
-un font generico per il resto, o una batteria diversa da tutto il resto
-dell'ensemble.
+**Slide guitar (Opzioni → Import MIDI → Slide nell'import MIDI...)**: su un canale con
+sensibilita' del pitch bend ampia (12 semitoni, tipica dei MIDI di chitarra
+slide) la soglia di sempre e' di circa 1,2 semitoni, e i bend brevi di un
+semitono restano note normali. Spuntando **Slide** nel dialogo si attiva il
+campo **Soglia** (0,5-1,2 semitoni, predefinito 0,8): l'import riconosce come
+slide anche i bend piu' piccoli. La soglia puo' solo scendere, quindi sui
+canali con sensibilita' stretta (es. 2 semitoni) non cambia nulla. Piu' e'
+bassa, piu' slide si trovano ma piu' cresce il rischio di scambiare per uno
+slide un'espressione del pitch wheel (visto su brani jazz): tienila alta per
+i brani non slide. L'impostazione vale dal prossimo import e senza la spunta
+l'import resta identico a prima. Il **timing del rilascio** e' quello reale del file: un bend che sale
+subito, resta sul picco per quasi tutta la nota e rilascia solo alla fine
+diventa una catena a 4 tappe con la tenuta come rampa piatta
+(`1f*5>11g*5>1g*5>3f*5`: sale, tiene il sol, rilascia, resta sul fa); uno
+che rilascia subito e poi resta sull'altezza scritta ha la lunga tenuta
+finale (`1e*5>1d#*5>2e*5`), invece di essere steso linearmente su tutta la
+nota (che faceva scivolare l'intonazione per tutta la durata). Se il
+rilascio inizia solo nell'ultimo istante, la nota finisce mentre sta ancora
+rilasciando e si scrive un semplice bend con tenuta (`1f*5>3g*5`). Una
+**coda di rilascio** della nota precedente (il wheel sta ancora scendendo
+verso il centro quando la nota inizia) non e' un bend: il riferimento resta
+il centro.
 
-Da **Suoni → Gestisci strumenti...**, seleziona uno strumento
-nell'elenco (predefinito o personalizzato: qui la scelta non e' limitata
-ai soli personalizzati) e usa il pannello **SoundFont per lo strumento
-selezionato**:
-- **Scegli SoundFont...** assegna un file `.sf2` a quello strumento: verra'
-  usato al posto del predefinito su ogni traccia che lo usa, in qualunque
-  progetto.
-- **Usa predefinito** rimuove l'assegnazione e torna al SoundFont
-  generale.
+**Bend che parte tardi e bend a due direzioni** (tipici dello slide/
+bottleneck): se il wheel resta quasi fermo per un tratto (almeno il 15% della
+nota, con piccole derive) prima di muoversi, lo slide ha una tenuta iniziale
+(`7d*4>1d*4>8c#*4`: sta fermo, poi scende) invece di partire dall'attacco.
+Se il wheel ha escursioni significative da *entrambi* i lati della nota
+scritta (sale di un tono e poi scende sotto), il bend viene importato come
+percorso a tappe — la curva del wheel semplificata (scarto massimo 0,7
+semitoni) e arrotondata ai semitoni — invece di tenere solo l'escursione piu'
+grande. Su note di pochi sedicesimi la griglia limita la precisione: ogni
+rampa occupa almeno un sedicesimo.
 
-L'elenco degli strumenti mostra un'indicazione (`· SoundFont: nome.sf2`)
-per quelli con un override attivo.
+**Bend ampi (fino a un'ottava)**: prima il limite era di 4 semitoni; ora e'
+di **12** (un'ottava), perche' con una sensibilita' del wheel dichiarata
+(RPN) ampia esistono glissando e piegature vere di 5-12 semitoni — slide/
+bottleneck, il calo a nastro degli archi in *Strawberry Fields Forever*, i
+"dive" di leva. Oltre l'ottava resta una nota normale (non e' una
+piegatura). Se un canale parte gia' piegato (scoop) e dentro la nota il
+wheel si tuffa **piu' lontano** dal centro di dove era partito di almeno
+1,5 semitoni (parte a -4, scende a -12, poi risale), il tuffo si conserva:
+percorso a tappe con il centro come riferimento, non un semplice scoop. Un
+tuffo tardivo (oltre meta' nota, con almeno 3 eventi nella discesa) lascia
+la nota ferma fin li'.
 
-**Limite**: effettivo solo con il motore fluidsynth persistente
-(la libreria FluidSynth, usata di default se disponibile — vedi sezione 12 sopra):
-con i fallback (CLI `fluidsynth`, `timidity`, `wildmidi`, player MIDI di
-sistema) l'override viene ignorato e si usa comunque il SoundFont
-predefinito su tutta la riproduzione. Con piu' strumenti overridati
-contemporaneamente, la riproduzione richiede un rendering separato per
-ciascun SoundFont coinvolto (poi ricombinati): brani con molti strumenti
-diversamente assegnati impiegano quindi qualche istante in piu' a partire.
+**Pre-bend della nota successiva**: quando il wheel si allontana dal centro
+negli ultimi tick di una nota (entro un decimo di beat) ed e' ancora fuori
+centro all'attacco della successiva, quel movimento e' il pre-bend
+dell'ALTRA nota e non un bend fantasma in coda alla prima. Se invece torna a
+0 proprio all'attacco successivo (un fall-off che si azzera), appartiene alla
+nota che sta finendo.
 
-### 12.5 Metronomo
+Un **pre-bend / scoop** (il pitch wheel e' gia' fuori centro *prima*
+dell'attacco e rientra sul centro durante la nota: corda gia' piegata e poi
+rilasciata, o nota "presa dal basso", tipico dei MIDI di chitarra e di
+voce) viene importato come slide dall'altezza di partenza *reale* verso la
+nota scritta: un wheel a -1 semitono che risale a 0 su un re diventa
+`c#*4>d*4` (do# che sale a re), e uno a +1 che scende diventa `d#*4>d*4`.
+L'altezza scritta nel MIDI e' sempre quella d'arrivo. Un wheel fuori centro
+che NON rientra mai sul centro durante la nota resta un offset statico del
+canale (nota normale). Attenzione: gli slide di ST lavorano a semitoni
+interi, quindi una piegatura reale di circa mezzo tono viene arrotondata al
+semitono piu' vicino.
 
-Il pulsante **Metronomo** (icona a piramide) nella barra dei comandi fa sentire un click a tempo durante la
-riproduzione dell'ensemble, sincronizzato con gli eventuali cambi di
-tempo/metrica del progetto (stessa mappa usata da barra di avanzamento e
-campi Tempo/Metrica, vedi 2.7); lo stesso controllo, con click a
-tempo/metrica costante, e' disponibile anche nel dialogo di importazione
-audio e nel dialogo "Suona con la tastiera" (sezioni 10bis e 10ter), utile
-per registrare/suonare a tempo.
+**Opzione "Riconosci accordi nell'import MIDI"** (**Opzioni** → casella
+omonima, disattivata per default): quando un gruppo di note simultanee
+corrisponde a una qualita' di accordo standard (es. Do maggiore), viene
+importato nella forma implicita equivalente (`C*4`) invece che come blocco
+esplicito (`[c*4 e*4 g*4]`) — piu' leggibile e facile da trasporre a mano.
+Un accordo non riconoscibile (es. una semplice quinta, ambigua tra
+maggiore e minore) resta comunque un blocco esplicito. **Attenzione**: a
+differenza del blocco esplicito, che riproduce sempre fedelmente il
+voicing e il registro originali del MIDI, la forma implicita viene
+**ri-vocalizzata automaticamente dal motore** in base allo strumento della
+traccia al successivo export — utile per adattare l'accordo allo
+strumento di destinazione, ma un giro import→export non riprodurra' piu'
+necessariamente le stesse identiche note del file originale. Il
+comportamento predefinito (blocco esplicito) resta quindi il piu' fedele.
 
-Suono e volume del click si scelgono in **Opzioni → Metronomo**: tre
-preset di suono (Click, Beep, Legno, Blocco di legno, Claves, Campanaccio, Triangolo, Hi-hat) e uno slider di volume (0-100%),
-applicati immediatamente (anche a click gia' in corso) e provabili sul
-posto col pulsante "Prova", senza bisogno di un Ok/Annulla separato. I
-file audio del click sono sintetizzati e salvati in cache alla prima
-esecuzione (nessuna dipendenza aggiuntiva), cosi' da generarli una sola
-volta per macchina.
+## 27. Partiture: MusicXML, ABC e stampa
 
-### 12.6 Umanizza
+### 27.1 Esportare la partitura (MusicXML)
 
-La voce **Riproduzione → Umanizza** (spuntabile) aggiunge una
-piccola variazione casuale a timing e velocity delle note in riproduzione,
-per un suono meno meccanico di una griglia perfettamente quantizzata. La
-batteria riceve solo la variazione di velocity (uno spostamento di timing
-su un pattern percussivo tende a suonare "impreciso" piuttosto che
-"umano"); tutti gli altri strumenti ricevono entrambe. **Attivabile/
-disattivabile anche a riproduzione in corso**: come un cambio di
-Volume/Pan, la riproduzione si riavvia automaticamente dalla posizione
-corrente con la nuova impostazione applicata.
+**Progetto → Esporta → Partitura MusicXML...** salva il brano come
+partitura in formato **MusicXML** (`.musicxml`), che si apre con i
+programmi di notazione: MuseScore (gratuito), Finale, Sibelius, Dorico e
+molti altri. Da li' si puo' stampare, esportare in PDF, correggere la
+grafica o aggiungere il testo. Come l'export MIDI, contiene le **tracce
+udibili** (tiene conto di Solo e Mute); le tracce audio non hanno note e
+restano fuori.
 
-L'intensita' si regola in **Opzioni → Umanizza** con uno slider (0-100%,
-predefinito 50%), applicato immediatamente (riavvia la riproduzione in
-corso, se Umanizza e' attivo). La variazione **non usa un seed fisso**:
-due riproduzioni consecutive con le stesse impostazioni non suoneranno mai
-identiche, proprio come due esecuzioni dal vivo dello stesso musicista.
-Riguarda solo la riproduzione/l'export MIDI (il rendering finale in tick
-assoluti): il testo della traccia e la timeline "di griglia" nell'editor
-restano quelli scritti, invariati.
+Cosa c'e' nella partitura:
 
-## 13. Informazioni su SoundText
+- **una parte per traccia**, con il nome della traccia;
+- **le note** esattamente come le suona SoundText: gli accordi compaiono
+  con le note scelte dal motore di voicing, i blocchi `[...]` come
+  accordi scritti;
+- **le sigle degli accordi** (`Am7`, `C/E`...) sopra il pentagramma,
+  scritte solo quando l'accordo cambia, come in un lead sheet;
+- **la tonalita'** del progetto (sezione 8.3) come armatura di chiave;
+  le note degli accordi usano i bemolle nelle tonalita' con i bemolle;
+- **metrica e tempo**, compresi i cambi per battuta (sezione 8.2) e i
+  marcatori di tempo nelle tracce;
+- **terzine, quintine e settimine** con la loro parentesi;
+- **dinamiche** ricavate dalla velocity (`p`, `mf`, `f`...), scritte solo
+  quando il nuovo livello dura almeno quattro note, **articolazioni**
+  (staccato, stoppato, legato) e **pedale** del sustain.
+- **le voci** dei blocchi `{ ; }` (sezione 4.8) come voci dello stesso
+  pentagramma, con i gambi in su e in giu';
+- **il testo cantato** (sezione 4.9) sotto le note, con trattini e
+  linee di estensione.
+
+Le chiavi seguono le convenzioni delle parti stampate: pianoforti e organi
+su due pentagrammi (violino e basso, divisi al Do centrale), chitarre in
+chiave di violino e bassi in chiave di basso con l'**8 sotto** (suonano
+un'ottava sotto lo scritto), gli altri strumenti in chiave di violino o di
+basso secondo il registro. La batteria usa il pentagramma a percussione
+con le posizioni usuali (cassa in basso, rullante al centro, piatti in
+alto con la testa a **x**).
+
+Una durata che non corrisponde a un valore di nota (per esempio 5 crome)
+viene scritta come note **legate**, e una nota che scavalca la stanghetta
+prosegue legata nella battuta successiva.
+
+**Limiti**: dentro una stessa voce due note che si sovrappongono
+(succede nei brani importati da MIDI) non possono convivere: la prima
+viene accorciata fino all'attacco della seconda. Per scrivere davvero piu'
+voci si usano i blocchi `{ ; }`. Gli slide compaiono con la sola nota di
+partenza.
+
+### 27.2 Vedere e stampare la partitura (Vista → Partitura)
+
+**Vista → Partitura...** (`Ctrl+Shift+P`) apre una finestra con le tracce
+su pentagramma, impaginate in pagine A4: le stesse note, sigle, voci e
+testo dell'esportazione MusicXML, **senza programmi esterni**. La finestra
+resta aperta accanto all'editor e si **aggiorna mentre scrivi** (dopo una
+breve pausa nella digitazione).
+
+- **Tutte le tracce udibili** oppure **Solo la traccia selezionata**.
+- **−** / **+**: zoom.
+- **Esporta PDF...** salva la partitura in PDF (vettoriale, stampabile a
+  qualsiasi dimensione); **Stampa...** la manda alla stampante.
+- Se una traccia ha un errore di sintassi resta visibile l'ultima
+  partitura valida, con l'avviso dell'errore.
+
+**Progetto → Esporta → Partitura PDF...** fa lo stesso senza aprire la
+finestra.
+
+L'impaginazione e' di **Verovio**, una libreria libera di incisione
+musicale (LGPL) installata insieme a SoundText. Se manca, la finestra
+spiega come installarla (`pip install verovio`); l'esportazione MusicXML
+funziona comunque. Per ritocchi grafici (spaziature, testo libero sulla
+pagina) resta la via MusicXML → MuseScore.
+
+### 27.3 Importare una partitura (MusicXML)
+
+**Progetto → Importa → MusicXML...** crea un nuovo progetto da una partitura
+**MusicXML** (`.musicxml`, `.mxl` compresso o `.xml`), il formato di
+scambio di MuseScore, Finale, Sibelius, Dorico e di quasi tutti i
+programmi di notazione; molte partiture gratuite online si scaricano in
+questo formato. Si puo' anche aprire direttamente dalla riga di comando
+(`soundtext brano.musicxml`).
+
+Cosa diventa la partitura:
+
+- **una traccia per parte**, con il nome della parte ("Flauto",
+  "Violino I"...) e lo strumento indicato nella partitura (o riconosciuto
+  dal nome della parte); due voci sullo stesso pentagramma diventano voci
+  della stessa traccia (blocchi `{ ; }`, sezione 4.8), come nell'import
+  MIDI (sezione 26);
+- **le note all'altezza reale**: gli strumenti traspositori (sax,
+  clarinetto, tromba in Si♭, chitarra scritta all'ottava) suonano come si
+  sentono, non come sono scritti;
+- **tempo, metrica e tonalita'**, con i cambi di tempo e di metrica, e le
+  **dinamiche** (`p`, `mf`, `f`...) come velocity;
+- **ritornelli, finali 1./2., D.C., D.S., Fine e Coda** svolti
+  nell'ordine in cui si suonano; dopo un D.C. o un D.S. i ritornelli non
+  si ripetono e si suona l'ultimo finale, come d'uso;
+- **le note legate** diventano una nota sola; una battuta **in levare**
+  all'inizio viene completata con una pausa, cosi' le battute restano al
+  loro posto;
+- **le sigle degli accordi** (`Am7`, `G7b9`, `C/E`...) diventano una
+  traccia **Accordi**: in un lead sheet (melodia e sigle) si sente e
+  accompagna la melodia; se la partitura ha gia' altre parti che suonano
+  l'armonia, la traccia e' muta (basta togliere il Mute per sentirla).
+  Le sigle che SoundText non ha diventano la piu' vicina (per esempio
+  `m11` diventa `m9`).
+
+La batteria scritta sul pentagramma a percussione diventa una traccia di
+percussioni, con i suoni indicati nella partitura. Le note di
+abbellimento (acciaccature, appoggiature scritte piccole) si ignorano. Il
+**testo cantato** diventa testo fra virgolette (sezione 4.9), con
+trattini ed elisioni; nei ritornelli si usa la strofa del passaggio (la 1
+la prima volta, la 2 la seconda), se c'e'. L'opzione **Riconosci accordi** dell'import MIDI
+vale anche qui.
+
+### 27.4 Notazione ABC (importare ed esportare)
+
+L'**ABC** e' una notazione musicale in solo testo (standard 2.1), usata
+dalle grandi raccolte di musica tradizionale e folk e da programmi come
+abcjs, EasyABC, abcm2ps e abc2midi: un brano `.abc` si legge e si scrive
+anche a mano.
+
+**Progetto → Esporta → Partitura ABC...** salva le tracce udibili come un
+brano ABC:
+
+- ogni traccia e' una **voce** (`V:`) con il suo nome e lo strumento
+  (`%%MIDI program`); pianoforte e organo hanno due pentagrammi uniti da
+  una graffa, le voci dei blocchi `{ ; }` stanno sullo stesso pentagramma
+  (`%%score`); la batteria e' sul canale 10, con le note dei suoni General
+  MIDI;
+- **tonalita'** (`K:`), **metrica** (`M:`, con i cambi in tutte le voci),
+  **tempo** (`Q:`), **sigle degli accordi** fra virgolette, **dinamiche**
+  (`!mf!`), staccato e tenuto, **terzine** e le altre tuplet, le note
+  legate da una battuta all'altra e il **testo cantato** (`w:`);
+- chitarre e bassi usano la chiave all'ottava bassa (`treble-8`,
+  `bass-8`), con le note scritte un'ottava sopra come vuole lo standard.
+
+Gli slide diventano la loro prima nota; il pedale e le automazioni
+(`vol=`, `pan=`... sezione 7.4) non si scrivono (non sono nello standard).
+
+**Progetto → Importa → ABC...** crea un nuovo progetto dal primo brano del
+file (si puo' anche aprire dalla riga di comando: `soundtext brano.abc`).
+Si leggono note, pause, accordi `[CEG]`, unita' di nota (`L:`, o quella
+che deriva dalla metrica), ritmo puntato (`>` `<`), tuplet `(3`,
+`(p:q:r`, legature (anche fra battute, con le alterazioni), alterazioni
+che valgono fino alla stanghetta, tonalita' con i modi (`Dmix`, `Ador`...:
+diventano la tonalita' con la stessa armatura), cambi `[K:]` `[M:]` `[L:]`
+`[Q:]`, **ritornelli e finali 1./2.** svolti, la battuta **in levare**,
+dinamiche, sigle degli accordi (nella traccia **Accordi**, come per il
+MusicXML) e testo cantato con piu' strofe. Ogni voce e' una traccia; le
+voci sullo stesso pentagramma (`%%score (S A)`) stanno in una traccia
+sola, e cosi' i due pentagrammi del pianoforte (`{RH | LH}`). Lo
+strumento viene da `%%MIDI program` (`%%MIDI channel 10` o `clef=perc`
+per la batteria), altrimenti dal nome della voce. Le chiavi all'ottava,
+`transpose=` e `octave=` suonano all'altezza reale. Si ignorano le note
+di abbellimento, le parti (`P:`) e le decorazioni che non cambiano il
+suono.
+
+---
+
+# Parte 6 — Riferimento
+
+## 28. Informazioni su SoundText
 
 Menu **Aiuto → Informazioni su SoundText...** mostra nome e numero di
 versione del programma, l'autore (Sergio Scolaro) e la licenza
-(GPL-3.0), insieme a chi decodifica i file mp3/m4a/flac/ogg (il decodificatore di Qt Multimedia o `ffmpeg`, sezione 10bis) con
+(GPL-3.0), insieme a chi decodifica i file mp3/m4a/flac/ogg (il decodificatore di Qt Multimedia o `ffmpeg`, sezione 25) con
 un'icona di spunta verde se disponibile, una croce grigia altrimenti:
 utile per verificare rapidamente l'installazione senza dover aprire un
 terminale.
 
-### 13.1 File di log
+### 28.1 File di log
 
 Quando qualcosa non va come previsto (la riproduzione ripiega su un motore
 di qualita' inferiore, un SoundFont non si carica, un errore imprevisto),
@@ -4327,9 +4465,9 @@ su macOS). **Aiuto → Apri il file di log** lo apre direttamente: e' la
 prima cosa da allegare se segnali un problema. Un errore imprevisto viene
 anche mostrato in una finestra, senza chiudere l'app.
 
-## 14. Tecnologie, ringraziamenti e licenze
+## 29. Tecnologie, ringraziamenti e licenze
 
-### 14.1 Le tecnologie usate
+### 29.1 Le tecnologie usate
 
 SoundText è scritto in **Python 3** e si appoggia a queste librerie e a
 questi programmi:
@@ -4354,16 +4492,16 @@ questi programmi:
 
 Alcuni formati e idee vengono da standard aperti o dalla letteratura:
 **General MIDI** e il file MIDI standard, **MusicXML** (W3C Music Notation
-Community Group) per l'export della partitura (10.1), l'algoritmo di
+Community Group) per l'export della partitura (27.1), l'algoritmo di
 **Krumhansl-Schmuckler** per riconoscere la tonalità, i circuiti dei tone
-stack Fender e Marshall per l'amplificatore (8.4).
+stack Fender e Marshall per l'amplificatore (19).
 
 Per costruire e verificare il programma servono anche **PyInstaller** (le
 versioni portabili; la sua licenza GPL-2.0 ha un'eccezione per cui non si
 estende al programma impacchettato), **pytest** (i test) e **reportlab**
 (la guida PDF).
 
-### 14.2 Ringraziamenti
+### 29.2 Ringraziamenti
 
 SoundText esiste grazie al lavoro, quasi sempre volontario, di chi ha
 creato e mantiene i progetti open source su cui si appoggia. Siamo in
@@ -4398,7 +4536,7 @@ Se usi SoundText e ti è utile, il modo migliore per ricambiare è
 sostenere questi progetti: segnalare i problemi, contribuire, o fare una
 donazione a quelli che la accettano.
 
-### 14.3 Licenze e limiti alla distribuzione
+### 29.3 Licenze e limiti alla distribuzione
 
 Usare SoundText sul proprio computer, per qualunque scopo (anche
 commerciale, anche per vendere la musica che ci si fa), **non ha limiti**:
@@ -4455,7 +4593,7 @@ proprie di Steinberg.
   Casquel, con licenza GPL v2 o successiva: anche queste SoundText le
   scarica sul computer dell'utente, insieme al testo della licenza, e non
   le include nelle build.
-- I **plugin VST3 e LV2** (8.7) sono programmi di terzi, ciascuno con la
+- I **plugin VST3 e LV2** (21) sono programmi di terzi, ciascuno con la
   propria licenza, anche a pagamento: SoundText li carica, ma non li
   include. Per distribuirli insieme a SoundText serve il permesso dei
   loro autori.
@@ -4490,146 +4628,55 @@ commerciale o in un contesto particolare conviene rivolgersi a un
 esperto di licenze software. I testi completi delle licenze sono sui siti
 dei rispettivi progetti.
 
----
+## 30. Installazione su Linux
 
-# Installazione su Linux
+Tre strade, dalla più semplice:
 
-## Debian / Ubuntu e derivate
+### Pacchetto pronto: AppImage o portable
 
-```bash
-sudo apt update
-sudo apt install python3-pyside6.qtwidgets python3-pyside6.qtmultimedia python3-pip fluidsynth fluid-soundfont-gm ffmpeg libportaudio2
-cd soundtext
-pip install --user mido sounddevice numpy pedalboard
-python3 main.py
-```
-Se `python3-pyside6.qtwidgets` non e' disponibile nella tua versione della
-distribuzione, in alternativa:
-```bash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-sudo apt install fluidsynth fluid-soundfont-gm libportaudio2
-python3 main.py
-```
-`libportaudio2` serve per l'ascolto diretto e il microfono; `ffmpeg` solo
-per leggere mp3/m4a/flac/ogg se il PySide6 della distribuzione non ha il
-decodificatore di Qt Multimedia (con PySide6 installato via pip, come nel
-secondo modo, non serve). **Aiuto → Informazioni su SoundText...** mostra
-chi decodifica i file audio.
+Dalle [Release](https://github.com/openssound/soundtext/releases/latest) scarica uno dei due:
+- **AppImage**: `SoundText-linux-<versione>.AppImage` e, nella stessa
+  cartella, `setup-appimage.sh`. Lancia `./setup-appimage.sh`: installa con
+  `sudo` le librerie di sistema che l'AppImage non contiene (FUSE 2,
+  FluidSynth, PortAudio, lilv e le librerie grafiche di Qt) e rende
+  eseguibile l'AppImage; con `--integra` aggiunge anche la voce nel menu
+  delle applicazioni e il comando `soundtext`.
+- **Portable**: `SoundText-linux-portable-<versione>.tar.gz`. Estrailo,
+  lancia `./setup-portable-linux.sh` (le stesse librerie, senza FUSE; anche
+  qui c'è `--integra`) e poi `./SoundText`.
 
-## Fedora e derivate (RHEL, Nobara, ecc.)
+### Con lo script install.sh
 
-```bash
-sudo dnf install python3-pyside6 python3-pip fluidsynth fluid-soundfont-gm portaudio
-cd soundtext
-pip install --user mido sounddevice numpy pedalboard
-python3 main.py
-```
-Se `python3-pyside6` non e' nei repository abilitati:
-```bash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-sudo dnf install fluidsynth fluid-soundfont-gm portaudio
-python3 main.py
-```
-`ffmpeg` serve solo se il PySide6 di sistema non legge gli mp3 (vedi
-sopra) e non e' nei repository ufficiali Fedora: abilita
-[RPM Fusion](https://rpmfusion.org/) e poi `sudo dnf install ffmpeg`,
-oppure usa il secondo modo (PySide6 via pip).
+Dal codice (`git clone https://github.com/openssound/soundtext.git`, oppure
+anche il solo `install.sh`: i sorgenti li scarica da sé) lancia
+`./install.sh`. Installa le librerie di sistema con il gestore di pacchetti
+(apt, dnf, pacman o zypper), copia il programma in
+`~/.local/share/soundtext`, crea il virtualenv con le librerie Python, il
+comando `soundtext` e la voce di menu. Rilanciato, aggiorna
+l'installazione. `--yes` non fa domande; `--uninstall` toglie comando e
+voce di menu ma lascia i tuoi progetti; `--purge` cancella anche quelli
+(chiede conferma).
 
-## Arch Linux / CachyOS / Manjaro e derivate
+### A mano, dal codice
+
+Le librerie di sistema:
 
 ```bash
-sudo pacman -S pyside6 python-mido fluidsynth ffmpeg portaudio
-paru -S soundfont-fluid      # oppure yay -S soundfont-fluid (AUR)
-pip install --user sounddevice numpy pedalboard
-cd soundtext
-python3 main.py
+# Debian, Ubuntu, Mint e derivate
+sudo apt install python3-venv python3-pip fluidsynth libportaudio2 liblilv-0-0
+# Fedora e derivate
+sudo dnf install python3-pip fluidsynth portaudio lilv-libs
+# Arch, CachyOS, Manjaro e derivate
+sudo pacman -S --needed python-pip fluidsynth portaudio lilv
+# openSUSE
+sudo zypper install python3-pip fluidsynth portaudio liblilv-0-0
 ```
-(Il pacchetto ufficiale si chiama `pyside6`, senza prefisso `python-`.
-`python-mido` e' invece nei repository ufficiali `extra`. `portaudio`
-serve per l'ascolto diretto e il microfono, `ffmpeg` solo se il PySide6
-di sistema non legge gli mp3.)
 
-## openSUSE
+Poi il programma, in un virtualenv (le versioni giuste delle librerie
+Python sono in `requirements.txt`, compresa la notazione `st-language`):
 
 ```bash
-sudo zypper install python3-PySide6 python3-pip fluidsynth ffmpeg portaudio
-cd soundtext
-pip install --user mido sounddevice numpy pedalboard
-python3 main.py
-```
-
-## Note comuni
-
-- Senza un SoundFont GM installato, `fluidsynth` non produce audio: verifica
-  che esista un file tipo `/usr/share/soundfonts/FluidR3_GM.sf2` (Arch) o
-  `/usr/share/sounds/sf2/FluidR3_GM.sf2` (Debian/Ubuntu/Fedora).
-- In assenza di qualunque synth di sistema, il programma esporta comunque
-  MIDI standard riproducibile con qualsiasi altro player.
-- Gli strumenti personalizzati vengono salvati in
-  `~/.config/soundtext/instruments.json` e sono quindi condivisi tra tutti
-  i progetti dell'utente su quella macchina.
-
----
-
-# Installazione su Windows
-
-```powershell
-# 1) Python 3.10+ da python.org (installer ufficiale, spunta "Add python.exe to PATH")
-cd soundtext
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-**Sintesi audio (fluidsynth)**: scarica i binari Windows di fluidsynth
-dalla pagina release ufficiale del progetto
-([github.com/FluidSynth/fluidsynth/releases](https://github.com/FluidSynth/fluidsynth/releases),
-archivio `-win10-x64.zip`) e metti la cartella `bin\` (contiene
-`libfluidsynth-3.dll`) nel `PATH` di sistema, oppure copia il suo
-contenuto nella cartella di SoundText: SoundText usa la libreria
-direttamente (motore persistente, di default) e `fluidsynth.exe` come
-ripiego. In alternativa, se hai [Chocolatey](https://chocolatey.org/):
-```powershell
-choco install fluidsynth
-```
-
-**SoundFont GM**: nessuno e' incluso nel sistema operativo (a differenza
-di molte distribuzioni Linux) ne' in SoundText. Al primo avvio SoundText
-propone di scaricare FluidR3 GM con **Suoni → Scarica e installa...**;
-se ne hai gia' uno, impostalo da **Suoni → SoundFont → Scegli SoundFont
-(.sf2/.sf3)...**.
-
-**Importazione audio**: niente da installare. I file mp3/m4a/flac/ogg li
-legge il decodificatore di Qt Multimedia, gia' incluso in PySide6; il
-pacchetto pip `sounddevice` (in requirements.txt) registra dal microfono
-e include gia' la libreria PortAudio per Windows. Anche il riconoscimento
-delle note e' scritto dentro SoundText.
-
-**Playback senza player esterni**: a differenza di Linux, Windows non ha
-di serie un player audio da riga di comando; SoundText rileva questo
-caso e usa automaticamente il modulo `winsound` della libreria standard
-di Python (nessuna dipendenza aggiuntiva) per riprodurre il rendering
-offline. **Suoni → SoundFont → Mostra SoundFont in uso** mostra sempre quale
-motore/player e' effettivamente attivo, utile per verificare
-l'installazione. Il pulsante **Stop** interrompe correttamente la
-riproduzione con qualunque motore, incluso l'ultima risorsa (il player
-MIDI predefinito del sistema, usata quando non e' installato ne'
-fluidsynth ne' un player CLI): SoundText lo apre in modo da poterlo
-sempre terminare, invece di lasciarlo come processo slegato
-dall'applicazione.
-
-```powershell
-python main.py
-```
-
----
-
-# Installazione su macOS
-
-```bash
-brew install python@3.12 fluidsynth portaudio   # portaudio opzionale, vedi sotto
+git clone https://github.com/openssound/soundtext.git
 cd soundtext
 python3 -m venv venv
 source venv/bin/activate
@@ -4637,37 +4684,118 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-**Sintesi audio (fluidsynth)**: installata da Homebrew insieme al resto
-(`libfluidsynth` finisce in `/opt/homebrew/lib` su Apple Silicon o
-`/usr/local/lib` su Intel, gia' nel percorso di ricerca delle librerie
-di sistema: SoundText la trova da solo, anche su Apple Silicon, senza
-configurazione aggiuntiva).
+Al posto delle ultime righe va bene anche `./run.sh`, che crea il
+virtualenv da sé e lo aggiorna quando `requirements.txt` cambia.
 
-**SoundFont GM**: come su Windows, ne' macOS ne' SoundText ne includono
-uno. Al primo avvio SoundText propone di scaricare FluidR3 GM con
-**Suoni → Scarica e installa...**; se ne hai gia' uno, impostalo da
-**Suoni → SoundFont → Scegli SoundFont (.sf2/.sf3)...**, oppure mettilo
-in `~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2` per il rilevamento
-automatico.
+### Note comuni
 
-**Importazione audio**: i file mp3/m4a/flac/ogg li legge il decodificatore
-di Qt Multimedia, gia' incluso in PySide6 (niente `ffmpeg` da
-installare); il pacchetto pip `sounddevice` registra dal microfono
-(include gia' PortAudio, ma `brew install portaudio` non fa mai male se
-il pacchetto pip desse problemi in fase di build). Anche il
-riconoscimento delle note e' scritto dentro SoundText, niente da
-compilare.
+- **SoundFont**: al primo avvio SoundText propone di scaricare FluidR3 GM
+  (**Suoni → Scarica e installa...**). Trova da solo anche quelli della
+  distribuzione, per esempio `/usr/share/sounds/sf2/FluidR3_GM.sf2`
+  (pacchetto `fluid-soundfont-gm` su Debian, Ubuntu e Fedora).
+- **ffmpeg** non serve: i file mp3/m4a/flac/ogg li legge Qt Multimedia,
+  incluso in PySide6. **Aiuto → Informazioni su SoundText...** mostra chi
+  decodifica i file audio.
+- Su un processore senza istruzioni AVX, `install.sh` e `run.sh` installano
+  una versione di `pedalboard` (la libreria degli effetti) che ne fa a
+  meno.
+- In assenza di qualunque synth di sistema, il programma esporta comunque
+  MIDI standard riproducibile con qualsiasi altro player.
+- Gli strumenti personalizzati vengono salvati in
+  `~/.config/soundtext/instruments.json` e sono quindi condivisi tra tutti
+  i progetti dell'utente su quella macchina.
 
-**Playback**: macOS include di serie `afplay` (player audio a riga di
-comando incluso nel sistema operativo, nessuna installazione
-richiesta), usato automaticamente per la riproduzione del rendering
-offline — stessa strategia gia' in uso su Linux con `paplay`/`pw-play`.
-**Suoni → SoundFont → Mostra SoundFont in uso** mostra sempre quale
-motore/player e' effettivamente attivo.
+## 31. Installazione su Windows
 
-**Permessi microfono**: alla prima registrazione da microfono, macOS
-chiede il permesso di accesso al microfono per il terminale/IDE da cui
-hai lanciato `python3 main.py`: va concesso da **Impostazioni di
-Sistema → Privacy e sicurezza → Microfono**, altrimenti la
-registrazione fallisce silenziosamente.
+### Installer o versione portable
 
+Dalle [Release](https://github.com/openssound/soundtext/releases/latest) scarica uno dei due:
+- **Installer**: `SoundText-setup-<versione>.exe`. Installa SoundText fra i
+  programmi, con le voci nel menu Start e il disinstallatore. Nell'ultima
+  pagina una casella lancia `setup-windows.bat`, che controlla il Microsoft
+  Visual C++ Redistributable (serve a Qt) e propone di installarlo con
+  winget se manca.
+- **Portable**: `SoundText-windows-<versione>.zip`. Estrailo, lancia
+  `setup-windows.bat` e poi `SoundText.exe`.
+
+FluidSynth è già dentro il pacchetto. `setup-windows.bat` propone anche
+Python, che serve solo a `scarica_strumenti.bat` da riga di comando: la
+finestra **Suoni → Scarica e installa...** non ne ha bisogno.
+
+### Dal codice
+
+```powershell
+# Python 3.10+ da python.org (installer ufficiale, spunta "Add python.exe to PATH")
+git clone https://github.com/openssound/soundtext.git
+cd soundtext
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+**FluidSynth**: scarica i binari Windows dalla pagina delle release del
+progetto
+([github.com/FluidSynth/fluidsynth/releases](https://github.com/FluidSynth/fluidsynth/releases),
+archivio `-win10-x64.zip`) e metti la cartella `bin\` (contiene
+`libfluidsynth-3.dll`) nel `PATH` di sistema, oppure copia il suo
+contenuto nella cartella di SoundText. In alternativa, con
+[Chocolatey](https://chocolatey.org/): `choco install fluidsynth`.
+
+### Note
+
+- **SoundFont**: Windows non ne ha uno. Al primo avvio SoundText propone
+  di scaricare FluidR3 GM con **Suoni → Scarica e installa...**; se ne hai
+  già uno, impostalo da **Suoni → SoundFont → Scegli SoundFont
+  (.sf2/.sf3)...**.
+- **Importazione audio e microfono**: niente da installare. I file
+  mp3/m4a/flac/ogg li legge Qt Multimedia, incluso in PySide6; il
+  pacchetto `sounddevice` contiene già PortAudio.
+- **Riproduzione**: se non c'è un player audio da riga di comando,
+  SoundText usa il modulo `winsound` di Python. **Suoni → SoundFont →
+  Mostra SoundFont in uso** mostra quale motore è attivo.
+
+## 32. Installazione su macOS
+
+Per macOS non c'è un pacchetto pronto: si installa dal codice.
+
+### Con lo script install-macos.sh
+
+Dal codice (`git clone https://github.com/openssound/soundtext.git`, oppure
+anche il solo `install-macos.sh`: i sorgenti li scarica da sé) lancia
+`./install-macos.sh`. Installa Homebrew se manca (chiede conferma), poi con
+Homebrew FluidSynth, PortAudio e Python; copia il programma in
+`~/Library/Application Support/SoundText`, crea il virtualenv, il comando
+`soundtext` e **SoundText.app** in `~/Applications` (visibile in Launchpad
+e Spotlight). Rilanciato, aggiorna l'installazione. `--yes` non fa
+domande; `--uninstall` toglie comando e app ma lascia i tuoi progetti;
+`--purge` cancella anche quelli (chiede conferma).
+
+### A mano
+
+```bash
+brew install python@3.12 fluidsynth portaudio
+git clone https://github.com/openssound/soundtext.git
+cd soundtext
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python3 main.py
+```
+
+### Note
+
+- **FluidSynth**: Homebrew mette `libfluidsynth` in `/opt/homebrew/lib`
+  (Apple Silicon) o `/usr/local/lib` (Intel); SoundText la trova da solo.
+- **SoundFont**: macOS non ne ha uno. Al primo avvio SoundText propone di
+  scaricare FluidR3 GM con **Suoni → Scarica e installa...**; se ne hai
+  già uno, impostalo da **Suoni → SoundFont → Scegli SoundFont
+  (.sf2/.sf3)...**, oppure mettilo in
+  `~/Library/Audio/Sounds/Banks/FluidR3_GM.sf2`.
+- **Importazione audio**: i file mp3/m4a/flac/ogg li legge Qt Multimedia,
+  incluso in PySide6; niente `ffmpeg` da installare.
+- **Riproduzione**: SoundText usa `afplay`, incluso in macOS.
+- **Permessi del microfono**: alla prima registrazione macOS chiede il
+  permesso per il programma da cui hai avviato SoundText (SoundText.app o
+  il terminale): va concesso da **Impostazioni di Sistema → Privacy e
+  sicurezza → Microfono**, altrimenti la registrazione resta muta.

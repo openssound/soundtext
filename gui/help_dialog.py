@@ -161,19 +161,13 @@ class HelpDialog(QDialog):
             self.goto_section(url.fragment())
 
     def goto_section(self, ref: str) -> bool:
-        """Porta in vista il titolo della sezione `ref` (es. "8.4", "10bis");
-        "inst" e' l'inizio delle istruzioni di installazione."""
+        """Porta in vista il titolo della sezione `ref` (es. "19", "19.3")."""
         doc = self.browser.document()
         block = doc.begin()
-        h1_seen = 0
         while block.isValid():
             level = block.blockFormat().headingLevel()
             text = block.text().strip()
-            if level and (
-                (ref == "inst" and level == 1 and (h1_seen := h1_seen + 1) == 2)
-                or (ref != "inst" and (text == ref or text.startswith((ref + " ", ref + ".")))
-                    and level > 1)
-            ):
+            if level > 1 and (text == ref or text.startswith((ref + " ", ref + "."))):
                 top = doc.documentLayout().blockBoundingRect(block).top()
                 self.browser.verticalScrollBar().setValue(int(top))
                 return True
