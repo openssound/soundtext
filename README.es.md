@@ -4,6 +4,8 @@
 
 ![SoundText: el ejemplo de hard rock «Hammer» en la vista Estructura, mientras suena](assets/screenshot.png)
 
+▶ **SoundText en 90 segundos** (vídeo en inglés, subtítulos en español): https://youtu.be/_oVNvMxyYCU
+
 **SoundText** es un programa para escribir música como texto. Notas,
 acordes y ritmos se escriben en un lenguaje sencillo, el **SoundText
 Language**; SoundText los toca, los muestra en partitura y los mezcla con
