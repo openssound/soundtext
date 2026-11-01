@@ -68,6 +68,12 @@ def data_strings():
     # SoundFont di "Scarica e installa"
     from core.soundfont_downloads import SOUNDFONTS as SOUNDFONT_SOURCES
     out |= {s.label for s in SOUNDFONT_SOURCES} | {s.detail for s in SOUNDFONT_SOURCES}
+    # strumenti SFZ di "Scarica e installa": nomi e dettagli dagli elenchi di scarica_strumenti.py
+    from core.downloads import _split, load_script
+    script = load_script()
+    if script is not None:
+        for name, desc, _url, _sub in script.GRUPPI + script.EXTRA:
+            out |= {text for text in _split(desc) if text}
     return out
 
 

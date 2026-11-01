@@ -25,6 +25,9 @@ Tempo: 132 BPM
 Metrica: 4/4
 Tonalita: F
 
+Strumento TenorSax:
+  program=66 percussione=no ottava=4 range=49-82 poly=no voicing=monophonic
+
 // ---------------------------------------------------------------- generale
 
 Pattern %Rest:

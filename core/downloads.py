@@ -159,7 +159,7 @@ def catalog() -> List[Item]:
         for groups, category in ((script.GRUPPI, CATEGORY_SFZ), (script.EXTRA, CATEGORY_SFZ_EXTRA)):
             for name, desc, _url, sub in groups:
                 label, detail = _split(desc)
-                items.append(Item(name, category, label, detail,
+                items.append(Item(name, category, tr(label), tr(detail) if detail else "",
                                   (script.DEST / sub / name / ".completo").exists()))
     from .soundfont_downloads import SOUNDFONTS, installed_path
     for source in SOUNDFONTS:
