@@ -2,6 +2,8 @@
 
 [Italiano](README.md) · [English](README.en.md) · [Français](README.fr.md) · **Español**
 
+![SoundText: el ejemplo de hard rock «Hammer» en la vista Estructura, mientras suena](assets/screenshot.png)
+
 **SoundText** es un programa para escribir música como texto. Notas,
 acordes y ritmos se escriben en un lenguaje sencillo, el **SoundText
 Language**; SoundText los toca, los muestra en partitura y los mezcla con
