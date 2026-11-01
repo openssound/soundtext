@@ -66,8 +66,8 @@ From the [Releases](https://github.com/openssound/soundtext/releases/latest) dow
 |---|---|---|
 | **Windows** | `SoundText-setup-<version>.exe` (installer) | run it; on the last page leave ticked the box that runs `setup-windows.bat`, which checks the Visual C++ Redistributable |
 | **Windows**, portable | `SoundText-windows-<version>.zip` | extract, run `setup-windows.bat`, then `SoundText.exe` |
-| **Linux**, AppImage | `SoundText-linux-<version>.AppImage` and `setup-appimage.sh`, in the same folder | `./setup-appimage.sh` (installs with `sudo` FUSE 2, FluidSynth, PortAudio, lilv and the Qt libraries; `--integra` adds the menu entry and the `soundtext` command), then start the AppImage |
-| **Linux**, portable | `SoundText-linux-portable-<version>.tar.gz` | extract, run `./setup-portable-linux.sh` (the same libraries, without FUSE; `--integra` here too), then `./SoundText` |
+| **Linux**, AppImage | `SoundText-linux-<version>.AppImage` and `setup-appimage.sh`, in the same folder | `./setup-appimage.sh` (installs with `sudo` FUSE 2, FluidSynth, PortAudio, lilv and the Qt libraries; `--integrate` adds the menu entry and the `soundtext` command), then start the AppImage |
+| **Linux**, portable | `SoundText-linux-portable-<version>.tar.gz` | extract, run `./setup-portable-linux.sh` (the same libraries, without FUSE; `--integrate` here too), then `./SoundText` |
 
 ### From the code
 

@@ -10,13 +10,14 @@
 #     grafiche richieste da Qt (xcb, xkbcommon, EGL/GL); il SoundFont GM lo
 #     propone SoundText al primo avvio (Suoni -> Scarica e installa);
 #   - dà il permesso di esecuzione all'AppImage;
-#   - opzionale (--integra): crea la voce nel menu applicazioni con icona e il
-#     comando "soundtext" in ~/.local/bin.
+#   - opzionale (--integra o --integrate): crea la voce nel menu applicazioni
+#     con icona e il comando "soundtext" in ~/.local/bin.
 #
 # Uso:
 #   ./setup-appimage.sh                 installa le dipendenze e rende eseguibile
 #   ./setup-appimage.sh --yes           senza chiedere conferma
 #   ./setup-appimage.sh --integra       come sopra + voce di menu e comando
+#                                       (in inglese: --integrate)
 #   ./setup-appimage.sh --appimage F    percorso dell'AppImage (default: quello
 #                                       accanto allo script)
 #
@@ -34,9 +35,9 @@ error() { printf '\033[1;31mERRORE:\033[0m %s\n' "$1" >&2; }
 while [ $# -gt 0 ]; do
     case "$1" in
         -y|--yes) ASSUME_YES=1 ;;
-        --integra) INTEGRA=1 ;;
+        --integra|--integrate) INTEGRA=1 ;;
         --appimage) shift; APPIMAGE="${1:-}" ;;
-        -h|--help) sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) error "Opzione sconosciuta: $1 (usa --help)"; exit 1 ;;
     esac
     shift

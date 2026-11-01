@@ -34,7 +34,8 @@ def _library_dir():
 def code_strings():
     out = set()
     for path in sorted(glob.glob(os.path.join(ROOT, "core", "*.py")) + glob.glob(os.path.join(ROOT, "gui", "*.py"))
-                       + glob.glob(os.path.join(_library_dir(), "*.py"))):
+                       + glob.glob(os.path.join(_library_dir(), "*.py"))
+                       + [os.path.join(ROOT, "scarica_strumenti.py")]):
         tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "tr" \
@@ -74,6 +75,8 @@ def data_strings():
     if script is not None:
         for name, desc, _url, _sub in script.GRUPPI + script.EXTRA:
             out |= {text for text in _split(desc) if text}
+        # e le descrizioni dei plugin nel registro del download
+        out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2}
     return out
 
 

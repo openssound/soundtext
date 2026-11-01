@@ -4856,11 +4856,11 @@ Depuis les [Releases](https://github.com/openssound/soundtext/releases/latest) t
   dossier, `setup-appimage.sh`. Lancez `./setup-appimage.sh` : il installe
   avec `sudo` les bibliothèques système que l'AppImage ne contient pas
   (FUSE 2, FluidSynth, PortAudio, lilv et les bibliothèques graphiques de
-  Qt) et rend l'AppImage exécutable ; avec `--integra` il ajoute aussi
+  Qt) et rend l'AppImage exécutable ; avec `--integrate` il ajoute aussi
   l'entrée dans le menu des applications et la commande `soundtext`.
 - **Portable** : `SoundText-linux-portable-<version>.tar.gz`. Extrayez-le,
   lancez `./setup-portable-linux.sh` (les mêmes bibliothèques, sans FUSE ;
-  `--integra` existe ici aussi) puis `./SoundText`.
+  `--integrate` existe ici aussi) puis `./SoundText`.
 
 ### Avec le script install.sh
 

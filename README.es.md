@@ -67,8 +67,8 @@ Desde las [Releases](https://github.com/openssound/soundtext/releases/latest) de
 |---|---|---|
 | **Windows** | `SoundText-setup-<versión>.exe` (instalador) | ejecútalo; en la última página deja marcada la casilla que ejecuta `setup-windows.bat`, que comprueba el Visual C++ Redistributable |
 | **Windows**, portable | `SoundText-windows-<versión>.zip` | extrae, ejecuta `setup-windows.bat`, luego `SoundText.exe` |
-| **Linux**, AppImage | `SoundText-linux-<versión>.AppImage` y `setup-appimage.sh`, en la misma carpeta | `./setup-appimage.sh` (instala con `sudo` FUSE 2, FluidSynth, PortAudio, lilv y las bibliotecas de Qt; `--integra` añade la entrada de menú y el comando `soundtext`), luego inicia el AppImage |
-| **Linux**, portable | `SoundText-linux-portable-<versión>.tar.gz` | extrae, ejecuta `./setup-portable-linux.sh` (las mismas bibliotecas, sin FUSE; también aquí `--integra`), luego `./SoundText` |
+| **Linux**, AppImage | `SoundText-linux-<versión>.AppImage` y `setup-appimage.sh`, en la misma carpeta | `./setup-appimage.sh` (instala con `sudo` FUSE 2, FluidSynth, PortAudio, lilv y las bibliotecas de Qt; `--integrate` añade la entrada de menú y el comando `soundtext`), luego inicia el AppImage |
+| **Linux**, portable | `SoundText-linux-portable-<versión>.tar.gz` | extrae, ejecuta `./setup-portable-linux.sh` (las mismas bibliotecas, sin FUSE; también aquí `--integrate`), luego `./SoundText` |
 
 ### Desde el código
 

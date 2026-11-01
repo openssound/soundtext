@@ -69,7 +69,7 @@ def _download_nam(kind: str) -> int:
     print(f"== {kind}: {label}", flush=True)
     result = download(progress=lambda i, total, name: print(f"   {i}/{total} {name}", flush=True))
     for name, reason in result.get("failed", []):
-        print(f"   non riuscito: {name}: {reason}", flush=True)
+        print("   " + tr("non riuscito: {}", f"{name}: {reason}"), flush=True)
     print(f"   -> {result['folder']}", flush=True)
     return 1 if result.get("failed") else 0
 
@@ -100,14 +100,14 @@ def run_script(items: List[str]) -> int:
             try:
                 status = max(status, _download_soundfont(item) if item.startswith("sf-") else _download_nam(item))
             except Exception as e:                     # rete, disco...: si continua con le altre
-                print(f"ERRORE: {e}", flush=True)
+                print(tr("ERRORE: {}", e), flush=True)
                 status = 1
         else:
             rest.append(item)
     if rest:
         script = load_script()
         if script is None:
-            print(f"ERRORE: manca {SCRIPT_NAME} accanto al programma", flush=True)
+            print(tr("ERRORE: {}", tr("manca {} accanto al programma", SCRIPT_NAME)), flush=True)
             return 1
         status = max(status, script.main(rest))
     return status

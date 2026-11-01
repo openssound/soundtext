@@ -193,6 +193,25 @@ class Errore(Exception):
     pass
 
 
+def tr(testo: str, *args) -> str:
+    """Il messaggio nella lingua di SoundText (core.i18n del programma, che
+    sta accanto allo script); in italiano se core.i18n non c'e'."""
+    try:
+        from core.i18n import tr as traduci
+    except ImportError:
+        return testo.format(*args) if args else testo
+    return traduci(testo, *args)
+
+
+def tr_descrizione(desc: str) -> str:
+    """Una descrizione di GRUPPI o EXTRA tradotta a pezzi, come la mostra la
+    finestra: "Piano a coda Salamander (SFZ+FLAC, ~740 MB)"."""
+    if desc.endswith(")") and " (" in desc:
+        testa, _sep, coda = desc.rpartition(" (")
+        return f"{tr(testa)} ({tr(coda[:-1])})"
+    return tr(desc)
+
+
 def comando_script() -> str:
     if SISTEMA == "windows":
         return "py scarica_strumenti.py"
@@ -204,28 +223,28 @@ def comando_script() -> str:
 def voci_elenco() -> list:
     """(nome, descrizione) di tutto cio' che si puo' scaricare, nell'ordine
     dell'elenco: lo stesso ordine numera le voci del menu interattivo."""
-    host = {"linux": "7zip + sfizz + Surge XT Nightly (apt, chiede la password) + i plugin VST3 della voce vst3",
-            "windows": "7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz, "
-                       "i plugin VST3 della voce vst3",
-            "macos": "7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz, "
-                     "i plugin VST3 della voce vst3"}[SISTEMA]
+    host = {"linux": tr("7zip + sfizz + Surge XT Nightly (apt, chiede la password) + i plugin VST3 della voce vst3"),
+            "windows": tr("7-Zip (winget), Surge XT con i suoi dati (~300 MB) per l'utente, installer di sfizz, "
+                          "i plugin VST3 della voce vst3"),
+            "macos": tr("7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz, "
+                        "i plugin VST3 della voce vst3")}[SISTEMA]
     vst3 = ", ".join(nome for nome, _desc, _repo, _rel, modelli in PLUGIN_VST3 if chiave_sistema() in modelli)
-    return ([(nome, desc) for nome, desc, _url, _sotto in GRUPPI + EXTRA]
+    return ([(nome, tr_descrizione(desc)) for nome, desc, _url, _sotto in GRUPPI + EXTRA]
             + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
-            + [("vst3", f"plugin VST3 gratuiti nella cartella VST3 dell'utente: {vst3}"),
+            + [("vst3", tr("plugin VST3 gratuiti nella cartella VST3 dell'utente: {}", vst3)),
                ("host", host),
-               ("lv2", "solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: "
-                       + ", ".join(nome for nome, *_r in PLUGIN_LV2)),
-               ("lilv", "solo Linux: la libreria lilv per usare i plugin LV2 (apt, chiede la password)"),
-               ("libreria", "motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)"),
-               ("strumenti-compilazione", "git, cmake e il compilatore che servono a 'libreria'"),
-               ("nam-plugin", f"plugin LV2 Neural Amp Modeler {NAM_PLUGIN_VERSION}: profili NAM 4-6 volte piu' "
-                              "veloci (Linux e Windows x64, ~2 MB)"),
-               ("tutto", "tutti i gruppi SFZ (esclusi gli extra_*)")])
+               ("lv2", tr("solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: {}",
+                          ", ".join(nome for nome, *_r in PLUGIN_LV2))),
+               ("lilv", tr("solo Linux: la libreria lilv per usare i plugin LV2 (apt, chiede la password)")),
+               ("libreria", tr("motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)")),
+               ("strumenti-compilazione", tr("git, cmake e il compilatore che servono a 'libreria'")),
+               ("nam-plugin", tr("plugin LV2 Neural Amp Modeler {}: profili NAM 4-6 volte piu' "
+                                 "veloci (Linux e Windows x64, ~2 MB)", NAM_PLUGIN_VERSION)),
+               ("tutto", tr("tutti i gruppi SFZ (esclusi gli extra_*)"))])
 
 
 def elenco():
-    print(f"Gruppi disponibili (destinazione: {DEST}):")
+    print(tr("Gruppi disponibili (destinazione: {}):", DEST))
     for nome, desc in voci_elenco():
         print(f"  {nome:<14} {desc}")
 
@@ -235,14 +254,14 @@ def menu() -> list:
     menu Start di Windows): elenco numerato, si scelgono le voci per numero
     o per nome. Ritorna gli argomenti da eseguire, [] per uscire."""
     voci = voci_elenco()
-    print(f"Strumenti e plugin gratuiti per SoundText (destinazione: {DEST})")
-    print("Prima volta: scegli 'host' (7-Zip, sfizz, Surge XT) e 'libreria'.\n")
+    print(tr("Strumenti e plugin gratuiti per SoundText (destinazione: {})", DEST))
+    print(tr("Prima volta: scegli 'host' (7-Zip, sfizz, Surge XT) e 'libreria'.") + "\n")
     for i, (nome, desc) in enumerate(voci, 1):
         print(f"  {i:>3}. {nome:<18} {desc}")
     nomi = [nome for nome, _desc in voci]
     while True:
         try:
-            risposta = input("\nNumeri o nomi separati da spazi (Invio per uscire): ")
+            risposta = input("\n" + tr("Numeri o nomi separati da spazi (Invio per uscire): "))
         except (EOFError, KeyboardInterrupt):
             print()
             return []
@@ -253,7 +272,7 @@ def menu() -> list:
             elif parola in nomi:
                 scelte.append(parola)
             else:
-                print(f"Scelta non valida: {parola}")
+                print(tr("Scelta non valida: {}", parola))
                 break
         else:
             return scelte
@@ -307,7 +326,7 @@ def scarica_file(url: str, dest: Path, tentativi: int = 3):
                             ultimo = time.monotonic()
                             perc = f" {fatto * 100 // totale}%" if totale else ""
                             print(f"\r   {fatto / 1e6:.0f} MB{perc}   ", end="", flush=True)
-                print(f"\r   {fatto / 1e6:.0f} MB scaricati      ")
+                print("\r   " + tr("{:.0f} MB scaricati", fatto / 1e6) + "      ")
                 return
         except urllib.error.HTTPError as e:
             if e.code == 416 and gia:          # gia' completo
@@ -315,9 +334,9 @@ def scarica_file(url: str, dest: Path, tentativi: int = 3):
             errore = e
         except (urllib.error.URLError, OSError) as e:
             errore = e
-        print(f"\n   errore ({errore}), tentativo {tentativo} di {tentativi}")
+        print("\n   " + tr("errore ({}), tentativo {} di {}", errore, tentativo, tentativi))
         time.sleep(2 * tentativo)
-    raise Errore(f"download non riuscito: {url}")
+    raise Errore(tr("download non riuscito: {}", url))
 
 
 def _dentro(base: Path, nome: str) -> bool:
@@ -346,7 +365,7 @@ def estrai(file: Path, cartella: Path):
         with zipfile.ZipFile(file) as z:
             for membro in z.namelist():
                 if not _dentro(cartella, membro):
-                    raise Errore(f"percorso non valido nell'archivio: {membro}")
+                    raise Errore(tr("percorso non valido nell'archivio: {}", membro))
             if SISTEMA == "macos" and shutil.which("ditto"):
                 # ditto conserva permessi, link simbolici e firme dei bundle
                 # (i plugin per macOS), che zipfile perderebbe
@@ -369,7 +388,7 @@ def estrai(file: Path, cartella: Path):
             else:
                 for membro in t.getmembers():
                     if not _dentro(cartella, membro.name) or membro.issym() or membro.islnk():
-                        raise Errore(f"percorso non valido nell'archivio: {membro.name}")
+                        raise Errore(tr("percorso non valido nell'archivio: {}", membro.name))
                 t.extractall(cartella)
     elif nome.endswith(".7z"):
         sette = programma_7z()
@@ -379,12 +398,12 @@ def estrai(file: Path, cartella: Path):
         try:
             import py7zr
         except ImportError:
-            raise Errore(f"per estrarre {file.name} serve 7-Zip (esegui prima: {comando_script()} host) "
-                         "oppure il pacchetto Python py7zr (pip install py7zr)")
+            raise Errore(tr("per estrarre {} serve 7-Zip (esegui prima: {} host) "
+                            "oppure il pacchetto Python py7zr (pip install py7zr)", file.name, comando_script()))
         with py7zr.SevenZipFile(file) as z:
             z.extractall(cartella)
     else:
-        raise Errore(f"formato sconosciuto: {file.name}")
+        raise Errore(tr("formato sconosciuto: {}", file.name))
 
 
 def archivio_github(url_git: str) -> str:
@@ -408,9 +427,9 @@ def scarica(voce):
     nome, desc, url, sotto = voce
     cartella = DEST / sotto / nome
     if (cartella / ".completo").exists():
-        print(f"== {nome}: gia' presente, salto")
+        print(f"== {nome}: " + tr("gia' presente, salto"))
         return
-    print(f"== {nome}: {desc}")
+    print(f"== {nome}: {tr_descrizione(desc)}")
     download = DEST / "_download"
     if url.endswith(".git"):
         _rimuovi(cartella)
@@ -476,7 +495,7 @@ def asset_github(repo: str, release: str, modello: str) -> str:
     for asset in dati.get("assets", []):
         if re.fullmatch(modello, asset["name"]):
             return asset["browser_download_url"]
-    raise Errore(f"nessun file {modello} nella release {release} di {repo}")
+    raise Errore(tr("nessun file {} nella release {} di {}", modello, release, repo))
 
 
 def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3"):
@@ -498,7 +517,7 @@ def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3"):
                 if nome in dirs:
                     dirs.remove(nome)            # dentro un bundle non si cerca
     if not trovati:
-        raise Errore(f"nessun plugin {estensione[1:].upper()} nell'archivio")
+        raise Errore(tr("nessun plugin {} nell'archivio", estensione[1:].upper()))
 
 
 def cartella_dati_surge() -> Path:
@@ -534,22 +553,22 @@ def host_linux():
         tmp.chmod(0o755)
         pacchetti = ["7zip"]
         if subprocess.run(["dpkg", "-s", "surge-xt"], capture_output=True).returncode != 0:
-            print("== Scarico Surge XT (sintetizzatore VST3/LV2, Nightly dal GitHub ufficiale)")
+            print("== " + tr("Scarico Surge XT (sintetizzatore VST3/LV2, Nightly dal GitHub ufficiale)"))
             url = asset_github(SURGE_NIGHTLY_REPO, "Nightly", r"surge-xt-linux-x64-NIGHTLY-.*\.deb")
             scarica_file(url, tmp / "surge-xt.deb")
             pacchetti.append(tmp / "surge-xt.deb")
         if subprocess.run(["dpkg", "-s", "sfizz"], capture_output=True).returncode != 0:
-            print("== Scarico sfizz (player SFZ per Ubuntu 24.04)")
+            print("== " + tr("Scarico sfizz (player SFZ per Ubuntu 24.04)"))
             base = SFIZZ_DEB_BASE.rstrip("/")
             scarica_file(f"{base}/libsfizz1_1.2.3-0_amd64.deb", tmp / "libsfizz1.deb")
             scarica_file(f"{base}/sfizz_1.2.3-0_amd64.deb", tmp / "sfizz.deb")
             pacchetti += [tmp / "libsfizz1.deb", tmp / "sfizz.deb"]
         admin = amministratore_linux()
         if not admin:
-            raise Errore("serve la password di amministratore: dal terminale, nella cartella di SoundText, "
-                         "esegui ./scarica_strumenti.sh host")
-        print("== Installo " + ", ".join(Path(p).stem if isinstance(p, Path) else p for p in pacchetti)
-              + " (apt" + (": la password la chiede una finestra del sistema" if admin == ["pkexec"] else "")
+            raise Errore(tr("serve la password di amministratore: dal terminale, nella cartella di SoundText, "
+                            "esegui ./scarica_strumenti.sh host"))
+        print("== " + tr("Installo {}", ", ".join(Path(p).stem if isinstance(p, Path) else p for p in pacchetti))
+              + " (apt" + (": " + tr("la password la chiede una finestra del sistema") if admin == ["pkexec"] else "")
               + ")")
         # un solo comando da amministratore: la password si chiede una volta
         _esegui(admin + ["sh", "-c", 'apt-get update && apt-get install -y "$@"', "sh"] + pacchetti)
@@ -558,27 +577,27 @@ def host_linux():
 def host_windows_macos():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        print("== 7-Zip (per gli strumenti in .7z)")
+        print("== 7-Zip (" + tr("per gli strumenti in .7z") + ")")
         if programma_7z():
-            print("   gia' presente")
+            print("   " + tr("gia' presente"))
         elif SISTEMA == "windows" and shutil.which("winget"):
             _esegui(["winget", "install", "--id", "7zip.7zip", "-e", "--accept-source-agreements"])
         elif SISTEMA == "macos" and shutil.which("brew"):
             _esegui(["brew", "install", "sevenzip"])
         else:
-            print("   installalo da https://www.7-zip.org (oppure: pip install py7zr)")
-        print("== Surge XT (sintetizzatore VST3), nella cartella VST3 dell'utente")
+            print("   " + tr("installalo da https://www.7-zip.org (oppure: pip install py7zr)"))
+        print("== " + tr("Surge XT (sintetizzatore VST3), nella cartella VST3 dell'utente"))
         modello = (r"surge-xt-win64-[\d.]+-pluginsonly\.zip" if SISTEMA == "windows"
                    else r"surge-xt-macos-[\d.]+-pluginsonly\.zip")
         scarica_file(asset_github(SURGE_REPO, "latest", modello), tmp / "surge.zip")
         estrai(tmp / "surge.zip", tmp / "surge")
         copia_vst3(tmp / "surge", user_vst3_dir())
-        print("== Dati di fabbrica di Surge XT (preset, wavetable)")
+        print("== " + tr("Dati di fabbrica di Surge XT (preset, wavetable)"))
         scarica_file(asset_github(SURGE_REPO, "latest",
                                   r"surge-xt-portable-content-[\d.]+\.tar\.gz"), tmp / "surge-dati.tar.gz")
         estrai(tmp / "surge-dati.tar.gz", tmp / "surge-dati")
         installa_dati_surge(next((tmp / "surge-dati").rglob("SurgeXTData")))
-        print("== sfizz (player SFZ, VST3): avvio il suo installer")
+        print("== " + tr("sfizz (player SFZ, VST3): avvio il suo installer"))
         if SISTEMA == "windows":
             scarica_file(asset_github(SFIZZ_UI_REPO, "latest", r"sfizz-[\d.]+-win64\.exe"), tmp / "sfizz.exe")
             avvia_installer_windows(tmp / "sfizz.exe")
@@ -674,9 +693,9 @@ def installa_plugin_vst3() -> list:
     for nome, desc, repo, release, modelli in PLUGIN_VST3:
         modello = modelli.get(chiave_sistema())
         if modello is None:
-            print(f"== {nome}: non c'e' una versione per questo sistema, salto")
+            print(f"== {nome}: " + tr("non c'e' una versione per questo sistema, salto"))
             continue
-        print(f"== {nome} ({desc}), nella cartella VST3 dell'utente")
+        print(f"== {nome} ({tr(desc)}), " + tr("nella cartella VST3 dell'utente"))
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 tmp = Path(tmp)
@@ -686,13 +705,13 @@ def installa_plugin_vst3() -> list:
                 if archivio.suffix == ".dmg":
                     vst3_da_dmg(archivio, tmp, dest)
                 elif archivio.suffix == ".exe":
-                    print("   avvio il suo installer: conferma l'installazione nella finestra di Windows")
+                    print("   " + tr("avvio il suo installer: conferma l'installazione nella finestra di Windows"))
                     avvia_installer_windows(archivio)
                 else:
                     estrai(archivio, tmp / "estratto")
                     copia_vst3(tmp / "estratto", dest)
         except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
-            print(f"   non riuscito: {e}")
+            print("   " + tr("non riuscito: {}", e))
             falliti.append(nome)
     return falliti
 
@@ -700,7 +719,7 @@ def installa_plugin_vst3() -> list:
 def installa_vst3():
     falliti = installa_plugin_vst3()
     if falliti:
-        raise Errore("plugin VST3 non installati: " + ", ".join(falliti) + " (rilancia per riprovare)")
+        raise Errore(tr("plugin VST3 non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
 
 
 # ---------------------------------------------------------------------------
@@ -739,32 +758,32 @@ def lilv_presente() -> bool:
 def installa_lilv():
     """lilv con apt (Debian, Ubuntu e derivate), con la password di amministratore."""
     if SISTEMA != "linux":
-        raise Errore("i plugin LV2 si usano solo su Linux")
+        raise Errore(tr("i plugin LV2 si usano solo su Linux"))
     if lilv_presente():
-        print("== lilv: gia' presente")
+        print("== lilv: " + tr("gia' presente"))
         return
     if not shutil.which("apt-get"):
-        raise Errore("installa la libreria lilv con il gestore di pacchetti del sistema (pacchetto lilv)")
+        raise Errore(tr("installa la libreria lilv con il gestore di pacchetti del sistema (pacchetto lilv)"))
     admin = amministratore_linux()
     if not admin:
-        raise Errore("serve la password di amministratore: dal terminale esegui sudo apt-get install -y liblilv-0-0")
-    print("== Installo lilv (liblilv-0-0, apt" + (": la password la chiede una finestra del sistema"
-                                                  if admin == ["pkexec"] else "") + ")")
+        raise Errore(tr("serve la password di amministratore: dal terminale esegui sudo apt-get install -y liblilv-0-0"))
+    print("== " + tr("Installo {}", "lilv") + " (liblilv-0-0, apt"
+          + (": " + tr("la password la chiede una finestra del sistema") if admin == ["pkexec"] else "") + ")")
     _esegui(admin + ["apt-get", "install", "-y", "liblilv-0-0"])
 
 
 def installa_lv2():
     if SISTEMA != "linux":
-        print("== lv2: i plugin LV2 si usano solo su Linux, salto")
+        print("== lv2: " + tr("i plugin LV2 si usano solo su Linux, salto"))
         return
     dest = user_lv2_dir()
     falliti = []
     for nome, desc, repo, release, modelli in PLUGIN_LV2:
         modello = modelli.get(chiave_sistema())
         if modello is None:
-            print(f"== {nome}: non c'e' una versione per questo sistema, salto")
+            print(f"== {nome}: " + tr("non c'e' una versione per questo sistema, salto"))
             continue
-        print(f"== {nome} ({desc}), nella cartella LV2 dell'utente")
+        print(f"== {nome} ({tr(desc)}), " + tr("nella cartella LV2 dell'utente"))
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 tmp = Path(tmp)
@@ -774,13 +793,13 @@ def installa_lv2():
                 estrai(archivio, tmp / "estratto")
                 copia_vst3(tmp / "estratto", dest, ".lv2")
         except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
-            print(f"   non riuscito: {e}")
+            print("   " + tr("non riuscito: {}", e))
             falliti.append(nome)
     if not lilv_presente():
-        print("   Attenzione: manca la libreria lilv, senza la quale SoundText non usa i plugin LV2 "
-              f"({comando_script()} lilv, oppure sudo apt-get install -y liblilv-0-0)")
+        print("   " + tr("Attenzione: manca la libreria lilv, senza la quale SoundText non usa i plugin LV2 "
+                         "({} lilv, oppure sudo apt-get install -y liblilv-0-0)", comando_script()))
     if falliti:
-        raise Errore("plugin LV2 non installati: " + ", ".join(falliti) + " (rilancia per riprovare)")
+        raise Errore(tr("plugin LV2 non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
 
 
 def installa_host():
@@ -815,19 +834,19 @@ def strumenti_compilazione_mancanti() -> list:
         if not shutil.which("git"):
             manca.append(("git", "sudo apt-get install -y git"))
         if not (shutil.which("g++") and shutil.which("make")):
-            manca.append(("il compilatore C++ e make", "sudo apt-get install -y build-essential"))
+            manca.append((tr("il compilatore C++ e make"), "sudo apt-get install -y build-essential"))
         if not shutil.which("cmake"):
             manca.append(("cmake", "sudo apt-get install -y cmake"))
     elif SISTEMA == "windows":
         if not shutil.which("git") and not _git_windows():
             manca.append(("Git", "winget install --id Git.Git -e"))
         if not visual_studio():
-            manca.append(("Visual Studio Build Tools con il carico di lavoro C++",
+            manca.append((tr("Visual Studio Build Tools con il carico di lavoro C++"),
                           "winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "
                           "\"--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\""))
     elif subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
         # danno anche git e il compilatore; cmake, se manca, arriva da pip (vedi installa_libreria)
-        manca.append(("gli strumenti da riga di comando di Xcode (git e il compilatore)", "xcode-select --install"))
+        manca.append((tr("gli strumenti da riga di comando di Xcode (git e il compilatore)"), "xcode-select --install"))
     return manca
 
 
@@ -847,17 +866,17 @@ def motivo_installazione_impossibile() -> str:
         if not shutil.which("apt-get"):
             return "installali con il gestore di pacchetti del sistema"
         if not amministratore_linux():
-            return "serve la password di amministratore: dal terminale esegui " + comando_script() + \
-                " strumenti-compilazione"
+            return tr("serve la password di amministratore: dal terminale esegui {} strumenti-compilazione",
+                      comando_script())
     elif SISTEMA == "windows" and not shutil.which("winget"):
-        return "manca winget (App Installer, dal Microsoft Store)"
+        return tr("manca winget (App Installer, dal Microsoft Store)")
     return ""
 
 
 def controlla_strumenti_compilazione():
     manca = strumenti_compilazione_mancanti()
     if manca:
-        raise Errore("per compilare sfizioso servono:\n    - "
+        raise Errore(tr("per compilare sfizioso servono:") + "\n    - "
                      + "\n    - ".join(f"{nome}: {comando}" for nome, comando in manca))
 
 
@@ -867,17 +886,17 @@ def installa_strumenti_compilazione():
     winget su Windows, l'installer di Xcode su macOS."""
     manca = strumenti_compilazione_mancanti()
     if not manca:
-        print("== strumenti per compilare: gia' presenti")
+        print("== " + tr("strumenti per compilare: gia' presenti"))
         return
     motivo = motivo_installazione_impossibile()
     if motivo:
-        raise Errore(f"non posso installare gli strumenti per compilare: {motivo}")
-    print("== Installo gli strumenti per compilare: " + ", ".join(nome for nome, _c in manca))
+        raise Errore(tr("non posso installare gli strumenti per compilare: {}", motivo))
+    print("== " + tr("Installo gli strumenti per compilare: {}", ", ".join(nome for nome, _c in manca)))
     if SISTEMA == "linux":
         admin = amministratore_linux()
         pacchetti = [c.rsplit(" ", 1)[-1] for _n, c in manca]
         if admin == ["pkexec"]:
-            print("   la password di amministratore la chiede una finestra del sistema")
+            print("   " + tr("la password di amministratore la chiede una finestra del sistema"))
         _esegui(admin + ["sh", "-c", 'apt-get update && apt-get install -y "$@"', "sh"] + pacchetti)
     elif SISTEMA == "windows":
         accordi = ["--accept-source-agreements", "--accept-package-agreements"]
@@ -887,23 +906,23 @@ def installa_strumenti_compilazione():
             if cartella:
                 os.environ["PATH"] = cartella + os.pathsep + os.environ.get("PATH", "")
         if not visual_studio():
-            print("   Visual Studio Build Tools: qualche GB, puo' volerci piu' di mezz'ora")
+            print("   Visual Studio Build Tools: " + tr("qualche GB, puo' volerci piu' di mezz'ora"))
             _esegui(["winget", "install", "--id", "Microsoft.VisualStudio.2022.BuildTools", "-e", *accordi,
                      "--override", "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools "
                      "--includeRecommended"])
     else:
         subprocess.run(["xcode-select", "--install"], check=False)
-        print("   Conferma l'installazione nella finestra di macOS; aspetto che finisca...")
+        print("   " + tr("Conferma l'installazione nella finestra di macOS; aspetto che finisca..."))
         fine = time.monotonic() + 3600
         while subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
             if time.monotonic() > fine:
-                raise Errore("gli strumenti di Xcode non risultano installati dopo un'ora: rilancia quando "
-                             "l'installazione e' finita")
+                raise Errore(tr("gli strumenti di Xcode non risultano installati dopo un'ora: rilancia quando "
+                                "l'installazione e' finita"))
             time.sleep(10)
     rimasti = strumenti_compilazione_mancanti()
     if rimasti:
-        raise Errore("mancano ancora: " + ", ".join(nome for nome, _c in rimasti))
-    print("   fatto")
+        raise Errore(tr("mancano ancora: {}", ", ".join(nome for nome, _c in rimasti)))
+    print("   " + tr("fatto"))
 
 
 def libreria_compilata(build: Path) -> Path:
@@ -911,7 +930,7 @@ def libreria_compilata(build: Path) -> Path:
     for path in sorted(build.glob(modelli)):
         if path.is_file() and not path.is_symlink():
             return path
-    raise Errore("la libreria compilata non si trova")
+    raise Errore(tr("la libreria compilata non si trova"))
 
 
 def installa_plugin_nam():
@@ -920,13 +939,13 @@ def installa_plugin_nam():
     dest = user_lv2_dir() / NAM_PLUGIN_DIR
     stamp = dest / "soundtext.versione"
     if stamp.exists() and stamp.read_text().strip() == NAM_PLUGIN_VERSION:
-        print(f"== nam-plugin: Neural Amp Modeler {NAM_PLUGIN_VERSION} gia' installato in {dest}, salto")
+        print("== nam-plugin: " + tr("Neural Amp Modeler {} gia' installato in {}, salto", NAM_PLUGIN_VERSION, dest))
         return
     import platform as _platform
     voce = NAM_PLUGIN_FILES.get(SISTEMA)
     if voce is None or _platform.machine().lower() not in ("x86_64", "amd64"):
-        print(f"== nam-plugin: non c'e' una versione pronta per questo sistema ({SISTEMA}, "
-              f"{_platform.machine()}): SoundText continua a calcolare i profili NAM da se', piu' lentamente")
+        print("== nam-plugin: " + tr("non c'e' una versione pronta per questo sistema ({}, {}): SoundText continua "
+                                     "a calcolare i profili NAM da se', piu' lentamente", SISTEMA, _platform.machine()))
         return
     nome, sha = voce
     print(f"== nam-plugin: Neural Amp Modeler {NAM_PLUGIN_VERSION} (LV2, GPL-3.0)")
@@ -937,13 +956,13 @@ def installa_plugin_nam():
     digest = hashlib.sha256(file.read_bytes()).hexdigest()
     if digest != sha:
         file.unlink()
-        raise Errore(f"il file scaricato non e' quello atteso (SHA-256 {digest[:12]}...): non lo installo")
+        raise Errore(tr("il file scaricato non e' quello atteso (SHA-256 {}...): non lo installo", digest[:12]))
     appoggio = Path(tempfile.mkdtemp(prefix="nam-lv2-"))
     try:
         estrai(file, appoggio)
         trovato = next(appoggio.rglob(NAM_PLUGIN_DIR), None)
         if trovato is None or not trovato.is_dir():
-            raise Errore(f"nell'archivio manca la cartella {NAM_PLUGIN_DIR}")
+            raise Errore(tr("nell'archivio manca la cartella {}", NAM_PLUGIN_DIR))
         _rimuovi(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(trovato, dest)
@@ -958,20 +977,20 @@ def installa_libreria():
     lib_dir = user_lib_dir()
     stamp = lib_dir / "sfizioso.commit"
     if (lib_dir / LIB_FILE).exists() and stamp.exists() and stamp.read_text().strip() == SFIZIOSO_COMMIT:
-        print(f"== libreria: sfizioso {SFIZIOSO_COMMIT[:7]} gia' installato in {lib_dir}, salto")
+        print("== libreria: " + tr("sfizioso {} gia' installato in {}, salto", SFIZIOSO_COMMIT[:7], lib_dir))
         return
     if strumenti_compilazione_mancanti() and sys.stdin is not None and sys.stdin.isatty() \
             and not motivo_installazione_impossibile():
         nomi = ", ".join(nome for nome, _c in strumenti_compilazione_mancanti())
-        if input(f"Per compilare mancano: {nomi}. Li installo? [s/N] ").strip().lower() in ("s", "si", "y", "yes"):
+        if input(tr("Per compilare mancano: {}. Li installo? [s/N] ", nomi)).strip().lower() in ("s", "si", "sí", "y", "yes", "o", "oui"):
             installa_strumenti_compilazione()
     controlla_strumenti_compilazione()
-    print(f"== libreria: compilo sfizioso {SFIZIOSO_COMMIT[:7]} (qualche minuto)")
+    print("== libreria: " + tr("compilo sfizioso {} (qualche minuto)", SFIZIOSO_COMMIT[:7]))
     tmp = Path(tempfile.mkdtemp(prefix="sfizioso-"))
     try:
         cmake, generatore = shutil.which("cmake"), []
         if not cmake:
-            print("   cmake non c'e': lo prendo da pip in un ambiente temporaneo")
+            print("   " + tr("cmake non c'e': lo prendo da pip in un ambiente temporaneo"))
             subprocess.run([sys.executable, "-m", "venv", str(tmp / "venv")], check=True)
             bindir = tmp / "venv" / ("Scripts" if SISTEMA == "windows" else "bin")
             pacchetti = ["cmake"] if SISTEMA == "windows" else ["cmake", "ninja"]
@@ -995,12 +1014,12 @@ def installa_libreria():
         try:
             ctypes.CDLL(str(lib)).sfizz_create_synth
         except (OSError, AttributeError) as e:
-            raise Errore(f"la libreria compilata non si carica: {e}")
+            raise Errore(tr("la libreria compilata non si carica: {}", e))
         lib_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(lib, lib_dir / LIB_FILE)
         stamp.write_text(SFIZIOSO_COMMIT + "\n")
         print(f"   -> {lib_dir / LIB_FILE}")
-        print("   In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)...")
+        print("   " + tr("In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)..."))
     finally:
         _rimuovi(tmp)
 
@@ -1019,7 +1038,7 @@ def main(argv) -> int:
         try:
             import py7zr  # noqa: F401
         except ImportError:
-            print(f"Attenzione: manca 7-Zip, servira' per gli strumenti in .7z (esegui prima: {comando_script()} host)")
+            print(tr("Attenzione: manca 7-Zip, servira' per gli strumenti in .7z (esegui prima: {} host)", comando_script()))
     try:
         for arg in argv:
             if arg == "host":
@@ -1042,7 +1061,7 @@ def main(argv) -> int:
             elif arg.startswith("extra_"):
                 membri = trova_extra(arg)
                 if membri is None:
-                    print(f"Gruppo sconosciuto: {arg}")
+                    print(tr("Gruppo sconosciuto: {}", arg))
                     elenco()
                     return 1
                 for m in membri:
@@ -1050,20 +1069,20 @@ def main(argv) -> int:
             else:
                 voce = trova(arg)
                 if voce is None:
-                    print(f"Gruppo sconosciuto: {arg}")
+                    print(tr("Gruppo sconosciuto: {}", arg))
                     elenco()
                     return 1
                 scarica(voce)
     except (Errore, subprocess.CalledProcessError) as e:
-        print(f"ERRORE: {e}")
+        print(tr("ERRORE: {}", e))
         return 1
     except KeyboardInterrupt:
-        print("\nInterrotto: rilancia lo stesso comando per riprendere.")
+        print("\n" + tr("Interrotto: rilancia lo stesso comando per riprendere."))
         return 130
-    print(f"""
-Fatto. In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)... e scegli
-un file .sfz da {DEST / 'sfz'} (serve "{comando_script()} libreria");
-oppure sfizz (VST3), poi "Interfaccia del plugin..." e carica il file .sfz.""")
+    print("\n" + tr("Fatto. In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)... e scegli\n"
+                    "un file .sfz da {} (serve \"{} libreria\");\n"
+                    "oppure sfizz (VST3), poi \"Interfaccia del plugin...\" e carica il file .sfz.",
+                    DEST / "sfz", comando_script()))
     return 0
 
 

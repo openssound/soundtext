@@ -10,8 +10,8 @@
 #     xkbcommon, EGL/GL); il SoundFont GM lo propone SoundText al primo
 #     avvio (Suoni -> Scarica e installa);
 #   - dà il permesso di esecuzione a SoundText e agli script;
-#   - opzionale (--integra): crea la voce nel menu applicazioni con icona e il
-#     comando "soundtext" in ~/.local/bin.
+#   - opzionale (--integra o --integrate): crea la voce nel menu applicazioni
+#     con icona e il comando "soundtext" in ~/.local/bin.
 #
 # Per i plugin e gli strumenti gratuiti usa poi ./scarica_strumenti.sh
 #
@@ -19,6 +19,7 @@
 #   ./setup-portable-linux.sh           installa le dipendenze e rende eseguibile
 #   ./setup-portable-linux.sh --yes     senza chiedere conferma
 #   ./setup-portable-linux.sh --integra come sopra + voce di menu e comando
+#                                       (in inglese: --integrate)
 #
 set -euo pipefail
 
@@ -33,8 +34,8 @@ error() { printf '\033[1;31mERRORE:\033[0m %s\n' "$1" >&2; }
 while [ $# -gt 0 ]; do
     case "$1" in
         -y|--yes) ASSUME_YES=1 ;;
-        --integra) INTEGRA=1 ;;
-        -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --integra|--integrate) INTEGRA=1 ;;
+        -h|--help) sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) error "Opzione sconosciuta: $1 (usa --help)"; exit 1 ;;
     esac
     shift
