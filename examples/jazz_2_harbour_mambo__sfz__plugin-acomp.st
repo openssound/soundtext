@@ -1,49 +1,49 @@
-// Mambo del Porto - per big band, mambo afro-cubano in Do minore
+// Harbour Mambo - for big band, Afro-Cuban mambo in C minor
 //
-// Una big band latina anni '50: le percussioni aprono
-// con il piano montuno e il basso tumbao, i sax espongono il tema, la
-// sezione "mambo" sovrappone i riff (prima i tromboni, poi i sax, poi le
-// trombe), l'assolo del sax contralto, lo shout a band piena, la ripresa del
-// tema e la coda con i colpi d'orchestra.
+// A fifties Latin big band: the percussion opens with the piano montuno and
+// the tumbao bass, the saxes play the head, the "mambo" section stacks the
+// riffs (first the trombones, then the saxes, then the trumpets), the alto
+// sax solo, the shout with the full band, the head again and the coda with
+// orchestra hits.
 //
-// Suoni:
-// - strumenti SFZ: pianoforte a coda Salamander, contrabbasso D. Smolken
-//   pizzicato, sax contralto, tenore e baritono MTG, batteria Salamander per
-//   cassa, rullante e piatti (scarica_strumenti: piano, contrabbasso, solosax,
-//   salamander-drums; in ~/Strumenti); congas, campanaccio, clave e maracas
-//   sono quelli del SoundFont GM, come trombe e tromboni;
-// - master: compressore stereo ACE Compressor (plugin LV2), EQ e limiter.
+// Sounds:
+// - SFZ instruments: Salamander grand piano, D. Smolken pizzicato double
+//   bass, MTG alto, tenor and baritone saxes, Salamander drums for kick,
+//   snare and cymbals (Sounds -> Download and install); congas, cowbell,
+//   clave and maracas are the General MIDI SoundFont's, as are trumpets and
+//   trombones;
+// - master: ACE Compressor (stereo, LV2 plugin), EQ and limiter.
 
 ST: 2.6
 Tempo: 192 BPM
 Metrica: 4/4
 Tonalita: Cm
 
-Strumento Contralto:
+Strumento Alto:
   program=65 percussione=no ottava=5 range=49-81 poly=no voicing=monophonic
 
-Strumento Tenore:
+Strumento Tenor:
   program=66 percussione=no ottava=4 range=44-76 poly=no voicing=monophonic
 
-Strumento Baritono:
+Strumento Baritone:
   program=67 percussione=no ottava=3 range=36-69 poly=no voicing=monophonic
 
-Strumento Trombe:
+Strumento Trumpets:
   program=56 percussione=no ottava=5 range=54-86 poly=si voicing=spread
 
-Strumento Tromboni:
+Strumento Trombones:
   program=57 percussione=no ottava=3 range=40-72 poly=si voicing=spread
 
-Strumento Contrabbasso:
+Strumento DoubleBass:
   program=32 percussione=no ottava=2 range=28-60 poly=no voicing=root_fifth
 
-// ================================================================ percussioni (clave 2-3)
+// ================================================================ percussion (2-3 clave)
 
 Pattern %Latin:
   8: 92@ [conga_mute cowbell maracas] 60@ [conga_mute maracas] 95@ [conga_open cowbell claves maracas] 75@ [conga_open maracas] 92@ [conga_mute cowbell claves maracas] 60@ [conga_mute maracas] 95@ [conga_low cowbell maracas] 75@ [conga_low maracas] |
   92@ [conga_mute cowbell claves maracas] 60@ [conga_mute maracas] 95@ [conga_open cowbell maracas] 75@ [conga_open claves maracas] 92@ [conga_mute cowbell maracas] 60@ [conga_mute maracas] 95@ [conga_low cowbell claves maracas] 75@ [conga_low maracas] |
 
-// la prima battuta del Latin, per chiudere le sezioni con il fill dei timbales
+// the first bar of the Latin groove, to end the sections with the timbales fill
 Pattern %LatinA:
   8: 92@ [conga_mute cowbell maracas] 60@ [conga_mute maracas] 95@ [conga_open cowbell claves maracas] 75@ [conga_open maracas] 92@ [conga_mute cowbell claves maracas] 60@ [conga_mute maracas] 95@ [conga_low cowbell maracas] 75@ [conga_low maracas] |
 
@@ -59,7 +59,7 @@ Pattern %Kit:
 Pattern %KitShout:
   8: 110@ [kick crash] 3r 95@ snare r 105@ kick r | 100@ kick 2r 100@ snare 2r 110@ [kick snare] r |
 
-// ================================================================ ritmica: montuno e tumbao
+// ================================================================ rhythm section: montuno and tumbao
 
 Pattern %MonCm:
   8: 82@ Cm! Cm! r Cm! r Cm! Cm! r |
@@ -92,9 +92,9 @@ Pattern %TumbaoA:
 Pattern %TumbaoVamp:
   %BsCm %BsFm %BsG %BsCm
 
-// ================================================================ il tema e i riff
+// ================================================================ the head and the riffs
 
-Pattern %Tema:
+Pattern %Theme:
   8:
   g*4 c*5 eb*5 g*5 2f*5 eb*5 d*5 |
   4c*5_ r g*4 c*5 d*5 |
@@ -109,18 +109,18 @@ Pattern %ColpiA:
   8: 3r Cm! 2r Cm! r | 3r Cm! 2r Cm! r | 3r Fm! 2r Fm! r | 3r Fm! 2r Fm! r |
   3r G7! 2r G7! r | 3r G7! 2r G7! r | 3r Cm! 2r Cm! r | Cm! 3r 4r |
 
-Pattern %RiffTromboni:
+Pattern %RiffTrombones:
   8: c*3 2r c*3 eb*3 2r g*3 | 2f*3 eb*3 c*3 4r |
 
 Pattern %RiffSax:
   8: 4r g*4 bb*4 c*5 eb*5 | 2f*5 eb*5 c*5 2bb*4 2g*4 |
 
-Pattern %RiffTrombe:
+Pattern %RiffTrumpets:
   8: 2c*6 c*6 bb*5 2g*5 r g*5 | eb*5 f*5 2g*5 4r |
 
-// ================================================================ l'assolo del contralto (16 battute sul vamp)
+// ================================================================ the alto solo (16 bars on the vamp)
 
-Pattern %Assolo:
+Pattern %Solo:
   8:
   2r c*5 d*5 eb*5 f*5 2g*5 |
   ab*5 g*5 f*5 eb*5 2c*5 2r |
@@ -139,238 +139,238 @@ Pattern %Assolo:
   d*5 f*5 ab*5 g*5 2f*5 2d*5 |
   4c*5_ 4r |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Percussioni [Drums]:
+Traccia Percussion [Drums]:
 
-Box Percussioni "Introduzione" |0:
+Box Percussion "Intro" |0:
   3%Latin %LatinA %TimbaleFill
 
-Box Percussioni "Tema" |32:
+Box Percussion "Head" |32:
   8%Latin
 
-Box Percussioni "Mambo" |96:
+Box Percussion "Mambo" |96:
   7%Latin %LatinA %TimbaleFill
 
-Box Percussioni "Assolo" |160:
+Box Percussion "Solo" |160:
   8%Latin
 
-Box Percussioni "Shout" |224:
+Box Percussion "Shout" |224:
   7%Latin %LatinA %TimbaleFill
 
-Box Percussioni "Ripresa" |288:
+Box Percussion "Recapitulation" |288:
   3%Latin %LatinA %TimbaleFill
 
-Box Percussioni "Coda" |320:
+Box Percussion "Coda" |320:
   8: 115@ [cowbell claves] 3r [cowbell claves] 3r | 8r | 8r | 8r |
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Introduzione" |0:
+Box Drums "Intro" |0:
   3%Kit 8: 85@ kick 3r 75@ rimshot r 90@ kick r | %KitFill
 
-Box Batteria "Tema" |32:
+Box Drums "Head" |32:
   7%Kit %Kit
 
-Box Batteria "Mambo" |96:
+Box Drums "Mambo" |96:
   3%Kit %Kit 3%KitShout %Kit
 
-Box Batteria "Assolo" |160:
+Box Drums "Solo" |160:
   8%Kit
 
-Box Batteria "Shout" |224:
+Box Drums "Shout" |224:
   7%KitShout 8: 100@ kick 2r 100@ snare 2r 110@ [kick snare] r | %KitFill
 
-Box Batteria "Ripresa" |288:
+Box Drums "Recapitulation" |288:
   3%Kit 8: 85@ kick 3r 75@ rimshot r 90@ kick r | %KitFill
 
-Box Batteria "Coda" |320:
+Box Drums "Coda" |320:
   8: 120@ [kick crash] 3r 118@ [kick crash] 3r | 105@ snare snare snare snare 110@ snare snare 115@ snare snare | 120@ [kick crash] 3r 120@ [kick crash] 3r | 8r |
 
-Traccia Pianoforte [Piano]:
+Traccia Piano [Piano]:
 
-Box Pianoforte "Introduzione" |0:
+Box Piano "Intro" |0:
   2%MontunoVamp
 
-Box Pianoforte "Tema" |32:
+Box Piano "Head" |32:
   2%MontunoA
 
-Box Pianoforte "Mambo, assolo e shout" |96:
+Box Piano "Mambo, solo and shout" |96:
   12%MontunoVamp
 
-Box Pianoforte "Ripresa" |288:
+Box Piano "Recapitulation" |288:
   %MontunoA
 
-Box Pianoforte "Coda" |320:
+Box Piano "Coda" |320:
   8: 110@ Cm! 3r Cm! 3r | 8r | Cm! 3r G7! 3r | 8Cm$fermata |
 
-Traccia Contrabbasso [Contrabbasso]:
+Traccia DoubleBass [DoubleBass]:
 
-Box Contrabbasso "Introduzione" |0:
+Box DoubleBass "Intro" |0:
   2%TumbaoVamp
 
-Box Contrabbasso "Tema" |32:
+Box DoubleBass "Head" |32:
   2%TumbaoA
 
-Box Contrabbasso "Mambo, assolo e shout" |96:
+Box DoubleBass "Mambo, solo and shout" |96:
   12%TumbaoVamp
 
-Box Contrabbasso "Ripresa" |288:
+Box DoubleBass "Recapitulation" |288:
   %TumbaoA
 
-Box Contrabbasso "Coda" |320:
+Box DoubleBass "Coda" |320:
   8: 110@ c*2 3r c*2 3r | 8r | c*2 3r g*1 3r | 8c*2$fermata |
 
-Traccia Contralto [Contralto]:
+Traccia Alto [Alto]:
 
-Box Contralto "Tema" |32:
-  8: 100@ %Tema %Tema
+Box Alto "Head" |32:
+  8: 100@ %Theme %Theme
 
-Box Contralto "Mambo" |96:
+Box Alto "Mambo" |96:
   8: 8r | 8r | 8r | 8r | 100@ 6%RiffSax
 
-Box Contralto "Assolo" |160:
-  8: 108@ %Assolo
+Box Alto "Solo" |160:
+  8: 108@ %Solo
 
-Box Contralto "Shout" |224:
+Box Alto "Shout" |224:
   8: 112@ 8%RiffSax
 
-Box Contralto "Ripresa" |288:
-  8: 105@ %Tema
+Box Alto "Recapitulation" |288:
+  8: 105@ %Theme
 
-Box Contralto "Coda" |320:
+Box Alto "Coda" |320:
   8: 115@ c*5 3r c*5 3r | 8r | c*5 3r b*4 3r | 8c*5$fermata |
 
-Traccia Tenore [Tenore]:
+Traccia Tenor [Tenor]:
 
-Box Tenore "Tema" |32:
-  8: 100@ %Tema-12 %Tema-12
+Box Tenor "Head" |32:
+  8: 100@ %Theme-12 %Theme-12
 
-Box Tenore "Mambo" |96:
+Box Tenor "Mambo" |96:
   8: 8r | 8r | 8r | 8r | 100@ 6%RiffSax-12
 
-Box Tenore "Shout" |224:
+Box Tenor "Shout" |224:
   8: 112@ 8%RiffSax-12
 
-Box Tenore "Ripresa" |288:
-  8: 105@ %Tema-12
+Box Tenor "Recapitulation" |288:
+  8: 105@ %Theme-12
 
-Box Tenore "Coda" |320:
+Box Tenor "Coda" |320:
   8: 115@ eb*4 3r eb*4 3r | 8r | eb*4 3r d*4 3r | 8eb*4$fermata |
 
-Traccia Baritono [Baritono]:
+Traccia Baritone [Baritone]:
 
-Box Baritono "Mambo" |96:
-  8: 105@ 8%RiffTromboni
+Box Baritone "Mambo" |96:
+  8: 105@ 8%RiffTrombones
 
-Box Baritono "Assolo" |160:
-  8: 85@ 8%RiffTromboni
+Box Baritone "Solo" |160:
+  8: 85@ 8%RiffTrombones
 
-Box Baritono "Shout" |224:
-  8: 112@ 8%RiffTromboni
+Box Baritone "Shout" |224:
+  8: 112@ 8%RiffTrombones
 
-Box Baritono "Coda" |320:
+Box Baritone "Coda" |320:
   8: 115@ c*3 3r c*3 3r | 8r | c*3 3r g*2 3r | 8c*3$fermata |
 
-Traccia Trombe [Trombe]:
+Traccia Trumpets [Trumpets]:
 
-Box Trombe "Introduzione" |0:
+Box Trumpets "Intro" |0:
   8: 8r | 8r | 8r | 8r | 8r | 8r | 112@ Cm! 3r G7! 3r | Cm! 3r G7! r G7! r |
 
-Box Trombe "Tema" |32:
-  // la seconda volta il tema anche alle trombe
-  8: 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | 100@ %Tema
+Box Trumpets "Head" |32:
+  // the second time the trumpets play the head too
+  8: 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | 100@ %Theme
 
-Box Trombe "Mambo" |96:
-  8: 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | 112@ 4%RiffTrombe
+Box Trumpets "Mambo" |96:
+  8: 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | 112@ 4%RiffTrumpets
 
-Box Trombe "Shout" |224:
-  8: 115@ 8%RiffTrombe
+Box Trumpets "Shout" |224:
+  8: 115@ 8%RiffTrumpets
 
-Box Trombe "Ripresa" |288:
-  8: 108@ %Tema
+Box Trumpets "Recapitulation" |288:
+  8: 108@ %Theme
 
-Box Trombe "Coda" |320:
+Box Trumpets "Coda" |320:
   8: 120@ Cm! 3r Cm! 3r | 8r | Cm! 3r G7! 3r | 8Cm$fermata |
 
-Traccia Tromboni [Tromboni]:
+Traccia Trombones [Trombones]:
 
-Box Tromboni "Introduzione" |0:
+Box Trombones "Intro" |0:
   8: 8r | 8r | 8r | 8r | 8r | 8r | 108@ Cm! 3r G7! 3r | Cm! 3r G7! r G7! r |
 
-Box Tromboni "Tema" |32:
+Box Trombones "Head" |32:
   8: 95@ %ColpiA %ColpiA
 
-Box Tromboni "Mambo" |96:
-  8: 108@ 8%RiffTromboni
+Box Trombones "Mambo" |96:
+  8: 108@ 8%RiffTrombones
 
-Box Tromboni "Assolo" |160:
-  // lo sfondo sotto l'assolo
-  8: 80@ 8%RiffTromboni
+Box Trombones "Solo" |160:
+  // the background under the solo
+  8: 80@ 8%RiffTrombones
 
-Box Tromboni "Shout" |224:
-  8: 112@ 8%RiffTromboni
+Box Trombones "Shout" |224:
+  8: 112@ 8%RiffTrombones
 
-Box Tromboni "Ripresa" |288:
+Box Trombones "Recapitulation" |288:
   8: 100@ %ColpiA
 
-Box Tromboni "Coda" |320:
+Box Trombones "Coda" |320:
   8: 118@ Cm! 3r Cm! 3r | 8r | Cm! 3r G7! 3r | 8Cm$fermata |
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/salamander-drums/ALL.sfz"
 
-Plugin Pianoforte:
+Plugin Piano:
   ref="sfz:~/Strumenti/sfz/piano/SalamanderGrandPiano-SFZ+FLAC-V3+20200602/SalamanderGrandPiano-V3+20200602.sfz"
 
-Plugin Contrabbasso:
+Plugin DoubleBass:
   ref="sfz:~/Strumenti/sfz/contrabbasso/dsmolken_double_bass/d_smolken_rubner_bass_pizz.sfz"
 
-Plugin Contralto:
+Plugin Alto:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Alto Sax.sfz"
 
-Plugin Tenore:
+Plugin Tenor:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Tenor Sax.sfz"
 
-Plugin Baritono:
+Plugin Baritone:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Baritone Sax.sfz"
 
-Effetti Percussioni:
+Effetti Percussion:
   compressore: soglia=-18 rapporto=2 attacco=10 rilascio=120 guadagno=0
   riverbero: stanza=40 smorzamento=50 ampiezza=100 mix=12
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-18 rapporto=3 attacco=15 rilascio=120 guadagno=12
   riverbero: stanza=40 smorzamento=50 ampiezza=90 mix=10
 
-Effetti Pianoforte:
+Effetti Piano:
   compressore: soglia=-22 rapporto=2 attacco=15 rilascio=150 guadagno=5
   eq: bassi=-1 medi=1 alti=2
   riverbero: stanza=40 smorzamento=45 ampiezza=90 mix=10
 
-Effetti Contrabbasso:
+Effetti DoubleBass:
   compressore: soglia=-22 rapporto=3 attacco=15 rilascio=150 guadagno=8 preset="Basso"
   eq: bassi=2 medi=1 alti=-1
 
-Effetti Contralto:
+Effetti Alto:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=8
   riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=14
 
-Effetti Tenore:
+Effetti Tenor:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=11
   riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=14
 
-Effetti Baritono:
+Effetti Baritone:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=15
   riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=10
 
-Effetti Trombe:
+Effetti Trumpets:
   eq: bassi=0 medi=1 alti=2
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=14
 
-Effetti Tromboni:
+Effetti Trombones:
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=14
 
 Catena master:
@@ -380,29 +380,29 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Percussioni:
+Mixer Percussion:
   volume: 86 pan: 0 mute: no solo: no
 
-Mixer Batteria:
+Mixer Drums:
   volume: 88 pan: 0 mute: no solo: no
 
-Mixer Pianoforte:
+Mixer Piano:
   volume: 88 pan: -0.4 mute: no solo: no
 
-Mixer Contrabbasso:
+Mixer DoubleBass:
   volume: 100 pan: 0.1 mute: no solo: no
 
-Mixer Contralto:
+Mixer Alto:
   volume: 100 pan: -0.25 mute: no solo: no
 
-Mixer Tenore:
+Mixer Tenor:
   volume: 100 pan: 0.05 mute: no solo: no
 
-Mixer Baritono:
+Mixer Baritone:
   volume: 92 pan: 0.25 mute: no solo: no
 
-Mixer Trombe:
+Mixer Trumpets:
   volume: 88 pan: -0.15 mute: no solo: no
 
-Mixer Tromboni:
+Mixer Trombones:
   volume: 86 pan: 0.3 mute: no solo: no

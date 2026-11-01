@@ -1,25 +1,24 @@
-// Alba sul lago: un brano ambient in Re, 48 battute lente, tutto sulle automazioni.
+// Dawn on the Lake: an ambient piece in D, 48 slow bars, all about automation.
 //
-// Un tappeto di sintetizzatore, pianoforte, glockenspiel con il suo eco,
-// flauto, archi e un basso lunghissimo. Quasi nessun ritmo: il brano si muove
-// perche' i parametri cambiano nel tempo. Cosa c'e' dentro:
-//   - le rampe `>>` con la curva: `vol=0 >>exp` (dissolvenza in entrata
-//     naturale), `>>log` (dissolvenza in uscita); le rampe di nomi diversi
-//     (vol, cho, rev, cc74) si sovrappongono;
-//   - il pan che attraversa il campo stereo da sinistra a destra nel ponte;
-//   - il filtro (cc74=) che si apre lentamente;
-//   - tempo=N con `>>` (accelerando) e `<<` (rallentando) senza batteria;
-//   - l'accordatura che scivola (tune=, in cent) negli archi del ponte:
-//     l'effetto del nastro che rallenta;
-//   - il ritardo ("eco") ottenuto con una seconda traccia dello stesso
-//     strumento, spostata nel tempo di 300 ms (shift=);
-//   - le forcelle `<` sugli accordi e le legature `( )` e di valore `~` sul
-//     pianoforte e sul flauto; una piccola scivolata (bend=) sul flauto;
-//   - le ottave relative (rel:) e la tonalita' (key=D) nelle melodie;
-//   - strumenti definiti nel file e la corona sull'ultimo accordo.
+// A synth pad, piano, glockenspiel with its echo, flute, strings and a very
+// long bass. Almost no rhythm: the piece moves because its parameters change
+// over time. What's inside:
+//   - ramps `>>` with a curve: `vol=0 >>exp` (a natural fade-in), `>>log`
+//     (a fade-out); ramps of different names (vol, cho, rev, cc74) overlap;
+//   - the pan crossing the stereo field from left to right in the bridge;
+//   - the filter (cc74=) opening slowly;
+//   - tempo=N with `>>` (accelerando) and `<<` (rallentando) without drums;
+//   - the tuning sliding down (tune=, in cents) in the strings of the bridge:
+//     the effect of a slowing tape;
+//   - the delay ("echo") made with a second track of the same instrument,
+//     shifted by 300 ms (shift=);
+//   - hairpins `<` on the chords, slurs `( )` and ties `~` on piano and flute;
+//     a small slide (bend=) on the flute;
+//   - relative octaves (rel:) and the key (key=D) in the melodies;
+//   - instruments defined in the file and the fermata on the last chord.
 //
-// Forma (12 sezioni da 4 battute, A e B sono due giri di accordi):
-//   1 A  2 A  3 A  4 B  5 A  6 B  7 B  8 B  9 A  10 B  11 A  12 finale
+// Form (12 sections of 4 bars; A and B are two chord progressions):
+//   1 A  2 A  3 A  4 B  5 A  6 B  7 B  8 B  9 A  10 B  11 A  12 ending
 //   A  Dmaj7 | Bm7 | Gmaj7 | Asus4          B  Gmaj7 | Em7 | Bm7 | A
 
 ST: 2.6
@@ -33,16 +32,16 @@ Strumento Pad:
 Strumento Glock:
   program=9 percussione=no ottava=6 range=72-108 poly=si voicing=spread
 
-Strumento Flauto:
+Strumento Flute:
   program=73 percussione=no ottava=5 range=72-100 poly=no voicing=monophonic
 
-Strumento Archi:
+Strumento Strings:
   program=48 percussione=no ottava=3 range=36-96 poly=si voicing=spread
 
 Pattern %Rest:
   4: 4r |
 
-// ---------------------------------------------------------------- tappeto (pad)
+// ---------------------------------------------------------------- pad
 
 Pattern %PadA:
   4: 56@ Dmaj7'1 | Bm7'1 | Gmaj7'1 | Asus4'1 |
@@ -50,7 +49,7 @@ Pattern %PadA:
 Pattern %PadB:
   4: 56@ Gmaj7'1 | Em7'1 | Bm7'1 | A'1 |
 
-// senza velocity: dentro i tratti con tempo= la velocity non si puo' cambiare
+// no velocity: inside the stretches with tempo= the velocity cannot change
 Pattern %PadAq:
   4: Dmaj7'1 | Bm7'1 | Gmaj7'1 | Asus4'1 |
 
@@ -60,7 +59,7 @@ Pattern %PadBq:
 Pattern %PadEndq:
   4: Dmaj7'1 | Bm7'1 | Gmaj7'1 | Dmaj7'1$fermata |
 
-// ---------------------------------------------------------------- pianoforte (arpeggi)
+// ---------------------------------------------------------------- piano (arpeggios)
 
 Pattern %PnA:
   key=D 8: 66@
@@ -106,7 +105,7 @@ Pattern %BellEnd:
   4r |
   1: d*6$fermata |
 
-// ---------------------------------------------------------------- flauto
+// ---------------------------------------------------------------- flute
 
 Pattern %FlP1:
   rel: key=D 4: 76@
@@ -141,7 +140,7 @@ Pattern %FlP3:
   2d f d |
   4d |
 
-// ---------------------------------------------------------------- archi e basso
+// ---------------------------------------------------------------- strings and bass
 
 Pattern %ArA:
   4: 64@ Dmaj7'1< | Bm7'1< | Gmaj7'1< | Asus4'1 |
@@ -161,32 +160,32 @@ Pattern %BsB:
 Pattern %BsEnd:
   key=D 4: 76@ d*2'1 | b*1'1 | g*1'1 | d*2'1$fermata |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
 Pad:
-  // le rampe di chorus, riverbero e filtro durano le prime sei sezioni
+  // the chorus, reverb and filter ramps last the first six sections
   cho=20 >>
   rev=40 >>
   cc74=25 >>
-  // sezione 1: dissolvenza in entrata, con la curva "exp"
+  // section 1: fade-in, with the "exp" curve
   vol=0 >>exp
   %PadA
   vol=85
-  // sezioni 2-6
+  // sections 2-6
   %PadA %PadA %PadB %PadA %PadB
   cho=90
   rev=90
   cc74=110
-  // sezioni 7-8, il ponte: il pan va da sinistra a destra e il tempo accelera
+  // sections 7-8, the bridge: the pan moves from left to right and the tempo speeds up
   pan=-0.9 >>
   tempo=60 >>
   %PadBq %PadBq
   pan=0.9
   tempo=84
   pan=0
-  // sezioni 9-10
+  // sections 9-10
   %PadA %PadB
-  // sezioni 11-12: rallentando e dissolvenza in uscita (curva "log")
+  // sections 11-12: rallentando and fade-out ("log" curve)
   tempo=84 <<
   vol=85 >>log
   %PadAq %PadEndq
@@ -195,31 +194,31 @@ Pad:
 
 Piano:
 
-Box Piano "Inizio" |16:
+Box Piano "Intro" |16:
   %PnA %PnA %PnB %PnA %PnB
 
-Box Piano "Ponte" |96:
-  // ponte
+Box Piano "Bridge" |96:
+  // bridge
   %PnB %PnB
   %PnA %PnB %PnA
   %PnEnd
 
 Traccia Glockenspiel [Glock]:
 
-Box Glockenspiel "Inizio" |0:
+Box Glockenspiel "Intro" |0:
   pan=-0.6
   4%Rest
   %BellA %BellA %BellB
 
-Box Glockenspiel "Seconda parte" |128:
-  // il glockenspiel tace nel mezzo del brano
+Box Glockenspiel "Second part" |128:
+  // the glockenspiel rests in the middle of the piece
   %BellA %BellB %BellA
   %BellEnd
 
-Traccia Eco [Glock]:
+Traccia Echo [Glock]:
 
-Box Eco "Eco" |0:
-  // la stessa traccia, 300 ms dopo, piu' piano e dall'altra parte
+Box Echo "Echo" |0:
+  // the same track, 300 ms later, softer and on the other side
   pan=0.7
   shift=300
   vol=45
@@ -229,30 +228,30 @@ Box Eco "Eco" |0:
   %BellA %BellB %BellA
   %BellEnd
 
-Flauto:
+Flute:
 
-Box Flauto "Prima parte" |32:
-  // le prime due sezioni e le ultime due sono senza flauto
+Box Flute "First part" |32:
+  // the first two sections and the last two have no flute
   $"dolce" %FlP1
   %FlP2
   8%Rest
 
-Box Flauto "Di nuovo" |128:
-  // di nuovo, un'ottava sopra, quando il tempo e' piu' veloce
+Box Flute "Again" |128:
+  // again, an octave higher, when the tempo is faster
   %FlP3
   8%Rest
 
-Archi:
+Strings:
 
-Box Archi "Sezione 5" |64:
-  // sezione 5: crescendo di volume
+Box Strings "Section 5" |64:
+  // section 5: volume crescendo
   vol=40 >>
   %ArA
   vol=90
   %ArB
 
-Box Archi "Ponte" |96:
-  // ponte: l'accordatura scende di 40 cent, come un nastro che rallenta
+Box Strings "Bridge" |96:
+  // bridge: the tuning drops by 40 cents, like a slowing tape
   tune=0 >>
   %ArB %ArB
   tune=-40
@@ -263,7 +262,7 @@ Box Archi "Ponte" |96:
 
 Bass:
 
-Box Bass "Inizio" |32:
+Box Bass "Intro" |32:
   %BsA %BsB %BsA %BsB
   %BsB %BsB
   %BsA %BsB %BsA
@@ -280,13 +279,13 @@ Mixer Piano:
 Mixer Glockenspiel:
   volume: 64 pan: -0.6 mute: no solo: no reverb: 45
 
-Mixer Eco:
+Mixer Echo:
   volume: 52 pan: 0.7 mute: no solo: no reverb: 55
 
-Mixer Flauto:
+Mixer Flute:
   volume: 86 pan: 0.2 mute: no solo: no reverb: 40
 
-Mixer Archi:
+Mixer Strings:
   volume: 70 pan: 0 mute: no solo: no reverb: 50
 
 Mixer Bass:

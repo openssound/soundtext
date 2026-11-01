@@ -32,7 +32,7 @@ def _no_modal_messages(monkeypatch):
 
 
 def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
-    example = os.path.join(EXAMPLES_DIR, "funk_in_mi.st")
+    example = os.path.join(EXAMPLES_DIR, "funk_in_e.st")
     with open(example, "rb") as f:
         original = f.read()
     captured = {}
@@ -48,7 +48,7 @@ def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
     assert captured["dir"] == EXAMPLES_DIR
     assert w.project.tracks
     assert w.current_path is None
-    assert "funk_in_mi.st" in w.windowTitle()
+    assert "funk_in_e.st" in w.windowTitle()
 
     # Salva chiede un nuovo percorso (nella cartella dei brani) invece di
     # sovrascrivere l'esempio.
@@ -61,7 +61,7 @@ def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
     monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(fake_save))
     w.save_project()
     assert os.path.dirname(proposed["path"]) != EXAMPLES_DIR
-    assert os.path.basename(proposed["path"]) == "funk_in_mi.st"
+    assert os.path.basename(proposed["path"]) == "funk_in_e.st"
     with open(example, "rb") as f:
         assert f.read() == original
 

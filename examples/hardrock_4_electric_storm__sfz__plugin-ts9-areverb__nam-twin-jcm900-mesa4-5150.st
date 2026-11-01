@@ -1,39 +1,41 @@
-// Tempesta Elettrica - hard rock epico in Mi minore
+// Electric Storm - epic hard rock in E minor
 //
-// Comincia come una ballata (pianoforte, arpeggi di chitarra pulita, archi)
-// e poi esplode: un galoppo heavy metal con due chitarre pesanti, il
-// ritornello con gli archi, l'assolo, un ponte quieto che torna all'inizio,
-// l'ultimo ritornello e la chiusura con il pianoforte.
+// It starts as a ballad (piano, clean guitar arpeggios, strings) and then
+// explodes: a heavy metal gallop with two heavy guitars, the chorus with the
+// strings, the solo, a quiet bridge back to the beginning, the last chorus
+// and the ending with the piano.
 //
-// Suoni:
-// - batteria, basso, pianoforte e chitarre: strumenti SFZ
-//   (scarica_strumenti: salamander-drums, pastabass, splendid-piano,
-//   chitarra-elettrica; in ~/Strumenti); gli archi sono quelli del SoundFont GM;
-// - pianoforte nel riverbero ACE Reverb (plugin LV2: senza, passa invariato);
-// - chitarra degli arpeggi nel profilo NAM del Fender Twin, con chorus ed eco;
-//   ritmiche pesanti: Tube Screamer e i profili del Mesa Boogie Mark IV (a
-//   sinistra) e del Peavey 5150 (a destra); solista: Tube Screamer e Marshall
-//   JCM900 (profili con Suoni -> Scarica -> profili NAM consigliati);
-// - master: compressore e limiter.
+// Sounds:
+// - drums, bass, piano and guitars: SFZ instruments (Sounds -> Download and
+//   install: Salamander Drumkit, Pastabass, Splendid Grand Piano, clean
+//   electric guitar); the strings are the General MIDI SoundFont's;
+// - piano into the ACE Reverb (LV2 plugin: without it, it passes through
+//   unchanged);
+// - arpeggio guitar into the NAM profile of a Fender Twin, with chorus and
+//   delay; heavy rhythm guitars: Tube Screamer and the profiles of a Mesa
+//   Boogie Mark IV (left) and a Peavey 5150 (right); lead: Tube Screamer and
+//   Marshall JCM900 (Recommended NAM profiles, from Sounds -> Download and
+//   install);
+// - master: compressor and limiter.
 
 ST: 2.6
 Tempo: 112 BPM
 Metrica: 4/4
 Tonalita: Em
 
-Strumento Pulita:
+Strumento Clean:
   program=27 percussione=no ottava=3 range=35-86 poly=si voicing=spread
 
-Strumento Ritmica:
+Strumento Rhythm:
   program=30 percussione=no ottava=2 range=35-86 poly=si voicing=power
 
-Strumento Solista:
+Strumento Lead:
   program=29 percussione=no ottava=4 range=35-86 poly=no voicing=monophonic
 
-Strumento Archi:
+Strumento Strings:
   program=48 percussione=no ottava=4 range=28-96 poly=si voicing=spread
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %Beat:
   8: 116@ [kick hihat] 76@ hihat 116@ [snare hihat] 76@ hihat 110@ [kick hihat] 104@ [kick hihat] 116@ [snare hihat] 76@ hihat |
@@ -65,7 +67,7 @@ Pattern %Verse8:
 Pattern %Chorus8:
   %BeatRideCrash %BeatRide %BeatRide %BeatRide %BeatRideCrash %BeatRide %BeatRide %FillBig
 
-// ---------------------------------------------------------------- arpeggi e pianoforte (Em C G D | Em C Am B7)
+// ---------------------------------------------------------------- arpeggios and piano (Em C G D | Em C Am B7)
 
 Pattern %ArpEm:
   8: 80@ e*3 b*3 e*4 g*4 b*4 g*4 e*4 b*3 |
@@ -92,12 +94,12 @@ Pattern %Piano8:
   4: 62@ 4Em9_ | 4Cmaj7_ | 4G_ | 4D_ | 4Em9_ | 4Cmaj7_ | 4Am7_ | 4B7_ |
 
 Pattern %PianoMelody:
-  // la melodia dell'introduzione, alla mano destra (suona insieme agli
-  // accordi, vedi il box: senza stanghette, che conterebbero da capo)
+  // the melody of the intro, in the right hand (it plays together with the
+  // chords, see the box: no bar lines, which would count from the start)
   8: 78@ 6b*5_ a*5 g*5 4e*5_ g*5 e*5 2c*5 6g*5_ f#*5 g*5 4f#*5_ e*5 d*5 2a*4
   6b*5_ c*6 b*5 4g*5_ e*5 g*5 2c*6 4c*6_ b*5 a*5 2e*5 8b*5_
 
-// ---------------------------------------------------------------- chitarre pesanti
+// ---------------------------------------------------------------- heavy guitars
 
 Pattern %Riff:
   16: 120@ 2E5*2 E5*2x E5*2x 2E5*2 E5*2x E5*2x 2E5*2 E5*2x E5*2x 2G5*2 A5*2 B5*2 |
@@ -116,7 +118,7 @@ Pattern %BsChorus:
 Pattern %StChorus:
   4: 4Em_ | 4C_ | 4G_ | 4D_ | 4Em_ | 4C_ | 4D_ | 4B7_ |
 
-// ---------------------------------------------------------------- solista
+// ---------------------------------------------------------------- lead
 
 Pattern %ChorusMelody:
   8: 112@
@@ -140,204 +142,204 @@ Pattern %Solo:
   16: d*5 f#*5 a*5 d*6 a*5 f#*5 d*5 f#*5 8: 4a*5_ |
   4b*5>4c*6 |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Il temporale arriva" |32:
+Box Drums "The storm arrives" |32:
   %TomsBuild
 
-Box Batteria "Galoppo" |48:
+Box Drums "Gallop" |48:
   %Verse8
 
-Box Batteria "Ritornello" |80:
+Box Drums "Chorus" |80:
   %Chorus8
 
-Box Batteria "Assolo" |112:
+Box Drums "Solo" |112:
   %Chorus8
 
-Box Batteria "Ultimo ritornello" |160:
+Box Drums "Last chorus" |160:
   %Chorus8
 
-Box Batteria "Chiusura" |192:
+Box Drums "Outro" |192:
   8: 124@ [kick crash] 7r | 8r | 8r | 8r |
 
-Traccia Basso [Bass]:
+Traccia Bass [Bass]:
 
-Box Basso "Il temporale arriva" |32:
+Box Bass "The storm arrives" |32:
   4: 100@ 4e*2 | 4c*2 | 4d*2 | 4b*1 |
 
-Box Basso "Galoppo" |48:
+Box Bass "Gallop" |48:
   4%BsRiff
 
-Box Basso "Ritornello" |80:
+Box Bass "Chorus" |80:
   %BsChorus
 
-Box Basso "Assolo" |112:
+Box Bass "Solo" |112:
   %BsChorus
 
-Box Basso "Ultimo ritornello" |160:
+Box Bass "Last chorus" |160:
   %BsChorus
 
-Box Basso "Chiusura" |192:
+Box Bass "Outro" |192:
   4: 110@ 4e*2 | 4r | 4r | 4r |
 
-Traccia Pianoforte [Piano]:
+Traccia Piano [Piano]:
 
-Box Pianoforte "Introduzione" |0:
+Box Piano "Intro" |0:
   { %Piano8 ; %PianoMelody }
 
-Box Pianoforte "Ponte" |144:
+Box Piano "Bridge" |144:
   4: 60@ 4Em9_ | 4Cmaj7_ | 4G_ | 4D_ |
 
-Box Pianoforte "Chiusura" |192:
+Box Piano "Outro" |192:
   4: 75@ 4Em9_ | 4Cmaj7_ | 4Am7_ | 70@ 4Em9$fermata |
 
-Traccia Arpeggi [Pulita]:
+Traccia Arpeggios [Clean]:
 
-Box Arpeggi "Introduzione" |0:
+Box Arpeggios "Intro" |0:
   %Arp8
 
-Box Arpeggi "Ponte" |144:
+Box Arpeggios "Bridge" |144:
   %ArpEm %ArpC %ArpG %ArpD
 
-Box Arpeggi "Chiusura" |192:
+Box Arpeggios "Outro" |192:
   %ArpEm %ArpC %ArpAm 8: 80@ 8[e*3 b*3 e*4 g*4]$fermata |
 
-Traccia Archi [Archi]:
+Traccia Strings [Strings]:
 
-Box Archi "Introduzione" |0:
+Box Strings "Intro" |0:
   4: 35@ >> %StChorus 70@
 
-Box Archi "Il temporale arriva" |32:
+Box Strings "The storm arrives" |32:
   4: 70@ >> 4Em_ | 4C_ | 4D_ | 4B7_ 110@
 
-Box Archi "Ritornello" |80:
+Box Strings "Chorus" |80:
   4: 85@ %StChorus
 
-Box Archi "Assolo" |112:
+Box Strings "Solo" |112:
   4: 70@ %StChorus
 
-Box Archi "Ponte" |144:
+Box Strings "Bridge" |144:
   4: 55@ 4Em_ | 4C_ | 4G_ | 4D_ |
 
-Box Archi "Ultimo ritornello" |160:
+Box Strings "Last chorus" |160:
   4: 95@ %StChorus
 
-Box Archi "Chiusura" |192:
+Box Strings "Outro" |192:
   4: 80@ 4Em_ | 4C_ | 4Am_ | 4Em$fermata |
 
-Traccia Ritmica Sinistra [Ritmica]:
+Traccia Rhythm Left [Rhythm]:
 
-Box Ritmica Sinistra "Il temporale arriva" |32:
+Box Rhythm Left "The storm arrives" |32:
   4: 120@ 4E5*2_ | 4C5*3_ | 4D5*3_ | 4B5*2_ |
 
-Box Ritmica Sinistra "Galoppo" |48:
+Box Rhythm Left "Gallop" |48:
   4%Riff
 
-Box Ritmica Sinistra "Ritornello" |80:
+Box Rhythm Left "Chorus" |80:
   %Chorus
 
-Box Ritmica Sinistra "Assolo" |112:
+Box Rhythm Left "Solo" |112:
   %Chorus
 
-Box Ritmica Sinistra "Ultimo ritornello" |160:
+Box Rhythm Left "Last chorus" |160:
   %Chorus
 
-Box Ritmica Sinistra "Chiusura" |192:
+Box Rhythm Left "Outro" |192:
   4: 124@ 4E5*2_ | 4r | 4r | 4r |
 
-Traccia Ritmica Destra [Ritmica]:
+Traccia Rhythm Right [Rhythm]:
 
-Box Ritmica Destra "Il temporale arriva" |32:
+Box Rhythm Right "The storm arrives" |32:
   4: 120@ 4E5*2_ | 4C5*3_ | 4D5*3_ | 4B5*2_ |
 
-Box Ritmica Destra "Galoppo" |48:
+Box Rhythm Right "Gallop" |48:
   4%Riff
 
-Box Ritmica Destra "Ritornello" |80:
+Box Rhythm Right "Chorus" |80:
   %Chorus
 
-Box Ritmica Destra "Assolo" |112:
+Box Rhythm Right "Solo" |112:
   %Chorus
 
-Box Ritmica Destra "Ultimo ritornello" |160:
+Box Rhythm Right "Last chorus" |160:
   %Chorus
 
-Box Ritmica Destra "Chiusura" |192:
+Box Rhythm Right "Outro" |192:
   4: 124@ 4E5*2_ | 4r | 4r | 4r |
 
-Traccia Solista [Solista]:
+Traccia Lead [Lead]:
 
-Box Solista "Ritornello" |80:
+Box Lead "Chorus" |80:
   %ChorusMelody
 
-Box Solista "Assolo" |112:
+Box Lead "Solo" |112:
   %Solo
 
-Box Solista "Ultimo ritornello" |160:
+Box Lead "Last chorus" |160:
   %ChorusMelody
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/salamander-drums/ALL.sfz"
 
-Plugin Basso:
+Plugin Bass:
   ref="sfz:~/Strumenti/sfz/pastabass/Pastabass/linguine.sfz"
 
-Plugin Pianoforte:
+Plugin Piano:
   ref="sfz:~/Strumenti/sfz/splendid-piano/Splendid Grand Piano.sfz"
 
-Plugin Arpeggi:
+Plugin Arpeggios:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Ritmica Sinistra:
+Plugin Rhythm Left:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Ritmica Destra:
+Plugin Rhythm Right:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Solista:
+Plugin Lead:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-18 rapporto=4 attacco=10 rilascio=120 guadagno=6 preset="Batteria"
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=14
   volume: guadagno=2
 
-Effetti Basso:
+Effetti Bass:
   amplificatore: modello=crunch cassa=nessuna guadagno=8 bassi=6 medi=6 alti=4 presenza=4 potenza=40 livello=-8
   compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=4 preset="Basso"
 
-Effetti Pianoforte:
+Effetti Piano:
   plugin: mix=40 livello=5 ref="lv2:urn:ardour:a-reverb"
   eq: bassi=0 medi=0 alti=1
 
-Effetti Arpeggi:
+Effetti Arpeggios:
   nam: ingresso=0 cassa=2x12 livello=12 nam="../profili_nam/Fender Twin Reverb - pulito.nam"
   chorus: velocita=0.8 profondita=40 mix=35
   delay: suddivisione=1/8p tempo=402 ripetizioni=30 mix=20
   riverbero: stanza=65 smorzamento=40 ampiezza=100 mix=22
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Archi:
+Effetti Strings:
   passa_alto: frequenza=120 pendenza=12
   riverbero: stanza=75 smorzamento=40 ampiezza=100 mix=30
 
-Effetti Ritmica Sinistra:
+Effetti Rhythm Left:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
   nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Mesa Boogie Mark IV - lead.nam" ir="../profili_nam/casse/Mesa Boogie Mark V.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Ritmica Destra:
+Effetti Rhythm Right:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
   nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam" ir="../profili_nam/casse/EVH 5150 III.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Solista:
+Effetti Lead:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.45 p.fslider1_=750 p.fslider0_=-2
   nam: ingresso=0 cassa=file livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=1/4 tempo=536 ripetizioni=30 mix=16
@@ -351,26 +353,26 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Batteria:
+Mixer Drums:
   volume: 100 pan: 0 mute: no solo: no
 
-Mixer Basso:
+Mixer Bass:
   volume: 105 pan: 0 mute: no solo: no
 
-Mixer Pianoforte:
+Mixer Piano:
   volume: 95 pan: -0.25 mute: no solo: no
 
-Mixer Arpeggi:
+Mixer Arpeggios:
   volume: 90 pan: 0.35 mute: no solo: no
 
-Mixer Archi:
+Mixer Strings:
   volume: 80 pan: 0 mute: no solo: no
 
-Mixer Ritmica Sinistra:
+Mixer Rhythm Left:
   volume: 92 pan: -0.8 mute: no solo: no
 
-Mixer Ritmica Destra:
+Mixer Rhythm Right:
   volume: 92 pan: 0.8 mute: no solo: no
 
-Mixer Solista:
+Mixer Lead:
   volume: 110 pan: 0.1 mute: no solo: no

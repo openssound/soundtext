@@ -1,21 +1,21 @@
-// Sabato a Lisbona: una bossa nova in La minore, in 64 battute.
+// Saturday in Lisbon: a bossa nova in A minor, in 64 bars.
 //
-// Flauto, chitarra nylon, pianoforte, basso e due strumenti a percussione
-// (batteria e shaker). La forma e' A A' B A: otto battute ciascuna.
-//   introduzione 4 + tema 32 + assolo di pianoforte su B e A (16)
-//   + tema (A) 8 + coda con il rallentando 4.
-// Cosa c'e' dentro:
-//   - strumenti definiti nel file (flauto, chitarra nylon);
-//   - il ritmo "3-3-2" della bossa (accordi sul 1, sul 2 e e sul 4) scritto con
-//     le pause: `Am7 r r Am7 r r Am7 r`;
-//   - il basso alla brasiliana (fondamentale e quinta), la batteria con il
-//     rim-click sul ritmo della clave, lo shaker a sedicesimi con il volume
-//     che cambia (accenti), una traccia in piu' dedicata a quello;
-//   - la tonalita' (key=Am): il sol# di E7 e' scritto, il resto no;
-//   - le automazioni: pan che attraversa il campo stereo durante l'assolo,
-//     forcelle sugli accordi, il rallentando con tempo=;
-//   - la corona sull'ultimo accordo.
-//   A    Am7 | Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 E7 | Am7 | Am7 (A7 nella ripetizione)
+// Flute, nylon guitar, piano, bass and two percussion instruments (drums and
+// shaker). The form is A A' B A: eight bars each.
+//   intro 4 + head 32 + piano solo over B and A (16)
+//   + head (A) 8 + coda with the rallentando 4.
+// What's inside:
+//   - instruments defined in the file (flute, nylon guitar);
+//   - the bossa's "3-3-2" rhythm (chords on 1, on the and of 2 and on 4)
+//     written with rests: `Am7 r r Am7 r r Am7 r`;
+//   - the Brazilian bass (root and fifth), the drums with the rim click on the
+//     clave rhythm, the shaker in sixteenths with changing volume (accents),
+//     on a track of its own;
+//   - the key (key=Am): the G# of E7 is written, the rest is not;
+//   - automation: the pan crossing the stereo field during the solo, hairpins
+//     on the chords, the rallentando with tempo=;
+//   - the fermata on the last chord.
+//   A    Am7 | Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 E7 | Am7 | Am7 (A7 the second time)
 //   B    Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 | E7 | Am7 | E7
 
 ST: 2.6
@@ -23,7 +23,7 @@ Tempo: 126 BPM
 Metrica: 4/4
 Tonalita: Am
 
-Strumento Flauto:
+Strumento Flute:
   program=73 percussione=no ottava=5 range=72-100 poly=no voicing=monophonic
 
 Strumento Nylon:
@@ -32,7 +32,7 @@ Strumento Nylon:
 Pattern %Rest:
   4: 4r |
 
-// ---------------------------------------------------------------- melodia (flauto)
+// ---------------------------------------------------------------- melody (flute)
 
 Pattern %HeadA:
   key=Am 8: 84@
@@ -64,7 +64,7 @@ Pattern %HeadB:
   a*5 c*6 e*6 2a*6 g*6 e*6 c*6 |
   2b*5 g#*5 e*5 4r |
 
-// ---------------------------------------------------------------- assolo (pianoforte)
+// ---------------------------------------------------------------- solo (piano)
 
 Pattern %SoloB:
   key=Am 8: 92@
@@ -88,7 +88,7 @@ Pattern %SoloA:
   c*6 a*5 e*5 a*5 c*6 e*6 a*6 e*6 |
   4a*5 4r |
 
-// ---------------------------------------------------------------- chitarra nylon (3-3-2)
+// ---------------------------------------------------------------- nylon guitar (3-3-2)
 
 Pattern %GtrIntro:
   key=Am 8: 66@
@@ -124,7 +124,7 @@ Pattern %GtrB:
   Am7 r r Am7 r r Am7 r |
   E7 r r E7 r r E7 r |
 
-// ---------------------------------------------------------------- pianoforte (accordi lunghi sotto il tema)
+// ---------------------------------------------------------------- piano (long chords under the head)
 
 Pattern %PnA7:
   key=Am 4: 58@
@@ -153,7 +153,7 @@ Pattern %PnB:
   Am7.drop2'1 |
   E7.drop2'1 |
 
-// ---------------------------------------------------------------- basso (fondamentale e quinta)
+// ---------------------------------------------------------------- bass (root and fifth)
 
 Pattern %BsAm:
   8: 86@ 3a*1 3e*2 2a*1 |
@@ -191,7 +191,7 @@ Pattern %BassA7:
 Pattern %BassB:
   %BsDm %BsG %BsC %BsF %BsBm %BsE %BsAm %BsE
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %BossaA:
   8: 78@ [kick hihat] 45@ hihat hihat 66@ [rimshot hihat] 78@ [kick hihat] 45@ hihat 66@ [rimshot hihat] 45@ hihat |
@@ -225,19 +225,19 @@ Pattern %Drums8Ride:
 Pattern %Shaker:
   16: 56@ maracas 34@ maracas 46@ maracas 34@ maracas 56@ maracas 34@ maracas 46@ maracas 34@ maracas 56@ maracas 34@ maracas 46@ maracas 34@ maracas 56@ maracas 34@ maracas 46@ maracas 34@ maracas |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Flauto:
+Flute:
 
-Box Flauto "Tema" |16:
-  // tema: A, A', B, A
+Box Flute "Head" |16:
+  // head: A, A', B, A
   $"dolce" %HeadA %HeadEnd1
   %HeadA %HeadEnd2
   %HeadB
   %HeadA %HeadEnd1
 
-Box Flauto "Tema di nuovo (A) e coda" |208:
-  // tema di nuovo (A) e coda
+Box Flute "Head again (A) and coda" |208:
+  // head again (A) and coda
   vol=100 %HeadA %HeadEnd3
   key=Am 8: 80@
   r e*5 a*5 c*6 2b*5 a*5 e*5 |
@@ -246,23 +246,23 @@ Box Flauto "Tema di nuovo (A) e coda" |208:
 
 Nylon:
 
-Box Nylon "Inizio" |0:
+Box Nylon "Intro" |0:
   vol=80 %GtrIntro
 
-Box Nylon "Tema" |16:
-  // tema: la chitarra con il ritmo 3-3-2
+Box Nylon "Head" |16:
+  // head: the guitar with the 3-3-2 rhythm
   %GtrA7 %GtrA8
   %GtrA7 %GtrA8
   %GtrB
   %GtrA7 %GtrA8End
 
-Box Nylon "Assolo" |144:
-  // assolo: la chitarra accompagna
+Box Nylon "Solo" |144:
+  // solo: the guitar comps
   vol=95 %GtrB
   %GtrA7 %GtrA8End
 
-Box Nylon "Tema e coda" |208:
-  // tema e coda
+Box Nylon "Head and coda" |208:
+  // head and coda
   vol=80 %GtrA7 %GtrA8End
   key=Am 8: 66@
   Dm7 r r Dm7 r r Dm7 r |
@@ -272,23 +272,23 @@ Box Nylon "Tema e coda" |208:
 
 Piano:
 
-Box Piano "Tema" |16:
-  // tema: accordi lunghi e morbidi
+Box Piano "Head" |16:
+  // head: long, soft chords
   $"dolce" %PnA7 %PnA8
   %PnA7 %PnA8
   %PnB
   %PnA7 %PnA8End
 
-Box Piano "Assolo" |144:
-  // assolo: la mano destra, il pan si sposta da sinistra a destra
+Box Piano "Solo" |144:
+  // solo: the right hand, the pan moves from left to right
   pan=-0.5 >>
-  $"assolo" %SoloB
+  $"solo" %SoloB
   pan=0.5
   %SoloA
   pan=0
 
-Box Piano "Tema e coda" |208:
-  // tema e coda
+Box Piano "Head and coda" |208:
+  // head and coda
   %PnA7 %PnA8End
   key=Am 4: 55@ Dm7.drop2'1 |
   Bm7b5.drop2'2 E7.drop2'2 |
@@ -297,50 +297,50 @@ Box Piano "Tema e coda" |208:
 
 Bass:
 
-Box Bass "Inizio" |8:
+Box Bass "Intro" |8:
   %BassIntro
 
-Box Bass "Tema" |16:
-  // tema
+Box Bass "Head" |16:
+  // head
   %BassA7 %BsA7
   %BassA7 %BsA7
   %BassB
   %BassA7 %BsAm
 
-Box Bass "Assolo" |144:
-  // assolo
+Box Bass "Solo" |144:
+  // solo
   %BassB
   %BassA7 %BsAm
 
-Box Bass "Tema e coda" |208:
-  // tema e coda
+Box Bass "Head and coda" |208:
+  // head and coda
   %BassA7 %BsAm
   %BsDm %BsBE %BsAm
   1: 80@ a*1$fermata |
 
 Drums:
 
-Box Drums "Introduzione" |8:
-  // introduzione: due battute di pausa, poi il groove
+Box Drums "Intro" |8:
+  // intro: two bars of rest, then the groove
   %BossaA %BossaB
 
-Box Drums "Tema" |16:
-  // tema: sul cerchio (hihat) e sul ride per il ponte
+Box Drums "Head" |16:
+  // head: on the rim (hihat) and on the ride for the bridge
   %Drums8 %Drums8
   %Drums8Ride
   %Drums8
 
-Box Drums "Assolo" |144:
-  // assolo
+Box Drums "Solo" |144:
+  // solo
   %Drums8Ride
   %Drums8
 
-Box Drums "Tema" |208:
-  // tema
+Box Drums "Head" |208:
+  // head
   %Drums8
 
 Box Drums "Coda" |240:
-  // coda: il rallentando comincia sulla prima battuta
+  // coda: the rallentando starts on the first bar
   100@ tempo=126 <<
   8: [kick hihat] hihat hihat [rimshot hihat] [kick hihat] hihat [rimshot hihat] hihat |
   8: [kick hihat] hihat hihat [rimshot hihat] [kick hihat] hihat [rimshot hihat] hihat |
@@ -350,31 +350,31 @@ Box Drums "Coda" |240:
 
 Traccia Shaker [Drums]:
 
-Box Shaker "Tema" |16:
-  // tema: A e A'
+Box Shaker "Head" |16:
+  // head: A and A'
   vol=70 16%Shaker
 
-Box Shaker "Ponte" |80:
-  // ponte: il volume cresce per tutte e otto le battute
+Box Shaker "Bridge" |80:
+  // bridge: the volume grows through all eight bars
   vol=60 >>
   8%Shaker
   vol=95
 
-Box Shaker "Ultima A del tema" |112:
-  // ultima A del tema
+Box Shaker "Last A of the head" |112:
+  // last A of the head
   vol=70 8%Shaker
 
-Box Shaker "Assolo di pianoforte" |144:
-  // assolo di pianoforte
+Box Shaker "Piano solo" |144:
+  // piano solo
   vol=90 16%Shaker
 
-Box Shaker "Tema finale e coda" |208:
-  // tema finale e coda
+Box Shaker "Final head and coda" |208:
+  // final head and coda
   vol=70 12%Shaker
 
 // ================================================================ mixer
 
-Mixer Flauto:
+Mixer Flute:
   volume: 92 pan: 0.2 mute: no solo: no reverb: 28
 
 Mixer Nylon:

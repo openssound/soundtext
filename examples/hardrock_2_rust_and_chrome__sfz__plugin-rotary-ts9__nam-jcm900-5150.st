@@ -1,39 +1,38 @@
-// Ruggine e Cromo - hard rock pesante in Re minore
+// Rust and Chrome - heavy hard rock in D minor
 //
-// Un riff lento e pesante, con l'organo Hammond che passa per un Leslie
-// e poi dentro un Marshall, come nell'hard rock anni '70: l'organo apre
-// da solo, poi il riff, la strofa (la melodia e'
-// all'organo), il ritornello (alla chitarra), un assolo d'organo, un assolo
-// di chitarra, l'ultimo ritornello e la chiusura.
+// A slow, heavy riff, with the Hammond organ through a Leslie and then into a
+// Marshall, as in seventies hard rock: the organ opens alone, then the riff,
+// the verse (melody on the organ), the chorus (on the guitar), an organ solo,
+// a guitar solo, the last chorus and the ending.
 //
-// Suoni:
-// - batteria DRSKit, basso Pastabass e chitarre: strumenti SFZ
-//   (scarica_strumenti: drskit-sfz, pastabass, chitarra-dist,
-//   chitarra-elettrica; in ~/Strumenti); l'organo e' quello del SoundFont GM;
-// - organo: Leslie veloce (Calf Rotary Speaker, plugin LV2) e poi il profilo
-//   NAM del Marshall JCM900 con la cassa vera (IR) di un Marshall;
-// - chitarra a sinistra: il campione gia' distorto, solo ripulito sui bassi;
-//   chitarra a destra: pulita in un Tube Screamer e nel profilo NAM del Peavey
-//   5150 high gain; la solista: Tube Screamer e Marshall JCM900, eco e
-//   riverbero (profili con Suoni -> Scarica -> profili NAM consigliati);
-// - il basso nell'Amplificatore interno, per il ringhio; sul master
-//   compressore e limiter.
+// Sounds:
+// - DRSKit drums, Pastabass bass and guitars: SFZ instruments (Sounds ->
+//   Download and install: DRSKit drums, Pastabass, distorted and clean
+//   electric guitar); the organ is the General MIDI SoundFont's;
+// - organ: fast Leslie (Calf Rotary Speaker, LV2 plugin) and then the NAM
+//   profile of a Marshall JCM900 with a real Marshall cabinet (IR);
+// - left guitar: the already distorted sample, only cleaned up in the lows;
+//   right guitar: clean into a Tube Screamer and the NAM profile of a Peavey
+//   5150 high gain; the lead: Tube Screamer and Marshall JCM900, delay and
+//   reverb (Recommended NAM profiles, from Sounds -> Download and install);
+// - the bass through the built-in Amplifier, for the growl; compressor and
+//   limiter on the master.
 
 ST: 2.6
 Tempo: 96 BPM
 Metrica: 4/4
 Tonalita: Dm
 
-Strumento Ritmica:
+Strumento Rhythm:
   program=30 percussione=no ottava=2 range=35-86 poly=si voicing=power
 
-Strumento Solista:
+Strumento Lead:
   program=29 percussione=no ottava=4 range=35-86 poly=no voicing=monophonic
 
 Strumento Hammond:
   program=18 percussione=no ottava=4 range=36-96 poly=si voicing=spread
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %Beat:
   8: 118@ [kick hihat] 75@ hihat 115@ [snare hihat] 75@ hihat 110@ [kick hihat] 105@ [kick hihat] 115@ [snare hihat] 75@ hihat |
@@ -59,7 +58,7 @@ Pattern %Riff8:
 Pattern %Chorus8:
   %BeatRideCrash %BeatRide %BeatRide %BeatRide %BeatRideCrash %BeatRide %BeatRide %FillBig
 
-// ---------------------------------------------------------------- il riff
+// ---------------------------------------------------------------- the riff
 
 Pattern %Riff:
   8: 112@ d*2 d*2 f*2 d*2 g*2 ab*2>2a*2 | d*2 d*2 f*2 d*2 c*3 a*2 2f*2 |
@@ -67,7 +66,7 @@ Pattern %Riff:
 Pattern %BsRiff:
   8: 110@ d*2 d*2 f*2 d*2 g*2 ab*2>2a*2 | d*2 d*2 f*2 d*2 c*3 a*2 2f*2 |
 
-// ---------------------------------------------------------------- ritornello: Bb | C | Dm | Dm | Bb | C | A | A
+// ---------------------------------------------------------------- chorus: Bb | C | Dm | Dm | Bb | C | A | A
 
 Pattern %ChBb:
   8: 115@ 2Bb5*2 Bb5*2! Bb5*2! 2Bb5*2 Bb5*2! Bb5*2! |
@@ -90,7 +89,7 @@ Pattern %BsChorus:
 Pattern %OrChorus:
   8: 95@ 8Bb_ | 8C_ | 8Dm_ | 8Dm_ | 8Bb_ | 8C_ | 8A7_ | 8A7_ |
 
-// ---------------------------------------------------------------- organo: melodia della strofa e assolo
+// ---------------------------------------------------------------- organ: verse melody and solo
 
 Pattern %OrVerse:
   8: 100@
@@ -114,7 +113,7 @@ Pattern %OrSolo:
   16: d*5 f*5 a*5 d*6 f*5 a*5 d*6 f*6 a*5 d*6 f*6 a*6 8: 2d*6 |
   8Dm_ |
 
-// ---------------------------------------------------------------- chitarra solista: ritornello e assolo
+// ---------------------------------------------------------------- lead guitar: chorus and solo
 
 Pattern %GtChorus:
   8: 110@
@@ -138,173 +137,173 @@ Pattern %GtSolo:
   c*6>2d*6 c*6 a*5 g*5 2a*5 |
   4a*5>4bb*5 |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Introduzione" |0:
+Box Drums "Intro" |0:
   8: 8r | 8r | 8r | %FillBig
 
-Box Batteria "Riff" |16:
+Box Drums "Riff" |16:
   %Riff8
 
-Box Batteria "Strofa" |48:
+Box Drums "Verse" |48:
   %Riff8
 
-Box Batteria "Ritornello" |80:
+Box Drums "Chorus" |80:
   %Chorus8
 
-Box Batteria "Assolo d'organo" |112:
+Box Drums "Organ solo" |112:
   %Riff8
 
-Box Batteria "Assolo di chitarra" |144:
+Box Drums "Guitar solo" |144:
   %Riff8
 
-Box Batteria "Ultimo ritornello" |176:
+Box Drums "Last chorus" |176:
   %Chorus8
 
-Box Batteria "Chiusura" |208:
+Box Drums "Outro" |208:
   %BeatCrash %Fill 8: 125@ [kick crash] 3r 125@ [kick crash] 3r | %FillBig
 
-Traccia Basso [Bass]:
+Traccia Bass [Bass]:
 
-Box Basso "Introduzione" |0:
+Box Bass "Intro" |0:
   8: 8r | 8r | 8r | 8r |
 
-Box Basso "Riff e strofa" |16:
+Box Bass "Riff and verse" |16:
   8%BsRiff
 
-Box Basso "Ritornello" |80:
+Box Bass "Chorus" |80:
   %BsChorus
 
-Box Basso "Assoli" |112:
+Box Bass "Solos" |112:
   8%BsRiff
 
-Box Basso "Ultimo ritornello" |176:
+Box Bass "Last chorus" |176:
   %BsChorus
 
-Box Basso "Chiusura" |208:
+Box Bass "Outro" |208:
   %BsRiff 8: 120@ d*2 3r d*2 3r | 8d*2$fermata |
 
-Traccia Chitarra Sinistra [Ritmica]:
+Traccia Guitar Left [Rhythm]:
 
-Box Chitarra Sinistra "Riff e strofa" |16:
+Box Guitar Left "Riff and verse" |16:
   8%Riff
 
-Box Chitarra Sinistra "Ritornello" |80:
+Box Guitar Left "Chorus" |80:
   %Chorus
 
-Box Chitarra Sinistra "Assoli" |112:
+Box Guitar Left "Solos" |112:
   8%Riff
 
-Box Chitarra Sinistra "Ultimo ritornello" |176:
+Box Guitar Left "Last chorus" |176:
   %Chorus
 
-Box Chitarra Sinistra "Chiusura" |208:
+Box Guitar Left "Outro" |208:
   %Riff 8: 122@ D5*2 3r D5*2 3r | 8D5*2$fermata |
 
-Traccia Chitarra Destra [Ritmica]:
+Traccia Guitar Right [Rhythm]:
 
-Box Chitarra Destra "Riff e strofa" |16:
+Box Guitar Right "Riff and verse" |16:
   8%Riff
 
-Box Chitarra Destra "Ritornello" |80:
+Box Guitar Right "Chorus" |80:
   %Chorus
 
-Box Chitarra Destra "Assoli" |112:
+Box Guitar Right "Solos" |112:
   8%Riff
 
-Box Chitarra Destra "Ultimo ritornello" |176:
+Box Guitar Right "Last chorus" |176:
   %Chorus
 
-Box Chitarra Destra "Chiusura" |208:
+Box Guitar Right "Outro" |208:
   %Riff 8: 122@ D5*2 3r D5*2 3r | 8D5*2$fermata |
 
-Traccia Organo [Hammond]:
+Traccia Organ [Hammond]:
 
-Box Organo "Introduzione" |0:
-  // l'organo da solo, crescendo
+Box Organ "Intro" |0:
+  // the organ alone, crescendo
   8: 55@ >> 8Dm_ | 8Bb_ | 8C_ | 8A7_ | 110@
 
-Box Organo "Riff" |16:
+Box Organ "Riff" |16:
   8: 90@ 8(4Dm_ 4Dm!) |
 
-Box Organo "Strofa" |48:
+Box Organ "Verse" |48:
   %OrVerse
 
-Box Organo "Ritornello" |80:
+Box Organ "Chorus" |80:
   %OrChorus
 
-Box Organo "Assolo" |112:
+Box Organ "Solo" |112:
   %OrSolo
 
-Box Organo "Sotto l'assolo di chitarra" |144:
+Box Organ "Under the guitar solo" |144:
   8: 80@ 8(4Dm_ 4Dm!) |
 
-Box Organo "Ultimo ritornello" |176:
+Box Organ "Last chorus" |176:
   %OrChorus
 
-Box Organo "Chiusura" |208:
+Box Organ "Outro" |208:
   8: 95@ 8Dm_ | 8Dm_ | 115@ Dm 3r Dm 3r | 8Dm$fermata |
 
-Traccia Solista [Solista]:
+Traccia Lead [Lead]:
 
-Box Solista "Ritornello" |80:
+Box Lead "Chorus" |80:
   %GtChorus
 
-Box Solista "Assolo" |144:
+Box Lead "Solo" |144:
   %GtSolo
 
-Box Solista "Ultimo ritornello" |176:
+Box Lead "Last chorus" |176:
   %GtChorus
 
-Box Solista "Chiusura" |208:
+Box Lead "Outro" |208:
   8: 8r | 8r | 8r | 118@ 4c*5>4d*5 |
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/drskit-sfz/DrumGizmo/DRSKit/Stereo/DrumGizmo DRSKit.sfz"
 
-Plugin Basso:
+Plugin Bass:
   ref="sfz:~/Strumenti/sfz/pastabass/Pastabass/spaghetti.sfz"
 
-Plugin Chitarra Sinistra:
+Plugin Guitar Left:
   ref="sfz:~/Strumenti/sfz/chitarra-dist/EGuitarFSBS-dist1 SFZ+FLAC-20220911/EGuitarFSBS-dist1 bridge 20220911.sfz"
 
-Plugin Chitarra Destra:
+Plugin Guitar Right:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Solista:
+Plugin Lead:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-18 rapporto=4 attacco=10 rilascio=120 guadagno=8 preset="Batteria"
   riverbero: stanza=60 smorzamento=40 ampiezza=100 mix=14
   volume: guadagno=2
 
-Effetti Basso:
+Effetti Bass:
   amplificatore: modello=crunch cassa=nessuna guadagno=10 bassi=6 medi=6 alti=4 presenza=4 potenza=40 livello=-8
   compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=4 preset="Basso"
 
-Effetti Chitarra Sinistra:
+Effetti Guitar Left:
   passa_alto: frequenza=90 pendenza=12
   eq: bassi=0 medi=2 alti=-1
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Chitarra Destra:
+Effetti Guitar Right:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.15 p.fslider1_=650 p.fslider0_=0
   nam: ingresso=0 cassa=file livello=-8 nam="../profili_nam/Peavey 5150 - high gain.nam" ir="../profili_nam/casse/EVH 5150 III.wav"
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Organo:
+Effetti Organ:
   plugin: mix=100 livello=0 ref="lv2:http://calf.sourceforge.net/plugins/RotarySpeaker" p.vib_speed=2 p.level_out=1
   nam: ingresso=-4 cassa=file livello=-4 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=14
 
-Effetti Solista:
+Effetti Lead:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.45 p.fslider1_=750 p.fslider0_=-2
   nam: ingresso=0 cassa=file livello=-2 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=1/4 tempo=625 ripetizioni=28 mix=15
@@ -318,20 +317,20 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Batteria:
+Mixer Drums:
   volume: 100 pan: 0 mute: no solo: no
 
-Mixer Basso:
+Mixer Bass:
   volume: 105 pan: 0 mute: no solo: no
 
-Mixer Chitarra Sinistra:
+Mixer Guitar Left:
   volume: 90 pan: -0.8 mute: no solo: no
 
-Mixer Chitarra Destra:
+Mixer Guitar Right:
   volume: 90 pan: 0.8 mute: no solo: no
 
-Mixer Organo:
+Mixer Organ:
   volume: 95 pan: 0.2 mute: no solo: no
 
-Mixer Solista:
+Mixer Lead:
   volume: 110 pan: -0.1 mute: no solo: no

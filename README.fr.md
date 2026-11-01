@@ -4,7 +4,7 @@
 
 ![SoundText : l'exemple hard rock «Hammer» dans la vue Structure, pendant la lecture](assets/screenshot.png)
 
-▶ **SoundText en 90 secondes** (vidéo en anglais, sous-titres en français) : https://youtu.be/_oVNvMxyYCU
+▶ **SoundText en 90 secondes** (vidéo en anglais, sous-titres en français) : https://youtu.be/7n9sg_nHONA
 
 **SoundText** est un programme pour écrire de la musique sous forme de
 texte. Notes, accords et rythmes s'écrivent dans un langage simple, le
@@ -127,7 +127,7 @@ commande `soundtext`. Depuis le code :
 
 ```bash
 ./run.sh                                # Linux, macOS, Git Bash sous Windows
-./run.sh examples/funk_in_mi.st         # en ouvrant tout de suite un exemple
+./run.sh examples/funk_in_e.st         # en ouvrant tout de suite un exemple
 ```
 
 Au premier démarrage `run.sh` crée le virtualenv `venv/` avec les

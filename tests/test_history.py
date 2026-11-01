@@ -205,14 +205,14 @@ def test_opening_a_project_does_not_mark_it_modified(monkeypatch):
     alla chiusura) ne' creare passi da annullare."""
     from PySide6.QtWidgets import QMessageBox
     from gui.main_window import MainWindow
-    # funk_in_mi.st definisce i suoi strumenti (Clavinet, Fiati): il primo
+    # funk_in_e.st definisce i suoi strumenti (Clavinet, Horns): il primo
     # caricamento lo dice con una finestra modale, che nel test resterebbe
     # aperta per sempre
     shown = []
     monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a) or QMessageBox.Ok)
     w = MainWindow()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    w._load_and_apply_project(os.path.join(root, "examples", "funk_in_mi.st"))
+    w._load_and_apply_project(os.path.join(root, "examples", "funk_in_e.st"))
     _app.processEvents()
     assert w.tempo_spin.value() == w.project.tempo_bpm == 104
     assert not w._dirty

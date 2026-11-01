@@ -4,7 +4,7 @@ SoundText — punto di ingresso dell'applicazione desktop.
 
 Avvio:
     python3 main.py
-    python3 main.py examples/funk_in_mi.st
+    python3 main.py examples/funk_in_e.st
 """
 
 import logging

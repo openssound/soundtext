@@ -1,37 +1,36 @@
-// Polvere del Texas - Texas shuffle in Mi
+// Texas Dust - Texas shuffle in E
 //
-// Il blues texano: shuffle veloce, la ritmica che
-// martella le corde basse, l'Hammond con il Leslie e una chitarra solista
-// spinta da un Tube Screamer dentro un Marshall. Introduzione, cinque giri
-// da 12 battute (tema, primo assolo, assolo d'organo, secondo assolo al
-// culmine, tema) e il finale.
+// Texas blues: a fast shuffle, the rhythm guitar hammering the low strings,
+// the Hammond through a Leslie and a lead guitar pushed by a Tube Screamer
+// into a Marshall. An intro, five 12-bar choruses (head, first solo, organ
+// solo, second solo at the climax, head) and the ending.
 //
-// Suoni:
-// - batteria, basso e chitarre SFZ (scarica_strumenti: batteria,
-//   basso-plettro, chitarra-elettrica; in ~/Strumenti), l'Hammond del
-//   SoundFont GM;
-// - chitarra solista: GxTubeScreamer (plugin LV2) e il profilo NAM del
-//   Marshall JCM2000 crunch con la cassa IR di un Marshall; ritmica: il Fender
-//   Twin pulito, che lascia chiari i bicordi dello shuffle (profili con
-//   Suoni -> Scarica e installa..., voce Profili NAM consigliati);
-// - organo: il Leslie del Calf Rotary Speaker, a velocita' alta;
-// - master: EQ, compressore e limiter.
+// Sounds:
+// - drums, bass and guitars: SFZ instruments (Sounds -> Download and install:
+//   MuldjordKit drums, electric bass with pick, clean electric guitar); the
+//   Hammond is the General MIDI SoundFont's;
+// - lead guitar: GxTubeScreamer (LV2 plugin) and the NAM profile of a
+//   Marshall JCM2000 crunch with a Marshall cabinet IR; rhythm guitar: a clean
+//   Fender Twin, which keeps the shuffle's double stops clear (profiles from
+//   Sounds -> Download and install..., item Recommended NAM profiles);
+// - organ: the Leslie of the Calf Rotary Speaker, at high speed;
+// - master: EQ, compressor and limiter.
 
 ST: 2.6
 Tempo: 132 BPM
 Metrica: 4/4
 Tonalita: E
 
-Strumento Solista:
+Strumento Lead:
   program=29 percussione=no ottava=4 range=40-90 poly=no voicing=monophonic
 
-Strumento Ritmica:
+Strumento Rhythm:
   program=27 percussione=no ottava=3 range=40-84 poly=si voicing=spread
 
 Strumento Hammond:
   program=16 percussione=no ottava=4 range=36-96 poly=si voicing=spread
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %Shuffle:
   8: 102@ [kick hihat] 55@ hihat 108@ [snare hihat] 55@ hihat 98@ [kick hihat] 55@ hihat 108@ [snare hihat] 65@ [kick hihat] |
@@ -54,7 +53,7 @@ Pattern %DrChorus:
 Pattern %DrChorusRide:
   %ShuffleCrash %ShuffleRide %ShuffleRide %ShuffleRide %ShuffleRide %ShuffleRide %ShuffleRide %Fill %ShuffleRide %ShuffleRide %ShuffleRide %FillBig
 
-// ---------------------------------------------------------------- basso (boogie)
+// ---------------------------------------------------------------- bass (boogie)
 
 Pattern %BsE:
   8: 100@ e*1 e*1 g#*1 g#*1 b*1 b*1 c#*2 b*1 |
@@ -74,7 +73,7 @@ Pattern %BsEB:
 Pattern %BsChorus:
   %BsE %BsA %BsE %BsE %BsA %BsA %BsE %BsE %BsB %BsA %BsEA %BsEB
 
-// ---------------------------------------------------------------- chitarra ritmica (shuffle sulle corde basse)
+// ---------------------------------------------------------------- rhythm guitar (shuffle on the low strings)
 
 Pattern %GE:
   8: 92@ [e*2 b*2] [e*2 b*2] [e*2 c#*3] [e*2 c#*3] [e*2 d*3] [e*2 d*3] [e*2 c#*3] [e*2 c#*3] |
@@ -94,7 +93,7 @@ Pattern %GEB:
 Pattern %GChorus:
   %GE %GA %GE %GE %GA %GA %GE %GE %GB %GA %GEA %GEB
 
-// ---------------------------------------------------------------- Hammond: accompagnamento
+// ---------------------------------------------------------------- Hammond: comping
 
 Pattern %OrE:
   8: 62@ 3E9_ E9! 2r E9! E9! |
@@ -129,7 +128,7 @@ Pattern %OrSolo:
   e*5 g*5 a*5 b*5 d*6 e*6 2g*6 |
   4e*6_ 2d*6 2b*5 |
 
-// ---------------------------------------------------------------- chitarra solista
+// ---------------------------------------------------------------- lead guitar
 
 Pattern %Head:
   8: 105@
@@ -176,133 +175,133 @@ Pattern %Solo2:
   b*5 g*5 e*5 d*5 b*4 g*4 2e*4 |
   g*4>2g#*4 b*4 d*5 e*5 2r |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Introduzione" |0:
+Box Drums "Intro" |0:
   swing=66 %ShuffleCrash %Shuffle %Shuffle %Fill
 
-Box Batteria "Tema" |16:
+Box Drums "Head" |16:
   swing=66 %DrChorus
 
-Box Batteria "Primo assolo" |64:
+Box Drums "First solo" |64:
   swing=66 %DrChorus
 
-Box Batteria "Assolo d'organo" |112:
+Box Drums "Organ solo" |112:
   swing=66 %DrChorusRide
 
-Box Batteria "Secondo assolo" |160:
+Box Drums "Second solo" |160:
   swing=66 %DrChorus
 
-Box Batteria "Tema finale" |208:
+Box Drums "Head (ending)" |208:
   swing=66 %DrChorus
 
-Box Batteria "Finale" |256:
+Box Drums "Ending" |256:
   swing=66 8: 118@ [kick crash] 3r 115@ [kick crash] 3r |
   105@ snare 106@ snare 108@ tom1 110@ tom1 112@ tom2 114@ floor 120@ [kick crash] r |
 
-Traccia Basso [Bass]:
+Traccia Bass [Bass]:
 
-Box Basso "Introduzione" |0:
+Box Bass "Intro" |0:
   swing=66 %BsE %BsE %BsE %BsB
 
-Box Basso "Giri" |16:
+Box Bass "Choruses" |16:
   swing=66 5%BsChorus
 
-Box Basso "Finale" |256:
+Box Bass "Ending" |256:
   swing=66 8: 110@ e*1 3r e*1 3r | 6r 2e*1 |
 
-Traccia Ritmica [Ritmica]:
+Traccia Rhythm [Rhythm]:
 
-Box Ritmica "Introduzione" |0:
+Box Rhythm "Intro" |0:
   swing=66 %GE %GE %GE %GB
 
-Box Ritmica "Giri" |16:
+Box Rhythm "Choruses" |16:
   swing=66 vol=100 %GChorus %GChorus vol=85 %GChorus vol=100 %GChorus %GChorus
 
-Box Ritmica "Finale" |256:
+Box Rhythm "Ending" |256:
   swing=66 8: 100@ [e*2 b*2 e*3 g#*3] 3r [e*2 b*2 e*3 g#*3] 3r | 6r 2[e*2 b*2 e*3 g#*3] |
 
-Traccia Organo [Hammond]:
+Traccia Organ [Hammond]:
 
-Box Organo "Introduzione" |0:
+Box Organ "Intro" |0:
   swing=66 %OrE %OrE %OrE %OrB
 
-Box Organo "Tema" |16:
+Box Organ "Head" |16:
   swing=66 %OrChorus
 
-Box Organo "Primo assolo" |64:
+Box Organ "First solo" |64:
   swing=66 vol=85 %OrChorus
 
-Box Organo "Assolo d'organo" |112:
+Box Organ "Organ solo" |112:
   swing=66 vol=127 %OrSolo
 
-Box Organo "Secondo assolo" |160:
+Box Organ "Second solo" |160:
   swing=66 vol=85 %OrChorus
 
-Box Organo "Tema finale" |208:
+Box Organ "Head (ending)" |208:
   swing=66 vol=100 %OrChorus
 
-Box Organo "Finale" |256:
+Box Organ "Ending" |256:
   swing=66 8: 100@ E9! 3r E9! 3r | 6r 2E9$fermata |
 
-Traccia Chitarra [Solista]:
+Traccia Guitar [Lead]:
 
-Box Chitarra "Introduzione" |0:
+Box Guitar "Intro" |0:
   swing=66 8: 4r 4r | 8r | 8r | 105@ 2r g*4>2g#*4 b*4 d*5 e*5 |
 
-Box Chitarra "Tema" |16:
+Box Guitar "Head" |16:
   swing=66 %Head
 
-Box Chitarra "Primo assolo" |64:
-  // gli assoli un'ottava sotto: la chitarra campionata arriva al Re6
+Box Guitar "First solo" |64:
+  // the solos an octave lower: the sampled guitar reaches D6
   swing=66 %Solo1-12
 
-Box Chitarra "Secondo assolo" |160:
+Box Guitar "Second solo" |160:
   swing=66 %Solo2-12
 
-Box Chitarra "Tema finale" |208:
+Box Guitar "Head (ending)" |208:
   swing=66 %Head
 
-Box Chitarra "Finale" |256:
+Box Guitar "Ending" |256:
   swing=66 8: 118@ e*5 3r e*5 3r | 116@ 6r 2e*4>g#*4 |
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/batteria/MuldjordKit SFZ+FLAC-20201018/MuldjordKit 20201018-GM.sfz"
 
-Plugin Basso:
+Plugin Bass:
   ref="sfz:~/Strumenti/sfz/basso-plettro/PickedBassYR SFZ+FLAC-20190930/PickedBassYR 20190930.sfz"
 
-Plugin Ritmica:
+Plugin Rhythm:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Chitarra:
+Plugin Guitar:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-16 rapporto=3 attacco=15 rilascio=150 guadagno=7 preset="Batteria"
   riverbero: stanza=30 smorzamento=50 ampiezza=80 mix=10
   passa_alto: frequenza=40 pendenza=12
   volume: guadagno=0
 
-Effetti Basso:
+Effetti Bass:
   compressore: soglia=-20 rapporto=4 attacco=15 rilascio=120 guadagno=3 preset="Basso"
   eq: bassi=2 medi=1 alti=0
 
-Effetti Ritmica:
+Effetti Rhythm:
   nam: ingresso=0 cassa=combo_1x12 livello=10.5 nam="../profili_nam/Fender Twin Reverb - pulito.nam"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=10
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Organo:
+Effetti Organ:
   plugin: mix=100 livello=8 ref="lv2:http://calf.sourceforge.net/plugins/RotarySpeaker" p.vib_speed=2 p.level_out=1
   riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=14
   volume: guadagno=-11
 
-Effetti Chitarra:
+Effetti Guitar:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.5 p.fslider1_=700 p.fslider0_=-4
   nam: ingresso=2 cassa=file livello=-4 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   eq: bassi=0 medi=1 alti=-3
@@ -318,17 +317,17 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Batteria:
+Mixer Drums:
   volume: 95 pan: 0 mute: no solo: no
 
-Mixer Basso:
+Mixer Bass:
   volume: 100 pan: 0 mute: no solo: no
 
-Mixer Ritmica:
+Mixer Rhythm:
   volume: 120 pan: -0.55 mute: no solo: no
 
-Mixer Organo:
+Mixer Organ:
   volume: 115 pan: 0.5 mute: no solo: no
 
-Mixer Chitarra:
+Mixer Guitar:
   volume: 90 pan: 0.1 mute: no solo: no

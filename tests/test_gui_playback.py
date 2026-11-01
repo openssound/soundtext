@@ -304,7 +304,7 @@ if __name__ == "__main__":
 
 
 def test_playback_time_follows_fermatas_and_waits_for_the_tail(monkeypatch):
-    """Una corona alla fine (sinfonica_1: 4d*2$fermata) allunga il brano:
+    """Una corona alla fine (symphonic_1: 4d*2$fermata) allunga il brano:
     tempo e testina la contano come l'esportazione MIDI; e a fine brano si
     resta in riproduzione finche' l'audio (coda del riverbero) non e'
     finito, senza click del metronomo sulla coda."""

@@ -1,68 +1,68 @@
-// Sinfonia dell'alba: un movimento sinfonico originale per orchestra.
+// Dawn Symphony: an original symphonic movement for orchestra.
 //
-// Archi, flauto, oboe, corni, trombe, timpani e arpa, in 40 battute (4/4).
-// La forma ricorda quella di un primo movimento sinfonico in miniatura:
-//   introduzione lenta  4 battute   Adagio, Re minore (tempo 56)
-//   tema A              8           Allegro, Re minore: gli archi
-//   tema B              8           Fa maggiore: oboe e flauto, con l'arpa
-//   sviluppo            8           il motivo del tema A in sequenza, con
-//                                   i corni, le trombe e un crescendo
-//   ripresa             8           il tema A, ora con tutta l'orchestra
-//   coda                4           il rallentando e la cadenza in Re
-//                                   maggiore, con la corona
-// Cosa c'e' dentro:
-//   - strumenti definiti nel file (blocchi "Strumento"): ognuno ha il suo
-//     programma, il registro e se suona note o accordi;
-//   - i temi sono pattern, riusati da piu' strumenti: lo stesso %TemaA lo
-//     suonano violini (introduzione e ripresa), flauto, oboe e trombe, e
-//     ognuno lo porta nella propria ottava (ottave relative, rel:);
-//   - i cambi di tempo con tempo=: Adagio, Allegro, il tema B piu' disteso,
-//     lo sviluppo che spinge e il rallentando finale (tempo=126 << ... 70);
-//   - le dinamiche con la velocity (50@ = piano, 110@ = fortissimo) e le
-//     forcelle < sugli accordi e sulle note lunghe;
-//   - la corona ($fermata) sull'ultimo accordo.
+// Strings, flute, oboe, horns, trumpets, timpani and harp, in 40 bars (4/4).
+// The form recalls a symphonic first movement in miniature:
+//   slow intro      4 bars   Adagio, D minor (tempo 56)
+//   theme A         8        Allegro, D minor: the strings
+//   theme B         8        F major: oboe and flute, with the harp
+//   development     8        the motif of theme A in sequence, with
+//                            horns, trumpets and a crescendo
+//   recapitulation  8        theme A, now with the whole orchestra
+//   coda            4        the rallentando and the cadence in D major,
+//                            with the fermata
+// What's inside:
+//   - instruments defined in the file ("Strumento" blocks): each has its
+//     program, its range and whether it plays notes or chords;
+//   - the themes are patterns, reused by several instruments: the same
+//     %ThemeA is played by violins (intro and recapitulation), flute, oboe and
+//     trumpets, each in its own octave (relative octaves, rel:);
+//   - tempo changes with tempo=: Adagio, Allegro, a broader theme B, the
+//     development pushing ahead and the final rallentando (tempo=126 << ... 70);
+//   - dynamics with velocity (50@ = piano, 110@ = fortissimo) and hairpins <
+//     on chords and long notes;
+//   - the fermata ($fermata) on the last chord.
 
 ST: 2.6
 Tempo: 56 BPM
 Metrica: 4/4
 Tonalita: Dm
 
-Strumento Violini1:
+Strumento Violins1:
   program=40 percussione=no ottava=5 range=55-100 poly=no voicing=monophonic
 
-Strumento Violini2:
+Strumento Violins2:
   program=40 percussione=no ottava=4 range=55-100 poly=si voicing=spread
 
-Strumento Viole:
+Strumento Violas:
   program=41 percussione=no ottava=3 range=48-91 poly=si voicing=spread
 
-Strumento Violoncelli:
+Strumento Cellos:
   program=42 percussione=no ottava=3 range=36-76 poly=no voicing=monophonic
 
-Strumento Contrabbassi:
+Strumento DoubleBasses:
   program=43 percussione=no ottava=2 range=28-55 poly=no voicing=monophonic
 
-Strumento Flauto:
+Strumento Flute:
   program=73 percussione=no ottava=5 range=60-96 poly=no voicing=monophonic
 
 Strumento Oboe:
   program=68 percussione=no ottava=5 range=58-91 poly=no voicing=monophonic
 
-Strumento Corni:
+Strumento Horns:
   program=60 percussione=no ottava=3 range=41-77 poly=si voicing=spread
 
-Strumento Trombe:
+Strumento Trumpets:
   program=56 percussione=no ottava=4 range=55-82 poly=no voicing=monophonic
 
 Strumento Timpani:
   program=47 percussione=no ottava=3 range=36-60 poly=no voicing=monophonic
 
-Strumento Arpa:
+Strumento Harp:
   program=46 percussione=no ottava=4 range=24-103 poly=si voicing=spread
 
-// ---------------------------------------------------------------- temi
+// ---------------------------------------------------------------- themes
 
-Pattern %TemaA:
+Pattern %ThemeA:
   rel: key=Dm 8:
   d f a 3d 2c |
   b a g f 2e 2d |
@@ -73,7 +73,7 @@ Pattern %TemaA:
   g a b d 2c b a |
   a 7d |
 
-Pattern %TemaB:
+Pattern %ThemeB:
   rel: key=Dm 8:
   4a*4 2g 2f |
   2e 2g 2c 2a |
@@ -84,7 +84,7 @@ Pattern %TemaB:
   2g 2b 2g 2e |
   8f |
 
-Pattern %Sviluppo1:
+Pattern %Dev1:
   key=Dm 8:
   g*5 b*5 d*6 3g*6 2f*6 |
   c*5 e*5 g*5 3c*6 2b*5 |
@@ -106,7 +106,7 @@ Pattern %IntroVl1:
   key=Dm 4:
   4a*5 | 4b*5 | 4d*6 | 4e*6 |
 
-// ---------------------------------------------------------------- armonia
+// ---------------------------------------------------------------- harmony
 
 Pattern %AccIntro:
   Dm'1 | Bb'1 | Gm'1 | A7'1 |
@@ -117,15 +117,15 @@ Pattern %AccA:
 Pattern %AccB:
   F'1 | C'2 F'2 | Bb'1 | Gm'2 C7'2 | F'1 | Dm'2 Bb'2 | Gm'2 C7'2 | F'1 |
 
-Pattern %AccSviluppo:
+Pattern %AccDev:
   Gm'1< | C7'1< | F'1< | Bb'1< | Gm'1< | A7'1< | Dm'1< | A7'1 |
 
 Pattern %AccCoda:
   Gm'1 | A7'1 | D'1 | D'1$fermata |
 
-// ---------------------------------------------------------------- bassi e violoncelli
+// ---------------------------------------------------------------- basses and cellos
 
-Pattern %BassoA:
+Pattern %BassA:
   key=Dm 4:
   2d*2 2a*1 | 2g*1 2a*1 | 2c*2 2f*1 | 2g*1 2a*1 | 2d*2 2a*1 | 2b*1 2g*1 | 2g*1 2a*1 | 4d*2 |
 
@@ -133,7 +133,7 @@ Pattern %CelloA:
   key=Dm 4:
   2d*3 2a*2 | 2g*2 2a*2 | 2c*3 2f*2 | 2g*2 2a*2 | 2d*3 2a*2 | 2b*2 2g*2 | 2g*2 2a*2 | 4d*3 |
 
-Pattern %BassoB:
+Pattern %BassB:
   key=Dm 4:
   4f*1 | 2c*2 2f*1 | 4b*1 | 2g*1 2c*2 | 4f*1 | 2d*2 2b*1 | 2g*1 2c*2 | 4f*1 |
 
@@ -141,15 +141,15 @@ Pattern %CelloB:
   key=Dm 4:
   4f*2 | 2c*3 2f*2 | 4b*2 | 2g*2 2c*3 | 4f*2 | 2d*3 2b*2 | 2g*2 2c*3 | 4f*2 |
 
-Pattern %BassoSviluppo:
+Pattern %BassDev:
   key=Dm 4:
   4g*1< | 4c*2< | 4f*1< | 4b*1< | 4g*1< | 4a*1< | 4d*2< | 4a*1 |
 
-Pattern %CelloSviluppo:
+Pattern %CelloDev:
   key=Dm 4:
   4g*2< | 4c*3< | 4f*2< | 4b*2< | 4g*2< | 4a*2< | 4d*3< | 4a*2 |
 
-Pattern %BassoCoda:
+Pattern %BassCoda:
   key=Dm 4:
   4g*1 | 4a*1 | 4d*2 | 4d*2$fermata |
 
@@ -157,18 +157,18 @@ Pattern %CelloCoda:
   key=Dm 4:
   4g*2 | 4a*2 | 4d*3 | 4d*3$fermata |
 
-// ---------------------------------------------------------------- trombe
+// ---------------------------------------------------------------- trumpets
 
-Pattern %FanfaraTrombe:
+Pattern %FanfareTrumpets:
   key=Dm 8:
   2g*4 2b*4 4d*5 |
   2a*4 2c#*5 4e*5 |
   2d*5 2f*5 4a*5 |
   2a*4 2e*5 4a*5 |
 
-// ---------------------------------------------------------------- arpa
+// ---------------------------------------------------------------- harp
 
-Pattern %ArpaB:
+Pattern %HarpB:
   key=Dm 8:
   f*3 a*3 c*4 f*4 a*4 f*4 c*4 a*3 |
   c*3 e*3 g*3 c*4 f*3 a*3 c*4 f*4 |
@@ -179,7 +179,7 @@ Pattern %ArpaB:
   g*2 b*2 d*3 g*3 c*3 e*3 g*3 b*3 |
   2f*3 2a*3 4c*4 |
 
-Pattern %ArpaCoda:
+Pattern %HarpCoda:
   key=Dm 8:
   g*2 b*2 d*3 g*3 b*3 g*3 d*3 b*2 |
   a*2 c#*3 e*3 g*3 a*3 g*3 e*3 c#*3 |
@@ -200,178 +200,178 @@ Pattern %TimpB:
   key=Dm 4:
   4f*2 | 2c*3 2f*2 | 4b*2 | 2g*2 2c*3 | 4f*2 | 2d*3 2b*2 | 2g*2 2c*3 | 4f*2 |
 
-Pattern %TimpSviluppo:
+Pattern %TimpDev:
   key=Dm 4:
   g*2 g*2 g*2 g*2 | c*3 c*3 c*3 c*3 | f*2 f*2 f*2 f*2 | b*2 b*2 b*2 b*2 |
   g*2 g*2 g*2 g*2 | a*2 a*2 a*2 a*2 | d*3 d*3 d*3 d*3 | a*2 a*2 a*2 a*2 |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Violini1:
+Violins1:
 
-Box Violini1 "Introduzione" |0:
+Box Violins1 "Intro" |0:
   50@ %IntroVl1
 
-Box Violini1 "Tema A" |16:
+Box Violins1 "Theme A" |16:
   $"con slancio"
-  85@ %TemaA
+  85@ %ThemeA
 
-Box Violini1 "Sviluppo" |80:
-  80@ %Sviluppo1
+Box Violins1 "Development" |80:
+  80@ %Dev1
 
-Box Violini1 "Ripresa" |112:
-  105@ %TemaA
+Box Violins1 "Recapitulation" |112:
+  105@ %ThemeA
 
-Box Violini1 "Coda" |144:
+Box Violins1 "Coda" |144:
   100@ %CodaVl1
 
-Violini2:
+Violins2:
 
-Box Violini2 "Tema B" |48:
+Box Violins2 "Theme B" |48:
   $"dolce"
   55@ %AccB
 
-Box Violini2 "Sviluppo" |80:
-  70@ %AccSviluppo
+Box Violins2 "Development" |80:
+  70@ %AccDev
 
-Box Violini2 "Ripresa" |112:
+Box Violins2 "Recapitulation" |112:
   85@ %AccA
   90@ %AccCoda
 
-Viole:
+Violas:
 
-Box Viole "Introduzione" |0:
+Box Violas "Intro" |0:
   45@ %AccIntro
   65@ %AccA
   55@ %AccB
-  65@ %AccSviluppo
+  65@ %AccDev
   80@ %AccA
 
-Box Viole "Coda" |144:
+Box Violas "Coda" |144:
   85@ %AccCoda
 
-Violoncelli:
+Cellos:
 
-Box Violoncelli "Introduzione" |0:
+Box Cellos "Intro" |0:
   4: 45@ 4d*3 | 4b*2 | 4g*2 | 4a*2 |
   80@ %CelloA
   60@ %CelloB
-  75@ %CelloSviluppo
+  75@ %CelloDev
   95@ %CelloA
   90@ %CelloCoda
 
-Contrabbassi:
+DoubleBasses:
 
-Box Contrabbassi "Introduzione" |0:
+Box DoubleBasses "Intro" |0:
   4: 40@ 4d*2 | 4b*1 | 4g*1 | 4a*1 |
-  80@ %BassoA
-  60@ %BassoB
-  75@ %BassoSviluppo
-  95@ %BassoA
-  90@ %BassoCoda
+  80@ %BassA
+  60@ %BassB
+  75@ %BassDev
+  95@ %BassA
+  90@ %BassCoda
 
-Flauto:
+Flute:
 
-Box Flauto "Tema B" |48:
+Box Flute "Theme B" |48:
   $"cantabile"
-  65@ %TemaB
+  65@ %ThemeB
 
-Box Flauto "Ripresa" |112:
-  95@ %TemaA
+Box Flute "Recapitulation" |112:
+  95@ %ThemeA
 
 Oboe:
 
-Box Oboe "Tema B" |48:
+Box Oboe "Theme B" |48:
   $"espressivo"
-  80@ %TemaB
+  80@ %ThemeB
 
-Box Oboe "Ripresa" |112:
-  95@ %TemaA
+Box Oboe "Recapitulation" |112:
+  95@ %ThemeA
 
-Corni:
+Horns:
 
-Box Corni "Introduzione" |0:
+Box Horns "Intro" |0:
   40@ %AccIntro
 
-Box Corni "Sviluppo" |80:
-  55@ %AccSviluppo
+Box Horns "Development" |80:
+  55@ %AccDev
   95@ %AccA
   95@ %AccCoda
 
-Trombe:
+Trumpets:
 
-Box Trombe "Sviluppo" |96:
-  // le trombe entrano nelle ultime quattro battute dello sviluppo
-  90@ %FanfaraTrombe
+Box Trumpets "Development" |96:
+  // the trumpets come in for the last four bars of the development
+  90@ %FanfareTrumpets
 
-Box Trombe "Ripresa" |112:
-  // ripresa: il tema A all'ottava sotto i violini
-  105@ %TemaA
+Box Trumpets "Recapitulation" |112:
+  // recapitulation: theme A an octave below the violins
+  105@ %ThemeA
 
 Timpani:
 
-Box Timpani "Introduzione" |0:
-  // Adagio: il rullo sommesso
+Box Timpani "Intro" |0:
+  // Adagio: the hushed roll
   35@ %TimpIntro
   // Allegro
   tempo=120
   85@ %TimpA
-  // tema B, piu' disteso
+  // theme B, broader
   tempo=104
   50@ %TimpB
-  // sviluppo: il tempo spinge e il crescendo cresce
+  // development: the tempo pushes and the crescendo grows
   tempo=116
-  60@ %TimpSviluppo
-  // ripresa
+  60@ %TimpDev
+  // recapitulation
   tempo=126
   95@ %TimpA
 
 Box Timpani "Coda" |144:
-  // coda: il rallentando
+  // coda: the rallentando
   100@ tempo=126 <<
   4: 4g*2 | 4a*2 | 4d*3 |
   4: 4d*3$fermata |
   tempo=70
 
-Arpa:
+Harp:
 
-Box Arpa "Tema B" |48:
-  60@ %ArpaB
+Box Harp "Theme B" |48:
+  60@ %HarpB
 
-Box Arpa "Coda" |144:
-  75@ %ArpaCoda
+Box Harp "Coda" |144:
+  75@ %HarpCoda
 
 // ================================================================ mixer
 
-Mixer Violini1:
+Mixer Violins1:
   volume: 92 pan: -0.5 mute: no solo: no reverb: 35
 
-Mixer Violini2:
+Mixer Violins2:
   volume: 82 pan: -0.25 mute: no solo: no reverb: 35
 
-Mixer Viole:
+Mixer Violas:
   volume: 80 pan: 0.15 mute: no solo: no reverb: 35
 
-Mixer Violoncelli:
+Mixer Cellos:
   volume: 84 pan: 0.4 mute: no solo: no reverb: 30
 
-Mixer Contrabbassi:
+Mixer DoubleBasses:
   volume: 80 pan: 0.65 mute: no solo: no reverb: 25
 
-Mixer Flauto:
+Mixer Flute:
   volume: 80 pan: -0.15 mute: no solo: no reverb: 40
 
 Mixer Oboe:
   volume: 82 pan: 0.1 mute: no solo: no reverb: 40
 
-Mixer Corni:
+Mixer Horns:
   volume: 78 pan: 0.3 mute: no solo: no reverb: 40
 
-Mixer Trombe:
+Mixer Trumpets:
   volume: 80 pan: -0.3 mute: no solo: no reverb: 40
 
 Mixer Timpani:
   volume: 86 pan: 0 mute: no solo: no reverb: 45
 
-Mixer Arpa:
+Mixer Harp:
   volume: 76 pan: -0.6 mute: no solo: no reverb: 40

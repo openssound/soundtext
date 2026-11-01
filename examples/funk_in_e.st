@@ -1,23 +1,22 @@
-// Funk in Mi: un groove funk in Mi minore, 50 battute di sedicesimi.
+// Funk in E: a funk groove in E minor, 50 bars of sixteenths.
 //
-// Clavinet, chitarra "chicken scratch", basso, sezione di fiati, tromba
-// solista e batteria. Un unico giro di quattro battute che torna sempre,
-// con un ritornello di accordi di nona. Cosa c'e' dentro:
-//   - lo swing delle semicrome (swing16=58): il groove "sporco" del funk,
-//     scritto sempre con la griglia 16: (sedici colpi a battuta);
-//   - note fantasma (rullante a velocity bassa) e pause che fanno il ritmo;
-//   - accordi spezzettati a staccato (`Em7!`) per il "gratto" della chitarra,
-//     con il wah-wah automatico (cc74=): il filtro si apre e si chiude;
-//   - le entrate dei fiati con l'accento ($accent) e le pause di durata
-//     multipla (`2r`, `9r`);
-//   - il basso che anticipa il tempo (shift=-8, in millisecondi);
-//   - uno stop di due battute con tutti gli strumenti, poi l'assolo di tromba;
-//   - strumenti definiti nel file (clavinet, fiati).
+// Clavinet, "chicken scratch" guitar, bass, horn section, solo trumpet and
+// drums. A single four-bar vamp that keeps coming back, with a chorus of
+// ninth chords. What's inside:
+//   - sixteenth-note swing (swing16=58): the "dirty" funk groove, always
+//     written on the 16: grid (sixteen hits per bar);
+//   - ghost notes (snare at low velocity) and rests that make the rhythm;
+//   - short staccato chords (`Em7!`) for the guitar "scratch", with an
+//     automatic wah-wah (cc74=): the filter opens and closes;
+//   - horn hits with an accent ($accent) and multi-beat rests (`2r`, `9r`);
+//   - the bass playing slightly ahead of the beat (shift=-8, in milliseconds);
+//   - a two-bar stop for the whole band, then the trumpet solo;
+//   - instruments defined in the file (clavinet, horns).
 //
-// Forma: introduzione 4, strofa 8, ritornello 8, strofa 8, stop 2,
-// assolo 8, ritornello 8, coda 4.
-//   Giro    Em7 | Em7 | A9 | Em7
-//   Ritorn. C9 | B7#9 | Em7 | Em7
+// Form: intro 4, verse 8, chorus 8, verse 8, stop 2,
+// solo 8, chorus 8, coda 4.
+//   Vamp    Em7 | Em7 | A9 | Em7
+//   Chorus  C9 | B7#9 | Em7 | Em7
 
 ST: 2.6
 Tempo: 104 BPM
@@ -27,13 +26,13 @@ Tonalita: Em
 Strumento Clavinet:
   program=7 percussione=no ottava=4 range=48-88 poly=si voicing=spread
 
-Strumento Fiati:
+Strumento Horns:
   program=61 percussione=no ottava=4 range=55-88 poly=si voicing=spread
 
 Pattern %Rest:
   4: 4r |
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %DrFunk1:
   16: 100@ [kick hihat] 45@ hihat 65@ hihat 45@ hihat 105@ [snare hihat] 45@ hihat 65@ hihat 95@ [kick hihat] 45@ hihat 38@ [snare hihat] 95@ [kick hihat] 45@ hihat 105@ [snare hihat] 45@ hihat 65@ hihat 38@ [snare hihat] |
@@ -56,7 +55,7 @@ Pattern %DrFunk4F:
 Pattern %DrChorus4:
   3%DrRide %DrFill
 
-// ---------------------------------------------------------------- basso
+// ---------------------------------------------------------------- bass
 
 Pattern %BsE1:
   key=Em 16: 96@ e*2 r r e*2 r r e*3 r e*2 r g*2 r a*2 r b*2 e*3 |
@@ -79,7 +78,7 @@ Pattern %BsVerse4:
 Pattern %BsChorus4:
   %BsC9 %BsB7 %BsE1 %BsE2
 
-// ---------------------------------------------------------------- chitarra (gratto)
+// ---------------------------------------------------------------- guitar (scratch)
 
 Pattern %GtEm:
   16: 78@ Em7! r Em7! Em7! r Em7! r Em7! Em7! r Em7! Em7! r Em7! r Em7! |
@@ -99,7 +98,7 @@ Pattern %GtVerse4:
 Pattern %GtChorus4:
   %GtC9 %GtB7 %GtEm %GtEm
 
-// ---------------------------------------------------------------- clavinet (il riff)
+// ---------------------------------------------------------------- clavinet (the riff)
 
 Pattern %ClE1:
   key=Em 16: 92@ e*4 r g*4 a*4 r b*4 a*4 r g*4 r e*4 r d*4 r e*4 r |
@@ -122,7 +121,7 @@ Pattern %ClVerse4:
 Pattern %ClChorus4:
   %ClC9 %ClB7 %ClE1 %ClE2
 
-// ---------------------------------------------------------------- fiati (stacchi) e tromba (assolo)
+// ---------------------------------------------------------------- horns (hits) and trumpet (solo)
 
 Pattern %HnChorus:
   16: 105@
@@ -142,28 +141,28 @@ Pattern %Solo:
   r e*5 g*5 b*5 e*6 r d*6 b*5 4g*5 r e*5 g*5 r |
   6e*6$fermata 10r |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
 Clavinet:
 
-Box Clavinet "Strofa 1" |16:
-  // strofa 1
+Box Clavinet "Verse 1" |16:
+  // verse 1
   swing16=58 2%ClVerse4
 
-Box Clavinet "Ritornello 1" |48:
-  // ritornello 1: il clavinet scende di volume sotto i fiati
+Box Clavinet "Chorus 1" |48:
+  // chorus 1: the clavinet drops in volume under the horns
   swing16=58 vol=70 2%ClChorus4
 
-Box Clavinet "Strofa 2" |80:
-  // strofa 2
+Box Clavinet "Verse 2" |80:
+  // verse 2
   swing16=58 vol=100 2%ClVerse4
 
-Box Clavinet "Assolo" |120:
-  // assolo: il clavinet accompagna piano
+Box Clavinet "Solo" |120:
+  // solo: the clavinet comps softly
   swing16=58 vol=60 %ClVerse4 %ClChorus4
 
-Box Clavinet "Ritornello 2" |152:
-  // ritornello 2
+Box Clavinet "Chorus 2" |152:
+  // chorus 2
   swing16=58 vol=100 2%ClChorus4
 
 Box Clavinet "Coda" |184:
@@ -173,36 +172,36 @@ Box Clavinet "Coda" |184:
 
 Guitar 1:
 
-Box Guitar 1 "Introduzione" |8:
-  // introduzione: la chitarra entra alla terza battuta
+Box Guitar 1 "Intro" |8:
+  // intro: the guitar comes in on bar 3
   swing16=58 shift=5 %GtEm %GtEm
 
-Box Guitar 1 "Strofa 1" |16:
-  // strofa 1: il wah si apre e si chiude
+Box Guitar 1 "Verse 1" |16:
+  // verse 1: the wah opens and closes
   swing16=58 shift=5 cc74=30 >>
   %GtVerse4
   cc74=110 >>
   %GtVerse4
   cc74=30
 
-Box Guitar 1 "Ritornello 1" |48:
-  // ritornello 1
+Box Guitar 1 "Chorus 1" |48:
+  // chorus 1
   swing16=58 shift=5 2%GtChorus4
 
-Box Guitar 1 "Strofa 2" |80:
-  // strofa 2
+Box Guitar 1 "Verse 2" |80:
+  // verse 2
   swing16=58 shift=5 cc74=30 >>
   %GtVerse4
   cc74=110 >>
   %GtVerse4
   cc74=70
 
-Box Guitar 1 "Assolo" |120:
-  // assolo
+Box Guitar 1 "Solo" |120:
+  // solo
   swing16=58 shift=5 %GtVerse4 %GtChorus4
 
-Box Guitar 1 "Ritornello 2 e coda" |152:
-  // ritornello 2 e coda
+Box Guitar 1 "Chorus 2 and coda" |152:
+  // chorus 2 and coda
   swing16=58 shift=5 2%GtChorus4
   %GtEm %GtEm %GtEm
   16: 105@ Em7!$accent 15r |
@@ -210,7 +209,7 @@ Box Guitar 1 "Ritornello 2 e coda" |152:
 Bass:
 
 Box Bass "Groove" |0:
-  // il basso suona un po' prima del tempo
+  // the bass plays slightly ahead of the beat
   swing16=58 shift=-8
   %BsVerse4
   2%BsVerse4
@@ -222,8 +221,8 @@ Box Bass "Stop" |112:
   swing16=58 shift=-8 16: 110@ e*2 15r |
   16: 100@ e*2 7r e*2 r e*2 r e*2 g*2 a*2 b*2 |
 
-Box Bass "Assolo" |120:
-  // assolo
+Box Bass "Solo" |120:
+  // solo
   swing16=58 shift=-8 16: 100@ %BsE1 %BsE2 %BsA9 %BsE1 %BsC9 %BsB7 %BsE1 %BsE2
   2%BsChorus4
 
@@ -232,22 +231,22 @@ Box Bass "Coda" |184:
   swing16=58 shift=-8 16: 100@ %BsE1 %BsE2 %BsE1
   16: 110@ e*2 15r |
 
-Fiati:
+Horns:
 
-Box Fiati "Ritornello 1" |48:
-  // ritornello 1
+Box Horns "Chorus 1" |48:
+  // chorus 1
   swing16=58 2%HnChorus
 
-Box Fiati "Stop" |112:
-  // stop: tutti insieme
+Box Horns "Stop" |112:
+  // stop: everyone together
   swing16=58 16: 110@ Em7!$accent 15r |
   16: 105@ Em7!$accent 7r Em7! r Em7! 5r |
 
-Box Fiati "Ritornello 2" |152:
-  // ritornello 2
+Box Horns "Chorus 2" |152:
+  // chorus 2
   swing16=58 16: 105@ 2%HnChorus
 
-Box Fiati "Coda" |184:
+Box Horns "Coda" |184:
   // coda
   swing16=58 16: 105@ 16: 105@ Em7!$accent 2r Em7! 2r Em7! 9r |
   16: 105@ Em7!$accent 2r Em7! 2r Em7! 9r |
@@ -256,37 +255,37 @@ Box Fiati "Coda" |184:
 
 Trumpet:
 
-Box Trumpet "Fino all'assolo" |120:
-  // fino all'assolo
-  swing16=58 $"assolo" %Solo
+Box Trumpet "Up to the solo" |120:
+  // up to the solo
+  swing16=58 $"solo" %Solo
 
-Box Trumpet "Ritornello 2" |152:
-  // ritornello 2: note lunghe sopra i fiati
+Box Trumpet "Chorus 2" |152:
+  // chorus 2: long notes over the horns
   swing16=58 1: 92@ bb*5 | a*5 | g*5 | g*5 | bb*5 | a*5 | b*5 | e*6 |
 
 Drums:
 
-Box Drums "Introduzione" |0:
-  // introduzione
+Box Drums "Intro" |0:
+  // intro
   swing16=58 %DrFunk4
 
-Box Drums "Strofa 1" |16:
-  // strofa 1, ritornello 1, strofa 2
+Box Drums "Verse 1" |16:
+  // verse 1, chorus 1, verse 2
   swing16=58 %DrFunk4 %DrFunk4F
   2%DrChorus4
   %DrFunk4 %DrFunk4F
 
 Box Drums "Stop" |112:
-  // stop: i colpi in battere e il rullo
+  // stop: the downbeat hits and the roll
   swing16=58 16: 110@ [kick crash] 3r 100@ snare 3r 100@ kick 3r 105@ snare 3r |
   16: 100@ kick r r r snare r r r kick r snare r tom1 tom2 floor [kick crash] |
 
-Box Drums "Assolo" |120:
-  // assolo
+Box Drums "Solo" |120:
+  // solo
   swing16=58 16: 100@ %DrFunk4 %DrFunk4F
 
-Box Drums "Ritornello 2" |152:
-  // ritornello 2
+Box Drums "Chorus 2" |152:
+  // chorus 2
   swing16=58 16: 100@ 2%DrChorus4
 
 Box Drums "Coda" |184:
@@ -305,7 +304,7 @@ Mixer Guitar 1:
 Mixer Bass:
   volume: 100 pan: 0 mute: no solo: no
 
-Mixer Fiati:
+Mixer Horns:
   volume: 80 pan: 0.15 mute: no solo: no reverb: 18
 
 Mixer Trumpet:

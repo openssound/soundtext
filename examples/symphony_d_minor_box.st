@@ -1,73 +1,73 @@
-// Sinfonia n. 1 in Re minore, "Dal buio alla luce": una sinfonia di esempio in quattro tempi.
+// Symphony No. 1 in D minor, "From Darkness to Light": an example symphony in four movements.
 //
-// Versione a box: ogni sezione di ogni traccia e' un box
-// della vista Struttura brano (`Box Traccia "Nome" |beat:`): le tracce non hanno testo e la
-// posizione di ogni box e' nell'intestazione. Aprendola nell'app si vedono i blocchi in fila.
+// Box version: every section of every track is a box of the Structure view
+// (`Box Track "Name" |beat:`): the tracks have no text, and the position of
+// each box is in its header. Open it in the app to see the blocks in a row.
 //
-// Musica originale, scritta per mostrare ST-language con un'orchestra intera:
-// legni (flauto, oboe, clarinetto, fagotto), corni e tromba, timpani e gli
-// archi (violini primi e secondi, viole, violoncelli, contrabbassi).
+// Original music, written to show ST-language with a full orchestra:
+// woodwinds (flute, oboe, clarinet, bassoon), horns and trumpet, timpani and
+// strings (first and second violins, violas, cellos, double basses).
 //
-//   I    Allegro con fuoco   Re minore  (32 battute)  esposizione di due temi
-//                                         (il secondo in Fa maggiore), sviluppo
-//                                         sulla dominante, ripresa e finale in Re maggiore
-//   II   Adagio              Si bemolle (16 battute)  il canto dell'oboe, poi dei violini
-//   III  Scherzo: Presto     Re minore  (16 battute)  tema staccato, passato dai flauti ai violini
-//   IV   Finale: Allegro con brio  Re maggiore (32 battute)  fanfara, fugato (violoncelli,
-//                                         viole, violini secondi, violini primi), corale,
-//                                         coda con il rallentando e la corona
+//   I    Allegro con fuoco   D minor  (32 bars)  exposition of two themes
+//                                     (the second in F major), development on
+//                                     the dominant, recapitulation and ending in D major
+//   II   Adagio              B flat   (16 bars)  the song of the oboe, then of the violins
+//   III  Scherzo: Presto     D minor  (16 bars)  staccato theme, passed from flutes to violins
+//   IV   Finale: Allegro con brio  D major (32 bars)  fanfare, fugato (cellos, violas,
+//                                     second violins, first violins), chorale,
+//                                     coda with the rallentando and the fermata
 //
-// Cosa c'e' dentro:
-//   - le tonalita' che cambiano da un tempo all'altro (key=Dm, F, Bb, D): ogni
-//     pattern dice la sua, e le alterazioni non si scrivono;
-//   - i cambi di tempo tra un movimento e l'altro (tempo=) sulla traccia dei
-//     timpani, e il rallentando finale (tempo=126 << ... tempo=56);
-//   - il fugato: lo stesso soggetto che entra a battute sfalsate, nello
-//     strumento e nell'ottava giusti;
-//   - le dinamiche: crescendo di volume nello sviluppo (vol=60 >> ... vol=100),
-//     forcelle, indicazioni di testo ($"Adagio") e la corona ($fermata);
-//   - strumenti definiti nel file con il programma General MIDI (flauto,
-//     oboe, clarinetto, fagotto, corno, timpani, archi);
-//   - i pattern generati per sezione: accordi tenuti, arpeggi, bassi, rulli di
-//     timpano, accordi staccati.
-// Il pannello Mixer ha un blocco per ogni sezione dell'orchestra.
+// What's inside:
+//   - keys changing from one movement to the next (key=Dm, F, Bb, D): each
+//     pattern sets its own, and accidentals are not written;
+//   - tempo changes between movements (tempo=) on the timpani track, and the
+//     final rallentando (tempo=126 << ... tempo=56);
+//   - the fugato: the same subject entering in staggered bars, on the right
+//     instrument and octave;
+//   - dynamics: a volume crescendo in the development (vol=60 >> ... vol=100),
+//     hairpins, text markings ($"Adagio") and the fermata ($fermata);
+//   - instruments defined in the file with their General MIDI program (flute,
+//     oboe, clarinet, bassoon, horn, timpani, strings);
+//   - patterns generated per section: held chords, arpeggios, basses, timpani
+//     rolls, staccato chords.
+// The Mixer panel has a block for every section of the orchestra.
 
 ST: 2.6
 Tempo: 132 BPM
 Metrica: 4/4
 Tonalita: Dm
 
-Strumento Flauto:
+Strumento Flute:
   program=73 percussione=no ottava=5 range=72-100 poly=no voicing=monophonic
 
 Strumento Oboe:
   program=68 percussione=no ottava=5 range=58-93 poly=no voicing=monophonic
 
-Strumento Clarinetto:
+Strumento Clarinet:
   program=71 percussione=no ottava=4 range=50-94 poly=no voicing=monophonic
 
-Strumento Fagotto:
+Strumento Bassoon:
   program=70 percussione=no ottava=3 range=34-72 poly=no voicing=monophonic
 
-Strumento Corni:
+Strumento Horns:
   program=60 percussione=no ottava=4 range=41-77 poly=si voicing=spread
 
 Strumento Timpani:
   program=47 percussione=no ottava=2 range=28-60 poly=no voicing=monophonic
 
-Strumento Violini1:
+Strumento Violins1:
   program=48 percussione=no ottava=5 range=55-103 poly=no voicing=monophonic
 
-Strumento Violini2:
+Strumento Violins2:
   program=48 percussione=no ottava=5 range=55-103 poly=no voicing=monophonic
 
-Strumento Viole:
+Strumento Violas:
   program=48 percussione=no ottava=4 range=48-91 poly=si voicing=spread
 
-Strumento Violoncelli:
+Strumento Cellos:
   program=42 percussione=no ottava=3 range=36-76 poly=no voicing=monophonic
 
-Strumento Contrabbassi:
+Strumento DoubleBasses:
   program=43 percussione=no ottava=2 range=28-60 poly=no voicing=monophonic
 
 Pattern %R1:
@@ -84,7 +84,7 @@ Pattern %I_ThA:
   2g*5 a*5 c#*6 2e*6 2a*5 |
   6d*6 2r |
 
-Pattern %I_ThA_giu:
+Pattern %I_ThA_down:
   key=Dm 8: 100@
   2d*4 f*4 a*4 2d*5 2c*5 |
   b*4 a*4 g*4 f*4 2e*4 2d*4 |
@@ -106,7 +106,7 @@ Pattern %I_ThAr:
   2g*5 a*5 c#*6 2e*6 2a*5 |
   8d*6$fermata |
 
-Pattern %I_ThAr_giu:
+Pattern %I_ThAr_down:
   key=Dm 8: 100@
   2d*4 f*4 a*4 2d*5 2c*5 |
   b*4 a*4 g*4 f*4 2e*4 2d*4 |
@@ -117,14 +117,14 @@ Pattern %I_ThAr_giu:
   2g*4 a*4 c#*5 2e*5 2a*4 |
   8d*5$fermata |
 
-Pattern %I_ThB1_giu:
+Pattern %I_ThB1_down:
   key=F 8: 80@
   2a*4 c*5 f*5 2e*5 2d*5 |
   2c*5 e*5 g*5 2e*5 2c*5 |
   2d*5 f*5 a*5 2g*5 2f*5 |
   2b*4 d*5 f*5 4d*5 |
 
-Pattern %I_ThB2_giu:
+Pattern %I_ThB2_down:
   key=F 8: 80@
   2a*4 c*5 f*5 2e*5 2c*5 |
   2b*4 d*5 g*5 2f*5 2d*5 |
@@ -468,7 +468,7 @@ Pattern %II_Oboe:
   2e*6 2d*6 2c*6 2a*5 |
   6b*5 2r |
 
-Pattern %II_Violino:
+Pattern %II_Violin:
   key=Bb 8: 78@
   4g*5 2e*5 2g*5 |
   4f*5 2d*5 2f*5 |
@@ -479,7 +479,7 @@ Pattern %II_Violino:
   2c*6 2e*6 2d*6 2c*6 |
   8b*5$fermata |
 
-Pattern %II_Violino_giu:
+Pattern %II_Violin_down:
   key=Bb 8: 70@
   4g*4 2e*4 2g*4 |
   4f*4 2d*4 2f*4 |
@@ -787,7 +787,7 @@ Pattern %rootsB_III2_08_88:
   a*1'1 |
   d*2'1 |
 
-Pattern %IV_Tema:
+Pattern %IV_Theme:
   key=D 8: 100@
   d*5 f*5 a*5 d*6 2f*6 2a*6 |
   g*6 f*6 e*6 d*6 2b*5 2g*5 |
@@ -798,7 +798,7 @@ Pattern %IV_Tema:
   2a*5 c*6 e*6 2g*6 2e*6 |
   4d*6 4r |
 
-Pattern %IV_Tema_giu:
+Pattern %IV_Theme_down:
   key=D 8: 100@
   d*4 f*4 a*4 d*5 2f*5 2a*5 |
   g*5 f*5 e*5 d*5 2b*4 2g*4 |
@@ -809,7 +809,7 @@ Pattern %IV_Tema_giu:
   2a*4 c*5 e*5 2g*5 2e*5 |
   4d*5 4r |
 
-Pattern %IV_Corale:
+Pattern %IV_Chorale:
   key=D 8: 90@
   2g*5 b*5 d*6 2g*6 2f*6 |
   2a*5 d*6 f*6 4a*6 |
@@ -820,7 +820,7 @@ Pattern %IV_Corale:
   2e*6 g*6 a*6 2c*7 2a*6 |
   6d*6 2r |
 
-Pattern %IV_Corale_giu:
+Pattern %IV_Chorale_down:
   key=D 8: 85@
   2g*4 b*4 d*5 2g*5 2f*5 |
   2a*4 d*5 f*5 4a*5 |
@@ -831,7 +831,7 @@ Pattern %IV_Corale_giu:
   2e*5 g*5 a*5 2c*6 2a*5 |
   6d*5 2r |
 
-Pattern %IV_SoggCelli:
+Pattern %IV_SubjCellos:
   key=D 8: 85@
   d*3 e*3 f*3 g*3 2a*3 2f*3 |
   b*3 a*3 g*3 f*3 2e*3 2d*3 |
@@ -841,7 +841,7 @@ Pattern %IV_RispVle:
   a*3 b*3 c*4 d*4 2e*4 2c*4 |
   f*4 e*4 d*4 c*4 2b*3 2a*3 |
 
-Pattern %IV_SoggV2:
+Pattern %IV_SubjV2:
   key=D 8: 88@
   d*5 e*5 f*5 g*5 2a*5 2f*5 |
   b*5 a*5 g*5 f*5 2e*5 2d*5 |
@@ -1150,27 +1150,27 @@ Pattern %rootsB_IVK_08_98:
   d*2'1 |
 
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Violini1:
+Violins1:
 
-Violini2:
+Violins2:
 
-Viole:
+Violas:
 
-Violoncelli:
+Cellos:
 
-Contrabbassi:
+DoubleBasses:
 
-Flauto:
+Flute:
 
 Oboe:
 
-Clarinetto:
+Clarinet:
 
-Fagotto:
+Bassoon:
 
-Corni:
+Horns:
 
 Trumpet:
 
@@ -1178,19 +1178,19 @@ Timpani:
 
 // ================================================================ mixer
 
-Mixer Flauto:
+Mixer Flute:
   volume: 70 pan: 0.25 mute: no solo: no reverb: 25
 
 Mixer Oboe:
   volume: 67 pan: -0.2 mute: no solo: no reverb: 25
 
-Mixer Clarinetto:
+Mixer Clarinet:
   volume: 66 pan: 0.15 mute: no solo: no reverb: 25
 
-Mixer Fagotto:
+Mixer Bassoon:
   volume: 66 pan: -0.3 mute: no solo: no reverb: 20
 
-Mixer Corni:
+Mixer Horns:
   volume: 69 pan: 0.3 mute: no solo: no reverb: 28
 
 Mixer Trumpet:
@@ -1199,371 +1199,371 @@ Mixer Trumpet:
 Mixer Timpani:
   volume: 72 pan: 0.0 mute: no solo: no reverb: 30
 
-Mixer Violini1:
+Mixer Violins1:
   volume: 75 pan: -0.5 mute: no solo: no reverb: 22
 
-Mixer Violini2:
+Mixer Violins2:
   volume: 70 pan: -0.3 mute: no solo: no reverb: 22
 
-Mixer Viole:
+Mixer Violas:
   volume: 67 pan: 0.2 mute: no solo: no reverb: 22
 
-Mixer Violoncelli:
+Mixer Cellos:
   volume: 72 pan: 0.45 mute: no solo: no reverb: 20
 
-Mixer Contrabbassi:
+Mixer DoubleBasses:
   volume: 70 pan: 0.6 mute: no solo: no reverb: 15
 
 
-// ================================================================ box (la posizione e' nell'intestazione, in battute di quarti dall'inizio)
+// ================================================================ boxes (the position is in the header, in quarter-note beats from the start)
 
-Box Violini1 "I. Primo tema (Re minore)" |0:
+Box Violins1 "I. First theme (D minor)" |0:
   $"Allegro con fuoco" %I_ThA
 
-Box Violini1 "I. Secondo tema (Fa maggiore)" |48:
+Box Violins1 "I. Second theme (F major)" |48:
   %I_ThB2
 
-Box Violini1 "I. Sviluppo" |64:
+Box Violins1 "I. Development" |64:
   %I_Dev
 
-Box Violini1 "I. Ripresa e chiusura in Re maggiore" |96:
+Box Violins1 "I. Recapitulation and close in D major" |96:
   %I_ThAr
 
-Box Violini1 "II. Adagio: il canto" |128:
+Box Violins1 "II. Adagio: the song" |128:
   $"Adagio" %arp_II1_08_48
 
-Box Violini1 "II. Adagio: i violini" |160:
-  %II_Violino
+Box Violins1 "II. Adagio: the violins" |160:
+  %II_Violin
 
-Box Violini1 "III. Scherzo: prima parte" |192:
+Box Violins1 "III. Scherzo: first part" |192:
   $"Scherzo: Presto" %III_S1
 
-Box Violini1 "III. Scherzo: seconda parte" |224:
+Box Violins1 "III. Scherzo: second part" |224:
   %III_S2
 
-Box Violini1 "IV. Fanfara e tema" |256:
-  $"Finale: Allegro con brio" %IV_Tema
+Box Violins1 "IV. Fanfare and theme" |256:
+  $"Finale: Allegro con brio" %IV_Theme
 
-Box Violini1 "IV. Fugato" |312:
+Box Violins1 "IV. Fugato" |312:
   %IV_RispV1
 
-Box Violini1 "IV. Corale" |320:
-  %IV_Corale
+Box Violins1 "IV. Chorale" |320:
+  %IV_Chorale
 
-Box Violini1 "IV. Coda con il rallentando" |352:
-  %IV_Tema
+Box Violins1 "IV. Coda with the rallentando" |352:
+  %IV_Theme
 
-Box Violini2 "I. Primo tema (Re minore)" |0:
+Box Violins2 "I. First theme (D minor)" |0:
   %arp_IA_08_70
 
-Box Violini2 "I. Secondo tema (Fa maggiore)" |32:
+Box Violins2 "I. Second theme (F major)" |32:
   %arp_IB_08_55
 
-Box Violini2 "I. Sviluppo" |64:
+Box Violins2 "I. Development" |64:
   vol=60 >> %arp_ID_08_80 vol=100
 
-Box Violini2 "I. Ripresa e chiusura in Re maggiore" |96:
+Box Violins2 "I. Recapitulation and close in D major" |96:
   %arp_IR_08_85
 
-Box Violini2 "II. Adagio: il canto" |128:
+Box Violins2 "II. Adagio: the song" |128:
   %chords_II1_08_45
 
-Box Violini2 "II. Adagio: i violini" |160:
+Box Violins2 "II. Adagio: the violins" |160:
   %arp_II2_08_50
 
-Box Violini2 "III. Scherzo: prima parte" |192:
+Box Violins2 "III. Scherzo: first part" |192:
   %arp_III1_08_65
 
-Box Violini2 "III. Scherzo: seconda parte" |224:
+Box Violins2 "III. Scherzo: second part" |224:
   %arp_III2_08_72
 
-Box Violini2 "IV. Fanfara e tema" |256:
+Box Violins2 "IV. Fanfare and theme" |256:
   %arp_IVM_08_75
 
-Box Violini2 "IV. Fugato" |304:
-  %IV_SoggV2 %chords_IVF_68_55
+Box Violins2 "IV. Fugato" |304:
+  %IV_SubjV2 %chords_IVF_68_55
 
-Box Violini2 "IV. Corale" |320:
+Box Violins2 "IV. Chorale" |320:
   %arp_IVC_08_70
 
-Box Violini2 "IV. Coda con il rallentando" |352:
+Box Violins2 "IV. Coda with the rallentando" |352:
   %arp_IVK_08_85
 
-Box Viole "I. Primo tema (Re minore)" |0:
+Box Violas "I. First theme (D minor)" |0:
   %chords_IA_08_78
 
-Box Viole "I. Secondo tema (Fa maggiore)" |32:
+Box Violas "I. Second theme (F major)" |32:
   %chords_IB_08_50
 
-Box Viole "I. Sviluppo" |64:
+Box Violas "I. Development" |64:
   vol=60 >> %chords_ID_08_75 vol=100
 
-Box Viole "I. Ripresa e chiusura in Re maggiore" |96:
+Box Violas "I. Recapitulation and close in D major" |96:
   %chords_IR_08_85
 
-Box Viole "II. Adagio: il canto" |128:
+Box Violas "II. Adagio: the song" |128:
   %chords_II1_08_50
 
-Box Viole "II. Adagio: i violini" |160:
+Box Violas "II. Adagio: the violins" |160:
   %chords_II2_08_55
 
-Box Viole "III. Scherzo: prima parte" |192:
+Box Violas "III. Scherzo: first part" |192:
   %stab_III1_08_70
 
-Box Viole "III. Scherzo: seconda parte" |224:
+Box Violas "III. Scherzo: second part" |224:
   %stab_III2_08_78
 
-Box Viole "IV. Fanfara e tema" |256:
+Box Violas "IV. Fanfare and theme" |256:
   %chords_IVM_08_80
 
-Box Viole "IV. Fugato" |296:
+Box Violas "IV. Fugato" |296:
   %IV_RispVle %chords_IVF_48_60
 
-Box Viole "IV. Corale" |320:
+Box Violas "IV. Chorale" |320:
   %chords_IVC_08_70
 
-Box Viole "IV. Coda con il rallentando" |352:
+Box Violas "IV. Coda with the rallentando" |352:
   %chords_IVK_08_88
 
-Box Violoncelli "I. Primo tema (Re minore)" |0:
+Box Cellos "I. First theme (D minor)" |0:
   %rootsC_IA_08_90
 
-Box Violoncelli "I. Secondo tema (Fa maggiore)" |32:
+Box Cellos "I. Second theme (F major)" |32:
   %rootsC_IB_08_60
 
-Box Violoncelli "I. Sviluppo" |64:
+Box Cellos "I. Development" |64:
   %rootsC_ID_08_85
 
-Box Violoncelli "I. Ripresa e chiusura in Re maggiore" |96:
+Box Cellos "I. Recapitulation and close in D major" |96:
   %rootsC_IR_08_95
 
-Box Violoncelli "II. Adagio: il canto" |128:
+Box Cellos "II. Adagio: the song" |128:
   %rootsW_II1_08_70
 
-Box Violoncelli "II. Adagio: i violini" |160:
+Box Cellos "II. Adagio: the violins" |160:
   %rootsW_II2_08_72
 
-Box Violoncelli "III. Scherzo: prima parte" |192:
+Box Cellos "III. Scherzo: first part" |192:
   %rootsC_III1_08_85
 
-Box Violoncelli "III. Scherzo: seconda parte" |224:
+Box Cellos "III. Scherzo: second part" |224:
   %rootsC_III2_08_90
 
-Box Violoncelli "IV. Fanfara e tema" |256:
+Box Cellos "IV. Fanfare and theme" |256:
   %rootsC_IVM_08_90
 
-Box Violoncelli "IV. Fugato" |288:
-  %IV_SoggCelli %rootsC_IVF_28_70
+Box Cellos "IV. Fugato" |288:
+  %IV_SubjCellos %rootsC_IVF_28_70
 
-Box Violoncelli "IV. Corale" |320:
+Box Cellos "IV. Chorale" |320:
   %rootsC_IVC_08_80
 
-Box Violoncelli "IV. Coda con il rallentando" |352:
+Box Cellos "IV. Coda with the rallentando" |352:
   %rootsC_IVK_08_95
 
-Box Contrabbassi "I. Primo tema (Re minore)" |0:
+Box DoubleBasses "I. First theme (D minor)" |0:
   %rootsB_IA_08_92
 
-Box Contrabbassi "I. Secondo tema (Fa maggiore)" |32:
+Box DoubleBasses "I. Second theme (F major)" |32:
   %rootsB_IB_08_60
 
-Box Contrabbassi "I. Sviluppo" |64:
+Box DoubleBasses "I. Development" |64:
   %rootsB_ID_08_85
 
-Box Contrabbassi "I. Ripresa e chiusura in Re maggiore" |96:
+Box DoubleBasses "I. Recapitulation and close in D major" |96:
   %rootsB_IR_08_98
 
-Box Contrabbassi "II. Adagio: il canto" |128:
+Box DoubleBasses "II. Adagio: the song" |128:
   %rootsB_II1_08_60
 
-Box Contrabbassi "II. Adagio: i violini" |160:
+Box DoubleBasses "II. Adagio: the violins" |160:
   %rootsB_II2_08_62
 
-Box Contrabbassi "III. Scherzo: prima parte" |192:
+Box DoubleBasses "III. Scherzo: first part" |192:
   %rootsB_III1_08_85
 
-Box Contrabbassi "III. Scherzo: seconda parte" |224:
+Box DoubleBasses "III. Scherzo: second part" |224:
   %rootsB_III2_08_88
 
-Box Contrabbassi "IV. Fanfara e tema" |256:
+Box DoubleBasses "IV. Fanfare and theme" |256:
   %rootsB_IVM_08_92
 
-Box Contrabbassi "IV. Fugato" |288:
+Box DoubleBasses "IV. Fugato" |288:
   %rootsB_IVF_08_70
 
-Box Contrabbassi "IV. Corale" |320:
+Box DoubleBasses "IV. Chorale" |320:
   %rootsB_IVC_08_82
 
-Box Contrabbassi "IV. Coda con il rallentando" |352:
+Box DoubleBasses "IV. Coda with the rallentando" |352:
   %rootsB_IVK_08_98
 
-Box Flauto "I. Primo tema (Re minore)" |0:
+Box Flute "I. First theme (D minor)" |0:
   %I_ThA
 
-Box Flauto "I. Ripresa e chiusura in Re maggiore" |96:
+Box Flute "I. Recapitulation and close in D major" |96:
   %I_ThAr
 
-Box Flauto "III. Scherzo: prima parte" |192:
+Box Flute "III. Scherzo: first part" |192:
   %III_S1
 
-Box Flauto "III. Scherzo: seconda parte" |224:
+Box Flute "III. Scherzo: second part" |224:
   %III_S2
 
-Box Flauto "IV. Fanfara e tema" |256:
-  %IV_Tema
+Box Flute "IV. Fanfare and theme" |256:
+  %IV_Theme
 
-Box Flauto "IV. Corale" |320:
-  %IV_Corale
+Box Flute "IV. Chorale" |320:
+  %IV_Chorale
 
-Box Flauto "IV. Coda con il rallentando" |352:
-  %IV_Tema
+Box Flute "IV. Coda with the rallentando" |352:
+  %IV_Theme
 
-Box Oboe "I. Primo tema (Re minore)" |0:
-  %I_ThA_giu
+Box Oboe "I. First theme (D minor)" |0:
+  %I_ThA_down
 
-Box Oboe "I. Secondo tema (Fa maggiore)" |48:
-  %I_ThB2_giu
+Box Oboe "I. Second theme (F major)" |48:
+  %I_ThB2_down
 
-Box Oboe "I. Ripresa e chiusura in Re maggiore" |96:
-  %I_ThAr_giu
+Box Oboe "I. Recapitulation and close in D major" |96:
+  %I_ThAr_down
 
-Box Oboe "II. Adagio: il canto" |128:
+Box Oboe "II. Adagio: the song" |128:
   %II_Oboe
 
-Box Oboe "IV. Fanfara e tema" |256:
-  %IV_Tema_giu
+Box Oboe "IV. Fanfare and theme" |256:
+  %IV_Theme_down
 
-Box Oboe "IV. Corale" |320:
-  %IV_Corale_giu
+Box Oboe "IV. Chorale" |320:
+  %IV_Chorale_down
 
-Box Oboe "IV. Coda con il rallentando" |352:
-  %IV_Tema_giu
+Box Oboe "IV. Coda with the rallentando" |352:
+  %IV_Theme_down
 
-Box Clarinetto "I. Secondo tema (Fa maggiore)" |32:
-  %I_ThB1_giu
+Box Clarinet "I. Second theme (F major)" |32:
+  %I_ThB1_down
 
-Box Clarinetto "I. Sviluppo" |80:
+Box Clarinet "I. Development" |80:
   4: 80@ a*4'1 | a*4'1 | a*4'1 | a*4'1
 
-Box Clarinetto "II. Adagio: i violini" |160:
-  %II_Violino_giu
+Box Clarinet "II. Adagio: the violins" |160:
+  %II_Violin_down
 
-Box Clarinetto "III. Scherzo: seconda parte" |224:
+Box Clarinet "III. Scherzo: second part" |224:
   %stab_III2_08_75
 
-Box Fagotto "I. Primo tema (Re minore)" |0:
+Box Bassoon "I. First theme (D minor)" |0:
   %rootsF_IA_08_90
 
-Box Fagotto "I. Secondo tema (Fa maggiore)" |32:
+Box Bassoon "I. Second theme (F major)" |32:
   %rootsF_IB_08_55
 
-Box Fagotto "I. Sviluppo" |64:
+Box Bassoon "I. Development" |64:
   %rootsF_ID_08_70
 
-Box Fagotto "I. Ripresa e chiusura in Re maggiore" |96:
+Box Bassoon "I. Recapitulation and close in D major" |96:
   %rootsF_IR_08_95
 
-Box Fagotto "II. Adagio: il canto" |128:
+Box Bassoon "II. Adagio: the song" |128:
   %rootsF_II1_08_55
 
-Box Fagotto "II. Adagio: i violini" |160:
+Box Bassoon "II. Adagio: the violins" |160:
   %rootsF_II2_08_58
 
-Box Fagotto "III. Scherzo: prima parte" |192:
+Box Bassoon "III. Scherzo: first part" |192:
   %rootsF_III1_08_75
 
-Box Fagotto "III. Scherzo: seconda parte" |224:
+Box Bassoon "III. Scherzo: second part" |224:
   %rootsF_III2_08_80
 
-Box Fagotto "IV. Fanfara e tema" |256:
+Box Bassoon "IV. Fanfare and theme" |256:
   %rootsF_IVM_08_90
 
-Box Fagotto "IV. Fugato" |288:
+Box Bassoon "IV. Fugato" |288:
   %rootsF_IVF_08_70
 
-Box Fagotto "IV. Corale" |320:
+Box Bassoon "IV. Chorale" |320:
   %rootsF_IVC_08_80
 
-Box Fagotto "IV. Coda con il rallentando" |352:
+Box Bassoon "IV. Coda with the rallentando" |352:
   %rootsF_IVK_08_95
 
-Box Corni "I. Primo tema (Re minore)" |0:
+Box Horns "I. First theme (D minor)" |0:
   %chords_IA_08_100
 
-Box Corni "I. Secondo tema (Fa maggiore)" |32:
+Box Horns "I. Second theme (F major)" |32:
   %chords_IB_08_55
 
-Box Corni "I. Sviluppo" |64:
+Box Horns "I. Development" |64:
   %chords_ID_08_80
 
-Box Corni "I. Ripresa e chiusura in Re maggiore" |96:
+Box Horns "I. Recapitulation and close in D major" |96:
   %chords_IR_08_105
 
-Box Corni "II. Adagio: il canto" |128:
+Box Horns "II. Adagio: the song" |128:
   %chords_II1_08_50
 
-Box Corni "II. Adagio: i violini" |160:
+Box Horns "II. Adagio: the violins" |160:
   %chords_II2_08_55
 
-Box Corni "III. Scherzo: prima parte" |192:
+Box Horns "III. Scherzo: first part" |192:
   %stab_III1_08_70
 
-Box Corni "III. Scherzo: seconda parte" |224:
+Box Horns "III. Scherzo: second part" |224:
   %stab_III2_08_90
 
-Box Corni "IV. Fanfara e tema" |256:
+Box Horns "IV. Fanfare and theme" |256:
   %chords_IVM_08_100
 
-Box Corni "IV. Fugato" |288:
+Box Horns "IV. Fugato" |288:
   %chords_IVF_08_65
 
-Box Corni "IV. Corale" |320:
+Box Horns "IV. Chorale" |320:
   %chords_IVC_08_80
 
-Box Corni "IV. Coda con il rallentando" |352:
+Box Horns "IV. Coda with the rallentando" |352:
   %chords_IVK_08_105
 
-Box Trumpet "I. Ripresa e chiusura in Re maggiore" |96:
-  %I_ThAr_giu
+Box Trumpet "I. Recapitulation and close in D major" |96:
+  %I_ThAr_down
 
-Box Trumpet "IV. Fanfara e tema" |256:
-  %IV_Tema_giu
+Box Trumpet "IV. Fanfare and theme" |256:
+  %IV_Theme_down
 
-Box Trumpet "IV. Corale" |320:
-  %IV_Corale_giu
+Box Trumpet "IV. Chorale" |320:
+  %IV_Chorale_down
 
-Box Trumpet "IV. Coda con il rallentando" |352:
-  %IV_Tema_giu
+Box Trumpet "IV. Coda with the rallentando" |352:
+  %IV_Theme_down
 
-Box Timpani "I. Primo tema (Re minore)" |0:
+Box Timpani "I. First theme (D minor)" |0:
   %hit_IA_08_100
 
-Box Timpani "I. Secondo tema (Fa maggiore)" |32:
+Box Timpani "I. Second theme (F major)" |32:
   %hitS_IB_08_45
 
-Box Timpani "I. Sviluppo" |64:
+Box Timpani "I. Development" |64:
   %roll_ID_08_70
 
-Box Timpani "I. Ripresa e chiusura in Re maggiore" |96:
+Box Timpani "I. Recapitulation and close in D major" |96:
   %hit_IR_08_105
 
-Box Timpani "II. Adagio: il canto" |128:
+Box Timpani "II. Adagio: the song" |128:
   tempo=58 4: 32r
 
-Box Timpani "III. Scherzo: prima parte" |192:
+Box Timpani "III. Scherzo: first part" |192:
   tempo=152 %hit_III1_08_90
 
-Box Timpani "III. Scherzo: seconda parte" |224:
+Box Timpani "III. Scherzo: second part" |224:
   %hit_III2_08_95
 
-Box Timpani "IV. Fanfara e tema" |256:
+Box Timpani "IV. Fanfare and theme" |256:
   tempo=126 %hit_IVM_08_100
 
 Box Timpani "IV. Fugato" |288:
   %roll_IVF_08_60
 
-Box Timpani "IV. Corale" |320:
+Box Timpani "IV. Chorale" |320:
   %hitS_IVC_08_60
 
-Box Timpani "IV. Coda con il rallentando" |352:
+Box Timpani "IV. Coda with the rallentando" |352:
   %hit_IVK_04_105 100@ tempo=126 << %hit_IVK_47 key=D 4: d*2$fermata r r r tempo=56

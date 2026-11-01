@@ -4,7 +4,7 @@
 
 ![SoundText: the hard rock example «Hammer» in the Structure view, while it plays](assets/screenshot.png)
 
-▶ **Watch SoundText in 90 seconds**: https://youtu.be/_oVNvMxyYCU
+▶ **Watch SoundText in 90 seconds**: https://youtu.be/7n9sg_nHONA
 
 **SoundText** is a program for writing music as text. Notes, chords and
 rhythms are written in a simple language, the **SoundText Language**;
@@ -122,7 +122,7 @@ command. From the code:
 
 ```bash
 ./run.sh                                # Linux, macOS, Git Bash on Windows
-./run.sh examples/funk_in_mi.st         # opening an example right away
+./run.sh examples/funk_in_e.st         # opening an example right away
 ```
 
 On first start `run.sh` creates the `venv/` virtualenv with the

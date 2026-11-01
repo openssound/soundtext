@@ -1,32 +1,33 @@
-// Autostrada - hard rock veloce in La
+// Highway - fast hard rock in A
 //
-// Rock'n'roll a tutto volume: un riff di accordi con le pause,
-// strofe a colpi secchi, ritornello con gli accordi pieni, un assolo di 16
-// battute e la chiusura. Due chitarre ritmiche in due Marshall diversi, una
-// per lato, il basso sugli ottavi e una solista che morde.
+// Rock'n'roll at full volume: a riff of chords with rests, verses of dry
+// hits, a chorus with full chords, a 16-bar solo and the ending. Two rhythm
+// guitars into two different Marshalls, one per side, the bass on eighths and
+// a lead that bites.
 //
-// Suoni:
-// - batteria, basso e chitarre: strumenti SFZ (scarica_strumenti: batteria,
-//   basso-plettro, chitarra-elettrica; in ~/Strumenti);
-// - ritmica a sinistra nel profilo NAM del Marshall JCM2000 (crunch), a
-//   destra nel JCM900 con meno ingresso; la solista in un Tube Screamer e nel
-//   JCM900, con un'eco corta (profili con Suoni -> Scarica -> profili NAM
-//   consigliati);
-// - il basso nel compressore ACE (plugin LV2: senza, passa invariato); sul
-//   master compressore e limiter.
+// Sounds:
+// - drums, bass and guitars: SFZ instruments (Sounds -> Download and
+//   install: MuldjordKit drums, electric bass with pick, clean electric
+//   guitar);
+// - left rhythm guitar into the NAM profile of a Marshall JCM2000 (crunch),
+//   right one into the JCM900 with less input; the lead into a Tube Screamer
+//   and the JCM900, with a short delay (Recommended NAM profiles, from
+//   Sounds -> Download and install);
+// - the bass through the ACE compressor (LV2 plugin: without it, it passes
+//   through unchanged); compressor and limiter on the master.
 
 ST: 2.6
 Tempo: 160 BPM
 Metrica: 4/4
 Tonalita: A
 
-Strumento Ritmica:
+Strumento Rhythm:
   program=29 percussione=no ottava=2 range=35-86 poly=si voicing=power
 
-Strumento Solista:
+Strumento Lead:
   program=29 percussione=no ottava=4 range=35-86 poly=no voicing=monophonic
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %Beat:
   8: 114@ [kick hihat] 76@ hihat 114@ [snare hihat] 76@ hihat 108@ [kick hihat] 76@ hihat 114@ [snare hihat] 76@ hihat |
@@ -52,7 +53,7 @@ Pattern %Drums8:
 Pattern %DrumsChorus8:
   %BeatOpenCrash %BeatOpen %BeatOpen %BeatOpen %BeatOpenCrash %BeatOpen %BeatOpen %FillBig
 
-// ---------------------------------------------------------------- chitarre ritmiche
+// ---------------------------------------------------------------- rhythm guitars
 
 Pattern %Riff:
   8: 115@ 2A5*2 r A5*2! 2r D5*3 A5*2! | 2A5*2 r A5*2! G5*2 2D5*3 r |
@@ -81,7 +82,7 @@ Pattern %ChE:
 Pattern %Chorus:
   %ChX %ChG %ChD %ChX %ChX %ChG %ChD %ChE
 
-// ---------------------------------------------------------------- basso
+// ---------------------------------------------------------------- bass
 
 Pattern %BsRiff:
   8: 112@ 8(a*1) | 4(a*1) g*1 g*1 d*2 d*2 |
@@ -92,7 +93,7 @@ Pattern %BsVerse:
 Pattern %BsChorus:
   8: 114@ 8(a*1) | 8(g*1) | 8(d*2) | 8(a*1) | 8(a*1) | 8(g*1) | 8(d*2) | 8(e*1) |
 
-// ---------------------------------------------------------------- solista
+// ---------------------------------------------------------------- lead
 
 Pattern %VerseMelody:
   8: 108@
@@ -135,196 +136,196 @@ Pattern %Solo:
   2f#*5 a*5 d*6 a*5 f#*5 2d*5 |
   4b*5>4c#*6 |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Introduzione" |0:
+Box Drums "Intro" |0:
   8: 8r | 8r | 122@ [kick crash] 3r [kick crash] 3r | %FillBig
 
-Box Batteria "Riff" |16:
+Box Drums "Riff" |16:
   %Drums8
 
-Box Batteria "Strofa 1" |48:
+Box Drums "Verse 1" |48:
   %Drums8
 
-Box Batteria "Ritornello 1" |80:
+Box Drums "Chorus 1" |80:
   %DrumsChorus8
 
-Box Batteria "Riff 2" |112:
+Box Drums "Riff 2" |112:
   %BeatCrash %Beat %Beat %FillBig
 
-Box Batteria "Strofa 2" |128:
+Box Drums "Verse 2" |128:
   %Drums8
 
-Box Batteria "Ritornello 2" |160:
+Box Drums "Chorus 2" |160:
   %DrumsChorus8
 
-Box Batteria "Assolo" |192:
+Box Drums "Solo" |192:
   %Drums8 %DrumsChorus8
 
-Box Batteria "Ultimo ritornello" |256:
+Box Drums "Last chorus" |256:
   %DrumsChorus8
 
-Box Batteria "Chiusura" |288:
+Box Drums "Outro" |288:
   %BeatCrash %Fill 8: 125@ [kick crash] 3r 125@ [kick crash] 3r | %FillBig
 
-Traccia Basso [Bass]:
+Traccia Bass [Bass]:
 
-Box Basso "Introduzione" |0:
+Box Bass "Intro" |0:
   8: 8r | 8r | 120@ a*1 3r a*1 3r | 8r |
 
-Box Basso "Riff" |16:
+Box Bass "Riff" |16:
   4%BsRiff
 
-Box Basso "Strofa 1" |48:
+Box Bass "Verse 1" |48:
   4%BsVerse
 
-Box Basso "Ritornello 1" |80:
+Box Bass "Chorus 1" |80:
   %BsChorus
 
-Box Basso "Riff 2" |112:
+Box Bass "Riff 2" |112:
   2%BsRiff
 
-Box Basso "Strofa 2" |128:
+Box Bass "Verse 2" |128:
   4%BsVerse
 
-Box Basso "Ritornello 2" |160:
+Box Bass "Chorus 2" |160:
   %BsChorus
 
-Box Basso "Assolo" |192:
+Box Bass "Solo" |192:
   4%BsRiff %BsChorus
 
-Box Basso "Ultimo ritornello" |256:
+Box Bass "Last chorus" |256:
   %BsChorus
 
-Box Basso "Chiusura" |288:
+Box Bass "Outro" |288:
   %BsRiff 8: 122@ a*1 3r a*1 3r | 8a*1$fermata |
 
-Traccia Ritmica Sinistra [Ritmica]:
+Traccia Rhythm Left [Rhythm]:
 
-Box Ritmica Sinistra "Introduzione" |0:
+Box Rhythm Left "Intro" |0:
   2%Riff
 
-Box Ritmica Sinistra "Riff" |16:
+Box Rhythm Left "Riff" |16:
   4%Riff
 
-Box Ritmica Sinistra "Strofa 1" |48:
+Box Rhythm Left "Verse 1" |48:
   %Verse
 
-Box Ritmica Sinistra "Ritornello 1" |80:
+Box Rhythm Left "Chorus 1" |80:
   %Chorus
 
-Box Ritmica Sinistra "Riff 2" |112:
+Box Rhythm Left "Riff 2" |112:
   2%Riff
 
-Box Ritmica Sinistra "Strofa 2" |128:
+Box Rhythm Left "Verse 2" |128:
   %Verse
 
-Box Ritmica Sinistra "Ritornello 2" |160:
+Box Rhythm Left "Chorus 2" |160:
   %Chorus
 
-Box Ritmica Sinistra "Assolo" |192:
+Box Rhythm Left "Solo" |192:
   4%Riff %Chorus
 
-Box Ritmica Sinistra "Ultimo ritornello" |256:
+Box Rhythm Left "Last chorus" |256:
   %Chorus
 
-Box Ritmica Sinistra "Chiusura" |288:
+Box Rhythm Left "Outro" |288:
   %Riff 8: 122@ A5*2 3r A5*2 3r | 8A5*2$fermata |
 
-Traccia Ritmica Destra [Ritmica]:
+Traccia Rhythm Right [Rhythm]:
 
-Box Ritmica Destra "Introduzione" |0:
+Box Rhythm Right "Intro" |0:
   8: 8r | 8r | %Riff
 
-Box Ritmica Destra "Riff" |16:
+Box Rhythm Right "Riff" |16:
   4%Riff
 
-Box Ritmica Destra "Strofa 1" |48:
+Box Rhythm Right "Verse 1" |48:
   %Verse
 
-Box Ritmica Destra "Ritornello 1" |80:
+Box Rhythm Right "Chorus 1" |80:
   %Chorus
 
-Box Ritmica Destra "Riff 2" |112:
+Box Rhythm Right "Riff 2" |112:
   2%Riff
 
-Box Ritmica Destra "Strofa 2" |128:
+Box Rhythm Right "Verse 2" |128:
   %Verse
 
-Box Ritmica Destra "Ritornello 2" |160:
+Box Rhythm Right "Chorus 2" |160:
   %Chorus
 
-Box Ritmica Destra "Assolo" |192:
+Box Rhythm Right "Solo" |192:
   4%Riff %Chorus
 
-Box Ritmica Destra "Ultimo ritornello" |256:
+Box Rhythm Right "Last chorus" |256:
   %Chorus
 
-Box Ritmica Destra "Chiusura" |288:
+Box Rhythm Right "Outro" |288:
   %Riff 8: 122@ A5*2 3r A5*2 3r | 8A5*2$fermata |
 
-Traccia Solista [Solista]:
+Traccia Lead [Lead]:
 
-Box Solista "Strofa 1" |48:
+Box Lead "Verse 1" |48:
   %VerseMelody
 
-Box Solista "Ritornello 1" |80:
+Box Lead "Chorus 1" |80:
   %ChorusMelody
 
-Box Solista "Strofa 2" |128:
+Box Lead "Verse 2" |128:
   %VerseMelody
 
-Box Solista "Ritornello 2" |160:
+Box Lead "Chorus 2" |160:
   %ChorusMelody
 
-Box Solista "Assolo" |192:
+Box Lead "Solo" |192:
   %Solo
 
-Box Solista "Ultimo ritornello" |256:
+Box Lead "Last chorus" |256:
   %ChorusMelody
 
-Box Solista "Chiusura" |288:
+Box Lead "Outro" |288:
   8: 8r | 8r | 8r | 120@ 4c*5>4c#*5 |
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/batteria/MuldjordKit SFZ+FLAC-20201018/MuldjordKit 20201018-GM.sfz"
 
-Plugin Basso:
+Plugin Bass:
   ref="sfz:~/Strumenti/sfz/basso-plettro/PickedBassYR SFZ+FLAC-20190930/PickedBassYR 20190930.sfz"
 
-Plugin Ritmica Sinistra:
+Plugin Rhythm Left:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Ritmica Destra:
+Plugin Rhythm Right:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Solista:
+Plugin Lead:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-18 rapporto=4 attacco=10 rilascio=120 guadagno=1 preset="Batteria"
   riverbero: stanza=40 smorzamento=50 ampiezza=90 mix=10
   volume: guadagno=2
 
-Effetti Basso:
+Effetti Bass:
   plugin: mix=100 livello=0 ref="lv2:urn:ardour:a-comp" p.att=5 p.rel=100 p.rat=6 p.thr=-20 p.mak=2
   eq: bassi=2 medi=2 alti=0
 
-Effetti Ritmica Sinistra:
+Effetti Rhythm Left:
   nam: ingresso=0 cassa=file livello=-7 nam="../profili_nam/Marshall JCM2000 - crunch.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Ritmica Destra:
+Effetti Rhythm Right:
   nam: ingresso=-6 cassa=file livello=-6 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   riverbero: stanza=35 smorzamento=50 ampiezza=80 mix=8
   passa_alto: frequenza=110 pendenza=12
 
-Effetti Solista:
+Effetti Lead:
   plugin: mix=100 livello=0 ref="lv2:http://guitarix.sourceforge.net/plugins/gxts9#ts9sim" p.BYPASS=1 p.fslider2_=0.4 p.fslider1_=800 p.fslider0_=-2
   nam: ingresso=0 cassa=file livello=-3 nam="../profili_nam/Marshall JCM900 - lead.nam" ir="../profili_nam/casse/Marshall JMP 2203  Jose Arredondo mod.wav"
   delay: suddivisione=libera tempo=110 ripetizioni=12 mix=14 preset="Slapback"
@@ -338,17 +339,17 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Batteria:
+Mixer Drums:
   volume: 100 pan: 0 mute: no solo: no
 
-Mixer Basso:
+Mixer Bass:
   volume: 105 pan: 0 mute: no solo: no
 
-Mixer Ritmica Sinistra:
+Mixer Rhythm Left:
   volume: 92 pan: -0.8 mute: no solo: no
 
-Mixer Ritmica Destra:
+Mixer Rhythm Right:
   volume: 92 pan: 0.8 mute: no solo: no
 
-Mixer Solista:
+Mixer Lead:
   volume: 110 pan: 0.1 mute: no solo: no

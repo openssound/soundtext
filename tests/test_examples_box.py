@@ -10,7 +10,7 @@ import pytest  # noqa: E402
 from core.project_io import load_project_file  # noqa: E402
 
 EXAMPLES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
-BOXED = ["sinfonia_re_minore_box.st"]
+BOXED = ["symphony_d_minor_box.st"]
 
 
 @pytest.mark.parametrize("boxed", BOXED)

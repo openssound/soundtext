@@ -1,50 +1,48 @@
-// Swing della Sera - per big band, swing in Si bemolle
+// Evening Swing - for big band, swing in B flat
 //
-// Uno swing classico per big band, su una forma AABA da 32 battute:
-// introduzione degli ottoni, il tema (i sax all'unisono nelle A, le trombe
-// nel ponte), un intero giro di assolo del sax tenore con gli sfondi dei
-// tromboni, lo "shout chorus" a band piena, la ripresa dell'ultima A e il
-// finale. La sezione ritmica e' quella classica: contrabbasso che cammina,
-// pianoforte che commenta sul 2 e sul 4, chitarra "quattro in battuta" e
-// batteria con lo swing sul piatto ride.
+// A classic big band swing on a 32-bar AABA form: an intro by the brass, the
+// head (the saxes in unison in the A sections, the trumpets in the bridge), a
+// whole chorus of tenor sax solo with trombone backgrounds, the "shout
+// chorus" with the full band, the last A again and the ending. The rhythm
+// section is the classic one: a walking double bass, piano comping on 2 and
+// 4, a guitar "four to the bar" and drums swinging on the ride cymbal.
 //
-// Suoni:
-// - strumenti SFZ: batteria Salamander, contrabbasso D. Smolken pizzicato,
-//   pianoforte a coda Salamander, sax contralto, tenore e baritono MTG,
-//   chitarra FreePats (scarica_strumenti: salamander-drums, contrabbasso,
-//   piano, solosax, chitarra-elettrica; in ~/Strumenti); trombe e tromboni
-//   sono quelli del SoundFont GM;
-// - la chitarra nel profilo NAM del Fender Twin, scurita come una chitarra
-//   jazz (profili con Suoni -> Scarica -> profili NAM consigliati);
-// - master: riverbero ACE Reverb (plugin LV2), compressore e limiter.
+// Sounds:
+// - SFZ instruments: Salamander drums, D. Smolken pizzicato double bass,
+//   Salamander grand piano, MTG alto, tenor and baritone saxes, FreePats
+//   guitar (Sounds -> Download and install); trumpets and trombones are the
+//   General MIDI SoundFont's;
+// - the guitar through the NAM profile of a Fender Twin, darkened like a jazz
+//   guitar (Recommended NAM profiles, from Sounds -> Download and install);
+// - master: ACE Reverb (LV2 plugin), compressor and limiter.
 
 ST: 2.6
 Tempo: 168 BPM
 Metrica: 4/4
 Tonalita: Bb
 
-Strumento Contralto:
+Strumento Alto:
   program=65 percussione=no ottava=5 range=49-81 poly=no voicing=monophonic
 
-Strumento Tenore:
+Strumento Tenor:
   program=66 percussione=no ottava=4 range=44-76 poly=no voicing=monophonic
 
-Strumento Baritono:
+Strumento Baritone:
   program=67 percussione=no ottava=3 range=36-69 poly=no voicing=monophonic
 
-Strumento Trombe:
+Strumento Trumpets:
   program=56 percussione=no ottava=5 range=54-86 poly=si voicing=spread
 
-Strumento Tromboni:
+Strumento Trombones:
   program=57 percussione=no ottava=3 range=40-72 poly=si voicing=spread
 
-Strumento Ritmica:
+Strumento Rhythm:
   program=26 percussione=no ottava=3 range=40-76 poly=si voicing=spread
 
-Strumento Contrabbasso:
+Strumento DoubleBass:
   program=32 percussione=no ottava=2 range=28-60 poly=no voicing=root_fifth
 
-// ================================================================ batteria
+// ================================================================ drums
 
 Pattern %Swing:
   8: 82@ [ride kick] 40@ kick 98@ [ride hihat_pedal] 72@ ride 82@ [ride kick] 40@ kick 98@ [ride hihat_pedal] 72@ ride |
@@ -70,8 +68,8 @@ Pattern %DrChorus:
 Pattern %Shout:
   8: 118@ [crash kick] 50@ kick 105@ [ride snare] 72@ ride 85@ [ride kick] 50@ kick 110@ [ride snare] 105@ [kick snare] |
 
-// ================================================================ armonia: A = Bb6 G7 | Cm7 F7 | Bb6 G7 | Cm7 F7 | Fm7 Bb7 | Eb6 Ebm6 | Cm7 F7 | Bb6 (F7)
-//                                            B = D7 | D7 | G7 | G7 | C7 | C7 | F7 | F7
+// ================================================================ harmony: A = Bb6 G7 | Cm7 F7 | Bb6 G7 | Cm7 F7 | Fm7 Bb7 | Eb6 Ebm6 | Cm7 F7 | Bb6 (F7)
+// B = D7 | D7 | G7 | G7 | C7 | C7 | F7 | F7
 
 Pattern %CompA:
   4: r Bb6! r G7! | r Cm7! r F7! | r Bb6! r G7! | r Cm7! r F7! | r Fm7! r Bb7! | r Eb6! r Ebm6! | r Cm7! r F7! | r Bb6! r F7! |
@@ -111,7 +109,7 @@ Pattern %PadA:
 Pattern %PadB:
   4: 4D7_ | 4D7_ | 4G7_ | 4G7_ | 4C7_ | 4C7_ | 4F7_ | 4F7_ |
 
-// ================================================================ il tema
+// ================================================================ the theme
 
 Pattern %MelA:
   8:
@@ -135,12 +133,12 @@ Pattern %MelB:
   a*4 c*5 eb*5 f*5 2a*5 2g*5 |
   2f*5 eb*5 c*5 4a*4 |
 
-// lo shout chorus: accordi della band sul ritmo "charleston"
+// the shout chorus: band chords on the "Charleston" rhythm
 Pattern %ShoutA:
   8: 2Bb6 Bb6! r 2G7 G7! r | 2Cm7 Cm7! r 2F7 F7! r | 2Bb6 Bb6! r 2G7 G7! r | 2Cm7 Cm7! r 2F7 F7! r |
   2Fm7 Fm7! r 2Bb7 Bb7! r | 2Eb6 Eb6! r 2Ebm6 Ebm6! r | 2Cm7 Cm7! r 2F7 F7! r | 2Bb6 Bb6! r 2F7 F7! r |
 
-// ================================================================ l'assolo del sax tenore (un giro AABA)
+// ================================================================ the tenor sax solo (one AABA chorus)
 
 Pattern %SoloA1:
   8:
@@ -186,210 +184,210 @@ Pattern %SoloA3:
   f*4 g*4 a*4 c*5 2eb*5 2c*5 |
   4bb*4_ 4r |
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Traccia Batteria [Drums]:
+Traccia Drums [Drums]:
 
-Box Batteria "Introduzione" |0:
+Box Drums "Intro" |0:
   swing=66 %Swing %Swing %Swing %SwingFill
 
-Box Batteria "Tema" |16:
+Box Drums "Head" |16:
   swing=66 %DrChorus
 
-Box Batteria "Assolo di tenore" |144:
+Box Drums "Tenor solo" |144:
   swing=66 %SwingHat %SwingHat %SwingHat %SwingHat %SwingHat %SwingHat %SwingHat %SwingFill
   %DrA %DrB %DrA
 
-Box Batteria "Shout chorus" |272:
+Box Drums "Shout chorus" |272:
   swing=66 7%Shout %SwingFill 7%Shout %SwingFill
 
-Box Batteria "Ripresa" |336:
+Box Drums "Recapitulation" |336:
   swing=66 %DrA
 
-Box Batteria "Finale" |368:
+Box Drums "Ending" |368:
   swing=66 8: 112@ [crash kick] 3r 112@ [crash kick] 3r | 8: 100@ snare snare snare snare snare snare 110@ snare snare |
   118@ [crash kick] 7r | 8r |
 
-Traccia Contrabbasso [Contrabbasso]:
+Traccia DoubleBass [DoubleBass]:
 
-Box Contrabbasso "Introduzione" |0:
+Box DoubleBass "Intro" |0:
   swing=66 4: 95@ f*1 a*1 c*2 eb*2 | f*1 a*1 c*2 eb*2 | f*1 a*1 c*2 eb*2 | f*1 c*2 a*1 f*1 |
 
-Box Contrabbasso "Giri" |16:
+Box DoubleBass "Choruses" |16:
   swing=66 4: 95@ %WalkChorus %WalkChorus %WalkA %WalkA %WalkA
 
-Box Contrabbasso "Finale" |368:
+Box DoubleBass "Ending" |368:
   swing=66 4: 100@ bb*1 3r | bb*1 3r | bb*1 3r | 4bb*1$fermata |
 
-Traccia Pianoforte [Piano]:
+Traccia Piano [Piano]:
 
-Box Pianoforte "Introduzione" |0:
+Box Piano "Intro" |0:
   swing=66 4: 75@ r F7! r F7! | r F7! r F7! | r F7! r F7! | r F7! 2r |
 
-Box Pianoforte "Giri" |16:
+Box Piano "Choruses" |16:
   swing=66 4: 72@ %CompChorus %CompChorus %CompA %CompA %CompA3
 
-Box Pianoforte "Finale" |368:
+Box Piano "Ending" |368:
   swing=66 4: 90@ Bb6! 3r | Bb6! 3r | 8: 85@ d*5 f*5 g*5 bb*5 d*6 f*6 g*6 bb*6 | 4: 4Bb6$fermata |
 
-Traccia Chitarra [Ritmica]:
+Traccia Guitar [Rhythm]:
 
-Box Chitarra "Introduzione" |0:
+Box Guitar "Intro" |0:
   swing=66 4: 80@ 4(F7!) | 4(F7!) | 4(F7!) | 4(F7!) |
 
-Box Chitarra "Giri" |16:
+Box Guitar "Choruses" |16:
   swing=66 4: 78@ %GtChorus %GtChorus %GtA %GtA %GtA
 
-Box Chitarra "Finale" |368:
+Box Guitar "Ending" |368:
   swing=66 4: 85@ Bb6! 3r | Bb6! 3r | 4r | 4Bb6$fermata |
 
-Traccia Contralto [Contralto]:
+Traccia Alto [Alto]:
 
-Box Contralto "Tema" |16:
-  // i sax all'unisono nelle A, pausa nel ponte (lo fanno le trombe)
+Box Alto "Head" |16:
+  // the saxes in unison in the A sections, resting in the bridge (the trumpets play it)
   swing=66 8: 100@ %MelA %MelA 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | %MelA
 
-Box Contralto "Sfondi" |208:
-  // dietro l'ultima parte dell'assolo
+Box Alto "Backgrounds" |208:
+  // behind the last part of the solo
   swing=66 4: 62@ 4d*5_ | 4eb*5_ | 4d*5_ | 4c*5_ | 4ab*4_ | 4g*4_ | 4eb*5_ | 4d*5_ |
   4f#*5_ | 4f#*5_ | 4f*5_ | 4f*5_ | 4e*5_ | 4e*5_ | 4eb*5_ | 4eb*5_ |
 
-Box Contralto "Shout chorus" |272:
+Box Alto "Shout chorus" |272:
   swing=66 8: 112@ %MelA %MelA
 
-Box Contralto "Ripresa" |336:
+Box Alto "Recapitulation" |336:
   swing=66 8: 100@ %MelA
 
-Box Contralto "Finale" |368:
+Box Alto "Ending" |368:
   swing=66 8: 110@ d*5 3r d*5 3r | 8r | 8r | 8d*5$fermata |
 
-Traccia Tenore [Tenore]:
+Traccia Tenor [Tenor]:
 
-Box Tenore "Tema" |16:
+Box Tenor "Head" |16:
   swing=66 8: 100@ %MelA-12 %MelA-12 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r | %MelA-12
 
-Box Tenore "Assolo" |144:
+Box Tenor "Solo" |144:
   swing=66 8: 105@ %SoloA1 %SoloA2 %SoloB %SoloA3
 
-Box Tenore "Shout chorus" |272:
+Box Tenor "Shout chorus" |272:
   swing=66 8: 112@ %MelA-12 %MelA-12
 
-Box Tenore "Ripresa" |336:
+Box Tenor "Recapitulation" |336:
   swing=66 8: 100@ %MelA-12
 
-Box Tenore "Finale" |368:
+Box Tenor "Ending" |368:
   swing=66 8: 110@ f*4 3r f*4 3r | 8r | 8r | 8f*4$fermata |
 
-Traccia Baritono [Baritono]:
+Traccia Baritone [Baritone]:
 
-Box Baritono "Tema" |16:
+Box Baritone "Head" |16:
   swing=66 4: 88@ %WalkA+12 %WalkA+12 %WalkB+12 %WalkA+12
 
-Box Baritono "Shout chorus" |272:
+Box Baritone "Shout chorus" |272:
   swing=66 4: 100@ %WalkA+12 %WalkA+12
 
-Box Baritono "Ripresa" |336:
+Box Baritone "Recapitulation" |336:
   swing=66 4: 92@ %WalkA+12
 
-Box Baritono "Finale" |368:
+Box Baritone "Ending" |368:
   swing=66 4: 105@ bb*2 3r | bb*2 3r | 4r | 4bb*2$fermata |
 
-Traccia Trombe [Trombe]:
+Traccia Trumpets [Trumpets]:
 
-Box Trombe "Introduzione" |0:
+Box Trumpets "Intro" |0:
   swing=66 8: 110@ 2F7 F7! r 2F7 F7! r | 2F7 F7! r 2F7 F7! r | 2F7 F7! r 2F7 F7! r | 4F7_ 4r |
 
-Box Trombe "Tema" |16:
-  // colpi nelle A, la melodia nel ponte
+Box Trumpets "Head" |16:
+  // hits in the A sections, the melody in the bridge
   swing=66 8: 95@ 8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r |
   8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r |
   105@ %MelB
   8r | 8r | 8r | 8r | 8r | 8r | 8r | 8r |
 
-Box Trombe "Shout chorus" |272:
+Box Trumpets "Shout chorus" |272:
   swing=66 8: 112@ %ShoutA %ShoutA
 
-Box Trombe "Finale" |368:
+Box Trumpets "Ending" |368:
   swing=66 8: 115@ Bb6! 3r Bb6! 3r | 8r | 8r | 8Bb6$fermata |
 
-Traccia Tromboni [Tromboni]:
+Traccia Trombones [Trombones]:
 
-Box Tromboni "Introduzione" |0:
+Box Trombones "Intro" |0:
   swing=66 8: 105@ 2F7 F7! r 2F7 F7! r | 2F7 F7! r 2F7 F7! r | 2F7 F7! r 2F7 F7! r | 4F7_ 4r |
 
-Box Tromboni "Tema" |16:
-  // gli accordi lunghi sotto il ponte delle trombe
+Box Trombones "Head" |16:
+  // long chords under the trumpets' bridge
   swing=66 4: 70@ 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r |
   %PadB
   4r | 4r | 4r | 4r | 4r | 4r | 4r | 4r |
 
-Box Tromboni "Sfondi" |144:
-  // gli sfondi dietro l'assolo di tenore
+Box Trombones "Backgrounds" |144:
+  // the backgrounds behind the tenor solo
   swing=66 4: 58@ %PadA %PadA %PadB %PadA
 
-Box Tromboni "Shout chorus" |272:
+Box Trombones "Shout chorus" |272:
   swing=66 8: 108@ %ShoutA %ShoutA
 
-Box Tromboni "Finale" |368:
+Box Trombones "Ending" |368:
   swing=66 8: 112@ Bb6! 3r Bb6! 3r | 8r | 8r | 8Bb6$fermata |
 
-// ================================================================ suoni
+// ================================================================ sounds
 
-Plugin Batteria:
+Plugin Drums:
   ref="sfz:~/Strumenti/sfz/salamander-drums/ALL.sfz"
 
-Plugin Contrabbasso:
+Plugin DoubleBass:
   ref="sfz:~/Strumenti/sfz/contrabbasso/dsmolken_double_bass/d_smolken_rubner_bass_pizz.sfz"
 
-Plugin Pianoforte:
+Plugin Piano:
   ref="sfz:~/Strumenti/sfz/piano/SalamanderGrandPiano-SFZ+FLAC-V3+20200602/SalamanderGrandPiano-V3+20200602.sfz"
 
-Plugin Chitarra:
+Plugin Guitar:
   ref="sfz:~/Strumenti/sfz/chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz"
 
-Plugin Contralto:
+Plugin Alto:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Alto Sax.sfz"
 
-Plugin Tenore:
+Plugin Tenor:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Tenor Sax.sfz"
 
-Plugin Baritono:
+Plugin Baritone:
   ref="sfz:~/Strumenti/sfz/solosax/MTG Solo Saxophones/MTG Baritone Sax.sfz"
 
-Effetti Batteria:
+Effetti Drums:
   compressore: soglia=-18 rapporto=3 attacco=20 rilascio=150 guadagno=11
   riverbero: stanza=40 smorzamento=50 ampiezza=90 mix=12
 
-Effetti Contrabbasso:
+Effetti DoubleBass:
   compressore: soglia=-22 rapporto=3 attacco=15 rilascio=150 guadagno=6 preset="Basso"
   eq: bassi=2 medi=1 alti=-1
 
-Effetti Pianoforte:
+Effetti Piano:
   compressore: soglia=-24 rapporto=2 attacco=20 rilascio=200 guadagno=9
   eq: bassi=-1 medi=0 alti=1
   riverbero: stanza=45 smorzamento=45 ampiezza=90 mix=14
 
-Effetti Chitarra:
+Effetti Guitar:
   nam: ingresso=0 cassa=2x12 livello=12 nam="../profili_nam/Fender Twin Reverb - pulito.nam"
   eq: bassi=3 medi=1 alti=-6
   riverbero: stanza=40 smorzamento=50 ampiezza=80 mix=10
 
-Effetti Contralto:
+Effetti Alto:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=8
   riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=16
 
-Effetti Tenore:
+Effetti Tenor:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=8
   riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=16
 
-Effetti Baritono:
+Effetti Baritone:
   compressore: soglia=-20 rapporto=2 attacco=15 rilascio=150 guadagno=14
   riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=12
 
-Effetti Trombe:
+Effetti Trumpets:
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=16
 
-Effetti Tromboni:
+Effetti Trombones:
   riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=16
 
 Catena master:
@@ -399,29 +397,29 @@ Catena master:
 
 // ================================================================ mixer
 
-Mixer Batteria:
+Mixer Drums:
   volume: 95 pan: 0 mute: no solo: no
 
-Mixer Contrabbasso:
+Mixer DoubleBass:
   volume: 100 pan: 0.1 mute: no solo: no
 
-Mixer Pianoforte:
+Mixer Piano:
   volume: 85 pan: -0.35 mute: no solo: no
 
-Mixer Chitarra:
+Mixer Guitar:
   volume: 80 pan: 0.45 mute: no solo: no
 
-Mixer Contralto:
+Mixer Alto:
   volume: 100 pan: -0.25 mute: no solo: no
 
-Mixer Tenore:
+Mixer Tenor:
   volume: 105 pan: 0.05 mute: no solo: no
 
-Mixer Baritono:
+Mixer Baritone:
   volume: 92 pan: 0.25 mute: no solo: no
 
-Mixer Trombe:
+Mixer Trumpets:
   volume: 80 pan: -0.15 mute: no solo: no
 
-Mixer Tromboni:
+Mixer Trombones:
   volume: 74 pan: 0.3 mute: no solo: no
