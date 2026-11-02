@@ -181,7 +181,11 @@ def test_toolbar_fits_a_1200_px_window():
     assert w.level_meter.parentWidget() is strip and w.master_vol_slider.parentWidget() is strip
     progress = w.playback_progress.mapTo(w, QPoint(0, 0))
     assert progress.x() > corner.x() + strip.width()
-    assert w.playback_progress.isVisible() and w.playback_progress.width() > 800
+    # tutto il resto della riga, tolto il riquadro Brano se e' sceso qui
+    # (succede su Windows, dove i caratteri sono piu' larghi: _place_song_box)
+    song = w._song_slot_bottom.width() if w._song_slot_bottom.isVisible() else 0
+    assert w.playback_progress.isVisible()
+    assert w.playback_progress.width() >= w.width() - strip.width() - song - 40
     # il tempo in cifre sta nel display della barra dei comandi
     assert w.time_display.isVisible()
     assert w.time_display.mapTo(w, QPoint(w.time_display.width(), 0)).x() <= w.width()
