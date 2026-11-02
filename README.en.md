@@ -6,6 +6,8 @@
 
 ▶ **Watch SoundText in 90 seconds**: https://youtu.be/7n9sg_nHONA
 
+▶ **All 13 video tutorials**, from installation to exporting: https://www.youtube.com/playlist?list=PLbVfXEqrD3P4
+
 **SoundText** is a program for writing music as text. Notes, chords and
 rhythms are written in a simple language, the **SoundText Language**;
 SoundText plays them, shows them as a score and mixes them with effects,

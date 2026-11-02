@@ -6,6 +6,8 @@
 
 ▶ **SoundText en 90 segundos** (vídeo en inglés, subtítulos en español): https://youtu.be/7n9sg_nHONA
 
+▶ **Los 13 videotutoriales**, de la instalación a la exportación: https://www.youtube.com/playlist?list=PLbVfXEqrD3P4
+
 **SoundText** es un programa para escribir música como texto. Notas,
 acordes y ritmos se escriben en un lenguaje sencillo, el **SoundText
 Language**; SoundText los toca, los muestra en partitura y los mezcla con
