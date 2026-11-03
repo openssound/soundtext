@@ -240,18 +240,17 @@ if [ "$SRC_DIR" != "$INSTALL_DIR" ]; then
     fi
     # soundfonts/ e songs/ sono dell'utente: si creano vuote, non si copiano
     mkdir -p "$INSTALL_DIR/soundfonts" "$INSTALL_DIR/songs"
-    # La guida PDF va in docs/, accanto a HELP.md
-    cp -a "$SRC_DIR"/SoundText_Guida_dal_primo_accordo_al_WAV.pdf "$INSTALL_DIR/docs/" 2>/dev/null || true
     find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
     # Si tolgono i file che non servono al programma e che le versioni
     # precedenti dello script (che copiavano tutto il repository) possono
-    # aver lasciato: manuale Word, PDF nella radice, immagini della guida PDF,
+    # aver lasciato: manuale Word, guida PDF (nella radice o in docs/), immagini della guida PDF,
     # note di pubblicazione, script che preparano gli installer.
     # Solo qui, nella cartella di installazione: se si lancia lo script dalla
     # cartella stessa (SRC_DIR == INSTALL_DIR) sono file del repository e
     # restano dove sono.
     rm -f "$INSTALL_DIR/SoundText_Manuale_Utente.docx" \
           "$INSTALL_DIR/SoundText_Guida_dal_primo_accordo_al_WAV.pdf" \
+          "$INSTALL_DIR/docs/SoundText_Guida_dal_primo_accordo_al_WAV.pdf" \
           "$INSTALL_DIR/build-appimage.sh" \
           "$INSTALL_DIR/build-linux-portable.sh" \
           "$INSTALL_DIR/build-windows-portable.ps1" \

@@ -50,8 +50,11 @@ def test_source_installers_copy_only_what_the_program_needs():
         block = text[start:end]
         assert 'rm -rf "$INSTALL_DIR/docs/guida_brano"' in block, script
         assert "PUBBLICARE_SU_PYPI.md" in block, script
-        assert re.search(r'cp -a .*SoundText_Guida_dal_primo_accordo_al_WAV\.pdf "\$INSTALL_DIR/docs/"', block), script  # la guida PDF in docs/
-        assert "SoundText_Manuale_Utente.docx" in block and "SoundText_Guida_dal_primo_accordo_al_WAV.pdf" in block
+        # la guida PDF non va nell'installazione: si toglie quella copiata dalle versioni precedenti
+        assert not re.search(r'cp -a .*SoundText_Guida_dal_primo_accordo_al_WAV\.pdf', text), script
+        assert "SoundText_Manuale_Utente.docx" in block
+        assert '"$INSTALL_DIR/SoundText_Guida_dal_primo_accordo_al_WAV.pdf"' in block, script
+        assert '"$INSTALL_DIR/docs/SoundText_Guida_dal_primo_accordo_al_WAV.pdf"' in block, script
         for name in BUILD_SCRIPTS:
             assert f'"$INSTALL_DIR/{name}"' in block, f"{script}: {name} non viene tolto da un'installazione precedente"
         for name in KEPT_SCRIPTS:
