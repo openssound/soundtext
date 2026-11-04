@@ -88,7 +88,9 @@ jobs:
           if (-not $lib) { throw "sfizz.dll non trovata" }
           Copy-Item $lib.FullName sfizz-windows-x64.dll
           python -c "import ctypes; ctypes.CDLL(r'.\sfizz-windows-x64.dll').sfizz_create_synth"
-          $deps = & dumpbin /dependents sfizz-windows-x64.dll 2>$null
+          python -m pip install -q pefile
+          $deps = python -c "import pefile; pe = pefile.PE('sfizz-windows-x64.dll'); print(' '.join(e.dll.decode() for e in pe.DIRECTORY_ENTRY_IMPORT))"
+          Write-Output "dipendenze: $deps"
           if ($deps -match "(?i)vcruntime|msvcp") { throw "la DLL dipende ancora dal runtime MSVC: $deps" }
         shell: pwsh
       - uses: actions/upload-artifact@v4
