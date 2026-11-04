@@ -1801,6 +1801,27 @@ strumento), il file usa automaticamente un'intestazione esplicita
 (`Traccia SoloRinominato [Bass]:`) invece della forma abbreviata, cosi' che
 niente vada perso al salvataggio.
 
+Lo strumento fra parentesi quadre si puo' scrivere anche in italiano,
+francese o spagnolo: `Traccia Melodia [Flauto]:`, `[Basso]`,
+`[Violoncelle]`, `[Batería]` prendono il loro strumento, con la sua ottava
+di base, la sua estensione e il suo modo di suonare gli accordi. Un nome che
+non si riconosce (`[Flautoo]`) suona come **pianoforte** e la traccia lo
+segnala in ambra: nella testata (il perche' nel tooltip) e nella riga della
+sintassi sotto l'editor, con il nome noto piu' simile ("Forse intendevi
+«flauto»?"). Un clic su quella riga, o **Usa «Flauto»** nel menu della
+traccia, corregge lo strumento. Un nome sconosciuto non viene salvato fra
+gli strumenti personalizzati, cosi' l'avviso torna a ogni apertura finche'
+non lo correggi.
+
+Le versioni precedenti salvavano questi nomi come pianoforti (o, per
+`Basso`, come fagotti). Alla prima apertura SoundText li cerca fra i tuoi
+strumenti personalizzati e chiede, uno per uno, se aggiornarli: un
+pianoforte chiamato "Flauto" potresti averlo voluto tu. La risposta vale
+anche per i brani salvati che incorporano lo strumento vecchio, e non viene
+chiesta di nuovo. Attenzione: con lo strumento giusto cambia anche
+l'ottava di base, quindi le note scritte senza ottava possono suonare
+un'ottava o due piu' in alto o in basso di prima.
+
 ## 15. Struttura brano (vista a box)
 
 Un modo alternativo all'editor di testo lineare per lavorare sulla

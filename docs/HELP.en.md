@@ -1755,6 +1755,25 @@ renamed to "SoloRinominato" and switched to another instrument), the file
 automatically uses an explicit header (`Traccia SoloRinominato [Bass]:`)
 instead of the short form, so that nothing is lost when saving.
 
+The instrument in square brackets can also be written in Italian, French
+or Spanish: `Traccia Melody [Flauto]:`, `[Basso]`, `[Violoncelle]`,
+`[Batería]` get their instrument, with its base octave, its range and its
+way of playing chords. A name that is not recognized (`[Flautoo]`) plays as
+a **piano** and the track shows it in amber: in the header (the reason in
+the tooltip) and in the syntax line below the editor, with the closest
+known name ("Did you mean «flauto»?"). A click on that line, or **Use
+«Flauto»** in the track menu, fixes the instrument. An unknown name is not
+saved among the custom instruments, so the warning comes back every time
+you open the song until you fix it.
+
+Earlier versions saved these names as pianos (or, for `Basso`, as
+bassoons). On the first start SoundText looks for them among your custom
+instruments and asks, one by one, whether to update them: you may have
+wanted a piano called "Flauto". The answer also applies to saved songs that
+embed the old instrument, and it is not asked again. Note: with the right
+instrument the base octave changes too, so notes written without an octave
+may sound one or two octaves higher or lower than before.
+
 ## 15. Song structure (box view)
 
 An alternative to the linear text editor for working on the **structure**

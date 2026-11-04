@@ -382,6 +382,26 @@ def set_plugin_dirs(dirs: List[str]):
     _save()
 
 
+def get_accepted_instrument_fixes() -> List[str]:
+    """Strumenti salvati come ripiego dalle versioni vecchie (vedi
+    core.instruments.legacy_instrument_fix) che l'utente ha fatto correggere."""
+    return list(_load().get("instrument_fixes_accepted", []))
+
+
+def get_declined_instrument_fixes() -> List[str]:
+    """...e quelli che ha voluto tenere com'erano: non si chiede piu'."""
+    return list(_load().get("instrument_fixes_declined", []))
+
+
+def record_instrument_fix(name: str, accepted: bool):
+    _load()
+    key = "instrument_fixes_accepted" if accepted else "instrument_fixes_declined"
+    names = _cache.setdefault(key, [])
+    if name not in names:
+        names.append(name)
+    _save()
+
+
 def get_language() -> Optional[str]:
     """Lingua dell'interfaccia scelta in Opzioni ("it", "en", "fr", "es"),
     None se mai scelta (si usa quella del sistema, vedi core.i18n)."""

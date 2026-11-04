@@ -2374,5 +2374,11 @@
  "tutti i gruppi SFZ (esclusi gli extra_*)": "todos los grupos SFZ (excepto extra_*)",
  "waveshaper e distorsione (GPL-3.0)": "waveshaper y distorsión (GPL-3.0)",
  "waveshaper e distorsione (GPL-3.0; su Linux e' fra i plugin LV2)": "waveshaper y distorsión (GPL-3.0; en Linux está entre los plugins LV2)",
- "{:.0f} MB scaricati": "{:.0f} MB descargados"
+ "{:.0f} MB scaricati": "{:.0f} MB descargados",
+ "(clic: usa «{suggestion}»)": "(clic: usar «{suggestion}»)",
+ "Forse intendevi «{suggestion}»?": "¿Quisiste decir «{suggestion}»?",
+ "Strumento da aggiornare": "Instrumento por actualizar",
+ "Usa «{suggestion}»": "Usar «{suggestion}»",
+ "«{name}» era salvato come {old}: ora la notazione lo riconosce come {new}. Aggiorno?": "«{name}» estaba guardado como {old}: ahora la notación lo reconoce como {new}. ¿Lo actualizo?",
+ "«{name}» non e' uno strumento noto: suona come pianoforte": "«{name}» no es un instrumento conocido: suena como un piano"
 }

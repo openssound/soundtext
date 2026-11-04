@@ -1145,6 +1145,32 @@ class ProjectMixin:
         self._recovery.clear()
         self._autosaved_generation = self._autosave_generation
 
+    def offer_instrument_fixes(self):
+        """All'avvio, prima di aprire un brano: gli strumenti che le versioni
+        prima della 2.11 di st-language avevano salvato in instruments.json
+        come pianoforte (o fagotto) perche' non ne riconoscevano il nome, e
+        che ora si riconoscono. Per ognuno si chiede conferma (un pianoforte
+        chiamato "Flauto" puo' averlo creato l'utente apposta); la risposta
+        vale anche per i brani che lo incorporano e non si chiede piu'."""
+        from core.instruments import (all_instruments, gm_instrument_catalog, pending_instrument_fixes,
+                                      replace_custom_instrument)
+        from core.settings import get_declined_instrument_fixes, record_instrument_fix
+        gm_names = {program: name for program, name, _family in gm_instrument_catalog()}
+
+        def sound(profile):
+            return tr("Batteria") if profile.is_percussion else gm_names.get(profile.gm_program, str(profile.gm_program))
+
+        for fresh in pending_instrument_fixes(get_declined_instrument_fixes()):
+            old = all_instruments()[fresh.name]
+            reply = QMessageBox.question(
+                self, tr("Strumento da aggiornare"),
+                tr("«{name}» era salvato come {old}: ora la notazione lo riconosce come {new}. Aggiorno?",
+                   name=fresh.name, old=sound(old), new=sound(fresh)))
+            accepted = reply == QMessageBox.Yes
+            if accepted:
+                replace_custom_instrument(fresh)
+            record_instrument_fix(fresh.name, accepted)
+
     def offer_recovery(self):
         """All'avvio: se una sessione precedente si e' chiusa male lasciando
         modifiche non salvate, propone di recuperarle (la piu' recente; le

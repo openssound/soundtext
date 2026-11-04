@@ -165,6 +165,10 @@ def main():
     if os.path.exists(ICON_PATH):
         window.setWindowIcon(QIcon(ICON_PATH))
 
+    # Strumenti salvati come pianoforte dalle versioni vecchie e ora
+    # riconosciuti: si chiede prima di aprire il brano, che li userebbe.
+    window.offer_instrument_fixes()
+
     if len(sys.argv) > 1:
         path = sys.argv[1]
         if os.path.exists(path):

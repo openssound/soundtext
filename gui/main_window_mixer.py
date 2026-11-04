@@ -5,7 +5,8 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox
 
 from core.notation import validate_track_text, notation_warnings, bar_issues_summary
 from core.rhythm_generate import project_has_chords, tracks_duration_beats
-from core.instruments import list_instrument_names
+from core.instruments import (list_instrument_names, instrument_suggestion, make_instrument_available,
+                              unknown_instrument_message)
 from core.midi_export import export_single_track_to_midi
 from core.midi_import import import_midi_channel_into_track, list_midi_channels
 from core.completion import completions_for_word
@@ -289,6 +290,21 @@ class MixerMixin:
         self._sync_expanded_patterns(track)
         if track.is_audio:
             return
+        if not track.instrument.resolved:
+            # lo strumento non si riconosce: l'avviso viene prima di quelli
+            # sulle battute, e un clic lo corregge col nome suggerito
+            self._validation_jump = None
+            self._instrument_fix = instrument_suggestion(track.instrument_name)
+            message = unknown_instrument_message(track.instrument_name)
+            if self._instrument_fix:
+                message += "   " + tr("(clic: usa «{suggestion}»)", suggestion=self._instrument_fix)
+            self.highlighter.set_bar_errors([])
+            self.validation_label.setToolTip(message)
+            self.validation_label.setText("⚠  " + message)
+            self.validation_label.setStyleSheet(
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
+            return
+        self._instrument_fix = None
         ok, msg = validate_track_text(track.text, self.project.patterns)
         issues = notation_warnings(track.text, self.project.patterns, self.project.time_sig,
                                  self.project.metrica_changes, pickup=self.project.pickup) if ok else []
@@ -309,7 +325,11 @@ class MixerMixin:
             self.validation_label.setStyleSheet(f"{VALIDATION_STYLE} color: {BAD}; border-left: 3px solid {BAD};")
 
     def jump_to_first_issue(self):
-        """Clic sulla riga della sintassi: il cursore va al primo avviso sulle battute."""
+        """Clic sulla riga della sintassi: il cursore va al primo avviso sulle
+        battute, o lo strumento sconosciuto della traccia prende il nome suggerito."""
+        if getattr(self, "_instrument_fix", None) and self.current_track_name:
+            self.use_suggested_instrument(self.current_track_name)
+            return
         position = getattr(self, "_validation_jump", None)
         if position is None:
             return
@@ -820,6 +840,20 @@ class MixerMixin:
             self.refresh_mixer()
             self.select_track(new_name)
             self.statusBar().showMessage(tr("Traccia aggiornata: '{new_name}' ({new_instrument})", new_name=new_name, new_instrument=new_instrument), 4000)
+
+    def use_suggested_instrument(self, name: str):
+        """La traccia 'name', con uno strumento che non si riconosce, prende
+        il nome noto piu' simile (Usa «flauto», vedi instrument_suggestion)."""
+        track = self.project.get_track(name)
+        suggestion = instrument_suggestion(track.instrument_name)
+        if not suggestion or not make_instrument_available(suggestion):
+            return
+        self.project.update_track(name, name, suggestion)
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.select_track(name)
+        self.statusBar().showMessage(tr("Traccia aggiornata: '{new_name}' ({new_instrument})",
+                                        new_name=name, new_instrument=suggestion), 4000)
 
     def _rename_audio_track(self, track):
         new_name, ok = QInputDialog.getText(self, tr("Rinomina traccia audio"), tr("Nome:"), text=track.name)

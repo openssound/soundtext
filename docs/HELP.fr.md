@@ -1862,6 +1862,28 @@ passée à un autre instrument), le fichier utilise automatiquement un
 en-tête explicite (`Traccia SoloRinominato [Bass]:`) au lieu de la forme
 abrégée, pour que rien ne soit perdu à l'enregistrement.
 
+L'instrument entre crochets peut aussi s'écrire en italien, en français ou
+en espagnol : `Traccia Mélodie [Flauto]:`, `[Basso]`, `[Violoncelle]`,
+`[Batería]` prennent leur instrument, avec son octave de base, son étendue
+et sa façon de jouer les accords. Un nom qui n'est pas reconnu
+(`[Flautoo]`) joue comme un **piano** et la piste le signale en ambre :
+dans l'en-tête (la raison dans l'info-bulle) et dans la ligne de syntaxe
+sous l'éditeur, avec le nom connu le plus proche (« Vouliez-vous dire
+«flauto» ? »). Un clic sur cette ligne, ou **Utiliser «Flauto»** dans le
+menu de la piste, corrige l'instrument. Un nom inconnu n'est pas enregistré
+parmi les instruments personnalisés : l'avertissement revient à chaque
+ouverture tant que vous ne l'avez pas corrigé.
+
+Les versions précédentes enregistraient ces noms comme des pianos
+(ou, pour `Basso`, comme des bassons). Au premier démarrage, SoundText les
+cherche parmi vos instruments personnalisés et demande, un par un, s'il
+faut les mettre à jour : vous avez peut-être voulu un piano appelé
+« Flauto ». La réponse vaut aussi pour les morceaux enregistrés qui
+incorporent l'ancien instrument, et elle n'est plus demandée. Attention :
+avec le bon instrument, l'octave de base change aussi, donc les notes
+écrites sans octave peuvent sonner une ou deux octaves plus haut ou plus
+bas qu'avant.
+
 ## 15. Structure du morceau (vue en box)
 
 Une alternative à l'éditeur de texte linéaire pour travailler sur la

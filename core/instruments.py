@@ -23,6 +23,7 @@ from st_language.instruments import (  # noqa: F401
     PERCUSSION_MAP, DRUM_MIDI_CHANNEL, GM_FAMILIES, GM_FAMILY_DEFAULTS, GM_DRUM_KITS,
     gm_instrument_catalog, gm_family_for_program, InstrumentProfile, DEFAULT_INSTRUMENTS,
     INSTRUMENT_TYPE_ALIASES, PERCUSSION_TYPE_ALIASES, resolve_instrument_type,
+    suggest_instrument, unknown_instrument_message,
 )
 
 
@@ -131,6 +132,13 @@ def is_custom_instrument(name: str) -> bool:
     return name not in DEFAULT_INSTRUMENTS
 
 
+def replace_custom_instrument(profile: InstrumentProfile):
+    """Sostituisce (o aggiunge) lo strumento personalizzato con quel nome."""
+    _load_custom_instruments()
+    _custom_cache[profile.name] = profile
+    _save_custom_instruments()
+
+
 def ensure_instrument_available(profile: InstrumentProfile) -> bool:
     """Registra automaticamente uno strumento personalizzato se non e' gia'
     disponibile (funzionalita': caricamento automatico degli strumenti
@@ -139,7 +147,7 @@ def ensure_instrument_available(profile: InstrumentProfile) -> bool:
       - uno strumento personalizzato gia' presente in locale (non tocca eventuali
         modifiche manuali dell'utente).
     Ritorna True se lo strumento e' stato effettivamente registrato ora."""
-    if profile.name in DEFAULT_INSTRUMENTS:
+    if profile.name in DEFAULT_INSTRUMENTS or not profile.resolved:
         return False
     _load_custom_instruments()
     if profile.name in _custom_cache:
@@ -208,10 +216,91 @@ def set_session_instruments(instruments: Optional[Dict[str, InstrumentProfile]])
     _session_instruments = dict(instruments or {})
 
 
+# Strumenti nominati da un brano che la libreria non riconosce (resolved
+# falso, dalla 2.11 di st-language): suonano come pianoforte solo per questa
+# sessione e non vanno in instruments.json, cosi' l'avviso torna a ogni
+# apertura invece di sparire dopo la prima (vedi core.project_io).
+_unresolved_instruments: Dict[str, InstrumentProfile] = {}
+
+
+def register_unresolved_instrument(profile: InstrumentProfile):
+    _unresolved_instruments[profile.name] = profile
+
+
+def instrument_suggestion(name: str) -> Optional[str]:
+    """Il nome con cui correggere lo strumento sconosciuto 'name': quello
+    noto piu' simile (suggest_instrument), scritto come uno strumento gia'
+    disponibile se ce n'e' uno uguale a meno delle maiuscole, altrimenti con
+    l'iniziale maiuscola come le intestazioni di traccia. None se non c'e'."""
+    suggestion = suggest_instrument(name)
+    if not suggestion:
+        return None
+    for known in all_instruments():
+        if known.lower() == suggestion.lower():
+            return known
+    return suggestion[:1].upper() + suggestion[1:]
+
+
+def make_instrument_available(name: str) -> bool:
+    """Rende 'name' usabile come strumento di una traccia, come la lettura
+    di "Traccia Nome [Strumento]:": se non e' gia' disponibile e la libreria
+    lo riconosce lo registra, altrimenti lo fa suonare come pianoforte per
+    la sola sessione. Ritorna False se il nome non si riconosce."""
+    if name in all_instruments():
+        return True
+    profile = resolve_instrument_type(name, name)
+    if profile.resolved:
+        ensure_instrument_available(profile)
+        return True
+    register_unresolved_instrument(profile)
+    return False
+
+
+# Il profilo con cui le versioni prima della 2.11 di st-language salvavano
+# in instruments.json un nome che non riconoscevano (il pianoforte), e il
+# programma del fagotto, dove finivano nomi come 'Basso'.
+_LEGACY_FALLBACK = dict(gm_program=0, is_percussion=False, default_octave=4, range_low=21,
+                        range_high=108, polyphonic=True, voicing_style="spread", transposition=0)
+_LEGACY_BASSOON_PROGRAM = 70
+
+
+def legacy_instrument_fix(profile: InstrumentProfile) -> Optional[InstrumentProfile]:
+    """Se 'profile' e' un ripiego delle versioni vecchie (il pianoforte del
+    nome sconosciuto, o il fagotto) e la libreria ora riconosce il suo nome
+    come un altro strumento, il profilo nuovo; altrimenti None."""
+    if profile.is_percussion:
+        return None
+    fresh = resolve_instrument_type(profile.name, profile.name)
+    if not fresh.resolved:
+        return None
+    if all(getattr(profile, key) == value for key, value in _LEGACY_FALLBACK.items()):
+        changed = fresh.is_percussion or fresh.gm_program != 0
+    elif profile.gm_program == _LEGACY_BASSOON_PROGRAM:
+        changed = fresh.is_percussion or fresh.gm_program != _LEGACY_BASSOON_PROGRAM
+    else:
+        return None
+    return fresh if changed else None
+
+
+def pending_instrument_fixes(declined=()) -> List[InstrumentProfile]:
+    """Gli strumenti personalizzati salvati come ripiego da correggere (vedi
+    legacy_instrument_fix), tranne quelli in 'declined': i profili nuovi."""
+    fixes = []
+    for name, profile in _load_custom_instruments().items():
+        if name in declined or name in DEFAULT_INSTRUMENTS:
+            continue
+        fresh = legacy_instrument_fix(profile)
+        if fresh is not None:
+            fixes.append(fresh)
+    return fixes
+
+
 def get_instrument(name: str) -> InstrumentProfile:
     if name in _session_instruments:
         return InstrumentProfile(**_session_instruments[name].__dict__)
     catalog = all_instruments()
+    if name not in catalog and name in _unresolved_instruments:
+        return InstrumentProfile(**_unresolved_instruments[name].__dict__)
     if name not in catalog:
         raise ValueError(
             tr("Strumento sconosciuto: '{name}'. Disponibili: {0}", ', '.join(catalog), name=name)

@@ -26,7 +26,9 @@ from .effects import DEFAULT_REVERB_ROOM, EFFECT_KINDS, REVERB_ROOMS, choice_key
 from .instruments import (
     list_instrument_names, is_custom_instrument,
     ensure_instrument_available, resolve_instrument_type, InstrumentProfile,
+    register_unresolved_instrument, unknown_instrument_message, legacy_instrument_fix,
 )
+from .settings import get_accepted_instrument_fixes
 from .version import get_app_root, pick_writable_dir, USER_DATA_ROOT
 from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_language/stfile.py)
     RE_TEMPO, RE_METRICA, RE_MASTER, RE_KEY, RE_AMBIENTE, RE_TEMPO_LIST_HDR,
@@ -440,6 +442,15 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         name: _parse_instrument_body(name, body)
         for name, body in instrument_blocks(text.splitlines())
     }
+    # I brani salvati prima della 2.11 di st-language incorporano anche gli
+    # strumenti che allora finivano nel pianoforte (o nel fagotto): per i nomi
+    # che l'utente ha gia' fatto correggere (vedi offer_instrument_fixes nella
+    # finestra principale) vale il profilo nuovo anche qui.
+    accepted = get_accepted_instrument_fixes()
+    for name, profile in list(project.instruments.items()):
+        fresh = legacy_instrument_fix(profile) if name in accepted else None
+        if fresh is not None:
+            project.instruments[name] = fresh
     lines = text.splitlines()
 
     mode = None            # None | "pattern" | "instrument" | "mixer" | "track"
@@ -486,7 +497,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         # mode == "instrument"/"mixer": nessuna azione qui, gia' applicati sopra
         mode, current_name, current_instrument, buffer = None, None, None, []
 
-    for raw_line in lines:
+    for line_number, raw_line in enumerate(lines, start=1):
         line = raw_line.strip()
 
         if line == "":
@@ -639,9 +650,17 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         m = RE_TRACK_HDR_EXPLICIT.match(line)
         if m:
             instr_name = m.group(2)
-            if instr_name != AUDIO_INSTRUMENT_NAME and instr_name not in list_instrument_names():
+            if instr_name != AUDIO_INSTRUMENT_NAME and instr_name not in list_instrument_names() \
+                    and instr_name not in project.instruments:
+                # Si registra solo uno strumento che la libreria riconosce: uno
+                # sconosciuto suona come pianoforte per questa sessione, senza
+                # finire in instruments.json, cosi' l'avviso torna a ogni apertura.
                 profile = resolve_instrument_type(instr_name, instr_name)
-                ensure_instrument_available(profile)
+                if profile.resolved:
+                    ensure_instrument_available(profile)
+                else:
+                    register_unresolved_instrument(profile)
+                    project.file_warnings.append((line_number, unknown_instrument_message(instr_name)))
             if mode:
                 flush()
             current_name = m.group(1).strip()
@@ -752,7 +771,10 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
     # personalizzati locali usati dalle tracce e non ancora definiti.
     seen = dict(project.instruments)
     for t in project.tracks:
-        if not t.is_audio and is_custom_instrument(t.instrument_name) and t.instrument_name not in seen:
+        # uno strumento sconosciuto (resolved falso) non si incorpora: resterebbe
+        # un pianoforte definito nel file, e l'avviso non tornerebbe piu'
+        if not t.is_audio and is_custom_instrument(t.instrument_name) and t.instrument_name not in seen \
+                and t.instrument.resolved:
             seen[t.instrument_name] = t.instrument
     for name, instr in seen.items():
         lines.append(f"Strumento {name}:")

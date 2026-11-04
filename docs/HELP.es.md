@@ -1825,6 +1825,27 @@ pasada a otro instrumento), el archivo usa automáticamente una cabecera
 explícita (`Traccia SoloRinominato [Bass]:`) en lugar de la forma abreviada,
 para que no se pierda nada al guardar.
 
+El instrumento entre corchetes también se puede escribir en italiano,
+francés o español: `Traccia Melodía [Flauto]:`, `[Basso]`, `[Violoncelle]`,
+`[Batería]` toman su instrumento, con su octava base, su extensión y su
+manera de tocar los acordes. Un nombre que no se reconoce (`[Flautoo]`)
+suena como **piano** y la pista lo señala en ámbar: en la cabecera (el
+motivo en la información emergente) y en la línea de sintaxis bajo el
+editor, con el nombre conocido más parecido («¿Quisiste decir «flauto»?»).
+Un clic en esa línea, o **Usar «Flauto»** en el menú de la pista, corrige
+el instrumento. Un nombre desconocido no se guarda entre los instrumentos
+personalizados, así que el aviso vuelve cada vez que abres la canción
+hasta que lo corrijas.
+
+Las versiones anteriores guardaban estos nombres como pianos (o,
+para `Basso`, como fagots). En el primer arranque SoundText los busca entre
+tus instrumentos personalizados y pregunta, uno por uno, si actualizarlos:
+quizá querías un piano llamado «Flauto». La respuesta vale también para las
+canciones guardadas que incorporan el instrumento antiguo, y no se vuelve a
+preguntar. Atención: con el instrumento correcto cambia también la octava
+base, así que las notas escritas sin octava pueden sonar una o dos octavas
+más arriba o más abajo que antes.
+
 ## 15. Estructura de la canción (vista en boxes)
 
 Una alternativa al editor de texto lineal para trabajar en la

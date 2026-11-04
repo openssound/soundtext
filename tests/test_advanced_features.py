@@ -791,23 +791,31 @@ def test_drum_kit_type_alias_marks_percussion():
 def test_unregistered_instrument_in_track_header_is_auto_registered():
     """Bug fix: un'intestazione traccia con uno strumento non ancora
     registrato non deve far sparire silenziosamente la traccia. Va risolto
-    con resolve_instrument_type/ensure_instrument_available."""
+    con resolve_instrument_type/ensure_instrument_available; dalla 2.11 di
+    st-language si registra solo un nome che la libreria riconosce, uno
+    sconosciuto suona come pianoforte per la sola sessione."""
     from core.project_io import parse_project_text
     from core.instruments import get_instrument
 
     _reset_custom_instruments()
-    assert "AcousticGuitar" not in list_instrument_names()
-    text = """Traccia AcousticGuitar [AcousticGuitar]:
+    assert "acoustic_guitar" not in list_instrument_names()
+    text = """Traccia AcousticGuitar [acoustic_guitar]:
+  16: c*4 d*4
+
+Traccia Strano [AcousticGuitar]:
   16: c*4 d*4
 """
     try:
         p = parse_project_text(text)
-        assert "AcousticGuitar" in list_instrument_names()
-        assert len(p.tracks) == 1
+        assert "acoustic_guitar" in list_instrument_names()
+        assert len(p.tracks) == 2
         t = p.get_track("AcousticGuitar")
-        assert t.instrument_name == "AcousticGuitar"
-        instr = get_instrument("AcousticGuitar")
-        assert instr.gm_program is not None  # dedotto per fuzzy-match sul nome GM
+        assert t.instrument_name == "acoustic_guitar"
+        assert get_instrument("acoustic_guitar").gm_program == 25
+        # un nome che non si riconosce: la traccia resta, come pianoforte
+        assert "AcousticGuitar" not in list_instrument_names()
+        assert p.get_track("Strano").instrument.gm_program == 0
+        assert [line for line, _msg in p.file_warnings] == [4]
     finally:
         _reset_custom_instruments()
 

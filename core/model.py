@@ -239,6 +239,9 @@ class Project:
     # Strumenti definiti nel file del brano (blocchi "Strumento Nome:"): per
     # le tracce di questo brano valgono loro (vedi Track.instrument_def).
     instruments: Dict[str, InstrumentProfile] = field(default_factory=dict)
+    # Avvisi della lettura del file, [(riga, messaggio)]: per ora gli
+    # strumenti che non si riconoscono (vedi core.project_io); non si salvano.
+    file_warnings: List[tuple] = field(default_factory=list, compare=False)
     # Battuta in levare, in quarti (intestazione "Levare:"): la battuta 1 e'
     # la prima intera e comincia li'. 0 = nessun levare.
     pickup: float = 0.0
