@@ -103,6 +103,12 @@ jobs:
       # Il SoundFont non e' incluso: SoundText lo propone al primo avvio e si
       # scarica da Suoni -> Scarica e installa (core.soundfont_downloads).
 
+      # Il motore SFZ interno gia' compilato (release libsfizz-*, vedi
+      # libsfizz.yml), in lib\ dove SoundText lo cerca (core.sfz_engine): lo
+      # strumento SFZ interno funziona dal primo avvio, senza compilatore.
+      - name: Aggiungi il motore SFZ interno (libsfizz)
+        run: python scarica_strumenti.py libreria --in dist\SoundText\lib
+
       - name: Crea zip
         run: |
           Compress-Archive -Path dist\SoundText -DestinationPath SoundText-windows-${{ github.ref_name }}.zip
@@ -181,6 +187,9 @@ jobs:
           # bene, perche' scarica in ~/Strumenti
           cp scarica_strumenti.py AppDir/usr/bin/
           test -f AppDir/usr/bin/scarica_strumenti.py
+          # il motore SFZ interno gia' compilato (release libsfizz-*), in lib/
+          # dove SoundText lo cerca (core.sfz_engine)
+          python scarica_strumenti.py libreria --in AppDir/usr/bin/lib
           cp -r "$(python -c "import os, verovio; print(os.path.join(os.path.dirname(verovio.__file__), 'data'))")" AppDir/usr/bin/verovio-data
           test -f AppDir/usr/bin/docs/HELP.md
           test -f AppDir/usr/bin/locales/en.json

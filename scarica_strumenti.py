@@ -17,8 +17,14 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
                                                   Reverb, LSP Plugins, Wolf Shaper, Geonkick)
     python3 scarica_strumenti.py lilv             solo Linux: la libreria lilv, con cui
                                                   SoundText usa i plugin LV2 (apt)
-    python3 scarica_strumenti.py libreria         compila il motore SFZ sfizioso per lo
-                                                  strumento SFZ interno (~5 min)
+    python3 scarica_strumenti.py libreria         il motore SFZ sfizioso per lo strumento
+                                                  SFZ interno, gia' compilato (pochi MB);
+                                                  dove non c'e' pronto, lo compila (~5 min)
+    python3 scarica_strumenti.py libreria --compila
+                                                  lo compila comunque, dai sorgenti
+    python3 scarica_strumenti.py libreria --in CARTELLA
+                                                  solo la libreria gia' compilata, in
+                                                  CARTELLA (per gli installer)
     python3 scarica_strumenti.py strumenti-compilazione
                                                   installa git, cmake e il compilatore che
                                                   servono a "libreria"
@@ -29,6 +35,10 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
     python3 scarica_strumenti.py tutto            tutti i gruppi (esclusi gli extra)
     python3 scarica_strumenti.py extra_basso      extra: extra_basso, extra_piano,
                                                   extra_etnici, extra_batterie
+    python3 scarica_strumenti.py vsco-legni       orchestra (fuori da "tutto"): vsco-archi,
+                                                  vsco-legni, vsco-ottoni, vsco-percussioni,
+                                                  vcsl-vibrafono, vcsl-clavicembalo,
+                                                  vcsl-percussioni
 
 Gli strumenti vanno in ~/Strumenti (o nella cartella della variabile
 STRUMENTI_DIR). I download si riprendono se interrotti e i gruppi gia'
@@ -67,6 +77,20 @@ SFIZIOSO_URL = "https://github.com/rullopat/sfizioso.git"
 SFIZIOSO_COMMIT = "a87b25e41868b9fce61199109de6f21e87c837e3"
 # Devono coincidere con core.sfz_engine (dove SoundText cerca la libreria)
 LIB_FILE = {"windows": "sfizz.dll", "macos": "libsfizz.dylib"}.get(SISTEMA, "libsfizz.so")
+# La stessa libreria gia' compilata, dalla release libsfizz-<commit corto> di
+# SoundText (.github/workflows/libsfizz.yml): (sistema, architettura) ->
+# (file, SHA-256). Uno SHA-256 vuoto vuol dire che il file per quel commit
+# non c'e' ancora: si compila come prima. Quando cambia SFIZIOSO_COMMIT si
+# rilancia il workflow e si copiano qui le righe del suo SHA256SUMS.
+LIBSFIZZ_BASE = ("https://github.com/openssound/soundtext/releases/download/"
+                 f"libsfizz-{SFIZIOSO_COMMIT[:7]}/")
+_LIBSFIZZ_MAC = ("libsfizz-macos-universal.dylib", "")
+LIBSFIZZ_FILES = {
+    ("linux", "x86_64"): ("libsfizz-linux-x86_64.so", ""),
+    ("windows", "x86_64"): ("sfizz-windows-x64.dll", ""),
+    ("macos", "arm64"): _LIBSFIZZ_MAC,
+    ("macos", "x86_64"): _LIBSFIZZ_MAC,
+}
 
 
 def user_lib_dir() -> Path:
@@ -188,6 +212,60 @@ EXTRA_GRUPPI = [
     ("extra_batterie", "~5,5 GB", "virtuosity-drums unruly-drums swirly-drums big-rusty-drums naked-drums sonor-drums hat-phat frankensnare"),
 ]
 
+# Orchestra: VSCO 2 CE (archi, legni, ottoni, percussioni) e VCSL (vibrafono,
+# clavicembali, percussioni), di Versilian Studios, CC0. Non hanno un
+# archivio per strumento: si scaricano, uno per uno e senza git, i file .sfz
+# del gruppo e i campioni che citano (vedi scarica_orchestra), da un commit
+# fisso dei loro repository GitHub. Fuori da "tutto", come gli extra. I file
+# con i keyswitch (-KS) no: cambiano articolazione con note basse che la
+# notazione non manda.
+VSCO_BASE = "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/6dd651d55dde97fd4028699be9d4481f26917891/"
+VCSL_BASE = "https://raw.githubusercontent.com/sgossner/VCSL/dfcf4a4918771eee884b96ad4493de82ef84daf6/"
+ORCHESTRA = [
+    ("vsco-archi", "Archi VSCO 2 CE: violini, viole, violoncelli, contrabbassi e violino solo (CC0, ~670 MB)",
+     VSCO_BASE, "sfz"),
+    ("vsco-legni", "Legni VSCO 2 CE: flauto, ottavino, oboe, clarinetto, fagotto (CC0, ~300 MB)", VSCO_BASE, "sfz"),
+    ("vsco-ottoni", "Ottoni VSCO 2 CE: tromba, corno, trombone, tuba (CC0, ~330 MB)", VSCO_BASE, "sfz"),
+    ("vsco-percussioni", "Percussioni VSCO 2 CE: timpani, glockenspiel, xilofono, marimba, campane, arpa "
+                         "(CC0, ~150 MB)", VSCO_BASE, "sfz"),
+    ("vcsl-vibrafono", "Vibrafono VCSL: battenti duri, morbidi e con l'archetto (CC0, ~100 MB)", VCSL_BASE, "sfz"),
+    ("vcsl-clavicembalo", "Clavicembali VCSL: fiammingo, francese, italiano, inglese (CC0, ~390 MB)",
+     VCSL_BASE, "sfz"),
+    ("vcsl-percussioni", "Percussioni VCSL: cajon, conga, bongo, rullanti, piatti, gong, triangoli, "
+                         "tamburelli (CC0, ~340 MB)", VCSL_BASE, "sfz"),
+]
+_VCSL_IDIOFONI = "Idiophones/Struck Idiophones/"
+_VCSL_MEMBRANOFONI = "Membranophones/Struck Membranophones/"
+# I file .sfz di ogni gruppo, come percorsi nel repository
+ORCHESTRA_SFZ = {
+    "vsco-archi": [f"{n}.sfz" for n in (
+        "ViolinEnsSusVib ViolinEnsPizz ViolinEnsSpic ViolinEnsTrem ViolaEnsSusVib ViolaEnsPizz ViolaEnsSpic "
+        "ViolaEnsTrem CelloEnsSusVib CelloEnsPizz CelloEnsSpic CelloEnsTrem ContrabassSusVB ContrabassPizz "
+        "ContrabassSpic ContrabassTrem SViolinVib SViolinPizz SViolinSpic SViolinTrem").split()],
+    "vsco-legni": [f"{n}.sfz" for n in (
+        "FluteSusVib FluteSusNV FluteStac PiccoloSus PiccoloStac OboeSusVib OboeSusNV OboeStac ClarinetSus "
+        "ClarinetStac BassoonSus BassoonVib BassoonStac").split()],
+    "vsco-ottoni": [f"{n}.sfz" for n in (
+        "TrumpetSus TrumpetSusVib TrumpetStac TrumpetStraightMuteSus TrumpetHarmonMuteSus FHornSus FHornStac "
+        "FHornMute TromboneSus TromboneVib TromboneStac TubaSus TubaStac").split()],
+    "vsco-percussioni": [f"{n}.sfz" for n in
+                         "Timpani TimpaniRolls Glockenspiel Xylophone Marimba TubularBells Harp".split()],
+    "vcsl-vibrafono": [f"{_VCSL_IDIOFONI}Vibraphone - {n}.sfz" for n in ("Hard Mallets", "Soft Mallets", "Bowed")],
+    "vcsl-clavicembalo": [f"Chordophones/Zithers/Harpsichord, {n}.sfz" for n in (
+        "English - Normal", "English - Lute", "Flemish - 8'", "Flemish - 4'", "Flemish - Full", "French",
+        "Italian")],
+    "vcsl-percussioni": [f"{_VCSL_IDIOFONI}{n}.sfz" for n in (
+        "Cajon", "Clash Cymbals 1", "Clash Cymbals 2", "Claves", "Cowbells", "Agogo Bells", "Finger Cymbals",
+        "Gong 1", "Gong 2", "Sleigh Bells", "Suspended Cymbal 1", "Suspended Cymbal 2", "Tambourine 1",
+        "Tambourine 2", "Triangles", "Vibraslap")]
+    + [f"{_VCSL_MEMBRANOFONI}{n}.sfz" for n in (
+        "Bongos", "Conga", "Bass Drum 1", "Bass Drum 2", "Snare Drum, Modern 1", "Snare Drum, Modern 2",
+        "Snare Drum, Modern 3", "Snare Drum, Rope Tension")],
+}
+# Guadagno aggiunto ai .sfz di VSCO 2 CE, in dB: suonano circa 8 dB sotto i
+# suoni General MIDI. global_volume si somma ai volume= delle regioni.
+VSCO_GUADAGNO_DB = 8
+
 
 class Errore(Exception):
     pass
@@ -229,14 +307,16 @@ def voci_elenco() -> list:
             "macos": tr("7-Zip (Homebrew), Surge XT con i suoi dati (~440 MB) per l'utente, installer di sfizz, "
                         "i plugin VST3 della voce vst3")}[SISTEMA]
     vst3 = ", ".join(nome for nome, _desc, _repo, _rel, modelli in PLUGIN_VST3 if chiave_sistema() in modelli)
-    return ([(nome, tr_descrizione(desc)) for nome, desc, _url, _sotto in GRUPPI + EXTRA]
+    return ([(nome, tr_descrizione(desc)) for nome, desc, _url, _sotto in GRUPPI + EXTRA + ORCHESTRA]
             + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
             + [("vst3", tr("plugin VST3 gratuiti nella cartella VST3 dell'utente: {}", vst3)),
                ("host", host),
                ("lv2", tr("solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: {}",
                           ", ".join(nome for nome, *_r in PLUGIN_LV2))),
                ("lilv", tr("solo Linux: la libreria lilv per usare i plugin LV2 (apt, chiede la password)")),
-               ("libreria", tr("motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)")),
+               ("libreria", tr("motore SFZ sfizioso per lo strumento SFZ interno (gia' compilato, pochi MB)")
+                if libreria_precompilata() else
+                tr("motore SFZ sfizioso per lo strumento SFZ interno (compilato, ~5 min)")),
                ("strumenti-compilazione", tr("git, cmake e il compilatore che servono a 'libreria'")),
                ("nam-plugin", tr("plugin LV2 Neural Amp Modeler {}: profili NAM 4-6 volte piu' "
                                  "veloci (Linux e Windows x64, ~2 MB)", NAM_PLUGIN_VERSION)),
@@ -279,7 +359,7 @@ def menu() -> list:
 
 
 def trova(nome: str):
-    for voce in GRUPPI + EXTRA:
+    for voce in GRUPPI + EXTRA + ORCHESTRA:
         if voce[0] == nome:
             return voce
     return None
@@ -303,8 +383,9 @@ def _richiesta(url: str, **headers):
     return urllib.request.Request(url, headers={"User-Agent": USER_AGENT, **headers})
 
 
-def scarica_file(url: str, dest: Path, tentativi: int = 3):
-    """Scarica url in dest riprendendo un download interrotto."""
+def scarica_file(url: str, dest: Path, tentativi: int = 3, silenzioso: bool = False):
+    """Scarica url in dest riprendendo un download interrotto. 'silenzioso':
+    senza l'avanzamento (i tanti file piccoli dell'orchestra), errori a parte."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     for tentativo in range(1, tentativi + 1):
         gia = dest.stat().st_size if dest.exists() else 0
@@ -322,11 +403,12 @@ def scarica_file(url: str, dest: Path, tentativi: int = 3):
                             break
                         f.write(blocco)
                         fatto += len(blocco)
-                        if time.monotonic() - ultimo > 1:
+                        if not silenzioso and time.monotonic() - ultimo > 1:
                             ultimo = time.monotonic()
                             perc = f" {fatto * 100 // totale}%" if totale else ""
                             print(f"\r   {fatto / 1e6:.0f} MB{perc}   ", end="", flush=True)
-                print("\r   " + tr("{:.0f} MB scaricati", fatto / 1e6) + "      ")
+                if not silenzioso:
+                    print("\r   " + tr("{:.0f} MB scaricati", fatto / 1e6) + "      ")
                 return
         except urllib.error.HTTPError as e:
             if e.code == 416 and gia:          # gia' completo
@@ -431,7 +513,9 @@ def scarica(voce):
         return
     print(f"== {nome}: {tr_descrizione(desc)}")
     download = DEST / "_download"
-    if url.endswith(".git"):
+    if nome in ORCHESTRA_SFZ:
+        scarica_orchestra(nome, url, cartella)
+    elif url.endswith(".git"):
         _rimuovi(cartella)
         if shutil.which("git"):
             cartella.parent.mkdir(parents=True, exist_ok=True)
@@ -455,6 +539,86 @@ def scarica(voce):
         file.unlink()
     (cartella / ".completo").touch()
     print(f"   -> {cartella}")
+
+
+_OPCODE_PERCORSO = re.compile(r"(default_path|sample)=(.+?)(?=\s+\w+=|$)")
+
+
+def campioni_sfz(testo: str, cartella_sfz: str = "") -> list:
+    """I campioni citati da un file .sfz, come percorsi relativi alla
+    radice del repository ('cartella_sfz' e' la cartella del file):
+    default_path + sample, con le barre alla Windows girate. Le librerie
+    dell'orchestra non usano #include ne' #define."""
+    import posixpath
+    cartella_default, campioni = "", []
+    for riga in testo.splitlines():
+        for chiave, valore in _OPCODE_PERCORSO.findall(riga.split("//")[0].strip()):
+            valore = valore.strip().replace("\\", "/")
+            if chiave == "default_path":
+                cartella_default = valore
+            else:
+                percorso = posixpath.normpath(posixpath.join(cartella_sfz, cartella_default, valore))
+                if percorso.startswith("../") or percorso.startswith("/"):
+                    raise Errore(tr("un campione fuori dalla libreria: {}", valore))
+                if percorso not in campioni:
+                    campioni.append(percorso)
+    return campioni
+
+
+def _url_file(base: str, percorso: str) -> str:
+    import urllib.parse
+    return base + urllib.parse.quote(percorso)
+
+
+def _con_guadagno(testo: str, db: float) -> str:
+    """Il .sfz con global_volume=db in <global> (o in un <global> nuovo
+    dopo <control>, se non ce n'e'), una volta sola."""
+    if "global_volume=" in testo:
+        return testo
+    riga = f"global_volume={db:g}  // SoundText: allineato ai suoni General MIDI"
+    if re.search(r"<global>", testo):
+        return re.sub(r"<global>", f"<global>\n{riga}", testo, count=1)
+    m = re.search(r"<control>[^<]*", testo)
+    if m:
+        return testo[:m.end()] + f"<global>\n{riga}\n" + testo[m.end():]
+    return f"<global>\n{riga}\n" + testo
+
+
+def scarica_orchestra(nome: str, base: str, cartella: Path):
+    """I file .sfz del gruppo (ORCHESTRA_SFZ) e i campioni che citano,
+    scaricati uno per uno da 'base' nella stessa disposizione del
+    repository: un file gia' scaricato si salta, uno interrotto riprende
+    (scarica_file, su un .part rinominato a download finito)."""
+    def prendi(percorso: str) -> Path:
+        dest = cartella / percorso
+        if not dest.exists():
+            parziale = dest.with_name(dest.name + ".part")
+            scarica_file(_url_file(base, percorso), parziale, silenzioso=True)
+            parziale.replace(dest)
+        return dest
+
+    base = base.rstrip("/") + "/"     # un indirizzo cambiato in "Sorgenti" puo' non finire con /
+    sfz = ORCHESTRA_SFZ[nome]
+    campioni = []
+    for percorso in sfz:
+        testo = prendi(percorso).read_text(encoding="utf-8", errors="replace")
+        for campione in campioni_sfz(testo, percorso.rpartition("/")[0]):
+            if campione not in campioni:
+                campioni.append(campione)
+    print("   " + tr("{} file .sfz, {} campioni", len(sfz), len(campioni)))
+    fatto, ultimo = 0, 0.0
+    for i, campione in enumerate(campioni, 1):
+        fatto += prendi(campione).stat().st_size
+        if time.monotonic() - ultimo > 1 or i == len(campioni):
+            ultimo = time.monotonic()
+            print("\r   " + tr("{} di {} campioni, {:.0f} MB", i, len(campioni), fatto / 1e6) + "   ",
+                  end="", flush=True)
+    print()
+    if nome.startswith("vsco-"):
+        for percorso in sfz:
+            file = cartella / percorso
+            file.write_text(_con_guadagno(file.read_text(encoding="utf-8", errors="replace"), VSCO_GUADAGNO_DB),
+                            encoding="utf-8")
 
 
 # Il MuldjordKit non usa la mappa GM (kick=48, snare=50...): le percussioni di
@@ -973,12 +1137,79 @@ def installa_plugin_nam():
     print(f"   -> {dest}")
 
 
-def installa_libreria():
+def architettura() -> str:
+    """x86_64 o arm64, come le chiavi di LIBSFIZZ_FILES."""
+    macchina = platform.machine().lower()
+    return {"amd64": "x86_64", "x64": "x86_64", "aarch64": "arm64"}.get(macchina, macchina)
+
+
+def libreria_precompilata() -> tuple:
+    """(file, SHA-256) della libreria gia' compilata per questo sistema, o
+    None se non c'e' (Linux ARM, o release non ancora pubblicata)."""
+    voce = LIBSFIZZ_FILES.get((SISTEMA, architettura()))
+    return voce if voce and voce[1] else None
+
+
+def scarica_libreria_precompilata(dest: Path) -> bool:
+    """Scarica la libreria gia' compilata in dest (il file LIB_FILE),
+    controllando lo SHA-256: True se e' installata e si carica, False se
+    per questo sistema non c'e' o non si carica (glibc troppo vecchia...),
+    e allora si puo' compilare. Uno SHA-256 diverso ferma tutto (Errore)."""
+    voce = libreria_precompilata()
+    if voce is None:
+        print("   " + tr("non c'e' una versione gia' compilata per questo sistema ({}, {})", SISTEMA, architettura()))
+        return False
+    nome, sha = voce
+    print("== libreria: " + tr("scarico sfizioso {} gia' compilato", SFIZIOSO_COMMIT[:7]))
+    appoggio = Path(tempfile.mkdtemp(prefix="libsfizz-"))
+    try:
+        file = appoggio / nome
+        scarica_file(LIBSFIZZ_BASE + nome, file)
+        import hashlib
+        digest = hashlib.sha256(file.read_bytes()).hexdigest()
+        if digest != sha:
+            raise Errore(tr("il file scaricato non e' quello atteso (SHA-256 {}...): non lo installo", digest[:12]))
+        try:
+            ctypes.CDLL(str(file)).sfizz_create_synth
+        except (OSError, AttributeError) as e:
+            print("   " + tr("la libreria gia' compilata non si carica su questo sistema ({})", e))
+            return False
+        dest.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(file, dest / LIB_FILE)
+    finally:
+        _rimuovi(appoggio)
+    return True
+
+
+def installa_libreria(compila: bool = False, cartella: Path = None):
+    """Il motore SFZ interno nella cartella dell'utente: gia' compilato se
+    c'e' per questo sistema, altrimenti (o con compila=True) dai sorgenti.
+    Con 'cartella' (le build degli installer) solo quello gia' compilato, li'."""
+    if cartella is not None:
+        if libreria_precompilata() is None:
+            print("== libreria: " + tr("non c'e' una versione gia' compilata per questo sistema ({}, {})",
+                                       SISTEMA, architettura()))
+        elif not scarica_libreria_precompilata(cartella):
+            raise Errore(tr("la libreria gia' compilata non si carica su questo sistema"))
+        else:
+            print(f"   -> {cartella / LIB_FILE}")
+        return
     lib_dir = user_lib_dir()
     stamp = lib_dir / "sfizioso.commit"
     if (lib_dir / LIB_FILE).exists() and stamp.exists() and stamp.read_text().strip() == SFIZIOSO_COMMIT:
         print("== libreria: " + tr("sfizioso {} gia' installato in {}, salto", SFIZIOSO_COMMIT[:7], lib_dir))
         return
+    if not compila:
+        if scarica_libreria_precompilata(lib_dir):
+            stamp.write_text(SFIZIOSO_COMMIT + "\n")
+            print(f"   -> {lib_dir / LIB_FILE}")
+            print("   " + tr("In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)..."))
+            return
+        print("   " + tr("la compilo dai sorgenti"))
+    compila_libreria(lib_dir, stamp)
+
+
+def compila_libreria(lib_dir: Path, stamp: Path):
     if strumenti_compilazione_mancanti() and sys.stdin is not None and sys.stdin.isatty() \
             and not motivo_installazione_impossibile():
         nomi = ", ".join(nome for nome, _c in strumenti_compilazione_mancanti())
@@ -1039,6 +1270,16 @@ def main(argv) -> int:
             import py7zr  # noqa: F401
         except ImportError:
             print(tr("Attenzione: manca 7-Zip, servira' per gli strumenti in .7z (esegui prima: {} host)", comando_script()))
+    compila = "--compila" in argv
+    argv = [arg for arg in argv if arg != "--compila"]
+    cartella = None
+    if "--in" in argv:
+        i = argv.index("--in")
+        if i + 1 >= len(argv):
+            print(tr("--in vuole una cartella"))
+            return 1
+        cartella = Path(argv[i + 1])
+        del argv[i:i + 2]
     try:
         for arg in argv:
             if arg == "host":
@@ -1046,7 +1287,7 @@ def main(argv) -> int:
             elif arg == "vst3":
                 installa_vst3()
             elif arg == "libreria":
-                installa_libreria()
+                installa_libreria(compila=compila, cartella=cartella)
             elif arg == "strumenti-compilazione":
                 installa_strumenti_compilazione()
             elif arg == "lv2":

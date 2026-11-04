@@ -25,7 +25,7 @@ from .theme import dim
 
 KEY_ROLE = Qt.UserRole
 # I gruppi con la casella "tutti": un clic spunta o toglie ogni strumento
-GROUP_CHECK_CATEGORIES = (downloads.CATEGORY_SFZ, downloads.CATEGORY_SFZ_EXTRA)
+GROUP_CHECK_CATEGORIES = (downloads.CATEGORY_SFZ, downloads.CATEGORY_ORCHESTRA, downloads.CATEGORY_SFZ_EXTRA)
 
 
 class DownloadDialog(QDialog):

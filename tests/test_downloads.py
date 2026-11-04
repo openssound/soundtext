@@ -39,13 +39,15 @@ def test_catalog_has_every_category_and_reads_the_state(script):
     (script.DEST / "sfz" / "piano" / ".completo").touch()
     items = {i.key: i for i in downloads.catalog()}
     assert {i.category for i in items.values()} == {downloads.CATEGORY_SFZ, downloads.CATEGORY_SFZ_EXTRA,
+                                                  downloads.CATEGORY_ORCHESTRA,
                                                   downloads.CATEGORY_SOUNDFONTS, downloads.CATEGORY_AMP,
                                                   downloads.CATEGORY_PLUGINS, downloads.CATEGORY_ENGINES}
     assert items["piano"].installed is True and items["upright"].installed is False
     assert items["piano"].detail.endswith("740 MB")
     assert items["nam-plugin"].installed is False
     assert items["vst3"].installed is None                  # non si sa: si puo' sempre reinstallare
-    assert items["libreria"].needs_build
+    # si compila solo dove non c'e' gia' compilata (release libsfizz-*)
+    assert items["libreria"].needs_build == (script.libreria_precompilata() is None)
 
 
 def test_the_process_is_soundtext_itself():
@@ -103,6 +105,63 @@ def test_nam_plugin_with_the_wrong_file_is_refused(script, tmp_path, monkeypatch
     with pytest.raises(script.Errore):
         script.installa_plugin_nam()
     assert not (tmp_path / "lv2" / "neural_amp_modeler.lv2").exists()
+
+
+def _fake_libsfizz(script, tmp_path, monkeypatch, sha=None):
+    """La libreria gia' compilata, finta: il download scrive dei byte e
+    ctypes.CDLL la "carica" senza aprirla."""
+    content = b"finta libsfizz"
+    monkeypatch.setattr(script, "SISTEMA", "linux")
+    monkeypatch.setattr(script, "LIB_FILE", "libsfizz.so")
+    monkeypatch.setattr(script, "user_lib_dir", lambda: tmp_path / "lib")
+    monkeypatch.setattr(script, "LIBSFIZZ_FILES", {("linux", "x86_64"): (
+        "libsfizz-linux-x86_64.so", sha or hashlib.sha256(content).hexdigest())})
+    urls = []
+    monkeypatch.setattr(script, "scarica_file", lambda url, dest: urls.append(url) or
+                        dest.parent.mkdir(parents=True, exist_ok=True) or dest.write_bytes(content))
+    monkeypatch.setattr(script.ctypes, "CDLL", lambda path: type("Lib", (), {"sfizz_create_synth": 1})())
+    import platform
+    monkeypatch.setattr(platform, "machine", lambda: "AMD64")      # come lo dice Windows: x86_64
+    return urls
+
+
+def test_prebuilt_libsfizz_is_downloaded_and_checked(script, tmp_path, monkeypatch):
+    urls = _fake_libsfizz(script, tmp_path, monkeypatch)
+    monkeypatch.setattr(script, "compila_libreria", lambda *a: pytest.fail("non deve compilare"))
+    script.installa_libreria()
+    assert urls == [script.LIBSFIZZ_BASE + "libsfizz-linux-x86_64.so"]
+    assert f"libsfizz-{script.SFIZIOSO_COMMIT[:7]}/" in urls[0]
+    assert (tmp_path / "lib" / "libsfizz.so").read_bytes() == b"finta libsfizz"
+    assert (tmp_path / "lib" / "sfizioso.commit").read_text().strip() == script.SFIZIOSO_COMMIT
+    item = {i.key: i for i in downloads.catalog()}["libreria"]
+    assert item.installed and not item.needs_build
+
+
+def test_prebuilt_libsfizz_with_the_wrong_sha_is_refused(script, tmp_path, monkeypatch):
+    _fake_libsfizz(script, tmp_path, monkeypatch, sha="0" * 64)
+    monkeypatch.setattr(script, "compila_libreria", lambda *a: pytest.fail("non deve compilare"))
+    with pytest.raises(script.Errore, match="SHA-256"):
+        script.installa_libreria()
+    assert not (tmp_path / "lib" / "libsfizz.so").exists()
+
+
+def test_libsfizz_is_compiled_without_a_prebuilt_or_when_asked(script, tmp_path, monkeypatch):
+    _fake_libsfizz(script, tmp_path, monkeypatch)
+    compiled = []
+    monkeypatch.setattr(script, "compila_libreria", lambda lib_dir, stamp: compiled.append(lib_dir))
+    script.installa_libreria(compila=True)                 # libreria --compila
+    import platform
+    monkeypatch.setattr(platform, "machine", lambda: "aarch64")    # Linux ARM: nessuna gia' compilata
+    script.installa_libreria()
+    assert compiled == [tmp_path / "lib", tmp_path / "lib"]
+    assert not (tmp_path / "lib" / "libsfizz.so").exists()
+
+
+def test_libsfizz_for_the_installers_goes_in_the_given_folder(script, tmp_path, monkeypatch):
+    _fake_libsfizz(script, tmp_path, monkeypatch)
+    assert script.main(["libreria", "--in", str(tmp_path / "dist" / "lib")]) == 0
+    assert (tmp_path / "dist" / "lib" / "libsfizz.so").exists()
+    assert not (tmp_path / "lib" / "sfizioso.commit").exists()    # la cartella dell'utente non si tocca
 
 
 def test_dialog_runs_the_process_and_shows_the_log(script, monkeypatch):

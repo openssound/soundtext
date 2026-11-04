@@ -183,6 +183,12 @@ if ($fluidDll) {
     Write-Warn "manualmente le DLL di FluidSynth nella cartella di SoundText.exe."
 }
 
+# Il motore SFZ interno gia' compilato (release libsfizz di SoundText), in
+# lib\ dove SoundText lo cerca (core.sfz_engine). Senza rete si va avanti.
+Write-Info "Includo il motore SFZ interno (libsfizz)..."
+& $venvPython (Join-Path $Root "scarica_strumenti.py") libreria --in (Join-Path $DistDir "lib")
+if ($LASTEXITCODE -ne 0) { Write-Warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria" }
+
 Write-Info "Comprimo in SoundText-portable-win64.zip..."
 $zipOut = Join-Path $Root "SoundText-portable-win64.zip"
 Remove-Item -ErrorAction SilentlyContinue $zipOut

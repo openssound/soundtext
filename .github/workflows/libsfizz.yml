@@ -1,0 +1,166 @@
+name: libsfizz
+
+# Compila il motore SFZ interno (sfizioso, fork di sfizz) per Linux, Windows e
+# macOS, allo stesso commit di SFIZIOSO_COMMIT in scarica_strumenti.py, e lo
+# pubblica come asset della release "libsfizz-<commit corto>" di questo
+# repository: "scarica_strumenti.py libreria" lo scarica (controllando lo
+# SHA-256 scritto nello script) invece di compilarlo sul computer
+# dell'utente, e build-release.yml lo mette negli installer.
+#
+# Si avvia a mano (Actions -> libsfizz -> Run workflow) quando cambia
+# SFIZIOSO_COMMIT; dopo, gli SHA-256 del file SHA256SUMS della release
+# vanno copiati in LIBSFIZZ_FILES di scarica_strumenti.py.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CMAKE_FLAGS: -DCMAKE_BUILD_TYPE=Release -DSFIZZ_JACK=OFF -DSFIZZ_RENDER=OFF -DSFIZZ_SHARED=ON -DENABLE_LTO=OFF
+
+jobs:
+  commit:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.read.outputs.sha }}
+      short: ${{ steps.read.outputs.short }}
+      url: ${{ steps.read.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: read
+        run: |
+          sha=$(python3 -c "import re; print(re.search(r'SFIZIOSO_COMMIT = \"([0-9a-f]{40})\"', open('scarica_strumenti.py').read()).group(1))")
+          url=$(python3 -c "import re; print(re.search(r'SFIZIOSO_URL = \"([^\"]+)\"', open('scarica_strumenti.py').read()).group(1))")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------------ LINUX
+  # Nel container manylinux_2_28 (glibc 2.28, 2018): la libreria si carica
+  # anche sulle distribuzioni vecchie, non solo su quelle del runner.
+  linux:
+    needs: commit
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - name: Sorgenti di sfizioso
+        run: |
+          git init -q src
+          git -C src remote add origin "${{ needs.commit.outputs.url }}"
+          git -C src fetch -q --depth 1 origin "${{ needs.commit.outputs.sha }}"
+          git -C src checkout -q FETCH_HEAD
+          git -C src submodule update -q --init --recursive --depth 1
+      - name: Compila
+        run: |
+          /opt/python/cp312-cp312/bin/pip install -q cmake ninja
+          export PATH=/opt/python/cp312-cp312/bin:$PATH
+          cmake -S src -B build -G Ninja $CMAKE_FLAGS
+          cmake --build build --target sfizz_shared --parallel
+          lib=$(find build -name 'libsfizz.so*' -type f ! -type l | head -n 1)
+          cp "$lib" libsfizz-linux-x86_64.so
+          strip --strip-unneeded libsfizz-linux-x86_64.so
+          /opt/python/cp312-cp312/bin/python -c "import ctypes; ctypes.CDLL('./libsfizz-linux-x86_64.so').sfizz_create_synth"
+          objdump -T libsfizz-linux-x86_64.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: libsfizz-linux-x86_64.so
+
+  # ---------------------------------------------------------------- WINDOWS
+  # Runtime MSVC statico (/MT): non serve il Visual C++ Redistributable.
+  windows:
+    needs: commit
+    runs-on: windows-2025
+    steps:
+      - name: Sorgenti di sfizioso
+        run: |
+          git init -q src
+          git -C src remote add origin "${{ needs.commit.outputs.url }}"
+          git -C src fetch -q --depth 1 origin "${{ needs.commit.outputs.sha }}"
+          git -C src checkout -q FETCH_HEAD
+          git -C src submodule update -q --init --recursive --depth 1
+      - name: Compila
+        run: |
+          cmake -S src -B build -A x64 $env:CMAKE_FLAGS.Split(" ") -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build build --config Release --target sfizz_shared --parallel
+          $lib = Get-ChildItem build -Recurse -Filter "sfizz*.dll" | Select-Object -First 1
+          if (-not $lib) { throw "sfizz.dll non trovata" }
+          Copy-Item $lib.FullName sfizz-windows-x64.dll
+          python -c "import ctypes; ctypes.CDLL(r'.\sfizz-windows-x64.dll').sfizz_create_synth"
+          $deps = & dumpbin /dependents sfizz-windows-x64.dll 2>$null
+          if ($deps -match "(?i)vcruntime|msvcp") { throw "la DLL dipende ancora dal runtime MSVC: $deps" }
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: sfizz-windows-x64.dll
+
+  # ------------------------------------------------------------------ MACOS
+  # Una libreria universale (Apple Silicon + Intel): le due architetture si
+  # compilano a parte (le ottimizzazioni SIMD di sfizz dipendono
+  # dall'architettura) e si uniscono con lipo; firma ad-hoc, obbligatoria
+  # su Apple Silicon.
+  macos:
+    needs: commit
+    runs-on: macos-14
+    steps:
+      - name: Sorgenti di sfizioso
+        run: |
+          git init -q src
+          git -C src remote add origin "${{ needs.commit.outputs.url }}"
+          git -C src fetch -q --depth 1 origin "${{ needs.commit.outputs.sha }}"
+          git -C src checkout -q FETCH_HEAD
+          git -C src submodule update -q --init --recursive --depth 1
+      - name: Compila
+        run: |
+          for arch in arm64 x86_64; do
+            cmake -S src -B build-$arch $CMAKE_FLAGS -DCMAKE_OSX_ARCHITECTURES=$arch -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+            cmake --build build-$arch --target sfizz_shared --parallel
+          done
+          lipo -create -output libsfizz-macos-universal.dylib \
+            "$(find build-arm64 -name 'libsfizz*.dylib' -type f | head -n 1)" \
+            "$(find build-x86_64 -name 'libsfizz*.dylib' -type f | head -n 1)"
+          install_name_tool -id @rpath/libsfizz.dylib libsfizz-macos-universal.dylib
+          codesign --force -s - libsfizz-macos-universal.dylib
+          lipo -info libsfizz-macos-universal.dylib
+          python3 -c "import ctypes; ctypes.CDLL('./libsfizz-macos-universal.dylib').sfizz_create_synth"
+          otool -L libsfizz-macos-universal.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: libsfizz-macos-universal.dylib
+
+  # --------------------------------------------------------------- RELEASE
+  # Una release per commit di sfizioso, mai "latest": i link
+  # releases/latest dei README devono restare sulla versione di SoundText.
+  release:
+    needs: [commit, linux, windows, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: out
+      - name: Licenza e SHA256SUMS
+        run: |
+          base="https://raw.githubusercontent.com/rullopat/sfizioso/${{ needs.commit.outputs.sha }}"
+          { curl -fsSL "$base/LICENSE"; echo; echo "----- NOTICE -----"; curl -fsSL "$base/NOTICE"; } > out/LICENSE-sfizz.txt
+          cd out
+          sha256sum libsfizz-linux-x86_64.so sfizz-windows-x64.dll libsfizz-macos-universal.dylib > SHA256SUMS
+          cat SHA256SUMS
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: libsfizz-${{ needs.commit.outputs.short }}
+          name: libsfizz ${{ needs.commit.outputs.short }} (motore SFZ interno)
+          body: |
+            Il motore SFZ interno di SoundText: sfizioso (fork di sfizz, BSD 2-Clause) al commit ${{ needs.commit.outputs.sha }}, compilato per Linux x86_64 (glibc 2.28+), Windows x64 e macOS 11+ (universale).
+            Non serve scaricarlo a mano: lo installa "scarica_strumenti.py libreria" o Suoni -> Scarica e installa.
+          prerelease: true
+          make_latest: false
+          files: |
+            out/libsfizz-linux-x86_64.so
+            out/sfizz-windows-x64.dll
+            out/libsfizz-macos-universal.dylib
+            out/SHA256SUMS
+            out/LICENSE-sfizz.txt

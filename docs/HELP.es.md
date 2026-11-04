@@ -3248,10 +3248,11 @@ tamaño, licencia y si ya está instalado; marca los elementos e
 **Instalar** los descarga en segundo plano, con el progreso y un registro;
 **Detener** interrumpe (la descarga se reanuda la próxima vez). Es el
 mismo trabajo que `scarica_strumenti.py` desde el terminal. El motor SFZ
-interno se compila en el ordenador: si faltan git, cmake o el compilador,
-la ventana pregunta si instalarlos, y si respondes que sí los instala antes
-de compilar (apt en Linux, winget en Windows, las herramientas de Xcode en
-macOS). En Linux 7-Zip, sfizz y Surge XT se
+interno llega ya compilado (pocos MB) para Linux x86_64, Windows y macOS;
+solo donde no existe (por ejemplo Linux en ARM) se compila en el ordenador:
+si faltan git, cmake o el compilador, la ventana pregunta si instalarlos, y
+si respondes que sí los instala antes de compilar (apt en Linux, winget en
+Windows, las herramientas de Xcode en macOS). En Linux 7-Zip, sfizz y Surge XT se
 instalan con apt: una ventana del sistema pide la contraseña de
 administrador, una sola vez (si el sistema no tiene pkexec, ese elemento
 se instala desde el terminal con `./scarica_strumenti.sh host`).
@@ -3260,7 +3261,17 @@ Otras cosas que sabe hacer la ventana:
 - **Todo un grupo con un clic:** las filas *Instrumentos muestreados (SFZ)*
   y *Más instrumentos SFZ (grandes)* tienen su propia casilla, que marca
   o desmarca todos los instrumentos del grupo (aparece marcada a medias si
-  solo has elegido algunos).
+  solo has elegido algunos). También la fila *Orquesta*.
+- **Orquesta:** las cuerdas, maderas, metales y percusiones de *VSCO 2 CE*
+  y el vibráfono, los clavicémbalos y las percusiones de *VCSL*, de
+  Versilian Studios (CC0, de unos 100 a 670 MB por grupo). Solo se
+  descargan los archivos `.sfz` del grupo y las muestras que usan, uno por
+  uno y sin git. Los archivos van a `~/Strumenti/sfz/vsco-archi`,
+  `vsco-legni`... y se tocan con el instrumento SFZ interno (por ejemplo
+  `FluteSusVib.sfz` para una flauta). Los archivos de VSCO se suben 8 dB,
+  para que suenen tan fuerte como los sonidos General MIDI; los que tienen
+  keyswitches no se incluyen, porque cambian de articulación con notas que
+  la notación no envía.
 - **SoundFonts General MIDI:** *FluidR3 GM* (MIT, ~150 MB, el que
   SoundText propone al primer inicio), *MuseScore General* (MIT, ~38 MB,
   el más completo), *TimGM6mb* (GPL-2.0, ~6 MB, ligero) y el kit de batería
@@ -3288,9 +3299,12 @@ como los de **Sonidos → Descargar e instalar...**) también se puede tocar sin
 plugins: en la lista de instrumentos elige **Instrumento SFZ (interno)...**
 y luego el archivo. Lo toca la biblioteca del motor **sfizioso** (o de
 **sfizz**), que se instala una vez desde **Sonidos → Descargar e
-instalar...**, elemento *Motor SFZ interno*: se compila en el ordenador en
-unos 5 minutos y, si faltan git, cmake o el compilador, la ventana propone
-instalarlos; sin ella, la entrada aparece en gris. Este instrumento no tiene
+instalar...**, elemento *Motor SFZ interno*: llega ya compilada (pocos MB,
+y los instaladores y la AppImage ya la incluyen); donde no hay una lista,
+se compila en el ordenador en unos 5 minutos y, si faltan git, cmake o el
+compilador, la ventana propone instalarlos. Sin la biblioteca, la entrada
+aparece en gris. Desde el terminal, `scarica_strumenti.py libreria
+--compila` la compila de todos modos. Este instrumento no tiene
 parámetros: «Parámetros del instrumento plugin...» permite elegir otro
 archivo. Debajo del nombre de la pista aparece el nombre del archivo con
 «(SFZ)»; si modificas el archivo `.sfz`, la canción se recalcula.

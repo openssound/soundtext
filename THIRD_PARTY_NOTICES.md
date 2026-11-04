@@ -45,6 +45,8 @@ pedalboard; i sorgenti sono sui siti dei rispettivi progetti.
 |---|---|---|---|---|
 | [FluidSynth](https://www.fluidsynth.org) (libreria e programma) | Peter Hanappe, Josh Green e altri | LGPL-2.1 o successiva | `licenses/LGPL-2.1.txt` | sì nelle build portabili (libreria separata e sostituibile); di sistema con `install.sh` |
 | Dipendenze di FluidSynth nella build per Windows (GLib, libsndfile, libinstpatch e altre, dalla release ufficiale di FluidSynth) | i rispettivi autori | LGPL-2.1 o licenze permissive | `licenses/LGPL-2.1.txt` e la release di FluidSynth | sì su Windows |
+| [sfizioso](https://github.com/rullopat/sfizioso) (fork di [sfizz](https://github.com/sfztools/sfizz): il motore SFZ interno, libreria libsfizz) | sfizz contributors | BSD 2-Clause | `licenses/sfizioso.txt` | sì negli installer e nell'AppImage; altrimenti scaricata da `scarica_strumenti.py libreria` (release `libsfizz-*` di SoundText) |
+| Librerie incluse in libsfizz: Abseil (Apache-2.0), pugixml, SIMDe, filesystem, atomic_queue e invoke.hpp (MIT), WavPack e kiss_fft (BSD), dr_libs (pubblico dominio o MIT-0), hiir (WTFPL) e altre | i rispettivi autori | licenze permissive | `licenses/Apache-2.0.txt` e i sorgenti di sfizioso | sì, dentro libsfizz |
 | [lilv](https://drobilla.net/software/lilv) (plugin LV2) | David Robillard e altri | ISC | vedi sotto | no: usata se presente nel sistema |
 | [ffmpeg](https://ffmpeg.org) (programma, ripiego per la lettura dei file audio se il PySide6 in uso non ha il decodificatore di Qt) | FFmpeg developers | LGPL-2.1 o GPL, secondo la build | sul sito di FFmpeg | no: programma esterno facoltativo |
 

@@ -15,6 +15,7 @@ comunque l'autore nei crediti.
 | Core | upright, epiano, chitarra, chitarra-elettrica, chitarra-dist, basso, basso-plettro, organo, arpa, sax, contrabbasso, pastabass, cello, string-cyborgs, meatbass, weresax |
 | Extra | fashionbass, growlybass, swagbass, sneakybass, big-little-bass, ergo, black-blue-bassi, scarypiano, osiris-piano, squidpipes, horsepulse, war-tuba, bear-sax, unruly-drums, swirly-drums, big-rusty-drums, hat-phat, frankensnare, erhu, cithara, zither, ganjo, virtuosity-drums |
 | Pubblico dominio | splendid-piano (campioni AKAI), steeldrum (Unlicense) |
+| Orchestra | vsco-archi, vsco-legni, vsco-ottoni, vsco-percussioni: [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE) di Sam Gossner e Simon Dalzell, Versilian Studios (CC0 1.0); vcsl-vibrafono, vcsl-clavicembalo, vcsl-percussioni: [VCSL](https://github.com/sgossner/VCSL), Versilian Studios (CC0 1.0). Ai `.sfz` di VSCO `scarica_strumenti` aggiunge `global_volume=8` |
 
 ## Con attribuzione o altre condizioni
 

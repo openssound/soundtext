@@ -127,6 +127,7 @@ class Item:
 
 CATEGORY_SFZ = "sfz"
 CATEGORY_SFZ_EXTRA = "sfz_extra"
+CATEGORY_ORCHESTRA = "orchestra"
 CATEGORY_SOUNDFONTS = "soundfonts"
 CATEGORY_AMP = "amp"
 CATEGORY_PLUGINS = "plugins"
@@ -136,6 +137,7 @@ CATEGORY_ENGINES = "engines"
 def category_label(category: str) -> str:
     return {CATEGORY_SFZ: tr("Strumenti campionati (SFZ)"),
             CATEGORY_SFZ_EXTRA: tr("Altri strumenti SFZ (grandi)"),
+            CATEGORY_ORCHESTRA: tr("Orchestra (VSCO 2 CE e VCSL, SFZ)"),
             CATEGORY_SOUNDFONTS: tr("SoundFont General MIDI"),
             CATEGORY_AMP: tr("Amplificatori per chitarra (NAM)"),
             CATEGORY_PLUGINS: tr("Plugin e programmi gratuiti"),
@@ -156,7 +158,8 @@ def catalog() -> List[Item]:
     items: List[Item] = []
     if script is not None:
         sfz = script.DEST / "sfz"
-        for groups, category in ((script.GRUPPI, CATEGORY_SFZ), (script.EXTRA, CATEGORY_SFZ_EXTRA)):
+        for groups, category in ((script.GRUPPI, CATEGORY_SFZ), (script.ORCHESTRA, CATEGORY_ORCHESTRA),
+                                 (script.EXTRA, CATEGORY_SFZ_EXTRA)):
             for name, desc, _url, sub in groups:
                 label, detail = _split(desc)
                 items.append(Item(name, category, tr(label), tr(detail) if detail else "",
@@ -191,11 +194,18 @@ def catalog() -> List[Item]:
                           lv2 if script.SISTEMA == "linux" and lv2 else tr("solo Linux"), None))
         lib = script.user_lib_dir()
         stamp = lib / "sfizioso.commit"
+        # gia' compilata (release libsfizz di SoundText) dove c'e', altrimenti
+        # si compila; quella inclusa nell'installer (lib/ accanto al
+        # programma) vale come installata
+        prebuilt = script.libreria_precompilata() is not None
+        from .version import get_app_root
+        bundled = os.path.exists(os.path.join(get_app_root(), "lib", script.LIB_FILE))
         items.append(Item("libreria", CATEGORY_ENGINES, tr("Motore SFZ interno (libreria sfizz)"),
+                          tr("già compilata, pochi MB, BSD 2-Clause") if prebuilt else
                           tr("si compila: circa 5 minuti, servono git, cmake e un compilatore"),
-                          (lib / script.LIB_FILE).exists() and stamp.exists()
-                          and stamp.read_text().strip() == script.SFIZIOSO_COMMIT,
-                          needs_build=True))
+                          bundled or ((lib / script.LIB_FILE).exists() and stamp.exists()
+                                      and stamp.read_text().strip() == script.SFIZIOSO_COMMIT),
+                          needs_build=not prebuilt))
     return items
 
 
@@ -273,7 +283,8 @@ def sources() -> List[Source]:
     out: List[Source] = []
     script = _fresh_script()
     if script is not None:
-        for groups, section in ((script.GRUPPI, CATEGORY_SFZ), (script.EXTRA, CATEGORY_SFZ_EXTRA)):
+        for groups, section in ((script.GRUPPI, CATEGORY_SFZ), (script.ORCHESTRA, CATEGORY_ORCHESTRA),
+                                (script.EXTRA, CATEGORY_SFZ_EXTRA)):
             out += [Source(f"sfz:{name}", category_label(section), _split(desc)[0], url)
                     for name, desc, url, _sub in groups]
     out += [Source(f"sf:{s.key}", category_label(CATEGORY_SOUNDFONTS), tr(s.label), s.url) for s in SOUNDFONTS]
@@ -293,7 +304,9 @@ def sources() -> List[Source]:
                 Source("sfizz-ui", plugins, tr("sfizz (Windows e macOS)"), GITHUB + script.SFIZZ_UI_REPO, "github"),
                 Source("sfizz-deb", plugins, tr("sfizz (Linux, pacchetti .deb)"), script.SFIZZ_DEB_BASE),
                 Source("libreria", category_label(CATEGORY_ENGINES), tr("Motore SFZ interno (libreria sfizz)"),
-                       script.SFIZIOSO_URL)]
+                       script.SFIZIOSO_URL),
+                Source("libreria-pronta", category_label(CATEGORY_ENGINES),
+                       tr("Motore SFZ interno già compilato (libsfizz)"), script.LIBSFIZZ_BASE)]
     return out
 
 
@@ -328,7 +341,7 @@ def apply_source_overrides(script, overrides: Dict[str, str]):
         for s in soundfont_downloads.SOUNDFONTS]
     if script is None:
         return
-    for groups in (script.GRUPPI, script.EXTRA):
+    for groups in (script.GRUPPI, script.EXTRA, script.ORCHESTRA):
         groups[:] = [(n, d, overrides.get(f"sfz:{n}", u), sub) for n, d, u, sub in groups]
     for prefix, plugins in (("vst3", script.PLUGIN_VST3), ("lv2", script.PLUGIN_LV2)):
         plugins[:] = [(n, d, _repo(overrides[f"{prefix}:{n}"]) if f"{prefix}:{n}" in overrides else r, rel, m)
@@ -341,5 +354,7 @@ def apply_source_overrides(script, overrides: Dict[str, str]):
         script.SFIZZ_DEB_BASE = overrides["sfizz-deb"]
     if "libreria" in overrides:
         script.SFIZIOSO_URL = overrides["libreria"]
+    if "libreria-pronta" in overrides:
+        script.LIBSFIZZ_BASE = overrides["libreria-pronta"].rstrip("/") + "/"
     if "nam-plugin" in overrides:
         script.NAM_PLUGIN_BASE = overrides["nam-plugin"].rstrip("/") + "/"

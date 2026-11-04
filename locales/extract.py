@@ -73,7 +73,7 @@ def data_strings():
     from core.downloads import _split, load_script
     script = load_script()
     if script is not None:
-        for name, desc, _url, _sub in script.GRUPPI + script.EXTRA:
+        for name, desc, _url, _sub in script.GRUPPI + script.EXTRA + script.ORCHESTRA:
             out |= {text for text in _split(desc) if text}
         # e le descrizioni dei plugin nel registro del download
         out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2}

@@ -255,8 +255,8 @@ class PluginPickerDialog(QDialog):
                             tr("Suona un file .sfz con il motore SFZ interno, senza plugin"))
         else:
             item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
-            item.setToolTip(0, tr("Libreria SFZ (sfizioso o sfizz) non installata: installala con «{command}»",
-                                  command=SFZ_LIBRARY_COMMAND))
+            item.setToolTip(0, tr("Libreria SFZ (sfizioso o sfizz) non installata: installala da Suoni → "
+                                  "Scarica e installa… (Motori) o con «{command}»", command=SFZ_LIBRARY_COMMAND))
         return item
 
     def _choose_sfz(self) -> bool:

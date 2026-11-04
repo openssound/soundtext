@@ -197,6 +197,13 @@ else
     warn "fluidsynth (col package manager della distro di destinazione) prima di lanciare SoundText."
 fi
 
+# Il motore SFZ interno gia' compilato (release libsfizz di SoundText), in
+# lib/ dove SoundText lo cerca (core.sfz_engine): lo strumento SFZ interno
+# funziona senza "scarica_strumenti libreria". Senza rete si va avanti.
+info "Includo il motore SFZ interno (libsfizz)..."
+python3 "$ROOT/scarica_strumenti.py" libreria --in "$DIST_DIR/lib" \
+    || warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria"
+
 info "Comprimo in SoundText-portable-linux-x64.tar.gz..."
 TAR_OUT="$ROOT/SoundText-portable-linux-x64.tar.gz"
 rm -f "$TAR_OUT"

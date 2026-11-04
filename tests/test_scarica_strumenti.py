@@ -199,3 +199,84 @@ def test_zip_keeps_executable_permissions(tmp_path):
         f.writestr(info, "x")
     ss.estrai(z, tmp_path / "out")
     assert os.access(tmp_path / "out" / "p.vst3" / "Contents" / "MacOS" / "p", os.X_OK)
+
+
+# ---------------------------------------------------------------- orchestra
+
+def test_orchestra_groups_are_listed_but_not_in_tutto():
+    nomi = [v[0] for v in ss.ORCHESTRA]
+    assert set(nomi) == set(ss.ORCHESTRA_SFZ)
+    assert all(ss.trova(n) is not None for n in nomi)
+    assert not set(nomi) & {v[0] for v in ss.GRUPPI}          # "tutto" scarica solo GRUPPI
+    assert not any("-KS" in f or "Keyswitch" in f for files in ss.ORCHESTRA_SFZ.values() for f in files)
+    assert {n for n, _d in ss.voci_elenco()} >= set(nomi)
+
+
+def test_samples_of_an_sfz_file():
+    testo = ("<control>\ndefault_path=Woodwinds\\Flute\\susvib\\\n<global> volume=0\n"
+             "<region> sample=LDFlute_A3.wav lokey=67 // commento sample=no.wav\n"
+             "<region>\nsample=Sotto cartella\\B 3.wav\nhikey=70\n"
+             "<region> sample=LDFlute_A3.wav\n")
+    assert ss.campioni_sfz(testo) == ["Woodwinds/Flute/susvib/LDFlute_A3.wav",
+                                      "Woodwinds/Flute/susvib/Sotto cartella/B 3.wav"]
+    assert ss.campioni_sfz("<region> sample=../Campioni/a.wav", "Idiophones/Struck") == ["Idiophones/Campioni/a.wav"]
+    with pytest.raises(ss.Errore):
+        ss.campioni_sfz("<region> sample=../../../fuori.wav", "una")
+
+
+def test_gain_goes_in_global_once():
+    con = ss._con_guadagno("<control>\ndefault_path=x/\n<global>\nvolume=0\n<region> sample=a.wav", 8)
+    assert con.index("<global>") < con.index("global_volume=8") < con.index("<region>")
+    assert ss._con_guadagno(con, 8) == con
+    senza_global = ss._con_guadagno("<control>\ndefault_path=x/\n<region> sample=a.wav", 8)
+    assert senza_global.index("default_path") < senza_global.index("global_volume=8") < senza_global.index("<region>")
+    assert ss.campioni_sfz(senza_global) == ["x/a.wav"]
+
+
+def _fake_repo(monkeypatch, files):
+    """scarica_file finto: i file del "repository" in memoria, e i download fatti."""
+    fatti = []
+
+    def scarica_file(url, dest, tentativi=3, silenzioso=False):
+        percorso = url.split("/0123abc/", 1)[1]
+        from urllib.parse import unquote
+        fatti.append(unquote(percorso))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(files[unquote(percorso)])
+    monkeypatch.setattr(ss, "scarica_file", scarica_file)
+    return fatti
+
+
+def test_orchestra_group_downloads_only_its_files_and_resumes(tmp_path, monkeypatch):
+    files = {"FluteStac.sfz": b"<control>\ndefault_path=Woodwinds\\Flute\\\n<global>\n<region> sample=a b.wav\n"
+                              b"<region> sample=c.wav\n",
+             "Woodwinds/Flute/a b.wav": b"A" * 10, "Woodwinds/Flute/c.wav": b"C" * 10,
+             "Woodwinds/Oboe/non.wav": b"no"}
+    fatti = _fake_repo(monkeypatch, files)
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    monkeypatch.setitem(ss.ORCHESTRA_SFZ, "vsco-legni", ["FluteStac.sfz"])
+    voce = ("vsco-legni", "Legni (CC0, ~1 MB)", "https://esempio/0123abc", "sfz")   # senza / finale
+    ss.scarica(voce)
+    cartella = tmp_path / "sfz" / "vsco-legni"
+    assert fatti == ["FluteStac.sfz", "Woodwinds/Flute/a b.wav", "Woodwinds/Flute/c.wav"]
+    assert (cartella / "Woodwinds" / "Flute" / "a b.wav").read_bytes() == b"A" * 10
+    assert (cartella / ".completo").exists() and not list(cartella.rglob("*.part"))
+    assert (cartella / "FluteStac.sfz").read_text().count("global_volume=8") == 1     # VSCO: +8 dB
+    # interrotto a meta': riprende solo il file che manca
+    (cartella / ".completo").unlink()
+    (cartella / "Woodwinds" / "Flute" / "c.wav").unlink()
+    fatti.clear()
+    ss.scarica(voce)
+    assert fatti == ["Woodwinds/Flute/c.wav"]
+    assert (cartella / "FluteStac.sfz").read_text().count("global_volume=8") == 1
+
+
+def test_vcsl_files_are_not_raised(tmp_path, monkeypatch):
+    files = {"Idiophones/Claves.sfz": b"<group>\n<region> sample=Claves/c.wav\n", "Idiophones/Claves/c.wav": b"x"}
+    _fake_repo(monkeypatch, files)
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    monkeypatch.setitem(ss.ORCHESTRA_SFZ, "vcsl-percussioni", ["Idiophones/Claves.sfz"])
+    ss.scarica(("vcsl-percussioni", "Percussioni", "https://esempio/0123abc/", "sfz"))
+    sfz = tmp_path / "sfz" / "vcsl-percussioni" / "Idiophones" / "Claves.sfz"
+    assert "global_volume" not in sfz.read_text()
+    assert (sfz.parent / "Claves" / "c.wav").exists()
