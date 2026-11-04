@@ -216,16 +216,25 @@ if [ -d "$DIST_DIR/lib" ] && command -v dpkg-query >/dev/null 2>&1; then
     for lib in "$DIST_DIR"/lib/*.so*; do
         name="$(basename "$lib")"
         case "$name" in libsfizz*) continue ;; esac      # licenses/sfizioso.txt
-        path="$(ldconfig -p 2>/dev/null | awk -v n="$name" '$1 == n {print $NF; exit}')"
-        pkg="$( [ -n "$path" ] && dpkg -S "$(readlink -f "$path")" 2>/dev/null | head -n1 | cut -d: -f1)"
-        [ -z "$pkg" ] && pkg="$( [ -n "$path" ] && dpkg -S "$path" 2>/dev/null | head -n1 | cut -d: -f1)"
+        # (set -e e pipefail: ogni ricerca che non trova niente non deve fermare la build)
+        path="$(ldconfig -p 2>/dev/null | awk -v n="$name" '$1 == n {print $NF; exit}' || true)"
+        pkg=""
+        if [ -n "$path" ]; then
+            pkg="$( { dpkg -S "$(readlink -f "$path")" 2>/dev/null || dpkg -S "$path" 2>/dev/null || true; } \
+                    | head -n1 | cut -d: -f1)"
+        fi
         if [ -z "$pkg" ]; then
             warn "pacchetto di $name non trovato: aggiungine la licenza a mano"
             echo "$name: pacchetto non trovato" >> "$LIC_DIR/ELENCO.txt"
             continue
         fi
-        echo "$name: $pkg $(dpkg-query -W -f='${Version}\n' "$pkg" | head -n1)" >> "$LIC_DIR/ELENCO.txt"
-        [ -f "/usr/share/doc/$pkg/copyright" ] && cp "/usr/share/doc/$pkg/copyright" "$LIC_DIR/$pkg.copyright"
+        echo "$name: $pkg $(dpkg-query -W -f='${Version}\n' "$pkg" 2>/dev/null | head -n1 || true)" \
+            >> "$LIC_DIR/ELENCO.txt"
+        if [ -f "/usr/share/doc/$pkg/copyright" ]; then
+            cp "/usr/share/doc/$pkg/copyright" "$LIC_DIR/$pkg.copyright"
+        else
+            warn "$pkg: /usr/share/doc/$pkg/copyright non c'e': aggiungine la licenza a mano"
+        fi
     done
 fi
 "$VENV_PYTHON" "$ROOT/.github/scripts/avvisi_build.py" "$DIST_DIR/licenses/COMPONENTI.txt" \
