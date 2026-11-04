@@ -265,13 +265,19 @@ ORCHESTRA_SFZ = {
 # Guadagno aggiunto ai .sfz di VSCO 2 CE, in dB: suonano circa 8 dB sotto i
 # suoni General MIDI. global_volume si somma ai volume= delle regioni.
 VSCO_GUADAGNO_DB = 8
-# Soglie di dinamica da correggere nei .sfz di VSCO 2 CE: file -> [(campioni
-# delle regioni, opcode, valore di VSCO, valore corretto)]. Il timpano piu'
-# grave (c*2-g*2) usa il campione pianissimo fino a dinamica 80, gli altri
-# fino a 60: a 70 suonava circa 27 dB sotto il timpano accanto e nel mix
-# spariva. Ora passa al campione forte da 61, come gli altri.
-VSCO_SOGLIE = {
-    "Timpani.sfz": [("Timpani1_Hit_v1_", "hivel", "80", "60"), ("Timpani1_Hit_v3_", "lovel", "81", "61")],
+# Correzioni ai .sfz di VSCO 2 CE: file -> [(campioni delle regioni,
+# opcode, valore di VSCO, valore corretto)], misurate nota per nota col
+# motore SFZ. Timpani: il timpano piu' grave (c*2-g*2) usava il campione
+# pianissimo fino a dinamica 80 (gli altri fino a 60) e a 70 suonava circa
+# 27 dB sotto il timpano accanto: ora passa al campione forte da 61. I
+# campioni piani del grave e dell'acuto (f*3-c*4) suonavano 10-19 dB sotto
+# quello forte (le due alternanze del grave 8 dB diverse fra loro): il loro
+# volume li porta circa 2 dB sotto, perche' crescendo la dinamica il suono
+# non salti.
+VSCO_CORREZIONI = {
+    "Timpani.sfz": [("Timpani1_Hit_v1_", "hivel", "80", "60"), ("Timpani1_Hit_v3_", "lovel", "81", "61"),
+                    ("Timpani1_Hit_v1_rr1_", "volume", "27", "44"), ("Timpani1_Hit_v1_rr2_", "volume", "27", "36"),
+                    ("Timpani5_Hit_v1_", "volume", "23", "40")],
 }
 
 
@@ -594,9 +600,10 @@ def _con_guadagno(testo: str, db: float) -> str:
     return f"<global>\n{riga}\n" + testo
 
 
-def _con_soglie(testo: str, correzioni: list) -> str:
-    """Il .sfz con le soglie di dinamica corrette (VSCO_SOGLIE), regione
-    per regione: si tocca solo l'opcode delle regioni con quei campioni."""
+def _con_correzioni(testo: str, correzioni: list) -> str:
+    """Il .sfz con le correzioni di VSCO_CORREZIONI, regione per regione:
+    si tocca solo l'opcode delle regioni con quei campioni, e solo se ha
+    ancora il valore di VSCO."""
     parti = re.split(r"(?=<region>)", testo)
     for i, parte in enumerate(parti):
         for campione, opcode, vecchio, nuovo in correzioni:
@@ -607,11 +614,11 @@ def _con_soglie(testo: str, correzioni: list) -> str:
 
 def ritocca_vsco(cartella: Path):
     """Le correzioni di SoundText ai .sfz di un gruppo VSCO gia' scaricato:
-    il guadagno (VSCO_GUADAGNO_DB) e le soglie di dinamica (VSCO_SOGLIE).
+    il guadagno (VSCO_GUADAGNO_DB) e le correzioni di VSCO_CORREZIONI.
     Si possono rifare: un file gia' corretto resta com'e'."""
     for file in cartella.glob("*.sfz"):
         testo = file.read_text(encoding="utf-8", errors="replace")
-        nuovo = _con_soglie(_con_guadagno(testo, VSCO_GUADAGNO_DB), VSCO_SOGLIE.get(file.name, []))
+        nuovo = _con_correzioni(_con_guadagno(testo, VSCO_GUADAGNO_DB), VSCO_CORREZIONI.get(file.name, []))
         if nuovo != testo:
             file.write_text(nuovo, encoding="utf-8")
 

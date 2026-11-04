@@ -3125,9 +3125,10 @@ More things the window can do:
   (*Orchestra: FluteSusVib.sfz* for a `[Flauto]` track), or says which group
   to download if it is missing. The VSCO files are raised by 8 dB,
   so that they sound as loud as the General MIDI sounds, and in the timpani
-  the lowest drum switches to the loud sample from dynamic 61, like the
-  others (in VSCO only from 81, and at medium dynamics it could hardly be
-  heard); the keyswitch files
+  the soft samples of the lowest and highest drums are raised, and the
+  lowest switches to the loud sample from dynamic 61 like the others: in
+  VSCO they could hardly be heard at medium dynamics, and the sound jumped
+  as the dynamic grew; the keyswitch files
   are left out, because they change articulation with notes the notation
   does not send.
 - **General MIDI SoundFonts:** *FluidR3 GM* (MIT, ~150 MB, the one

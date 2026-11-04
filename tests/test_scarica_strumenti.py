@@ -286,17 +286,20 @@ def test_vsco_timpani_low_drum_switches_layer_like_the_others(tmp_path):
     """VSCO usa il campione pianissimo del timpano grave fino a dinamica 80
     (gli altri fino a 60): SoundText sposta la soglia a 60/61."""
     testo = ("<control>\ndefault_path=Percussion\\Timpani\\\n<global>\nvolume=0\n<group>\n"
-             "<region>\nsample=Timpani1_Hit_v1_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\n"
+             "<region>\nsample=Timpani1_Hit_v1_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\nvolume=27\n"
+             "<region>\nsample=Timpani1_Hit_v1_rr2_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\nvolume=27\n"
              "<region>\nsample=Timpani1_Hit_v3_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=81\nhivel=127\n"
              "<region>\nsample=Timpani2_Hit_v4_rr1_Sum.wav\nlokey=44\nhikey=47\nlovel=111\nhivel=127\n"
-             "<region>\nsample=Timpani5_Hit_v1_rr1_Sum.wav\nlokey=53\nhikey=60\nlovel=0\nhivel=80\n")
+             "<region>\nsample=Timpani5_Hit_v1_rr1_Sum.wav\nlokey=53\nhikey=60\nlovel=0\nhivel=80\nvolume=23\n")
     (tmp_path / "Timpani.sfz").write_text(testo)
     (tmp_path / "TimpaniRolls.sfz").write_text(testo)           # lo stesso testo: qui non si tocca
     ss.ritocca_vsco(tmp_path)
     corretto = (tmp_path / "Timpani.sfz").read_text()
     regioni = corretto.split("<region>")[1:]
-    assert "hivel=60" in regioni[0] and "lovel=61" in regioni[1]
-    assert "lovel=111" in regioni[2] and "hivel=80" in regioni[3]     # le altre regioni restano
+    assert "hivel=60" in regioni[0] and "hivel=60" in regioni[1] and "lovel=61" in regioni[2]
+    assert "volume=44" in regioni[0] and "volume=36" in regioni[1]    # le due alternanze del piano, pari
+    assert "lovel=111" in regioni[3]
+    assert "hivel=80" in regioni[4] and "volume=40" in regioni[4]     # l'acuto: piu' forte, soglia uguale
     assert corretto.count("global_volume=8") == 1
     rolls = (tmp_path / "TimpaniRolls.sfz").read_text()
     assert "hivel=80" in rolls.split("<region>")[1] and "global_volume=8" in rolls

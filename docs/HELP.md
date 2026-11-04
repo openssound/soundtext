@@ -3200,9 +3200,10 @@ Altre cose che la finestra sa fare:
   sola il file adatto al suo strumento (*Orchestra: FluteSusVib.sfz* per
   una traccia `[Flauto]`), o dice quale gruppo scaricare se non c'è. I
   file di VSCO sono alzati di 8 dB, perché suonino forti come i suoni
-  General MIDI, e nei timpani il tamburo più grave passa al campione forte
-  da dinamica 61, come gli altri (in VSCO solo da 81, e a dinamica media
-  quasi non si sentiva); quelli con i keyswitch non ci sono, perché cambiano
+  General MIDI, e nei timpani i campioni piani del tamburo più grave e del
+  più acuto sono alzati, e il grave passa al campione forte da dinamica 61
+  come gli altri: in VSCO a dinamica media quasi non si sentivano, e
+  crescendo la dinamica il suono saltava; quelli con i keyswitch non ci sono, perché cambiano
   articolazione con note che la notazione non manda.
 - **SoundFont General MIDI:** *FluidR3 GM* (MIT, ~150 MB, quello che
   SoundText propone al primo avvio), *MuseScore General* (MIT, ~38 MB, il

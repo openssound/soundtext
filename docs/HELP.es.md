@@ -3274,9 +3274,10 @@ Otras cosas que sabe hacer la ventana:
   su instrumento (*Orquesta: FluteSusVib.sfz* para una pista `[Flauto]`), o
   dice qué grupo descargar si falta. Los archivos de VSCO se suben 8 dB,
   para que suenen tan fuerte como los sonidos General MIDI, y en los
-  timbales el tambor más grave pasa a la muestra fuerte desde la dinámica
-  61, como los demás (en VSCO solo desde 81, y a dinámica media casi no se
-  oía); los que tienen
+  timbales las muestras suaves del tambor más grave y del más agudo se
+  suben, y el grave pasa a la muestra fuerte desde la dinámica 61 como los
+  demás: en VSCO casi no se oían a dinámica media, y el sonido saltaba al
+  crecer la dinámica; los que tienen
   keyswitches no se incluyen, porque cambian de articulación con notas que
   la notación no envía.
 - **SoundFonts General MIDI:** *FluidR3 GM* (MIT, ~150 MB, el que

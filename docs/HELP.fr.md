@@ -3341,9 +3341,11 @@ Autres choses que sait faire la fenêtre :
   FluteSusVib.sfz* pour une piste `[Flauto]`), ou indique quel groupe
   télécharger s'il manque.
   Les fichiers de VSCO sont relevés de 8 dB, pour sonner aussi fort que les
-  sons General MIDI, et dans les timbales le fût le plus grave passe à
-  l'échantillon fort dès la nuance 61, comme les autres (dans VSCO
-  seulement dès 81, et en nuance moyenne on l'entendait à peine) ; ceux avec des keyswitches sont laissés de côté, car
+  sons General MIDI, et dans les timbales les échantillons doux du fût le
+  plus grave et du plus aigu sont relevés, et le grave passe à
+  l'échantillon fort dès la nuance 61 comme les autres : dans VSCO on les
+  entendait à peine en nuance moyenne, et le son sautait quand la nuance
+  augmentait ; ceux avec des keyswitches sont laissés de côté, car
   ils changent d'articulation avec des notes que la notation n'envoie pas.
 - **SoundFonts General MIDI :** *FluidR3 GM* (MIT, ~150 Mo, celui que
   SoundText propose au premier démarrage), *MuseScore General* (MIT,
