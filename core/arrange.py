@@ -328,6 +328,21 @@ def transpose_text(text: str, semitones: int, default_octave: int = 4) -> str:
     return rewrite_tokens(text, PitchRewriter(semitones, default_octave))
 
 
+def transpose_track(project: Project, track: Track, semitones: int) -> None:
+    """Tutta la traccia di 'semitones' (Ottava della traccia...): il testo
+    di ogni box, o il testo libero se non ne ha. I richiami ai pattern e
+    alla libreria MIDI prendono il suffisso +N/-N (vedi PitchRewriter): i
+    pattern restano com'erano per le altre tracce che li usano."""
+    from .arrangement import flatten_clips_to_text
+    octave = track.instrument.default_octave
+    if track.clips:
+        for clip in track.clips:
+            clip.text = transpose_text(clip.text, semitones, octave)
+        track.text = flatten_clips_to_text(track.clips, project.patterns, octave, meter=project.meter())
+    else:
+        track.text = transpose_text(track.text, semitones, octave)
+
+
 # ---------------------------------------------------------------------------
 # Arrangia
 # ---------------------------------------------------------------------------

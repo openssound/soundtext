@@ -166,16 +166,25 @@ class TrackHeaderWidget(QFrame):
         if t.frozen:
             subtitle = tr("❄ congelata in '{audio}'", audio=t.frozen)
         unknown = not t.is_audio and not t.synth and not t.frozen and not t.instrument.resolved
+        # note che il .sfz della traccia non suona (core.sfz_coverage)
+        silent = None
+        project = getattr(self.host, "project", None)
+        if not unknown and project is not None:
+            from core.sfz_coverage import silent_notes_cached
+            silent = silent_notes_cached(project, t)
+        warn = unknown or silent is not None
         self._set_elided(self.name_label, t.name)
-        self._set_elided(self.instr_label, ("⚠ " + subtitle) if unknown else subtitle)
-        # lo strumento non si riconosce e suona come pianoforte: in ambra (vedi
-        # _refresh_style), col perche' nel tooltip (unknown_instrument_message)
-        self._unknown_instrument = unknown
+        self._set_elided(self.instr_label, ("⚠ " + subtitle) if warn else subtitle)
+        # lo strumento non si riconosce e suona come pianoforte, o suona solo
+        # una parte delle note: in ambra (vedi _refresh_style), col perche' nel tooltip
+        self._unknown_instrument = warn
         if unknown:
             from core.instruments import unknown_instrument_message
             self.instr_label.setToolTip(unknown_instrument_message(t.instrument_name))
+        elif silent is not None:
+            self.instr_label.setToolTip(silent.message())
         # "Bass / Bass": lo strumento si scrive solo se dice qualcosa in piu' del nome
-        self.instr_label.setVisible(unknown or subtitle.strip().lower() != t.name.strip().lower())
+        self.instr_label.setVisible(warn or subtitle.strip().lower() != t.name.strip().lower())
         for widget, value in ((self.mute_btn, t.mute), (self.solo_btn, t.solo)):
             widget.blockSignals(True)
             widget.setChecked(value)

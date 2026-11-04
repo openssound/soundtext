@@ -3200,7 +3200,9 @@ Altre cose che la finestra sa fare:
   sola il file adatto al suo strumento (*Orchestra: FluteSusVib.sfz* per
   una traccia `[Flauto]`), o dice quale gruppo scaricare se non c'è. I
   file di VSCO sono alzati di 8 dB, perché suonino forti come i suoni
-  General MIDI; quelli con i keyswitch non ci sono, perché cambiano
+  General MIDI, e nei timpani il tamburo più grave passa al campione forte
+  da dinamica 61, come gli altri (in VSCO solo da 81, e a dinamica media
+  quasi non si sentiva); quelli con i keyswitch non ci sono, perché cambiano
   articolazione con note che la notazione non manda.
 - **SoundFont General MIDI:** *FluidR3 GM* (MIT, ~150 MB, quello che
   SoundText propone al primo avvio), *MuseScore General* (MIT, ~38 MB, il
@@ -3235,6 +3237,23 @@ terminale, `scarica_strumenti.py libreria --compila` la compila comunque. Questo
 "Parametri dello strumento plugin..." fa scegliere un altro file. Sotto il
 nome della traccia compare il nome del file con "(SFZ)"; se modifichi il
 file `.sfz`, il brano viene ricalcolato.
+
+**Note che lo strumento SFZ non suona.** Un file `.sfz` suona solo i tasti
+(e le dinamiche) per cui ha dei campioni: i timpani di VSCO 2 CE, per
+esempio, solo da `c*2` a `c*4`, mentre il SoundFont General MIDI suona
+qualunque nota. Se una traccia ha note che il suo `.sfz` non suona,
+SoundText lo dice: il nome dello strumento sotto la traccia diventa ambra
+con ⚠, e il tooltip dice quante note restano mute, quali e da dove a dove
+suona il file; la riga sotto l'editor lo ripete per la traccia aperta, e
+premendo Play la barra di stato elenca le tracce con note mute. Per farle
+suonare, scegli un altro file o sposta le note con **Ottava della
+traccia...** (menu ⋯ della traccia, o un clic sull'avviso sotto l'editor):
+sposta di una o più ottave tutte le note della traccia, in tutti i box,
+dice mentre scegli da dove a dove vanno e quante ne restano mute, e
+**Ottava consigliata** sceglie quella con meno note mute. I pattern
+richiamati non cambiano: il box li richiama un'ottava sopra o sotto
+(`%nome+12`), così restano com'erano per le altre tracce. Annulla
+(Ctrl+Z) torna indietro.
 
 Il progetto `.st` ricorda il plugin di ogni traccia e di ogni effetto,
 con i suoi parametri. Aprendo il progetto su un altro computer, i VST3

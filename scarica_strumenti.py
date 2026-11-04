@@ -265,6 +265,14 @@ ORCHESTRA_SFZ = {
 # Guadagno aggiunto ai .sfz di VSCO 2 CE, in dB: suonano circa 8 dB sotto i
 # suoni General MIDI. global_volume si somma ai volume= delle regioni.
 VSCO_GUADAGNO_DB = 8
+# Soglie di dinamica da correggere nei .sfz di VSCO 2 CE: file -> [(campioni
+# delle regioni, opcode, valore di VSCO, valore corretto)]. Il timpano piu'
+# grave (c*2-g*2) usa il campione pianissimo fino a dinamica 80, gli altri
+# fino a 60: a 70 suonava circa 27 dB sotto il timpano accanto e nel mix
+# spariva. Ora passa al campione forte da 61, come gli altri.
+VSCO_SOGLIE = {
+    "Timpani.sfz": [("Timpani1_Hit_v1_", "hivel", "80", "60"), ("Timpani1_Hit_v3_", "lovel", "81", "61")],
+}
 
 
 class Errore(Exception):
@@ -509,6 +517,8 @@ def scarica(voce):
     nome, desc, url, sotto = voce
     cartella = DEST / sotto / nome
     if (cartella / ".completo").exists():
+        if nome.startswith("vsco-"):
+            ritocca_vsco(cartella)          # le correzioni arrivate dopo il download
         print(f"== {nome}: " + tr("gia' presente, salto"))
         return
     print(f"== {nome}: {tr_descrizione(desc)}")
@@ -584,6 +594,28 @@ def _con_guadagno(testo: str, db: float) -> str:
     return f"<global>\n{riga}\n" + testo
 
 
+def _con_soglie(testo: str, correzioni: list) -> str:
+    """Il .sfz con le soglie di dinamica corrette (VSCO_SOGLIE), regione
+    per regione: si tocca solo l'opcode delle regioni con quei campioni."""
+    parti = re.split(r"(?=<region>)", testo)
+    for i, parte in enumerate(parti):
+        for campione, opcode, vecchio, nuovo in correzioni:
+            if campione in parte:
+                parti[i] = parte = re.sub(rf"(?<![\w]){opcode}={vecchio}(?![\d])", f"{opcode}={nuovo}", parte)
+    return "".join(parti)
+
+
+def ritocca_vsco(cartella: Path):
+    """Le correzioni di SoundText ai .sfz di un gruppo VSCO gia' scaricato:
+    il guadagno (VSCO_GUADAGNO_DB) e le soglie di dinamica (VSCO_SOGLIE).
+    Si possono rifare: un file gia' corretto resta com'e'."""
+    for file in cartella.glob("*.sfz"):
+        testo = file.read_text(encoding="utf-8", errors="replace")
+        nuovo = _con_soglie(_con_guadagno(testo, VSCO_GUADAGNO_DB), VSCO_SOGLIE.get(file.name, []))
+        if nuovo != testo:
+            file.write_text(nuovo, encoding="utf-8")
+
+
 def scarica_orchestra(nome: str, base: str, cartella: Path):
     """I file .sfz del gruppo (ORCHESTRA_SFZ) e i campioni che citano,
     scaricati uno per uno da 'base' nella stessa disposizione del
@@ -615,10 +647,7 @@ def scarica_orchestra(nome: str, base: str, cartella: Path):
                   end="", flush=True)
     print()
     if nome.startswith("vsco-"):
-        for percorso in sfz:
-            file = cartella / percorso
-            file.write_text(_con_guadagno(file.read_text(encoding="utf-8", errors="replace"), VSCO_GUADAGNO_DB),
-                            encoding="utf-8")
+        ritocca_vsco(cartella)
 
 
 # Il MuldjordKit non usa la mappa GM (kick=48, snare=50...): le percussioni di

@@ -3341,7 +3341,9 @@ Autres choses que sait faire la fenêtre :
   FluteSusVib.sfz* pour une piste `[Flauto]`), ou indique quel groupe
   télécharger s'il manque.
   Les fichiers de VSCO sont relevés de 8 dB, pour sonner aussi fort que les
-  sons General MIDI ; ceux avec des keyswitches sont laissés de côté, car
+  sons General MIDI, et dans les timbales le fût le plus grave passe à
+  l'échantillon fort dès la nuance 61, comme les autres (dans VSCO
+  seulement dès 81, et en nuance moyenne on l'entendait à peine) ; ceux avec des keyswitches sont laissés de côté, car
   ils changent d'articulation avec des notes que la notation n'envoie pas.
 - **SoundFonts General MIDI :** *FluidR3 GM* (MIT, ~150 Mo, celui que
   SoundText propose au premier démarrage), *MuseScore General* (MIT,
@@ -3380,6 +3382,25 @@ quand même. Cet instrument n'a pas de paramètres : « Paramètres de
 l'instrument plugin... » permet de choisir un autre fichier. Sous le nom de
 la piste apparaît le nom du fichier avec « (SFZ) » ; si vous modifiez le
 fichier `.sfz`, le morceau est recalculé.
+
+**Notes que l'instrument SFZ ne joue pas.** Un fichier `.sfz` ne joue que
+les touches (et les nuances) pour lesquelles il a des échantillons : les
+timbales de VSCO 2 CE, par exemple, seulement de `c*2` à `c*4`, alors que
+le SoundFont General MIDI joue n'importe quelle note. Si une piste a des
+notes que son `.sfz` ne joue pas, SoundText le signale : le nom de
+l'instrument sous la piste passe en ambre avec ⚠, et l'info-bulle indique
+combien de notes restent muettes, lesquelles et l'étendue du fichier ; la
+ligne sous l'éditeur le répète pour la piste ouverte, et en appuyant sur
+Play la barre d'état liste les pistes avec des notes muettes. Pour les
+faire sonner, choisissez un autre fichier ou déplacez les notes avec
+**Octave de la piste...** (menu ⋯ de la piste, ou un clic sur
+l'avertissement sous l'éditeur) : elle déplace toutes les notes de la
+piste, dans tous les box, d'une ou plusieurs octaves, indique pendant le
+choix où vont les notes et combien restent muettes, et **Octave
+conseillée** choisit celle qui en a le moins. Les patterns appelés ne
+changent pas : le box les appelle une octave plus haut ou plus bas
+(`%nom+12`), ils restent donc tels quels pour les autres pistes. Annuler
+(Ctrl+Z) revient en arrière.
 
 Le projet `.st` mémorise le plugin de chaque piste et de chaque effet, avec
 ses paramètres. En ouvrant le projet sur un autre ordinateur, les VST3 sont

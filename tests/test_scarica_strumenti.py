@@ -280,3 +280,36 @@ def test_vcsl_files_are_not_raised(tmp_path, monkeypatch):
     sfz = tmp_path / "sfz" / "vcsl-percussioni" / "Idiophones" / "Claves.sfz"
     assert "global_volume" not in sfz.read_text()
     assert (sfz.parent / "Claves" / "c.wav").exists()
+
+
+def test_vsco_timpani_low_drum_switches_layer_like_the_others(tmp_path):
+    """VSCO usa il campione pianissimo del timpano grave fino a dinamica 80
+    (gli altri fino a 60): SoundText sposta la soglia a 60/61."""
+    testo = ("<control>\ndefault_path=Percussion\\Timpani\\\n<global>\nvolume=0\n<group>\n"
+             "<region>\nsample=Timpani1_Hit_v1_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\n"
+             "<region>\nsample=Timpani1_Hit_v3_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=81\nhivel=127\n"
+             "<region>\nsample=Timpani2_Hit_v4_rr1_Sum.wav\nlokey=44\nhikey=47\nlovel=111\nhivel=127\n"
+             "<region>\nsample=Timpani5_Hit_v1_rr1_Sum.wav\nlokey=53\nhikey=60\nlovel=0\nhivel=80\n")
+    (tmp_path / "Timpani.sfz").write_text(testo)
+    (tmp_path / "TimpaniRolls.sfz").write_text(testo)           # lo stesso testo: qui non si tocca
+    ss.ritocca_vsco(tmp_path)
+    corretto = (tmp_path / "Timpani.sfz").read_text()
+    regioni = corretto.split("<region>")[1:]
+    assert "hivel=60" in regioni[0] and "lovel=61" in regioni[1]
+    assert "lovel=111" in regioni[2] and "hivel=80" in regioni[3]     # le altre regioni restano
+    assert corretto.count("global_volume=8") == 1
+    rolls = (tmp_path / "TimpaniRolls.sfz").read_text()
+    assert "hivel=80" in rolls.split("<region>")[1] and "global_volume=8" in rolls
+    ss.ritocca_vsco(tmp_path)                                 # rifarlo non cambia niente
+    assert (tmp_path / "Timpani.sfz").read_text() == corretto
+
+
+def test_already_downloaded_vsco_group_gets_the_new_corrections(tmp_path, monkeypatch):
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    cartella = tmp_path / "sfz" / "vsco-percussioni"
+    cartella.mkdir(parents=True)
+    (cartella / ".completo").touch()
+    (cartella / "Timpani.sfz").write_text("<global>\n<region> sample=Timpani1_Hit_v1_rr1.wav hivel=80\n")
+    monkeypatch.setattr(ss, "scarica_file", lambda *a, **k: pytest.fail("non deve scaricare"))
+    ss.scarica(ss.trova("vsco-percussioni"))
+    assert "hivel=60" in (cartella / "Timpani.sfz").read_text()

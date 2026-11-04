@@ -1759,6 +1759,7 @@ class ArrangementView(AudioClipActions, QWidget):
         suggestion = None if instrument.resolved else instrument_suggestion(track.instrument_name)
         suggest_action = menu.addAction(tr("Usa «{suggestion}»", suggestion=suggestion)) if suggestion else None
         edit_action = menu.addAction(tr("Nome e strumento..."))
+        octave_action = menu.addAction(tr("Ottava della traccia..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
         synth_params_action = menu.addAction(tr("Parametri dello strumento plugin...")) if track.synth else None
         if hasattr(self.host, "add_freeze_action"):
@@ -1793,6 +1794,9 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         if suggest_action is not None and chosen is suggest_action:
             self.host.use_suggested_instrument(track_name)
+            return
+        if chosen is octave_action:
+            self.host.change_track_octave(track_name)
             return
         if chosen is edit_action:
             self.host._open_edit_dialog_for(track_name)

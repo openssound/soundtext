@@ -3124,7 +3124,10 @@ More things the window can do:
   (VST3/LV2)...** window offers the file suited to its instrument by itself
   (*Orchestra: FluteSusVib.sfz* for a `[Flauto]` track), or says which group
   to download if it is missing. The VSCO files are raised by 8 dB,
-  so that they sound as loud as the General MIDI sounds; the keyswitch files
+  so that they sound as loud as the General MIDI sounds, and in the timpani
+  the lowest drum switches to the loud sample from dynamic 61, like the
+  others (in VSCO only from 81, and at medium dynamics it could hardly be
+  heard); the keyswitch files
   are left out, because they change articulation with notes the notation
   does not send.
 - **General MIDI SoundFonts:** *FluidR3 GM* (MIT, ~150 MB, the one
@@ -3162,6 +3165,23 @@ library, the entry is greyed out. From the terminal,
 parameters: "Plugin instrument parameters..." lets you choose another file.
 Under the track name the file name appears with "(SFZ)"; if you edit the
 `.sfz` file, the song is recalculated.
+
+**Notes the SFZ instrument does not play.** An `.sfz` file only plays the
+keys (and dynamics) it has samples for: the VSCO 2 CE timpani, for
+example, only from `c*2` to `c*4`, while the General MIDI SoundFont plays
+any note. If a track has notes its `.sfz` does not play, SoundText says
+so: the instrument name under the track turns amber with ⚠, and the
+tooltip says how many notes stay silent, which ones and which range the
+file plays; the line below the editor repeats it for the open track, and
+when you press Play the status bar lists the tracks with silent notes. To
+make them sound, choose another file or move the notes with **Track
+octave...** (the track's ⋯ menu, or a click on the warning below the
+editor): it moves all the notes of the track, in every box, by one or more
+octaves, tells you while you choose where the notes go and how many stay
+silent, and **Suggested octave** picks the one with the fewest silent
+notes. The called patterns do not change: the box calls them an octave
+higher or lower (`%name+12`), so they stay as they were for the other
+tracks. Undo (Ctrl+Z) goes back.
 
 The `.st` project remembers the plugin of every track and every effect,
 with its parameters. When the project is opened on another computer, VST3

@@ -294,6 +294,7 @@ class MixerMixin:
             # lo strumento non si riconosce: l'avviso viene prima di quelli
             # sulle battute, e un clic lo corregge col nome suggerito
             self._validation_jump = None
+            self._octave_fix = False
             self._instrument_fix = instrument_suggestion(track.instrument_name)
             message = unknown_instrument_message(track.instrument_name)
             if self._instrument_fix:
@@ -308,12 +309,26 @@ class MixerMixin:
         ok, msg = validate_track_text(track.text, self.project.patterns)
         issues = notation_warnings(track.text, self.project.patterns, self.project.time_sig,
                                  self.project.metrica_changes, pickup=self.project.pickup) if ok else []
+        # note che il .sfz della traccia non suona (core.sfz_coverage)
+        from core.sfz_coverage import silent_notes_cached
+        silent = silent_notes_cached(self.project, track) if ok else None
         self.highlighter.set_bar_errors(i.char_start for i in issues)
-        self.validation_label.setToolTip("\n".join(i.message for i in issues))
+        self.validation_label.setToolTip("\n".join(([silent.message()] if silent else [])
+                                                    + [i.message for i in issues]))
         # una riga sottile: il colore dice lo stato, con un filo a sinistra per
         # avvisi ed errori; un clic sugli avvisi porta al primo (jump_to_first_issue)
         self._validation_jump = min(i.char_start for i in issues) if issues else None
-        if issues:
+        self._octave_fix = silent is not None and not issues
+        if silent is not None:
+            text = "⚠  " + silent.message()
+            if issues:
+                text += "   ·   " + bar_issues_summary(issues) + "   " + tr("(clic: vai al primo)")
+            else:
+                text += "   " + tr("(clic: cambia ottava)")
+            self.validation_label.setText(text)
+            self.validation_label.setStyleSheet(
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
+        elif issues:
             self.validation_label.setText(bar_issues_summary(issues) + "   " + tr("(clic: vai al primo)"))
             self.validation_label.setStyleSheet(
                 f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
@@ -329,6 +344,9 @@ class MixerMixin:
         battute, o lo strumento sconosciuto della traccia prende il nome suggerito."""
         if getattr(self, "_instrument_fix", None) and self.current_track_name:
             self.use_suggested_instrument(self.current_track_name)
+            return
+        if getattr(self, "_octave_fix", False) and self.current_track_name:
+            self.change_track_octave(self.current_track_name)
             return
         position = getattr(self, "_validation_jump", None)
         if position is None:
@@ -628,6 +646,7 @@ class MixerMixin:
             actions[menu.addAction(tr("Usa «{suggestion}»", suggestion=suggestion))] = \
                 lambda: self.use_suggested_instrument(track_name)
         actions[menu.addAction(tr("Nome e strumento..."))] = lambda: self._open_edit_dialog_for(track_name)
+        actions[menu.addAction(tr("Ottava della traccia..."))] = lambda: self.change_track_octave(track_name)
         if not self.project.get_track(track_name).is_audio:
             actions[menu.addAction(tr("Strumento plugin (VST3/LV2)..."))] = lambda: self.choose_track_synth(track_name)
             if self.project.get_track(track_name).synth:
@@ -845,6 +864,47 @@ class MixerMixin:
             self.refresh_mixer()
             self.select_track(new_name)
             self.statusBar().showMessage(tr("Traccia aggiornata: '{new_name}' ({new_instrument})", new_name=new_name, new_instrument=new_instrument), 4000)
+
+    def change_track_octave(self, track_name: str):
+        """Ottava della traccia...: sposta tutte le note della traccia di una o
+        piu' ottave (vedi gui.track_octave_dialog e core.arrange.transpose_track)."""
+        from core.arrange import transpose_track
+        from .track_octave_dialog import TrackOctaveDialog
+        track = self.project.get_track(track_name)
+        if track.is_audio:
+            return
+        dialog = TrackOctaveDialog(self, self.project, track)
+        if dialog.exec() != QDialog.Accepted or not dialog.semitones():
+            return
+        transpose_track(self.project, track, dialog.semitones())
+        self._mark_dirty()
+        self.refresh_mixer()
+        if track.clips:
+            self.arrangement_view.refresh()
+        self.select_track(track_name)
+        octaves = dialog.semitones() // 12
+        text = (tr("Traccia '{name}' un'ottava più su", name=track_name) if octaves == 1 else
+                tr("Traccia '{name}' un'ottava più giù", name=track_name) if octaves == -1 else
+                tr("Traccia '{name}' spostata di {octaves} ottave", name=track_name, octaves=f"{octaves:+d}"))
+        self.statusBar().showMessage(text, 5000)
+
+    def silent_tracks_message(self) -> str:
+        """Le tracce udibili il cui .sfz non suona una parte delle note
+        (core.sfz_coverage), in una riga per la barra di stato; '' se nessuna."""
+        from core.sfz_coverage import silent_notes_cached
+        soloed = any(t.solo for t in self.project.tracks)
+        parts = []
+        for track in self.project.tracks:
+            if track.mute or (soloed and not track.solo):
+                continue
+            silent = silent_notes_cached(self.project, track)
+            if silent is not None:
+                parts.append(tr("{track}: 1 nota muta", track=track.name) if silent.silent == 1 else
+                             tr("{track}: {silent} note mute", track=track.name, silent=silent.silent))
+        if not parts:
+            return ""
+        return tr("Attenzione, lo strumento SFZ non suona alcune note — {tracks} (passa il mouse sulla traccia "
+                  "per sapere quali)", tracks=", ".join(parts))
 
     def use_suggested_instrument(self, name: str):
         """La traccia 'name', con uno strumento che non si riconosce, prende

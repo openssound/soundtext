@@ -166,6 +166,9 @@ class PlaybackMixin:
                                           offset_beats=_resume_offset_beats, start_immediately=False)
         self._playback_paused_beat = None
         self.statusBar().showMessage(tr("Riproduzione in corso — {engine_desc}", engine_desc=engine_desc), 8000)
+        silent = self.silent_tracks_message()
+        if silent:
+            self.statusBar().showMessage(silent, 15000)
         from core.playback import streaming_available
         if self._active_loop_beats() is not None and not streaming_available():
             self.statusBar().showMessage(

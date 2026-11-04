@@ -3273,7 +3273,10 @@ Otras cosas que sabe hacer la ventana:
   (VST3/LV2)...** de una pista propone por sí sola el archivo adecuado para
   su instrumento (*Orquesta: FluteSusVib.sfz* para una pista `[Flauto]`), o
   dice qué grupo descargar si falta. Los archivos de VSCO se suben 8 dB,
-  para que suenen tan fuerte como los sonidos General MIDI; los que tienen
+  para que suenen tan fuerte como los sonidos General MIDI, y en los
+  timbales el tambor más grave pasa a la muestra fuerte desde la dinámica
+  61, como los demás (en VSCO solo desde 81, y a dinámica media casi no se
+  oía); los que tienen
   keyswitches no se incluyen, porque cambian de articulación con notas que
   la notación no envía.
 - **SoundFonts General MIDI:** *FluidR3 GM* (MIT, ~150 MB, el que
@@ -3312,6 +3315,23 @@ aparece en gris. Desde el terminal, `scarica_strumenti.py libreria
 parámetros: «Parámetros del instrumento plugin...» permite elegir otro
 archivo. Debajo del nombre de la pista aparece el nombre del archivo con
 «(SFZ)»; si modificas el archivo `.sfz`, la canción se recalcula.
+
+**Notas que el instrumento SFZ no toca.** Un archivo `.sfz` solo toca las
+teclas (y las dinámicas) para las que tiene muestras: los timbales de VSCO
+2 CE, por ejemplo, solo de `c*2` a `c*4`, mientras que el SoundFont General
+MIDI toca cualquier nota. Si una pista tiene notas que su `.sfz` no toca,
+SoundText lo avisa: el nombre del instrumento bajo la pista pasa a ámbar
+con ⚠, y la información emergente dice cuántas notas quedan mudas, cuáles
+y de dónde a dónde toca el archivo; la línea bajo el editor lo repite para
+la pista abierta, y al pulsar Play la barra de estado enumera las pistas
+con notas mudas. Para que suenen, elige otro archivo o mueve las notas
+con **Octava de la pista...** (menú ⋯ de la pista, o un clic en el aviso
+bajo el editor): mueve todas las notas de la pista, en todos los boxes,
+una o más octavas, dice mientras eliges dónde van las notas y cuántas
+quedan mudas, y **Octava sugerida** elige la que tiene menos notas mudas.
+Los patrones llamados no cambian: el box los llama una octava más arriba
+o más abajo (`%nombre+12`), así quedan como estaban para las demás
+pistas. Deshacer (Ctrl+Z) vuelve atrás.
 
 El proyecto `.st` recuerda el plugin de cada pista y de cada efecto, con
 sus parámetros. Al abrir el proyecto en otro ordenador, los VST3 se buscan
