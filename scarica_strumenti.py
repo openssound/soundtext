@@ -84,10 +84,10 @@ LIB_FILE = {"windows": "sfizz.dll", "macos": "libsfizz.dylib"}.get(SISTEMA, "lib
 # rilancia il workflow e si copiano qui le righe del suo SHA256SUMS.
 LIBSFIZZ_BASE = ("https://github.com/openssound/soundtext/releases/download/"
                  f"libsfizz-{SFIZIOSO_COMMIT[:7]}/")
-_LIBSFIZZ_MAC = ("libsfizz-macos-universal.dylib", "")
+_LIBSFIZZ_MAC = ("libsfizz-macos-universal.dylib", "fb3623424efa0f7d31549ca2e6083b0142043cd998793ce243d994a2c022d447")
 LIBSFIZZ_FILES = {
-    ("linux", "x86_64"): ("libsfizz-linux-x86_64.so", ""),
-    ("windows", "x86_64"): ("sfizz-windows-x64.dll", ""),
+    ("linux", "x86_64"): ("libsfizz-linux-x86_64.so", "5c06b5f227334bd713cec05ecfbe32c20d0dd0164885b9a463dbb7a61667e0f6"),
+    ("windows", "x86_64"): ("sfizz-windows-x64.dll", "cfaadd77938ee5194e8f08da385e9958785cf0d391b55865feaf461a25e39430"),
     ("macos", "arm64"): _LIBSFIZZ_MAC,
     ("macos", "x86_64"): _LIBSFIZZ_MAC,
 }
