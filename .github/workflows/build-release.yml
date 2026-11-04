@@ -109,6 +109,13 @@ jobs:
       - name: Aggiungi il motore SFZ interno (libsfizz)
         run: python scarica_strumenti.py libreria --in dist\SoundText\lib
 
+      # Versioni esatte e testi di licenza di cio' che la build contiene
+      # (Python, pacchetti, FluidSynth, libsfizz): vedi THIRD_PARTY_NOTICES.md
+      - name: Componenti e licenze della build
+        run: |
+          python .github\scripts\avvisi_build.py dist\SoundText\licenses\COMPONENTI.txt "FluidSynth 2.4.7, DLL della release ufficiale per Windows (licenses\fluidsynth-windows.txt)" "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses\sfizioso.txt)"
+          if (-not (Test-Path "dist\SoundText\licenses\COMPONENTI.txt")) { throw "COMPONENTI.txt mancante" }
+
       - name: Crea zip
         run: |
           Compress-Archive -Path dist\SoundText -DestinationPath SoundText-windows-${{ github.ref_name }}.zip
@@ -190,6 +197,11 @@ jobs:
           # il motore SFZ interno gia' compilato (release libsfizz-*), in lib/
           # dove SoundText lo cerca (core.sfz_engine)
           python scarica_strumenti.py libreria --in AppDir/usr/bin/lib
+          # versioni esatte e testi di licenza di cio' che la build contiene
+          python .github/scripts/avvisi_build.py AppDir/usr/bin/licenses/COMPONENTI.txt \
+            "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses/sfizioso.txt)" \
+            "FluidSynth: non incluso, quello del sistema (setup-appimage.sh)"
+          test -s AppDir/usr/bin/licenses/COMPONENTI.txt
           cp -r "$(python -c "import os, verovio; print(os.path.join(os.path.dirname(verovio.__file__), 'data'))")" AppDir/usr/bin/verovio-data
           test -f AppDir/usr/bin/docs/HELP.md
           test -f AppDir/usr/bin/locales/en.json

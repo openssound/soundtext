@@ -141,3 +141,38 @@ def test_linux_installer_works_without_the_repository_and_reports_failures():
     assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".bashrc" in text
     assert "soundtext.log" in text and "notify-send" in text
     assert "incluso nel repository" not in text
+
+
+def test_every_licence_file_named_in_the_notices_exists():
+    """THIRD_PARTY_NOTICES.md rimanda ai testi in licenses/: devono esserci
+    tutti, tranne quelli che ogni build genera mentre la si costruisce."""
+    generated = {"licenses/COMPONENTI.txt", "licenses/librerie-linux/", "licenses/librerie-linux"}
+    notices = open(os.path.join(ROOT, "THIRD_PARTY_NOTICES.md"), encoding="utf-8").read()
+    named = set(re.findall(r"`(licenses/[^`\s]+)`", notices))
+    assert "licenses/sfizioso.txt" in named and "licenses/fluidsynth-windows.txt" in named
+    missing = [p for p in named - generated if not os.path.exists(os.path.join(ROOT, p))]
+    assert not missing, missing
+    sfizioso = open(os.path.join(ROOT, "licenses", "sfizioso.txt"), encoding="utf-8").read()
+    for library in ("Abseil", "WavPack", "kiss_fft", "pugixml", "SIMDe", "ThreadPool"):
+        assert library in sfizioso
+
+
+def test_every_build_writes_the_list_of_its_components():
+    workflow = open(os.path.join(ROOT, ".github", "workflows", "build-release.yml"), encoding="utf-8").read()
+    assert workflow.count("avvisi_build.py") == 2                 # Windows e AppImage
+    for script in ("build-linux-portable.sh", "build-windows-portable.ps1"):
+        assert "avvisi_build.py" in open(os.path.join(ROOT, script), encoding="utf-8").read()
+    assert "licenze_sfizioso.py" in open(os.path.join(ROOT, ".github", "workflows", "libsfizz.yml"),
+                                          encoding="utf-8").read()
+
+
+def test_the_components_file_lists_python_and_the_packages(tmp_path):
+    import subprocess
+    import sys
+    out = tmp_path / "COMPONENTI.txt"
+    subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", "avvisi_build.py"), str(out),
+                    "FluidSynth 2.4.7"], check=True, capture_output=True)
+    text = out.read_text(encoding="utf-8")
+    assert re.search(r"^Python 3\.\d+", text, re.M) and re.search(r"^st-language \d", text, re.M)
+    assert "FluidSynth 2.4.7" in text and "LICENSE.txt dell'interprete" in text
+    assert not re.search(r"^pyinstaller ", text, re.M | re.I)    # strumento di build, non incluso

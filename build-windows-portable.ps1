@@ -189,6 +189,12 @@ Write-Info "Includo il motore SFZ interno (libsfizz)..."
 & $venvPython (Join-Path $Root "scarica_strumenti.py") libreria --in (Join-Path $DistDir "lib")
 if ($LASTEXITCODE -ne 0) { Write-Warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria" }
 
+# Versioni esatte e testi di licenza di cio' che la build contiene
+& $venvPython (Join-Path $Root ".github\scripts\avvisi_build.py") (Join-Path $DistDir "licenses\COMPONENTI.txt") `
+    "FluidSynth 2.4.7, DLL della release ufficiale per Windows (licenses\fluidsynth-windows.txt)" `
+    "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses\sfizioso.txt)"
+if ($LASTEXITCODE -ne 0) { Write-Warn "licenses\COMPONENTI.txt non generato" }
+
 Write-Info "Comprimo in SoundText-portable-win64.zip..."
 $zipOut = Join-Path $Root "SoundText-portable-win64.zip"
 Remove-Item -ErrorAction SilentlyContinue $zipOut

@@ -9,7 +9,8 @@ name: libsfizz
 #
 # Si avvia a mano (Actions -> libsfizz -> Run workflow) quando cambia
 # SFIZIOSO_COMMIT; dopo, gli SHA-256 del file SHA256SUMS della release
-# vanno copiati in LIBSFIZZ_FILES di scarica_strumenti.py.
+# vanno copiati in LIBSFIZZ_FILES di scarica_strumenti.py e LICENSE-sfizz.txt
+# in licenses/sfizioso.txt.
 on:
   workflow_dispatch:
 
@@ -44,6 +45,9 @@ jobs:
     runs-on: ubuntu-24.04
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
+      - uses: actions/checkout@v7
+        with:
+          path: soundtext
       - name: Sorgenti di sfizioso
         run: |
           git init -q src
@@ -62,10 +66,16 @@ jobs:
           strip --strip-unneeded libsfizz-linux-x86_64.so
           /opt/python/cp312-cp312/bin/python -c "import ctypes; ctypes.CDLL('./libsfizz-linux-x86_64.so').sfizz_create_synth"
           objdump -T libsfizz-linux-x86_64.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+      # le licenze di sfizioso e delle librerie che contiene (dai sorgenti
+      # appena compilati): devono accompagnare il binario
+      - name: Licenze
+        run: /opt/python/cp312-cp312/bin/python soundtext/.github/scripts/licenze_sfizioso.py src LICENSE-sfizz.txt
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: libsfizz-linux-x86_64.so
+          path: |
+            libsfizz-linux-x86_64.so
+            LICENSE-sfizz.txt
 
   # ---------------------------------------------------------------- WINDOWS
   # Runtime MSVC statico (/MT): non serve il Visual C++ Redistributable.
@@ -144,10 +154,9 @@ jobs:
         with:
           merge-multiple: true
           path: out
-      - name: Licenza e SHA256SUMS
+      - name: SHA256SUMS
         run: |
-          base="https://raw.githubusercontent.com/rullopat/sfizioso/${{ needs.commit.outputs.sha }}"
-          { curl -fsSL "$base/LICENSE"; echo; echo "----- NOTICE -----"; curl -fsSL "$base/NOTICE"; } > out/LICENSE-sfizz.txt
+          test -s out/LICENSE-sfizz.txt
           cd out
           sha256sum libsfizz-linux-x86_64.so sfizz-windows-x64.dll libsfizz-macos-universal.dylib > SHA256SUMS
           cat SHA256SUMS
@@ -157,6 +166,7 @@ jobs:
           name: libsfizz ${{ needs.commit.outputs.short }} (motore SFZ interno)
           body: |
             Il motore SFZ interno di SoundText: sfizioso (fork di sfizz, BSD 2-Clause) al commit ${{ needs.commit.outputs.sha }}, compilato per Linux x86_64 (glibc 2.28+), Windows x64 e macOS 11+ (universale).
+            Le licenze di sfizioso e delle librerie che contiene sono in LICENSE-sfizz.txt (anche in licenses/sfizioso.txt di SoundText); i sorgenti sono quelli di sfizioso a quel commit, con i sottomoduli.
             Non serve scaricarlo a mano: lo installa "scarica_strumenti.py libreria" o Suoni -> Scarica e installa.
           prerelease: true
           make_latest: false

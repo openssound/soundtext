@@ -204,6 +204,35 @@ info "Includo il motore SFZ interno (libsfizz)..."
 python3 "$ROOT/scarica_strumenti.py" libreria --in "$DIST_DIR/lib" \
     || warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria"
 
+# Licenze delle librerie copiate in lib/ dal sistema di build (FluidSynth e
+# le sue dipendenze): il file copyright del loro pacchetto Debian/Ubuntu, in
+# licenses/librerie-linux/, con l'elenco pacchetto e versione (i sorgenti
+# sono i pacchetti sorgente di quella distribuzione, "apt-get source").
+if [ -d "$DIST_DIR/lib" ] && command -v dpkg-query >/dev/null 2>&1; then
+    info "Raccolgo le licenze delle librerie incluse..."
+    LIC_DIR="$DIST_DIR/licenses/librerie-linux"
+    mkdir -p "$LIC_DIR"
+    : > "$LIC_DIR/ELENCO.txt"
+    for lib in "$DIST_DIR"/lib/*.so*; do
+        name="$(basename "$lib")"
+        case "$name" in libsfizz*) continue ;; esac      # licenses/sfizioso.txt
+        path="$(ldconfig -p 2>/dev/null | awk -v n="$name" '$1 == n {print $NF; exit}')"
+        pkg="$( [ -n "$path" ] && dpkg -S "$(readlink -f "$path")" 2>/dev/null | head -n1 | cut -d: -f1)"
+        [ -z "$pkg" ] && pkg="$( [ -n "$path" ] && dpkg -S "$path" 2>/dev/null | head -n1 | cut -d: -f1)"
+        if [ -z "$pkg" ]; then
+            warn "pacchetto di $name non trovato: aggiungine la licenza a mano"
+            echo "$name: pacchetto non trovato" >> "$LIC_DIR/ELENCO.txt"
+            continue
+        fi
+        echo "$name: $pkg $(dpkg-query -W -f='${Version}\n' "$pkg" | head -n1)" >> "$LIC_DIR/ELENCO.txt"
+        [ -f "/usr/share/doc/$pkg/copyright" ] && cp "/usr/share/doc/$pkg/copyright" "$LIC_DIR/$pkg.copyright"
+    done
+fi
+"$VENV_PYTHON" "$ROOT/.github/scripts/avvisi_build.py" "$DIST_DIR/licenses/COMPONENTI.txt" \
+    "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses/sfizioso.txt)" \
+    "FluidSynth e le sue dipendenze in lib/: licenses/librerie-linux/ELENCO.txt" \
+    || warn "licenses/COMPONENTI.txt non generato"
+
 info "Comprimo in SoundText-portable-linux-x64.tar.gz..."
 TAR_OUT="$ROOT/SoundText-portable-linux-x64.tar.gz"
 rm -f "$TAR_OUT"
