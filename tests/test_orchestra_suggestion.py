@@ -53,6 +53,8 @@ def test_proposal_follows_the_track_instrument(strumenti):
     _installa(strumenti, "vsco-legni", "FluteSusVib.sfz")
     assert proposta_per(resolve_instrument_type("Flauto", "Flauto")).installed
     assert proposta_per(resolve_instrument_type("Violoncello", "Violoncello")).file_name == "CelloEnsSusVib.sfz"
+    # "Clavicembalo" si riconosce dalla 2.11.1 di st-language
+    assert proposta_per(resolve_instrument_type("Clavicembalo", "Clavicembalo")).group == "vcsl-clavicembalo"
     assert proposta_per(resolve_instrument_type("Drums", "Drums")) is None        # percussioni
     assert proposta_per(resolve_instrument_type("Chitarra", "Chitarra")) is None  # non c'e' nell'orchestra
     assert proposta_per(None) is None
