@@ -74,6 +74,37 @@ def test_level_meter_latches_clip_until_clicked():
     assert not meter.clipped
 
 
+def test_level_meter_tooltip_goes_above_it_and_stays():
+    """L'indicatore sta in fondo alla finestra: il suggerimento (HoverTip,
+    non QToolTip) va sopra, dentro lo schermo, a capo, si aggiorna se il
+    testo cambia e si chiude solo quando il cursore lascia l'indicatore."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QEvent, QPoint
+    from PySide6.QtGui import QHelpEvent
+    from PySide6.QtWidgets import QApplication, QWidget
+    from gui.level_meter import LevelMeter
+    app = QApplication.instance() or QApplication([])
+    window = QWidget()
+    meter = LevelMeter(window)
+    screen = app.primaryScreen().availableGeometry()
+    window.setGeometry(screen.left(), screen.bottom() - 60, 300, 40)
+    window.show()
+    app.processEvents()
+    meter.set_clipped(True, "Il master clippa alle battute: 3, 7")
+    pos = QPoint(meter.width() - 5, 10)
+    assert meter.event(QHelpEvent(QEvent.ToolTip, pos, meter.mapToGlobal(pos)))
+    tip = meter._tip
+    assert tip.isVisible() and tip.wordWrap() and "3, 7" in tip.text()
+    assert tip.geometry().bottom() < meter.mapToGlobal(QPoint(0, 0)).y()
+    assert screen.contains(tip.geometry())
+    meter.set_clipped(True, "Il master clippa alle battute: 3, 7, 12")
+    assert "12" in tip.text()
+    tip._check_cursor()                       # il cursore non e' sull'indicatore
+    assert not tip.isVisible()
+    window.close()
+
+
 def test_main_window_shows_clipping_during_playback_and_after_stop():
     from PySide6.QtWidgets import QApplication
     QApplication.instance() or QApplication([])

@@ -61,6 +61,14 @@ def get_active_theme() -> str:
     return _active_theme
 
 
+def tooltip_style() -> str:
+    """Il foglio di stile dei suggerimenti (QToolTip) nel tema attivo, per
+    chi ne disegna uno da se' (vedi gui.level_meter.HoverTip)."""
+    p = _LIGHT if _active_theme == "light" else _DARK
+    return (f"background-color: {p['BG_PANEL']}; color: {p['TEXT']}; border: 1px solid {p['ACCENT_DIM']}; "
+            "padding: 4px 6px; border-radius: 4px;")
+
+
 def text_dim() -> str:
     """Il grigio del testo secondario nel tema attivo, per chi disegna da se'
     (QPainter): TEXT_DIM e' quello del tema scuro."""

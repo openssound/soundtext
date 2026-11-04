@@ -9,18 +9,79 @@ lo Stop e nei nuovi ascolti) finche' non la si clicca.
 
 import time
 
-from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtCore import QEvent, QPoint, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QCursor, QPainter
+from PySide6.QtWidgets import QApplication, QLabel, QSizePolicy, QWidget
+from shiboken6 import isValid
 
 from core.i18n import tr
 from core.levels import to_dbfs
-from .theme import BAD, GOOD, WARN, text_dim
+from .theme import BAD, GOOD, WARN, text_dim, tooltip_style
 
 METER_FLOOR_DB = -48.0
 PEAK_HOLD_SECONDS = 1.0
 PEAK_FALL_DB_PER_SECOND = 12.0
 LED_WIDTH = 38
+
+
+class HoverTip(QLabel):
+    """Un suggerimento che SoundText mostra e nasconde da se', sopra il
+    widget e dentro l'area utile dello schermo, con il testo a capo; resta
+    finche' il cursore e' sul widget (lo si controlla ogni 150 ms) e si
+    aggiorna se il testo cambia. Al posto di QToolTip per l'indicatore in
+    fondo alla finestra: li' il gestore delle finestre spingeva il
+    suggerimento contro il cursore e Qt lo chiudeva al primo movimento, o
+    per un "mouse uscito" che X11 manda quando una finestra compare
+    vicino al cursore."""
+
+    def __init__(self, owner: QWidget):
+        super().__init__(None, Qt.ToolTip | Qt.FramelessWindowHint)
+        self._owner = owner
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setTextFormat(Qt.PlainText)
+        self.setWordWrap(True)
+        self.setMaximumWidth(380)
+        self._poll = QTimer(self)
+        self._poll.setInterval(150)
+        self._poll.timeout.connect(self._check_cursor)
+        owner.destroyed.connect(self.deleteLater)      # e' una finestra a se': va via con il widget
+
+    def popup(self, text: str):
+        if not text:
+            self.hide()
+            return
+        self.setStyleSheet(tooltip_style())
+        self.setText(text)
+        self.adjustSize()
+        self._place()
+        self.show()
+        self.raise_()
+        self._poll.start()
+
+    def update_text(self, text: str):
+        if self.isVisible():
+            self.popup(text)
+
+    def _place(self):
+        owner = self._owner
+        top_left = owner.mapToGlobal(QPoint(0, 0))
+        screen = (owner.screen() or QApplication.primaryScreen()).availableGeometry()
+        x = max(screen.left(), min(top_left.x(), screen.right() + 1 - self.width()))
+        y = top_left.y() - self.height() - 6
+        if y < screen.top():                   # niente spazio sopra: sotto il widget
+            y = top_left.y() + owner.height() + 6
+        self.move(x, y)
+
+    def _check_cursor(self):
+        owner = self._owner
+        inside = owner.isVisible() and owner.rect().contains(owner.mapFromGlobal(QCursor.pos()))
+        if not inside:
+            self.hide()
+
+    def hideEvent(self, event):
+        self._poll.stop()
+        super().hideEvent(event)
 
 
 def _fraction(db: float) -> float:
@@ -43,6 +104,7 @@ class LevelMeter(QWidget):
         self._clipped = False
         self._available = True
         self._clip_detail = ""
+        self._tip = HoverTip(self)
         self._refresh_tooltip()
 
     # -- stato --------------------------------------------------------------
@@ -100,8 +162,22 @@ class LevelMeter(QWidget):
                       "La spia CLIP si accende quando il master supera il fondo scala e il suono si "
                       "rompe; clicca la spia per spegnerla.")
             if self._clipped and self._clip_detail:
-                text += "\n" + self._clip_detail
+                text += "\n\n" + self._clip_detail
         self.setToolTip(text)
+        if isValid(self._tip):                 # alla chiusura puo' essere gia' andato
+            self._tip.update_text(text)
+
+    def event(self, event):
+        # sta in fondo alla finestra: il suggerimento lo mostra HoverTip, sopra
+        if event.type() == QEvent.ToolTip:
+            self._tip.popup(self.toolTip())
+            return True
+        return super().event(event)
+
+    def hideEvent(self, event):
+        if isValid(self._tip):
+            self._tip.hide()
+        super().hideEvent(event)
 
     # -- disegno ------------------------------------------------------------
     def mousePressEvent(self, event):
