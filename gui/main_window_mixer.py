@@ -622,6 +622,11 @@ class MixerMixin:
                             (tr("Importa audio → note..."), self.import_audio_into_selected_track)):
             actions[menu.addAction(label)] = slot
         menu.addSeparator()
+        # strumento che non si riconosce (suona come pianoforte): la correzione
+        suggestion = None if instrument.resolved else instrument_suggestion(track.instrument_name)
+        if suggestion:
+            actions[menu.addAction(tr("Usa «{suggestion}»", suggestion=suggestion))] = \
+                lambda: self.use_suggested_instrument(track_name)
         actions[menu.addAction(tr("Nome e strumento..."))] = lambda: self._open_edit_dialog_for(track_name)
         if not self.project.get_track(track_name).is_audio:
             actions[menu.addAction(tr("Strumento plugin (VST3/LV2)..."))] = lambda: self.choose_track_synth(track_name)
@@ -780,7 +785,7 @@ class MixerMixin:
         if track.is_audio:
             QMessageBox.information(self, tr("Traccia audio"), tr("Una traccia audio non ha note da far suonare a un plugin."))
             return
-        dialog = PluginPickerDialog(self, instrument=True, current_ref=track.synth)
+        dialog = PluginPickerDialog(self, instrument=True, current_ref=track.synth, profile=track.instrument)
         if dialog.exec() != QDialog.Accepted:
             return
         ref = dialog.selected_ref()

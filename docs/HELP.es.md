@@ -1832,7 +1832,8 @@ manera de tocar los acordes. Un nombre que no se reconoce (`[Flautoo]`)
 suena como **piano** y la pista lo señala en ámbar: en la cabecera (el
 motivo en la información emergente) y en la línea de sintaxis bajo el
 editor, con el nombre conocido más parecido («¿Quisiste decir «flauto»?»).
-Un clic en esa línea, o **Usar «Flauto»** en el menú de la pista, corrige
+Un clic en esa línea, o **Usar «Flauto»** en el menú ⋯ de la pista (en la
+columna de la vista Texto y en la vista Estructura de la canción), corrige
 el instrumento. Un nombre desconocido no se guarda entre los instrumentos
 personalizados, así que el aviso vuelve cada vez que abres la canción
 hasta que lo corrijas.
@@ -3268,7 +3269,10 @@ Otras cosas que sabe hacer la ventana:
   descargan los archivos `.sfz` del grupo y las muestras que usan, uno por
   uno y sin git. Los archivos van a `~/Strumenti/sfz/vsco-archi`,
   `vsco-legni`... y se tocan con el instrumento SFZ interno (por ejemplo
-  `FluteSusVib.sfz` para una flauta). Los archivos de VSCO se suben 8 dB,
+  `FluteSusVib.sfz` para una flauta): la ventana **Instrumento plugin
+  (VST3/LV2)...** de una pista propone por sí sola el archivo adecuado para
+  su instrumento (*Orquesta: FluteSusVib.sfz* para una pista `[Flauto]`), o
+  dice qué grupo descargar si falta. Los archivos de VSCO se suben 8 dB,
   para que suenen tan fuerte como los sonidos General MIDI; los que tienen
   keyswitches no se incluyen, porque cambian de articulación con notas que
   la notación no envía.

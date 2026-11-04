@@ -97,12 +97,16 @@ class _Background:
 class PluginPickerDialog(QDialog):
     """Elenco dei plugin installati: effetti (instrument=False) o strumenti
     (instrument=True, con in testa "Nessuno: usa il SoundFont"). Dopo exec(),
-    selected_ref() e' il riferimento scelto ('' = nessun plugin)."""
+    selected_ref() e' il riferimento scelto ('' = nessun plugin).
+    'profile' (lo strumento della traccia, InstrumentProfile) fa proporre il
+    file dell'orchestra adatto (core.orchestra), se c'e'."""
 
-    def __init__(self, parent=None, instrument: bool = False, current_ref: str = ""):
+    def __init__(self, parent=None, instrument: bool = False, current_ref: str = "", profile=None):
         super().__init__(parent)
         self.instrument = instrument
         self.current_ref = current_ref
+        from core.orchestra import proposta_per
+        self._orchestra = proposta_per(profile) if instrument else None
         self.setWindowTitle(tr("Scegli uno strumento plugin") if instrument else tr("Scegli un effetto plugin"))
         self.resize(720, 480)
         layout = QVBoxLayout(self)
@@ -214,6 +218,8 @@ class PluginPickerDialog(QDialog):
             self.tree.addTopLevelItem(sfz)
             if self._sfz_ref and sfz.flags() & Qt.ItemIsEnabled:
                 self.tree.setCurrentItem(sfz)
+            if self._orchestra is not None:
+                self.tree.addTopLevelItem(self._orchestra_item())
         # quelli che non si possono usare in fondo, disattivati (in grigio)
         grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
         for info in sorted(self.infos, key=lambda i: not i.usable):
@@ -259,9 +265,36 @@ class PluginPickerDialog(QDialog):
                                   "Scarica e installa… (Motori) o con «{command}»", command=SFZ_LIBRARY_COMMAND))
         return item
 
+    def _orchestra_item(self) -> QTreeWidgetItem:
+        """Il file dell'orchestra adatto alla traccia (core.orchestra): si
+        sceglie con un clic; in grigio, con il motivo, se il gruppo non e'
+        scaricato o manca il motore SFZ interno."""
+        from core.sfz_engine import library_found
+        proposta = self._orchestra
+        item = QTreeWidgetItem([tr("Orchestra: {file}", file=proposta.file_name), "SFZ", "Versilian Studios",
+                                tr("Adatto a questa traccia")])
+        item.setData(0, Qt.UserRole, "sfz:" + home_relative(proposta.path))
+        problem = ""
+        if not proposta.installed:
+            problem = tr("Da scaricare: Suoni → Scarica e installa…, Orchestra, «{group}»", group=proposta.group_label)
+            item.setText(0, tr("Orchestra: {file}  (da scaricare)", file=proposta.file_name))
+        elif not library_found():
+            problem = tr("Serve il motore SFZ interno: Suoni → Scarica e installa… (Motori)")
+        if problem:
+            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+            grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
+            for col in range(4):
+                item.setForeground(col, grey)
+                item.setToolTip(col, problem)
+        else:
+            item.setToolTip(0, tr("{group}: {path}", group=proposta.group_label, path=proposta.path))
+        return item
+
     def _choose_sfz(self) -> bool:
         from core.plugin_worker import parse_ref
         current = parse_ref(self._sfz_ref)[1] if self._sfz_ref else ""
+        if not current and self._orchestra is not None and os.path.isfile(self._orchestra.path):
+            current = self._orchestra.path      # la cartella del gruppo adatto alla traccia
         start = os.path.dirname(current) if current else os.path.expanduser("~/Strumenti")
         if not os.path.isdir(start):
             start = os.path.expanduser("~")

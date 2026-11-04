@@ -2407,5 +2407,11 @@
  "CC0, ~330 MB": "CC0, ~330 MB",
  "CC0, ~340 MB": "CC0, ~340 MB",
  "CC0, ~390 MB": "CC0, ~390 MB",
- "CC0, ~670 MB": "CC0, ~670 MB"
+ "CC0, ~670 MB": "CC0, ~670 MB",
+ "Adatto a questa traccia": "Suited to this track",
+ "Da scaricare: Suoni → Scarica e installa…, Orchestra, «{group}»": "To download: Sounds → Download and install…, Orchestra, «{group}»",
+ "Orchestra: {file}": "Orchestra: {file}",
+ "Orchestra: {file}  (da scaricare)": "Orchestra: {file}  (to download)",
+ "Serve il motore SFZ interno: Suoni → Scarica e installa… (Motori)": "Needs the built-in SFZ engine: Sounds → Download and install… (Engines)",
+ "{group}: {path}": "{group}: {path}"
 }

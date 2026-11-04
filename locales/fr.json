@@ -2407,5 +2407,11 @@
  "CC0, ~330 MB": "CC0, ~330 Mo",
  "CC0, ~340 MB": "CC0, ~340 Mo",
  "CC0, ~390 MB": "CC0, ~390 Mo",
- "CC0, ~670 MB": "CC0, ~670 Mo"
+ "CC0, ~670 MB": "CC0, ~670 Mo",
+ "Adatto a questa traccia": "Adapté à cette piste",
+ "Da scaricare: Suoni → Scarica e installa…, Orchestra, «{group}»": "À télécharger : Sons → Télécharger et installer…, Orchestre, «{group}»",
+ "Orchestra: {file}": "Orchestre : {file}",
+ "Orchestra: {file}  (da scaricare)": "Orchestre : {file}  (à télécharger)",
+ "Serve il motore SFZ interno: Suoni → Scarica e installa… (Motori)": "Le moteur SFZ intégré est nécessaire : Sons → Télécharger et installer… (Moteurs)",
+ "{group}: {path}": "{group} : {path}"
 }

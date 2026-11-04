@@ -1808,8 +1808,9 @@ di base, la sua estensione e il suo modo di suonare gli accordi. Un nome che
 non si riconosce (`[Flautoo]`) suona come **pianoforte** e la traccia lo
 segnala in ambra: nella testata (il perche' nel tooltip) e nella riga della
 sintassi sotto l'editor, con il nome noto piu' simile ("Forse intendevi
-«flauto»?"). Un clic su quella riga, o **Usa «Flauto»** nel menu della
-traccia, corregge lo strumento. Un nome sconosciuto non viene salvato fra
+«flauto»?"). Un clic su quella riga, o **Usa «Flauto»** nel menu ⋯ della
+traccia (nella colonna della vista Testo e nella vista Struttura brano),
+corregge lo strumento. Un nome sconosciuto non viene salvato fra
 gli strumenti personalizzati, cosi' l'avviso torna a ogni apertura finche'
 non lo correggi.
 
@@ -3194,7 +3195,10 @@ Altre cose che la finestra sa fare:
   Studios (CC0, da circa 100 a 670 MB per gruppo). Si scaricano solo i file
   `.sfz` del gruppo e i campioni che usano, uno per uno e senza git. I file
   vanno in `~/Strumenti/sfz/vsco-archi`, `vsco-legni`... e si suonano con lo
-  strumento SFZ interno (per esempio `FluteSusVib.sfz` per un flauto). I
+  strumento SFZ interno (per esempio `FluteSusVib.sfz` per un flauto): la
+  finestra **Strumento plugin (VST3/LV2)...** di una traccia propone da
+  sola il file adatto al suo strumento (*Orchestra: FluteSusVib.sfz* per
+  una traccia `[Flauto]`), o dice quale gruppo scaricare se non c'è. I
   file di VSCO sono alzati di 8 dB, perché suonino forti come i suoni
   General MIDI; quelli con i keyswitch non ci sono, perché cambiano
   articolazione con note che la notazione non manda.

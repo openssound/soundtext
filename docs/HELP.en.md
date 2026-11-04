@@ -1762,7 +1762,8 @@ way of playing chords. A name that is not recognized (`[Flautoo]`) plays as
 a **piano** and the track shows it in amber: in the header (the reason in
 the tooltip) and in the syntax line below the editor, with the closest
 known name ("Did you mean «flauto»?"). A click on that line, or **Use
-«Flauto»** in the track menu, fixes the instrument. An unknown name is not
+«Flauto»** in the track's ⋯ menu (in the Text view column and in the Song
+structure view), fixes the instrument. An unknown name is not
 saved among the custom instruments, so the warning comes back every time
 you open the song until you fix it.
 
@@ -3119,7 +3120,10 @@ More things the window can do:
   group's `.sfz` files and the samples they use are downloaded, one by one
   and without git. The files go in `~/Strumenti/sfz/vsco-archi`,
   `vsco-legni`... and are played with the built-in SFZ instrument (for
-  example `FluteSusVib.sfz` for a flute). The VSCO files are raised by 8 dB,
+  example `FluteSusVib.sfz` for a flute): a track's **Plugin instrument
+  (VST3/LV2)...** window offers the file suited to its instrument by itself
+  (*Orchestra: FluteSusVib.sfz* for a `[Flauto]` track), or says which group
+  to download if it is missing. The VSCO files are raised by 8 dB,
   so that they sound as loud as the General MIDI sounds; the keyswitch files
   are left out, because they change articulation with notes the notation
   does not send.
