@@ -1150,6 +1150,25 @@ def libreria_precompilata() -> tuple:
     return voce if voce and voce[1] else None
 
 
+def installa_e_prova(src: Path, dest: Path) -> str:
+    """Copia la libreria in dest e la prova da li' (si carica, ha
+    sfizz_create_synth): '' se va, altrimenti il motivo, e dest si toglie.
+    Si prova la copia e non l'originale: su Windows una DLL caricata resta
+    bloccata finche' il processo non finisce, e l'originale sta in una
+    cartella temporanea da cancellare subito."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest)
+    try:
+        ctypes.CDLL(str(dest)).sfizz_create_synth
+    except (OSError, AttributeError) as e:
+        try:
+            dest.unlink()
+        except OSError:
+            pass
+        return str(e)
+    return ""
+
+
 def scarica_libreria_precompilata(dest: Path) -> bool:
     """Scarica la libreria gia' compilata in dest (il file LIB_FILE),
     controllando lo SHA-256: True se e' installata e si carica, False se
@@ -1169,13 +1188,10 @@ def scarica_libreria_precompilata(dest: Path) -> bool:
         digest = hashlib.sha256(file.read_bytes()).hexdigest()
         if digest != sha:
             raise Errore(tr("il file scaricato non e' quello atteso (SHA-256 {}...): non lo installo", digest[:12]))
-        try:
-            ctypes.CDLL(str(file)).sfizz_create_synth
-        except (OSError, AttributeError) as e:
-            print("   " + tr("la libreria gia' compilata non si carica su questo sistema ({})", e))
+        problema = installa_e_prova(file, dest / LIB_FILE)
+        if problema:
+            print("   " + tr("la libreria gia' compilata non si carica su questo sistema ({})", problema))
             return False
-        dest.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(file, dest / LIB_FILE)
     finally:
         _rimuovi(appoggio)
     return True
@@ -1241,13 +1257,9 @@ def compila_libreria(lib_dir: Path, stamp: Path):
                  "-DSFIZZ_JACK=OFF", "-DSFIZZ_RENDER=OFF", "-DSFIZZ_SHARED=ON", "-DENABLE_LTO=OFF"])
         _esegui([cmake, "--build", build, "--config", "Release", "--target", "sfizz_shared",
                  "--parallel", str(os.cpu_count() or 2)])
-        lib = libreria_compilata(build)
-        try:
-            ctypes.CDLL(str(lib)).sfizz_create_synth
-        except (OSError, AttributeError) as e:
-            raise Errore(tr("la libreria compilata non si carica: {}", e))
-        lib_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(lib, lib_dir / LIB_FILE)
+        problema = installa_e_prova(libreria_compilata(build), lib_dir / LIB_FILE)
+        if problema:
+            raise Errore(tr("la libreria compilata non si carica: {}", problema))
         stamp.write_text(SFIZIOSO_COMMIT + "\n")
         print(f"   -> {lib_dir / LIB_FILE}")
         print("   " + tr("In SoundText: Traccia -> Strumento plugin... -> Strumento SFZ (interno)..."))

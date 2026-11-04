@@ -137,6 +137,37 @@ def test_prebuilt_libsfizz_is_downloaded_and_checked(script, tmp_path, monkeypat
     assert item.installed and not item.needs_build
 
 
+def test_prebuilt_libsfizz_is_loaded_only_where_it_stays(script, tmp_path, monkeypatch):
+    """Su Windows una DLL caricata non si cancella finche' il processo vive:
+    la prova si fa sulla copia installata, non sul file della cartella
+    temporanea, che poi si toglie (la build v1.15.0 si era fermata li')."""
+    _fake_libsfizz(script, tmp_path, monkeypatch)
+    loaded = []
+
+    def cdll(path):
+        loaded.append(path)
+        return type("Lib", (), {"sfizz_create_synth": 1})()
+    monkeypatch.setattr(script.ctypes, "CDLL", cdll)
+    removed = []
+    real_remove = script._rimuovi
+    monkeypatch.setattr(script, "_rimuovi", lambda path: (removed.append(path), real_remove(path)))
+    script.installa_libreria()
+    assert loaded == [str(tmp_path / "lib" / "libsfizz.so")]
+    assert removed and all(str(path) not in loaded[0] for path in removed)
+
+
+def test_prebuilt_libsfizz_that_does_not_load_is_not_left_installed(script, tmp_path, monkeypatch):
+    _fake_libsfizz(script, tmp_path, monkeypatch)
+
+    def cdll(path):
+        raise OSError("GLIBC_2.38 not found")
+    monkeypatch.setattr(script.ctypes, "CDLL", cdll)
+    compiled = []
+    monkeypatch.setattr(script, "compila_libreria", lambda lib_dir, stamp: compiled.append(lib_dir))
+    script.installa_libreria()
+    assert compiled and not (tmp_path / "lib" / "libsfizz.so").exists()
+
+
 def test_prebuilt_libsfizz_with_the_wrong_sha_is_refused(script, tmp_path, monkeypatch):
     _fake_libsfizz(script, tmp_path, monkeypatch, sha="0" * 64)
     monkeypatch.setattr(script, "compila_libreria", lambda *a: pytest.fail("non deve compilare"))
