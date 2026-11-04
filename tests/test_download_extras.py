@@ -107,6 +107,13 @@ def _dialog_with(monkeypatch, missing, problem, answer):
 
 
 def test_dialog_offers_to_install_the_build_tools(script, monkeypatch):
+    # dove la libreria e' gia' compilata (release libsfizz) non si compila niente
+    monkeypatch.setattr(script, "LIBSFIZZ_FILES", {(script.SISTEMA, script.architettura()): ("lib", "0" * 64)})
+    dlg, asked, _w = _dialog_with(monkeypatch, ["cmake"], "", QMessageBox.Yes)
+    assert dlg._add_requirements(["libreria", "piano"]) == ["libreria", "piano"] and not asked
+    dlg.close()
+    # senza (Linux ARM, per esempio) si compila e servono gli strumenti
+    monkeypatch.setattr(script, "LIBSFIZZ_FILES", {})
     dlg, asked, _w = _dialog_with(monkeypatch, ["cmake"], "", QMessageBox.Yes)
     assert dlg._add_requirements(["libreria", "piano"]) == ["strumenti-compilazione", "libreria", "piano"]
     assert "cmake" in asked[0]
