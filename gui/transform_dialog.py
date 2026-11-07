@@ -28,30 +28,23 @@ MAX_CHAIN_HINT = 3
 GRIDS = ("", "4", "8", "16")
 
 
-def function_groups():
-    """Le funzioni per gruppo, nell'ordine dell'elenco."""
-    return (
-        (tr("Altezze"), ("octave", "invert", "step")),
-        (tr("Ritmo"), ("augment", "diminish")),
-        (tr("Ordine"), ("retro", "sequence")),
-        (tr("Più voci"), ("canon", "thirds")),
-        (tr("Accordi e dinamica"), ("arpeggio", "vel")),
-    )
-
-
-def function_arguments(name: str) -> tuple:
-    """Gli argomenti di una funzione: (etichetta, controllo, valore iniziale, ...)."""
+def argument_label(name: str, argument: str) -> str:
+    """L'etichetta di un argomento: in st_language ha solo il nome breve."""
     return {
-        "octave": ((tr("Ottave"), "int", 1, -4, 4),),
-        "invert": ((tr("Asse (una nota, se vuoi)"), "text", ""),),
-        "step": ((tr("Gradi"), "int", 1, -14, 14),),
-        "augment": ((tr("Fattore"), "float", 2.0),),
-        "diminish": ((tr("Fattore"), "float", 2.0),),
-        "sequence": ((tr("Ripetizioni"), "int", 3, 1, 16), (tr("Gradi a ogni passo"), "int", -1, -14, 14)),
-        "vel": ((tr("Velocity (+10, 80, mf)"), "text", "+10"),),
-        "canon": ((tr("Ritardo"), "text", "'2"), (tr("Intervallo"), "int", 0, -24, 24), (tr("Voci"), "int", 2, 2, 4)),
-        "arpeggio": ((tr("Tipo"), "kind", ""), (tr("Griglia"), "grid", "")),
-    }.get(name, ())
+        ("octave", "n"): tr("Ottave"),
+        ("invert", "asse"): tr("Asse (una nota, se vuoi)"),
+        ("step", "n"): tr("Gradi"),
+        ("augment", "k"): tr("Fattore"),
+        ("diminish", "k"): tr("Fattore"),
+        ("sequence", "n"): tr("Ripetizioni"),
+        ("sequence", "passo"): tr("Gradi a ogni passo"),
+        ("vel", "x"): tr("Velocity (+10, 80, mf)"),
+        ("canon", "ritardo"): tr("Ritardo"),
+        ("canon", "int"): tr("Intervallo"),
+        ("canon", "voci"): tr("Voci"),
+        ("arpeggio", "tipo"): tr("Tipo"),
+        ("arpeggio", "griglia"): tr("Griglia"),
+    }.get((name, argument), argument)
 
 
 def _grid_label(grid: str) -> str:
@@ -73,6 +66,7 @@ class TransformDialog(QDialog):
         self.point = point or ReferencePoint()
         self.result_token = ""
         self.created_pattern = ""
+        self.freeze = False           # il richiamo va scritto nota per nota
         self.mult = 1
         self.chain: List[str] = []
         self._transforms = {t["name"]: t for t in list_transforms()}
@@ -109,15 +103,16 @@ class TransformDialog(QDialog):
         self.tree.setHeaderHidden(True)
         self.tree.setMinimumWidth(270)
         italian = current_language() == "it"
-        for group, names in function_groups():
-            parent = QTreeWidgetItem(self.tree, [group])
-            parent.setFlags(Qt.ItemIsEnabled)
-            parent.setExpanded(True)
-            for name in names:
-                transform = self._transforms[name]
-                item = QTreeWidgetItem(parent, [f"{transform['alias'] if italian else name}  —  {transform['help']}"])
-                item.setToolTip(0, transform["help"])
-                item.setData(0, Qt.UserRole, name)
+        groups = {}
+        for name, transform in self._transforms.items():
+            parent = groups.get(transform["group"])
+            if parent is None:
+                parent = groups[transform["group"]] = QTreeWidgetItem(self.tree, [transform["group_label"]])
+                parent.setFlags(Qt.ItemIsEnabled)
+                parent.setExpanded(True)
+            item = QTreeWidgetItem(parent, [f"{transform['alias'] if italian else name}  —  {transform['help']}"])
+            item.setToolTip(0, transform["help"])
+            item.setData(0, Qt.UserRole, name)
         self.tree.currentItemChanged.connect(self._on_function)
         columns.addWidget(self.tree, 3)
 
@@ -171,11 +166,15 @@ class TransformDialog(QDialog):
         self.replace_btn = QPushButton(tr("Sostituisci"))
         self.replace_btn.setVisible(self._can_replace)
         self.replace_btn.clicked.connect(self._replace)
+        self.freeze_btn = QPushButton(tr("Scrivi le note"))
+        self.freeze_btn.setToolTip(tr("Scrive per esteso le note del risultato, da ritoccare a mano."))
+        self.freeze_btn.setVisible(self._can_replace)
+        self.freeze_btn.clicked.connect(self._write_notes)
         self.create_btn = QPushButton(tr("Crea pattern..."))
         self.create_btn.clicked.connect(self._create_pattern)
         cancel = QPushButton(tr("Annulla"))
         cancel.clicked.connect(self.reject)
-        for button in (self.replace_btn, self.create_btn, cancel):
+        for button in (self.replace_btn, self.freeze_btn, self.create_btn, cancel):
             buttons.addWidget(button)
         layout.addLayout(buttons)
 
@@ -196,32 +195,33 @@ class TransformDialog(QDialog):
         while self.form.rowCount():
             self.form.removeRow(0)
         self._controls = []
-        for spec in function_arguments(self.current_function()):
-            control = self._control(spec)
+        name = self.current_function()
+        for argument in self._transforms[name]["arguments"] if name else ():
+            control = self._control(argument)
             self._controls.append(control)
-            self.form.addRow(spec[0], control)
+            self.form.addRow(argument_label(name, argument["name"]), control)
         self._schedule()
 
-    def _control(self, spec) -> QWidget:
-        _label, kind, value, *limits = spec
-        if kind == "int":
+    def _control(self, argument: dict) -> QWidget:
+        kind, value = argument["type"], argument["default"]
+        if kind == "integer":
             control = QSpinBox()
-            control.setRange(*limits)
+            control.setRange(argument["min"], argument["max"])
             control.setValue(value)
             control.valueChanged.connect(self._schedule)
-        elif kind == "float":
+        elif kind == "factor":
             control = QDoubleSpinBox()
             control.setRange(0.25, 16.0)
             control.setSingleStep(0.25)
             control.setValue(value)
             control.valueChanged.connect(self._schedule)
-        elif kind in ("kind", "grid"):
+        elif kind in ("word", "grid"):
             control = QComboBox()
-            for choice in (arpeggio_kinds() if kind == "kind" else GRIDS):
-                control.addItem(choice if kind == "kind" else _grid_label(choice), choice)
+            for choice in (arpeggio_kinds() if kind == "word" else GRIDS):
+                control.addItem(choice if kind == "word" else _grid_label(choice), choice)
             control.currentIndexChanged.connect(self._schedule)
         else:
-            control = QLineEdit(value)
+            control = QLineEdit(str(value or ""))
             control.textChanged.connect(self._schedule)
         return control
 
@@ -323,12 +323,17 @@ class TransformDialog(QDialog):
         changed = valid and bool(self.chain or self.current_function())
         self.replace_btn.setEnabled(changed)
         self.create_btn.setEnabled(changed)
+        self.freeze_btn.setEnabled(valid)
         self.play_after.setEnabled(valid)
 
     # ------------------------------------------------------------ i pulsanti
     def _replace(self):
         self.result_token = self.token()
         self.accept()
+
+    def _write_notes(self):
+        self.freeze = True
+        self._replace()
 
     def _ask_name(self) -> str:
         name, ok = QInputDialog.getText(self, tr("Crea pattern"), tr("Nome del nuovo pattern (senza %):"))

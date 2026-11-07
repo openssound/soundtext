@@ -1,6 +1,7 @@
 """
 Raccoglie i testi da tradurre (vedi core.i18n): il primo argomento di ogni
-tr("...") in core/ e gui/, piu' i nomi che l'interfaccia prende dai dati
+tr("...") in core/ e gui/ (quelli di st_language ripiegano sui cataloghi
+della libreria), piu' i nomi che l'interfaccia prende dai dati
 del motore (tipi di effetto, parametri, scelte, preset, famiglie di
 strumenti, ambienti del riverbero, figure dei controlli di battuta).
 
@@ -23,18 +24,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 
-def _library_dir():
-    """La cartella della libreria st_language installata (repository
-    openssound/st-language): i suoi messaggi passano dalle traduzioni di
-    SoundText, quindi vanno nei cataloghi dell'applicazione."""
-    import st_language
-    return os.path.dirname(os.path.abspath(st_language.__file__))
-
-
 def code_strings():
     out = set()
     for path in sorted(glob.glob(os.path.join(ROOT, "core", "*.py")) + glob.glob(os.path.join(ROOT, "gui", "*.py"))
-                       + glob.glob(os.path.join(_library_dir(), "*.py"))
                        + [os.path.join(ROOT, "scarica_strumenti.py")]):
         tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
@@ -77,8 +69,6 @@ def data_strings():
             out |= {text for text in _split(desc) if text}
         # e le descrizioni dei plugin nel registro del download
         out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2}
-    from st_language.transform import TRANSFORMS
-    out |= {t.help for t in TRANSFORMS.values()}
     return out
 
 

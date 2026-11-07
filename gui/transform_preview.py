@@ -17,7 +17,8 @@ from core import score_render
 from core.i18n import tr
 from core.musicxml_export import project_to_musicxml
 from core.notation import NotationError
-from core.transform_preview import expansion, preview_project, reference_at, reference_point, stage_lines
+from core.transform_preview import (expansion, preview_notation, preview_project, reference_at, reference_point,
+                                    stage_lines)
 from .theme import tooltip_style, warn_text
 
 
@@ -95,6 +96,10 @@ class ReferencePreviewPopup(QFrame):
         self.play_btn.setFixedWidth(36)
         self.play_btn.clicked.connect(self._on_play)
         top.addWidget(self.play_btn)
+        self.freeze_btn = QPushButton(tr("Congela"))
+        self.freeze_btn.setToolTip(tr("Scrive per esteso le note del richiamo"))
+        self.freeze_btn.clicked.connect(self._on_freeze)
+        top.addWidget(self.freeze_btn)
         layout.addLayout(top)
         self.score = ScoreSnippet()
         layout.addWidget(self.score)
@@ -102,12 +107,17 @@ class ReferencePreviewPopup(QFrame):
         self.stages.setTextFormat(Qt.PlainText)
         self.stages.setWordWrap(True)
         layout.addWidget(self.stages)
+        self.notation = QLabel()
+        self.notation.setTextFormat(Qt.PlainText)
+        self.notation.setWordWrap(True)
+        layout.addWidget(self.notation)
         self.warnings = QLabel()
         self.warnings.setTextFormat(Qt.PlainText)
         self.warnings.setWordWrap(True)
         layout.addWidget(self.warnings)
         self.setMaximumWidth(520)
         self._play: Optional[Callable[[], None]] = None
+        self._freeze: Optional[Callable[[], None]] = None
         self._anchor = QRect()
         self._sticky = False
         self._poll = QTimer(self)
@@ -118,7 +128,13 @@ class ReferencePreviewPopup(QFrame):
         if self._play is not None:
             self._play()
 
-    def present(self, title: str, stages: str, warnings: str, project, play, at: QPoint, sticky: bool):
+    def _on_freeze(self):
+        if self._freeze is not None:
+            self.hide()
+            self._freeze()
+
+    def present(self, title: str, stages: str, warnings: str, project, play, at: QPoint, sticky: bool,
+                notation: str = "", freeze: Optional[Callable[[], None]] = None):
         self.setStyleSheet(tooltip_style())
         self.title.setText(title)
         self.stages.setText(stages)
@@ -126,8 +142,11 @@ class ReferencePreviewPopup(QFrame):
         self.warnings.setText(warnings)
         self.warnings.setStyleSheet(f"color: {warn_text()};")
         self.warnings.setVisible(bool(warnings))
-        self._play, self._sticky = play, sticky
+        self.notation.setText(notation)
+        self.notation.setVisible(bool(notation))
+        self._play, self._freeze, self._sticky = play, freeze, sticky
         self.play_btn.setVisible(play is not None)
+        self.freeze_btn.setVisible(freeze is not None)
         self.score.setVisible(project is not None)
         if project is not None:
             self.score.set_project(project)
@@ -155,9 +174,11 @@ class ReferencePreviewPopup(QFrame):
 
 
 def show_reference_preview(owner: QWidget, text: str, pos: int, project, track, playback,
-                           global_pos: Optional[QPoint], origin_beat: float = 0.0) -> bool:
+                           global_pos: Optional[QPoint], origin_beat: float = 0.0,
+                           freeze: Optional[Callable[[int, int], None]] = None) -> bool:
     """L'anteprima del richiamo con funzioni al carattere pos del testo di
-    'owner', se ce n'e' uno. global_pos None: chiesta da tastiera."""
+    'owner', se ce n'e' uno. global_pos None: chiesta da tastiera. freeze: chi
+    scrive per esteso il richiamo, (inizio, fine) nel testo."""
     popup = getattr(owner, "_reference_popup", None)
     found = reference_at(text, pos)
     if found is None:
@@ -168,7 +189,7 @@ def show_reference_preview(owner: QWidget, text: str, pos: int, project, track, 
         popup = owner._reference_popup = ReferencePreviewPopup(owner)
         if hasattr(owner, "cursorPositionChanged"):
             owner.cursorPositionChanged.connect(lambda: popup._sticky and popup.hide())
-    start, _end, token = found
+    start, end, token = found
     instrument = track.instrument
     point = reference_point(text, start, project.patterns, instrument, project.meter(), origin_beat)
     sticky = global_pos is None
@@ -183,6 +204,11 @@ def show_reference_preview(owner: QWidget, text: str, pos: int, project, track, 
     lines = stage_lines(token, result)
     stages = "\n".join(f"{label}:  {notes}" for label, notes in lines) if len(lines) > 2 else ""
     preview = preview_project(project, token, point, track.instrument_name, track)
+    try:
+        notation = preview_notation(token, project, point, instrument)
+    except (NotationError, ValueError):     # un evento che non si scrive: restano le note in partitura
+        notation = ""
     popup.present(token, stages, "\n".join(result.warnings), preview,
-                  lambda: playback.play(preview, only_audible=False), global_pos, sticky)
+                  lambda: playback.play(preview, only_audible=False), global_pos, sticky, notation,
+                  (lambda: freeze(start, end)) if freeze is not None else None)
     return True

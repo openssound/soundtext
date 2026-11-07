@@ -415,6 +415,17 @@ def set_language(code: str):
     _save()
 
 
+def get_freeze_comment() -> bool:
+    """Se Congela la trasformazione scrive sopra le note da dove vengono."""
+    return _load().get("freeze_comment", True)
+
+
+def set_freeze_comment(enabled: bool):
+    _load()
+    _cache["freeze_comment"] = bool(enabled)
+    _save()
+
+
 def get_audio_pitch_params() -> dict:
     """Parametri avanzati del pitch tracking dell'import audio scelti in
     Opzioni -> Import audio (vedi gui.audio_pitch_dialog): solo quelli

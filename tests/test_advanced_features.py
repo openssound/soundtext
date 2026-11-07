@@ -983,26 +983,10 @@ def test_extract_patterns_preserves_musical_content():
     key = lambda e: (e.letter, e.octave, e.velocity, e.start, e.duration)
     assert [key(e) for e in orig_events] == [key(e) for e in new_events]
 
-    # questo pattern scrive velocity: per esteso resterebbe in vigore dopo di lui
-    text = p.tracks[0].text
-    with pytest.raises(ValueError):
-        expand_patterns_for_project(p)
-    assert p.tracks[0].text == text and p.patterns
-
-
-def test_extract_and_expand_patterns_round_trip():
-    """Un pattern che non scrive stato torna per esteso con gli stessi eventi."""
-    from core.reorganize import extract_patterns_for_project, expand_patterns_for_project
-
-    p = Project(name="Test")
-    p.add_track("Guitar", "Guitar", "16: 100@ c*4 e*4 g*4 e*4 c*4 e*4 g*4 e*4 d*4 f*4 a*4 f*4 c*4 e*4 g*4 e*4")
-    orig_events = p.tracks[0].parsed_events({})
-    assert "Guitar" in extract_patterns_for_project(p, min_window=4, min_repeats=2)
-
     expand_patterns_for_project(p)
     assert not p.patterns  # nessun pattern residuo dopo l'espansione totale
-    key = lambda e: (e.letter, e.octave, e.velocity, e.start, e.duration)
-    assert [key(e) for e in orig_events] == [key(e) for e in p.tracks[0].parsed_events(p.patterns)]
+    final_events = p.tracks[0].parsed_events(p.patterns)
+    assert [key(e) for e in orig_events] == [key(e) for e in final_events]
 
 
 def test_extract_patterns_noop_on_track_without_repeats():

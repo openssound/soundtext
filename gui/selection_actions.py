@@ -20,7 +20,7 @@ from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox, QPlainTextEdit
 from core.arrangement import anchored_preview_text, has_bar_anchor
 from core.model import Project, Track, copy_synth
 from core.notation import (
-    tokenize, RE_ARP, RE_GRID, RE_VELOCITY, Pattern, validate_track_text, compute_token_spans, upgrade_pattern_state,
+    tokenize, NotationError, RE_ARP, RE_GRID, RE_VELOCITY, Pattern, validate_track_text, compute_token_spans, upgrade_pattern_state,
     all_token_spans as _all_token_spans, context_prefix_before as _context_prefix_before,
 )
 from core.instruments import InstrumentProfile
@@ -196,8 +196,26 @@ def open_transform(editor: QPlainTextEdit, char_start: int, char_end: int, token
         return
     if dialog.result_token and dialog.result_token != token:
         _replace_range(editor, char_start, char_end, dialog.result_token)
+    if dialog.freeze:
+        freeze_in_editor(editor, char_start, char_start + len(dialog.result_token), project, track, origin_beat)
     if dialog.created_pattern and on_pattern_created is not None:
         on_pattern_created()
+
+
+def freeze_in_editor(editor: QPlainTextEdit, char_start: int, char_end: int, project: Project, track: Track,
+                     origin_beat: float = 0.0) -> bool:
+    """Congela la trasformazione su [char_start, char_end) dell'editor: una
+    modifica sola per Annulla. Se il suono cambierebbe lo dice e non congela."""
+    from core.settings import get_freeze_comment
+    from core.transform_preview import freeze_span
+    text = editor.toPlainText()
+    try:
+        frozen = freeze_span(text, char_start, char_end, project, track.instrument, origin_beat, get_freeze_comment())
+    except (NotationError, ValueError) as e:
+        QMessageBox.warning(editor, tr("Congela la trasformazione"), str(e))
+        return False
+    _replace_range(editor, char_start, char_end, frozen[char_start:len(frozen) - (len(text) - char_end)])
+    return True
 
 
 def _arpeggiate_token(editor: QPlainTextEdit, char_start: int, char_end: int, token: str, project: Project,
@@ -232,7 +250,8 @@ def handle_token_context_menu(editor: QPlainTextEdit, pos: int, project: Project
     """Tasto destro senza selezione: su un richiamo Trasforma..., su un accordo
     Arpeggia..., sopra le voci di sempre dell'editor. False se il token sotto il
     mouse non ha voci sue (resta il menu nativo)."""
-    from core.transform_preview import arpeggiable, reference_at
+    from core.transform_preview import arp_region, arpeggiable, reference_at
+    from st_language.transform import is_transform_reference
     text = editor.toPlainText()
     reference = reference_at(text, pos, with_functions=False)
     chord = None
@@ -245,9 +264,21 @@ def handle_token_context_menu(editor: QPlainTextEdit, pos: int, project: Project
     first = menu.actions()[0] if menu.actions() else None
     action = QAction(tr("Trasforma...") if reference else tr("Arpeggia..."), menu)
     menu.insertAction(first, action)
+    # le note per esteso: un richiamo con funzioni, un accordo con .arpeggio, un tratto arp=
+    frozen_span = None
+    if reference is not None and is_transform_reference(reference[2]):
+        frozen_span = reference[:2]
+    elif chord is not None:
+        frozen_span = arp_region(text, pos) or (chord if ".arpeggio" in text[chord[0]:chord[1]].lower() else None)
+    freeze_action = None
+    if frozen_span is not None:
+        freeze_action = QAction(tr("Congela la trasformazione"), menu)
+        menu.insertAction(first, freeze_action)
     menu.insertSeparator(first)
     chosen = menu.exec(global_pos)
-    if chosen is action and reference is not None:
+    if freeze_action is not None and chosen is freeze_action:
+        freeze_in_editor(editor, *frozen_span, project, track, origin_beat)
+    elif chosen is action and reference is not None:
         open_transform(editor, *reference, project, track, playback, origin_beat, on_pattern_created)
     elif chosen is action:
         _arpeggiate_token(editor, *chord, text[chord[0]:chord[1]], project, track, playback)

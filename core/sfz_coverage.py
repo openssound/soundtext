@@ -148,7 +148,7 @@ def track_notes(project, track) -> List[Tuple[int, int]]:
     """(nota MIDI, dinamica) di ogni nota che la traccia suona, come le
     calcola l'export MIDI (accordi con il loro voicing, slide dalla nota di
     partenza), senza tempi ne' controlli."""
-    from st_language.midi import _resolve_event_notes, decorated_velocity, sounding_events
+    from st_language.midi import decorated_velocity, resolve_event_notes, sounding_events
     from .chords import pitch_to_midi
     instrument = track.instrument
     out = []
@@ -158,7 +158,7 @@ def track_notes(project, track) -> List[Tuple[int, int]]:
         if ev.kind == "slide":
             out.append((pitch_to_midi(ev.letter, ev.octave), max(1, min(127, ev.velocity))))
             continue
-        notes, velocity = _resolve_event_notes(ev, instrument)
+        notes, velocity = resolve_event_notes(ev, instrument)
         velocity = max(1, min(127, decorated_velocity(ev, velocity)))
         out += [(n, velocity) for n in notes if 0 <= n <= 127]
     return out

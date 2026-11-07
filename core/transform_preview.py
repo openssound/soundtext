@@ -4,21 +4,23 @@ nel punto del testo in cui e' scritto: lo usano l'anteprima delle note e la
 finestra Trasforma (gui.transform_preview, gui.transform_dialog). I calcoli
 sono di st_language.transform.expand_reference, a cui qui si danno la griglia,
 la velocity e la tonalita' di quel punto; il risultato si ricorda per richiamo
-e testo del progetto. Anche il suffisso .arpeggio degli accordi sta qui.
+e testo del progetto. Qui stanno anche il suffisso .arpeggio degli accordi e
+Congela la trasformazione, che scrive per esteso le note di un richiamo.
 """
 
-import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from st_language import events_to_text
+from st_language.midi import resolve_event_notes
 from st_language.transform import Expansion, expand_reference, is_transform_reference
 
 from .i18n import tr
 from .model import Project, copy_synth
-from .notation import (RE_ARPEGGIO_SUFFIX, RE_CHORD, RE_KEY_MODE, all_token_spans, compute_token_spans,
-                       context_prefix_before, parse_track_text, split_note_value)
+from .notation import (NotationError, RE_ARP, RE_ARPEGGIO_SUFFIX, RE_CHORD, RE_KEY_MODE, all_token_spans,
+                       compute_token_spans, context_prefix_before, find_references, parse_track_text,
+                       pattern_state_effect, split_note_value, tokenize)
 
-RE_REFERENCE = re.compile(r"\d*%\w+(?:[+-]\d+)*(?:\.\w+(?:\([^()\s]*\))?(?:[+-]\d+)?)*")
 MAX_NOTES_SHOWN = 12        # per ogni passo della catena
 
 _cache: Dict[tuple, Expansion] = {}
@@ -36,12 +38,17 @@ class ReferencePoint:
 
 def reference_at(text: str, pos: int, with_functions: bool = True) -> Optional[Tuple[int, int, str]]:
     """(inizio, fine, token) del richiamo che contiene il carattere pos."""
-    for m in RE_REFERENCE.finditer(text):
-        if m.start() > pos:
+    for reference in pattern_references(text):
+        if reference.start > pos:
             break
-        if pos <= m.end() and (is_transform_reference(m.group()) or not with_functions):
-            return m.start(), m.end(), m.group()
+        if pos <= reference.end and (is_transform_reference(reference.token) or not with_functions):
+            return reference.start, reference.end, reference.token
     return None
+
+
+def pattern_references(text: str) -> list:
+    """I richiami di pattern del testo, anche dentro gruppi e voci."""
+    return [reference for reference in find_references(text) if reference.kind == "pattern"]
 
 
 def reference_point(text: str, start: int, patterns, instrument, meter=None, origin_beat: float = 0.0) -> ReferencePoint:
@@ -69,12 +76,13 @@ def expansion(token: str, project: Project, point: ReferencePoint, instrument) -
     """Quello che suona il richiamo. Solleva NotationError come il parser."""
     patterns = tuple((name, tuple(p.tokens)) for name, p in sorted(project.patterns.items()))
     key = (token, patterns, project.time_sig, tuple(project.metrica_changes), project.pickup, project.key,
-           tuple(project.key_changes), point.grid, point.velocity, point.position, point.key, instrument.name)
+           tuple(project.key_changes), point.prefix, point.position, point.key, instrument.name)
     if key not in _cache:
         if len(_cache) > 200:
             _cache.clear()
         _cache[key] = expand_reference(token, project.patterns, instrument.default_octave, project.meter(),
-                                       point.position, point.key, point.grid, point.velocity, instrument)
+                                       point.position, point.key, point.grid, point.velocity, instrument,
+                                       prefix=point.prefix)
     return _cache[key]
 
 
@@ -136,3 +144,100 @@ def with_arpeggio(tok: str, kind: str, grid: str = "") -> str:
     base, rest = (m.group(1), m.group(3)) if m else (tok, "")
     tie = "~" if base.endswith("~") or rest.endswith("~") else ""
     return f"{base.rstrip('~')}.arpeggio({kind}{',' + grid if grid else ''}){tie}"
+
+
+# ------------------------------------------------------------------ Congela la trasformazione
+
+_STATE_DEFAULTS = {"grid": "4:", "velocity": "80@", "swing": "swing=50", "shift": "shift=0", "arp": "arp=off"}
+
+
+def sounding(text: str, patterns, instrument, meter=None, origin_beat: float = 0.0, midi_dir=None) -> list:
+    """Quello che si sente di un testo con lo strumento della traccia: si
+    confronta prima e dopo una riscrittura che non deve cambiare il suono."""
+    events = parse_track_text(text, patterns, default_octave=instrument.default_octave, midi_dir=midi_dir,
+                              meter=meter, origin_beat=origin_beat, instrument=instrument)
+    sound = []
+    for ev in events:
+        moment = (round(ev.start, 6), round(ev.duration, 6))
+        if ev.kind in ("note", "chord", "block", "percussion", "slide"):
+            notes = tuple(resolve_event_notes(ev, instrument)[0])
+            sound.append((moment, ev.kind, ev.velocity, notes, ev.swing, ev.shift, ev.articulation))
+        elif ev.kind == "control":
+            sound.append((moment, ev.kind, ev.name, ev.value))
+        elif ev.kind == "tempo_marker":
+            sound.append((moment, ev.kind, ev.bpm))
+    return sorted(sound, key=repr)
+
+
+def preview_notation(token: str, project: Project, point: ReferencePoint, instrument) -> str:
+    """Il richiamo in notazione ST, per l'anteprima."""
+    return events_to_text(expansion(token, project, point, instrument).events, instrument.default_octave,
+                          key=point.key, grid=point.grid, velocity=point.velocity)
+
+
+def _restored_state(written: str, prefix: str) -> str:
+    """I comandi che rimettono lo stato cambiato dal testo scritto."""
+    changed = pattern_state_effect(tokenize(written), {})[1]
+    before = pattern_state_effect(tokenize(prefix), {})[1]
+    return " ".join(before.get(slot, _STATE_DEFAULTS[slot]) for slot in changed
+                    if before.get(slot, _STATE_DEFAULTS[slot]) != changed[slot])
+
+
+def arp_region(text: str, pos: int) -> Optional[Tuple[int, int]]:
+    """Il tratto fra arp=tipo e il comando che lo chiude, se pos ci sta dentro."""
+    opened = None
+    last_end = 0
+    for cs, ce in all_token_spans(text):
+        if RE_ARP.match(text[cs:ce]):
+            closing = text[cs:ce].lower().startswith("arp=off")
+            if opened is not None and opened <= pos <= ce and closing:
+                return opened, ce
+            if opened is not None and opened <= pos < cs:
+                return opened, last_end
+            opened = None if closing else cs
+        last_end = ce
+    return (opened, last_end) if opened is not None and pos >= opened else None
+
+
+def freeze_span(text: str, start: int, end: int, project: Project, instrument, origin_beat: float = 0.0,
+                comment: bool = True) -> str:
+    """Il testo con [start, end) (un richiamo con funzioni, un accordo con
+    .arpeggio, un tratto arp=) scritto per esteso nota per nota, e lo stato
+    di prima rimesso dopo. Il suono resta identico: se non puo' solleva
+    NotationError e il testo non cambia."""
+    meter = project.meter()
+    point = reference_point(text, start, project.patterns, instrument, meter, origin_beat)
+    head = (f"key={point.key} " if point.key else "") + point.prefix
+    events = parse_track_text(head + text[start:end], project.patterns, default_octave=instrument.default_octave,
+                              meter=meter, origin_beat=point.position, instrument=instrument)
+    written = events_to_text(events, instrument.default_octave, key=point.key, grid=point.grid,
+                             velocity=point.velocity)
+    after = text[end:]
+    restore = _restored_state(written, point.prefix) if after.strip() else ""
+    body = written + (" " + restore if restore else "")
+    expected = sounding(text, project.patterns, instrument, meter, origin_beat)
+    before = text[:start]
+    lead = "" if not before.rstrip(" \t") or before.rstrip(" \t").endswith("\n") else "\n"
+    note = lead + "// " + tr("da {source}", source=" ".join(text[start:end].split())) + "\n"
+    for candidate in ([before + note + body + after] if comment else []) + [before + body + after]:
+        try:
+            if sounding(candidate, project.patterns, instrument, meter, origin_beat) == expected:
+                return candidate
+        except NotationError:
+            continue
+    raise NotationError(tr("Queste note non si possono scrivere per esteso senza cambiare il suono"), text[start:end])
+
+
+def freeze_all(text: str, project: Project, instrument, origin_beat: float = 0.0,
+               comment: bool = True) -> Tuple[str, int, List[str]]:
+    """Tutti i richiami con funzioni del testo: (testo, quanti, quelli rimasti)."""
+    done, kept = 0, []
+    for reference in reversed(pattern_references(text)):
+        if not is_transform_reference(reference.token):
+            continue
+        try:
+            text = freeze_span(text, reference.start, reference.end, project, instrument, origin_beat, comment)
+            done += 1
+        except NotationError:
+            kept.append(reference.token)
+    return text, done, kept

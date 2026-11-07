@@ -1254,6 +1254,8 @@ very short, chromatic or modulating songs — a good starting point, not an
 infallible verdict. If the project contains no pitched notes (no tracks, or
 only percussion ones), it says so instead of guessing.
 
+**Trying another key for the singer.** **Compose → Song key...** raises or lowers the whole song by semitones. Listen to each try with ▶, from where you were; the song only changes with OK, and Ctrl+Z goes back. Notes, chords, the `Tonalita:` line with its changes and audio clips all move; percussion stays. The window warns about notes that leave an instrument's range or that an `.sfz` does not play.
+
 ### 8.4 Micro-timing, tuning, many tracks, MTXT
 
 **Micro-timing (`shift=`).** `shift=N` plays the following notes N
@@ -1541,7 +1543,7 @@ responsive and the operation can be cancelled. The search time for repeated
 blocks is in any case always limited (per track), so that even on very long
 tracks the reorganisation never stays stuck indefinitely.
 
-**When Expand patterns cannot be used.** Written out in full, some patterns would change the sound of the song, and the command says so without touching anything: patterns that write grid, velocity, swing or arpeggio (so also many of those made by Extract patterns), references with functions, patterns that change how notes are read, tracks with `rel:`, `key=` or `transpose=`, and transposed MIDI references.
+**If Expand patterns cannot do it.** After each pattern the expanded text puts back the previous state, and the command checks that the sound stays identical with the track's instrument. If it cannot for a track, it says so and changes nothing in the song.
 
 ### 10.3 Context menu on a selection (right-click)
 
@@ -1607,7 +1609,9 @@ Functions follow a reference and apply from left to right: `%Theme.invert(e*5).r
 
 Rest the mouse on a reference with functions, or press Ctrl+I, for the preview: score, step-by-step chain, warnings and ▶. Right-click, or **Compose → Transform...**, opens the window that writes the reference. `.retro` gives an error with slides, automations or pedal; `.augment` and `.diminish` accept numbers above 0, as long as no duration falls below `'128`.
 
-`$arp` is a **rolled** chord (notes are held); `.arpeggio` and `arp=type,grid` ... `arp=off` make a **broken** chord. Right-click a chord: **Arpeggiate...**. **Expand patterns** currently refuses songs whose sound would change.
+`$arp` is a **rolled** chord (notes are held); `.arpeggio` and `arp=type,grid` ... `arp=off` make a **broken** chord. Right-click a chord: **Arpeggiate...**.
+
+**Freeze the transformation** (right-click the reference, button in the preview, **Write the notes** in the Transform window) writes the notes out in full, to touch up by hand: it also works on a chord with `.arpeggio` and on an `arp=` stretch. The sound stays identical: if it cannot, it says so and does not freeze. Above the notes it writes a comment with the original reference (turn it off in **Compose → Freeze with the origin comment**); **Track → Freeze all transformations** does this for the whole track.
 
 ## 11. MIDI library (&"Name")
 

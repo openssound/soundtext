@@ -507,6 +507,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tooltip=tr("Esporta la traccia senza effetti, riverbero/chorus e pan, da far passare "
             "in un simulatore di amplificatore esterno.")
         ))
+        track_menu.addAction(self._action(
+            tr("Congela tutte le trasformazioni"), self.freeze_all_transforms,
+            tooltip=tr("Scrive per esteso le note di tutti i richiami con funzioni della traccia.")
+        ))
         track_menu.addSeparator()
         track_menu.addAction(self._action(
             tr("Registra nella traccia audio..."), self.record_into_audio_track, "Ctrl+R",
@@ -543,6 +547,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             "scritti in un'altra traccia del progetto, senza IA. Non per tracce percussive.")
         ))
         compose_menu.addAction(self._action(
+            tr("Tonalità del brano..."), self.change_song_key,
+            tooltip=tr("Alza o abbassa tutto il brano di semitoni, con l'ascolto: per trovare la tonalità "
+                       "giusta per chi canta.")
+        ))
+        compose_menu.addAction(self._action(
             tr("Arrangia il brano..."), self.arrange_song,
             tooltip=tr("Dalle sezioni della traccia degli accordi (i box Intro, Strofa, Ritornello...) batteria, "
                        "basso e accompagnamento in un passaggio, con l'intensita' di ogni sezione, i fill a fine "
@@ -565,6 +574,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tooltip=tr("Sceglie una funzione per un pattern (.invert, .retro, .sequence...), con l'ascolto "
                        "prima e dopo.")
         ))
+        freeze_comment = QAction(tr("Congela con il commento d'origine"), self)
+        freeze_comment.setCheckable(True)
+        freeze_comment.setChecked(app_settings.get_freeze_comment())
+        freeze_comment.setToolTip(tr("Congela la trasformazione scrive sopra le note da quale richiamo vengono."))
+        freeze_comment.toggled.connect(app_settings.set_freeze_comment)
+        compose_menu.addAction(freeze_comment)
         compose_menu.addAction(self._action(
             tr("Estrai pattern dalle tracce..."), self.extract_patterns_action,
             tooltip=tr("Individua blocchi ripetuti in tutte le tracce e li converte in pattern riutilizzabili.")

@@ -17,11 +17,11 @@ un prefisso valido per i nomi di percussione che iniziano allo stesso modo
 import re
 from typing import Callable, Dict, List, Optional, Tuple
 
-from st_language.transform import list_transforms, parse_reference
+from st_language.transform import is_transform_reference, list_transforms, parse_reference
 
 from .i18n import current_language
 from .instruments import PERCUSSION_MAP, InstrumentProfile
-from .notation import DECORATIONS, DYNAMICS_TO_VELOCITY, NotationError, Pattern
+from .notation import DECORATIONS, DYNAMICS_TO_VELOCITY, NotationError, Pattern, find_references
 from .chords import CHORD_QUALITIES, applicable_voicings
 
 # Delimitatori di token nell'editor: spazio e le parentesi che aprono un
@@ -40,9 +40,8 @@ _LOWERCASE_WORDS = sorted(set(PERCUSSION_MAP) | set(_NON_PERCUSSION_LOWERCASE_WO
 _CHORD_TOKEN_RE = re.compile(r"^(\d*)([A-G])([#b♭]?)([A-Za-z0-9#]*)$")
 _VOICING_SUFFIX_RE = re.compile(r"^(\d*[A-G][#b♭]?[A-Za-z0-9#]*)\.([A-Za-z0-9]*)$")
 _VOICED_CHORD_RE = re.compile(r"^(\d*[A-G][#b♭]?[A-Za-z0-9#]*\.[A-Za-z0-9]+)\.([A-Za-z0-9]*)$")
-# Un richiamo con funzioni fino al cursore, e gli argomenti di .arpeggio(: le
-# parentesi delimitano le parole, ma qui fanno parte del token.
-_TRANSFORM_WORD_RE = re.compile(r"\d*%\w+(?:[+-]\d+)*(?:\.\w*(?:\([^()\s]*\)?)?(?:[+-]\d+)?)+$")
+# Gli argomenti di .arpeggio(: le parentesi delimitano le parole, ma qui fanno
+# parte del token (come in un richiamo con funzioni, vedi current_word_bounds).
 _ARPEGGIO_ARGUMENT_RE = re.compile(r"\.arpeggio\([^()\s]*$", re.IGNORECASE)
 _ARPEGGIO_KINDS = ("up", "down", "updown", "alberti")
 _ITALIAN_KINDS = {"up": "su", "down": "giu", "updown": "sugiu"}
@@ -136,7 +135,10 @@ def current_word_bounds(text: str, pos: int) -> Tuple[int, int]:
     while line_start > 0 and text[line_start - 1] not in " \t\n":
         line_start -= 1
     chunk = text[line_start:pos]
-    m = _TRANSFORM_WORD_RE.search(chunk) or _ARPEGGIO_ARGUMENT_RE.search(chunk)
+    for reference in find_references(chunk):
+        if reference.end == len(chunk) and is_transform_reference(reference.token):
+            return line_start + reference.start, pos
+    m = _ARPEGGIO_ARGUMENT_RE.search(chunk)
     if m:
         return line_start + m.start(), pos
     return start, pos
@@ -173,7 +175,7 @@ def completions_for_word(
     if _ARPEGGIO_ARGUMENT_RE.search(word):
         return _arpeggio_arguments(word, arp_is_active(text_before))
 
-    if _TRANSFORM_WORD_RE.fullmatch(word):
+    if is_transform_reference(word):
         return _transform_completions(word)
 
     if word.startswith(".") and text_before.endswith("]"):

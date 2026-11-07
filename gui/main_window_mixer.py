@@ -262,8 +262,42 @@ class MixerMixin:
         track = self._editable_track()
         if track is not None:
             from .transform_preview import show_reference_preview
+            from .selection_actions import freeze_in_editor
             show_reference_preview(self.editor, self.editor.toPlainText(), pos, self.project, track,
-                                   self.playback, global_pos)
+                                   self.playback, global_pos,
+                                   freeze=lambda start, end: freeze_in_editor(self.editor, start, end, self.project, track))
+
+    def freeze_all_transforms(self, *_args):
+        """Traccia -> Congela tutte le trasformazioni: nel testo e nei box."""
+        track = self._editable_track()
+        if track is None:
+            return
+        from core.arrangement import flatten_clips_to_text
+        from core.settings import get_freeze_comment
+        from core.transform_preview import freeze_all
+        comment = get_freeze_comment()
+        done, kept = 0, []
+        if track.clips:
+            for clip in track.clips:
+                clip.text, count, left = freeze_all(clip.text, self.project, track.instrument, clip.start_beat, comment)
+                done, kept = done + count, kept + left
+            track.text = flatten_clips_to_text(track.clips, self.project.patterns, track.instrument.default_octave,
+                                               meter=self.project.meter())
+        else:
+            track.text, done, kept = freeze_all(track.text, self.project, track.instrument, 0.0, comment)
+        if done:
+            self.editor.blockSignals(True)
+            self.editor.setPlainText(track.text)
+            self.editor.blockSignals(False)
+            self._mark_dirty()
+            self.arrangement_view.refresh()
+        message = tr("Trasformazioni congelate: {0}.", done)
+        if kept:
+            QMessageBox.warning(self, tr("Congela la trasformazione"),
+                                message + "\n" + tr("Restano com'erano, perche' il suono cambierebbe: {0}",
+                                                    ", ".join(kept)))
+        else:
+            self.statusBar().showMessage(message, 4000)
 
     def transform_reference(self, *_args):
         """Componi -> Trasforma...: sul richiamo sotto il cursore dell'editor,
@@ -310,7 +344,8 @@ class MixerMixin:
         from core.arrangement import expand_pattern_refs_text
         from core.notation import NotationError
         try:
-            return expand_pattern_refs_text(track.text, self.project.patterns, track.instrument.default_octave)
+            return expand_pattern_refs_text(track.text, self.project.patterns, track.instrument.default_octave,
+                                            self.project.meter())
         except (NotationError, ValueError):
             return track.text      # testo non ancora valido: niente da espandere
 
@@ -942,6 +977,28 @@ class MixerMixin:
                 tr("Traccia '{name}' un'ottava più giù", name=track_name) if octaves == -1 else
                 tr("Traccia '{name}' spostata di {octaves} ottave", name=track_name, octaves=f"{octaves:+d}"))
         self.statusBar().showMessage(text, 5000)
+
+    def change_song_key(self, *_args):
+        """Componi -> Tonalità del brano...: vedi gui.song_key_dialog."""
+        from core.song_key import apply_transposition
+        from .song_key_dialog import SongKeyDialog
+        if not self.project.tracks:
+            QMessageBox.information(self, tr("Tonalità del brano"), tr("Il progetto non ha tracce."))
+            return
+        # si prova dal punto in cui si era
+        start = self._current_elapsed_beats() if self.playback.is_playing() else (self._playback_paused_beat or 0.0)
+        self.stop()
+        dialog = SongKeyDialog(self, self.project, self.playback, start)
+        if dialog.exec() != QDialog.Accepted or dialog.result_song is None:
+            return
+        apply_transposition(self.project, dialog.result_song)
+        self._sync_tempo_metrica_fields()
+        self._reload_editor_from_track()
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.arrangement_view.refresh()
+        self._validate_current()
+        self.statusBar().showMessage(tr("Brano spostato di {n} semitoni", n=f"{dialog.semitones.value():+d}"), 5000)
 
     def silent_tracks_message(self) -> str:
         """Le tracce udibili il cui .sfz non suona una parte delle note

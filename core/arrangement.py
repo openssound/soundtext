@@ -14,6 +14,9 @@ import re
 from fractions import Fraction
 from typing import Dict, List, Optional, Tuple
 
+from st_language import events_to_text, parse_track_text
+from st_language.transform import is_transform_reference
+
 from .model import Clip
 from .notation import (Pattern, compute_token_spans, context_prefix_before, RE_REST,
                        BAR_CHECK, all_token_spans, is_lyric, tokenize, expand_patterns,
@@ -205,7 +208,7 @@ def load_box_file(path: str) -> Clip:
     return Clip(name=name, text=text, start_beat=0.0)
 
 
-def expand_pattern_refs_text(text: str, patterns: Dict[str, Pattern], default_octave: int) -> str:
+def expand_pattern_refs_text(text: str, patterns: Dict[str, Pattern], default_octave: int, meter=None) -> str:
     """Il testo con ogni riferimento %Nome (anche dentro gruppi N(...) e
     blocchi di voci, e nei pattern annidati) sostituito dal contenuto del
     pattern, ripetuto e trasposto come indica il riferimento: per leggere
@@ -215,6 +218,12 @@ def expand_pattern_refs_text(text: str, patterns: Dict[str, Pattern], default_oc
     testo espanso dentro un tratto rel:/key= suonerebbe diverso."""
 
     def expand(tok: str, depth: int) -> str:
+        if is_transform_reference(tok):     # le funzioni si scrivono con le note che producono
+            try:
+                return events_to_text(parse_track_text(tok, patterns, default_octave=default_octave, meter=meter),
+                                      default_octave)
+            except (NotationError, ValueError):
+                return tok
         m = RE_PATTERN_REF.match(tok)
         if not m or m.group(2) not in patterns or depth > 32:
             return tok

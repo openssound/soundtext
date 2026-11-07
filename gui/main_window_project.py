@@ -11,7 +11,7 @@ from core.model import Project
 from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
-                           RE_CHORD, relative_text, key_signature_alters, NotationError)
+                           RE_ARPEGGIO_SUFFIX, RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
 from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
 from core.autosave import AUTOSAVE_INTERVAL_S, RecoverySession, find_recoverable
@@ -893,23 +893,25 @@ class ProjectMixin:
 
         def freeze(tok):
             nonlocal changed
-            tok, value = split_note_value(tok)
+            arpeggio = RE_ARPEGGIO_SUFFIX.match(tok)    # le note si fissano, l'arpeggio resta
+            suffix = tok[len(arpeggio.group(1)):] if arpeggio else ""
+            tok, value = split_note_value(arpeggio.group(1) if arpeggio else tok)
             m = RE_CHORD.match(tok)
             if not m:
-                return tok + value
-            mult, letter, accidental, suffix, voicing, bass, octv, _modifier = m.groups()
-            symbol = letter + accidental + suffix
+                return tok + value + suffix
+            mult, letter, accidental, quality, voicing, bass, octv, _modifier = m.groups()
+            symbol = letter + accidental + quality
             try:
                 chord = parse_chord_symbol(symbol)
             except ValueError:
-                return tok + value
+                return tok + value + suffix
             octave = int(octv) if octv else instrument.default_octave
             notes = voice_chord(chord, octave, instrument, voicing_override=voicing)
             if bass:
                 notes = apply_bass_note(notes, bass, octave)
             note_tokens = [midi_to_token(n) for n in notes]
             changed = True
-            return ("" if not mult else mult) + "[" + " ".join(note_tokens) + "]" + value
+            return ("" if not mult else mult) + "[" + " ".join(note_tokens) + "]" + value + suffix
 
         # Solo i token cambiano: a capo e commenti restano dove sono.
         new_text = rewrite_tokens(track.text, lambda tok: map_nested_tokens(tok, freeze))
@@ -1034,20 +1036,12 @@ class ProjectMixin:
             QMessageBox.information(self, tr("Nessuna traccia"), tr("Il progetto non ha tracce da riorganizzare."))
             return
         if not self.project.patterns and not any(
-            "%" in t.text or "&" in t.text for t in self.project.tracks
+            "%" in text or "&" in text for t in self.project.tracks for text in [t.text] + [c.text for c in t.clips]
         ):
             QMessageBox.information(self, tr("Niente da espandere"),
                                      tr("Nessuna traccia usa pattern (%) o riferimenti MIDI (&) al momento."))
             return
-        from core.reorganize import expand_blockers, expand_patterns_for_project
-
-        reasons = expand_blockers(self.project)
-        if reasons:
-            QMessageBox.information(
-                self, tr("Espandi pattern nelle tracce"),
-                tr("Scritti per esteso, questi pattern cambierebbero il suono del brano, quindi per ora "
-                   "non si possono espandere:\n\n") + "\n".join(f"• {r}" for r in reasons))
-            return
+        from core.reorganize import expand_patterns_for_project
 
         reply = QMessageBox.question(
             self, tr("Espandi pattern nelle tracce"),

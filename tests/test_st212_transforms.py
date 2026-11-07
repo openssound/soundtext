@@ -23,9 +23,9 @@ from core.i18n import set_language
 from core.midi_export import export_project_to_midi
 from core.notation import Pattern, notation_warnings, tokenize
 from core.project_io import parse_project_text, project_to_text
-from core.reorganize import expand_blockers, expand_patterns_for_project, extract_patterns_for_project
-from core.transform_preview import (ReferencePoint, arpeggiable, expansion, preview_project, reference_at,
-                                    reference_point, stage_lines, with_arpeggio)
+from core.reorganize import expand_patterns_for_project, extract_patterns_for_project
+from core.transform_preview import (arp_region, arpeggiable, expansion, freeze_all, freeze_span, reference_at,
+                                    reference_point, sounding, stage_lines, with_arpeggio)
 
 _app = QApplication.instance() or QApplication([])
 
@@ -43,6 +43,16 @@ def _notes(project, name="Melodia"):
     track = project.get_track(name)
     return [(round(e.start, 4), round(e.duration, 4), e.kind, e.letter, e.octave, e.velocity)
             for e in track.parsed_events(project.patterns, meter=project.meter()) if e.kind != "control"]
+
+
+def test_library_follows_the_interface_language():
+    import st_language
+    try:
+        for code in ("en", "fr", "it"):
+            set_language(code)
+            assert st_language.language() == code
+    finally:
+        set_language("it")
 
 
 # ---------------------------------------------------------------- 1. apertura e salvataggio
@@ -150,28 +160,55 @@ def test_extract_patterns_leaves_a_reference_with_functions_whole():
     assert not any("." in t and t.startswith("%") for name, p in project.patterns.items() if name != "T" for t in p.tokens)
 
 
-def test_expand_patterns_writes_plain_text(tmp_path):
-    project = parse_project_text("ST: 2.12\nTempo: 120 BPM\n\nPattern %A:\n  c d\n\nTraccia Melodia [Pianoforte]:\n"
-                                 "  8: %A 2%A+2 e\n")
+@pytest.mark.parametrize("body", [
+    "8: %A 2%A+2 e",
+    "%W e f",
+    "2%W e",
+    "%A.retro %W.octave(1) e",
+    "rel: c %W g",
+    "key=G %W f",
+    "%A.canon('2,12) e",
+])
+def test_expand_patterns_writes_plain_text_with_the_same_sound(body, tmp_path):
+    project = parse_project_text("ST: 2.12\nTempo: 120 BPM\n\nPattern %A:\n  c d\n\nPattern %W:\n  8: 100@ c d\n\n"
+                                 f"Traccia Melodia [Pianoforte]:\n  {body}\n")
     expected = _midi(project, tmp_path)
-    assert expand_blockers(project) == []
-    expand_patterns_for_project(project)
-    assert "\x00" not in project.get_track("Melodia").text and not project.patterns
+    assert expand_patterns_for_project(project)
+    text = project.get_track("Melodia").text
+    assert "\x00" not in text and "%" not in text and not project.patterns
     assert _midi(project, tmp_path) == expected
 
 
-@pytest.mark.parametrize("pattern, text, word", [
-    ("8: 100@ c d", "%A e", "%A"),
-    ("c d", "%A.retro", "%A.retro"),
-])
-def test_expand_patterns_refuses_what_would_change_the_sound(pattern, text, word):
-    project = parse_project_text(f"ST: 2.12\nTempo: 120 BPM\n\nPattern %A:\n  {pattern}\n\n"
-                                 f"Traccia Melodia [Pianoforte]:\n  {text}\n")
-    reasons = expand_blockers(project)
-    assert reasons and word in reasons[0]
-    with pytest.raises(ValueError):
+def test_expand_patterns_reaches_the_boxes(tmp_path):
+    from core.arrangement import flatten_clips_to_text
+    from core.model import Clip
+    project = parse_project_text("ST: 2.12\nTempo: 120 BPM\n\nPattern %W:\n  8: 100@ c d\n\n"
+                                 "Traccia Melodia [Pianoforte]:\n  c\n")
+    track = project.get_track("Melodia")
+    track.clips = [Clip(name="A", text="%W e", start_beat=0.0), Clip(name="B", text="%W.retro", start_beat=8.0)]
+    track.text = flatten_clips_to_text(track.clips, project.patterns, 4, meter=project.meter())
+    expected = _midi(project, tmp_path)
+    expand_patterns_for_project(project)
+    assert not any("%" in clip.text for clip in track.clips) and "%" not in track.text
+    assert _midi(project, tmp_path) == expected
+
+
+def test_expand_patterns_keeps_the_voicing_of_the_track(tmp_path):
+    project = parse_project_text("ST: 2.12\nTempo: 120 BPM\n\nPattern %G:\n  4C\n\n"
+                                 "Traccia Melodia [Chitarra]:\n  %G.arpeggio(up,8)\n")
+    expected = _midi(project, tmp_path)
+    expand_patterns_for_project(project)
+    assert _midi(project, tmp_path) == expected
+
+
+def test_expand_patterns_refuses_a_different_sound_and_changes_nothing():
+    # expand_to_text conosce una tonalita' sola, il cambio di Tonalita: sposterebbe le note
+    project = parse_project_text("ST: 2.12\nTempo: 120 BPM\nTonalita: 1: C, 2: Eb\n\nPattern %M:\n  c d e f\n\n"
+                                 "Traccia P [Pianoforte]:\n  %M c\n\n"
+                                 "Traccia Melodia [Pianoforte]:\n  1r'1 2r'1 %M.step(1)\n")
+    with pytest.raises(ValueError, match="Melodia"):
         expand_patterns_for_project(project)
-    assert project.get_track("Melodia").text.strip() == text
+    assert project.patterns and project.get_track("P").text.split() == ["%M", "c"]
 
 
 # ---------------------------------------------------------------- 3. tonalita' e strumento
@@ -354,6 +391,14 @@ def _dialog(project, **kwargs):
     return TransformDialog(None, project, _Playback(), "Pianoforte", **kwargs)
 
 
+def test_dialog_takes_the_arguments_from_the_library():
+    project = parse_project_text(SONG.replace("@@", "%Tema"))
+    dialog = _dialog(project, token="%Tema")
+    dialog.select_function("canon")
+    assert dialog._controls[2].maximum() == 4 and dialog._controls[0].text() == "'2"
+    assert dialog.tree.topLevelItemCount() == 5
+
+
 def test_dialog_builds_the_chain_and_replaces():
     set_language("en")
     try:
@@ -482,12 +527,121 @@ def test_preview_popup_on_a_reference(tmp_path, monkeypatch):
     text = window.editor.toPlainText()
     assert show_reference_preview(window.editor, text, text.index("retro"), window.project, track, _Playback(), None)
     popup = window.editor._reference_popup
-    assert popup.isVisible() and ".invert(e*4)" in popup.stages.text()
+    assert popup.isVisible() and ".invert(e*4)" in popup.stages.text() and popup.notation.text()
     assert popup.title.text() == "%Tema.invert(e*4).retro"
     popup.score._render()
     assert popup.score._renderer is not None or popup.score._message
     assert not show_reference_preview(window.editor, text, 0, window.project, track, _Playback(), None)
     assert not popup.isVisible()
+
+
+TOKENS = ["%Tema.octave(1)", "%Tema.invert(e*4)", "%Tema.step(2)", "%Tema.augment(2)", "%Tema.diminish(2)", "%Tema.retro",
+          "%Tema.sequence(3,-1)", "%Tema.vel(+10)", "%Tema.canon('2,12)", "%Tema.thirds", "%Giro.arpeggio(up,8)"]
+
+
+@pytest.mark.parametrize("token", TOKENS)
+@pytest.mark.parametrize("name, instrument", [("Pianoforte", "Pianoforte"), ("Chitarra", "Chitarra")])
+def test_freeze_keeps_the_midi(token, name, instrument, tmp_path):
+    project = parse_project_text(SONG.replace("@@", f"60@ c {token} d e").replace("[Pianoforte]", f"[{instrument}]"))
+    track = project.get_track("Melodia")
+    expected = _midi(project, tmp_path)
+    start = track.text.index("%")
+    track.text = freeze_span(track.text, start, start + len(token), project, track.instrument)
+    assert "%" not in track.text.replace(f"// da {token}", "")
+    assert f"// da {token}\n" in track.text
+    assert _midi(project, tmp_path) == expected
+
+
+def test_freeze_writes_voices_restores_the_state_and_can_skip_the_comment():
+    project = parse_project_text(SONG.replace("@@", "%Tema.thirds c"))
+    track = project.get_track("Melodia")
+    start = track.text.index("%")
+    frozen = freeze_span(track.text, start, start + len("%Tema.thirds"), project, track.instrument, comment=False)
+    assert "//" not in frozen and "{" in frozen and frozen.rstrip().endswith("c")
+    project = parse_project_text(SONG.replace("@@", "%Tema.retro c"))
+    text = project.get_track("Melodia").text
+    frozen = freeze_span(text, text.index("%"), text.index(" c"), project, project.get_track("Melodia").instrument,
+                         comment=False)
+    assert "4:" in frozen.split()[-3:]
+
+
+def test_freeze_inside_rel_and_key():
+    for body in ("rel: c %Tema.retro g", "key=G %Tema.octave(1) f"):
+        project = parse_project_text(SONG.replace("@@", body))
+        track = project.get_track("Melodia")
+        before = sounding(track.text, project.patterns, track.instrument, project.meter())
+        ref = reference_at(track.text, track.text.index("%") + 1)
+        frozen = freeze_span(track.text, ref[0], ref[1], project, track.instrument)
+        assert sounding(frozen, project.patterns, track.instrument, project.meter()) == before
+
+
+def test_freeze_arp_region_and_arpeggio_chord(tmp_path):
+    project = parse_project_text(SONG.replace("@@", "c arp=up,8 2C 2F arp=off d"))
+    track = project.get_track("Melodia")
+    expected = _midi(project, tmp_path)
+    start, end = arp_region(track.text, track.text.index("2F"))
+    assert track.text[start:end] == "arp=up,8 2C 2F arp=off"
+    track.text = freeze_span(track.text, start, end, project, track.instrument, comment=False)
+    assert "arp=" not in track.text
+    assert _midi(project, tmp_path) == expected
+    assert arp_region("c arp=up C arp=off d", 0) is None and arp_region("c arp=up C arp=off d", 19) is None
+    assert arp_region("arp=up C F", 8) == (0, 10)
+    project = parse_project_text(SONG.replace("@@", "2C.arpeggio(up,8) d"))
+    track = project.get_track("Melodia")
+    expected = _midi(project, tmp_path)
+    token = "2C.arpeggio(up,8)"
+    start = track.text.index(token)
+    track.text = freeze_span(track.text, start, start + len(token), project, track.instrument)
+    assert "arpeggio(" not in track.text.replace(f"// da {token}", "") and _midi(project, tmp_path) == expected
+
+
+def test_freeze_all_and_the_expanded_view(tmp_path, monkeypatch):
+    from core.arrangement import expand_pattern_refs_text
+    project = parse_project_text(SONG.replace("@@", "%Tema.retro c %Tema %Tema.octave(1)"))
+    track = project.get_track("Melodia")
+    text, done, kept = freeze_all(track.text, project, track.instrument)
+    assert (done, kept) == (2, []) and "%Tema " in text
+    shown = expand_pattern_refs_text("%Tema.retro", project.patterns, 4, project.meter())
+    assert "%" not in shown and "g*4" in shown
+
+    from gui.selection_actions import freeze_in_editor
+    window = _window(tmp_path, SONG.replace("@@", "%Tema.retro c"), monkeypatch)
+    track = window.project.get_track("Melodia")
+    before = window.editor.toPlainText()
+    start = before.index("%")
+    assert freeze_in_editor(window.editor, start, start + len("%Tema.retro"), window.project, track)
+    assert "%Tema.retro\n" in track.text
+    window.undo()
+    assert window.project.get_track("Melodia").text.strip() == before.strip()
+    window.freeze_all_transforms()
+    assert "%Tema.retro\n" in window.project.get_track("Melodia").text
+
+
+def test_freeze_chords_keeps_the_arpeggio_suffix(tmp_path, monkeypatch):
+    window = _window(tmp_path, SONG.replace("@@", "2C.arpeggio(up,8)"), monkeypatch)
+    window.freeze_chords()
+    text = window.project.get_track("Melodia").text
+    assert "[" in text and ".arpeggio(up,8)" in text
+
+
+def test_dialog_writes_the_notes(tmp_path, monkeypatch):
+    from gui.transform_dialog import TransformDialog
+    set_language("en")
+    try:
+        window = _window(tmp_path, SONG.replace("@@", "%Tema c"), monkeypatch)
+        cursor = window.editor.textCursor()
+        cursor.setPosition(window.editor.toPlainText().index("%Tema") + 2)
+        window.editor.setTextCursor(cursor)
+
+        def accept(dialog):
+            dialog.select_function("retro")
+            dialog._write_notes()
+            return TransformDialog.Accepted
+        monkeypatch.setattr(TransformDialog, "exec", accept)
+        window.transform_reference()
+        assert "from %Tema.retro\n" in window.project.get_track("Melodia").text
+    finally:
+        set_language("it")
 
 
 def test_arpeggiate_selection_writes_the_commands():

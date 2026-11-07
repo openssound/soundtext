@@ -1300,6 +1300,8 @@ cromáticas o que modulan — un buen punto de partida, no un veredicto
 infalible. Si el proyecto no contiene notas con altura (ninguna pista, o
 solo de percusión), lo indica en lugar de adivinar.
 
+**Probar otra tonalidad para quien canta.** **Componer → Tonalidad de la canción...** sube o baja toda la canción por semitonos. Se escucha cada prueba con ▶, desde donde estabas; la canción solo cambia con OK, y Ctrl+Z vuelve atrás. Se mueven las notas, los acordes, la línea `Tonalita:` con sus cambios y los clips de audio; la percusión se queda. La ventana avisa de las notas que salen de la extensión de un instrumento o que un `.sfz` no toca.
+
 ### 8.4 Microtiempo, afinación, muchas pistas, MTXT
 
 **Microtiempo (`shift=`).** `shift=N` hace sonar las notas siguientes N
@@ -1597,7 +1599,7 @@ búsqueda de los bloques repetidos está siempre limitado (por pista), de
 modo que incluso en pistas muy largas la reorganización nunca se queda
 bloqueada indefinidamente.
 
-**Cuándo no se puede usar Expandir patterns.** Escritos por extenso, algunos patterns cambiarían el sonido de la canción, y el comando lo avisa sin tocar nada: los patterns que escriben rejilla, velocity, swing o arpegio (por tanto también muchos de los creados al extraer patterns), las llamadas con funciones, los patterns que cambian el modo de leer las notas, las pistas con `rel:`, `key=` o `transpose=` y las referencias MIDI transpuestas.
+**Si Expandir patterns no puede hacerlo.** Tras cada pattern el texto expandido restablece el estado anterior, y el comando comprueba que el sonido siga idéntico con el instrumento de la pista. Si no lo consigue en una pista, lo dice y no cambia nada en la canción.
 
 ### 10.3 Menú contextual sobre una selección (clic derecho)
 
@@ -1664,7 +1666,9 @@ Las funciones siguen a una llamada y se aplican de izquierda a derecha: `%Tema.i
 
 Dejando el ratón sobre una llamada con funciones, o con Ctrl+I, aparece la vista previa: partitura, cadena paso a paso, avisos y ▶. Con el clic derecho, o **Componer → Transformar...**, se abre la ventana que escribe la llamada. `.retro` da error con slides, automatizaciones o pedal; `.augment` y `.diminish` aceptan números mayores que 0, siempre que ninguna duración baje de `'128`.
 
-`$arp` es el acorde **arpegiado** (notas sostenidas); `.arpeggio` y `arp=tipo,rejilla` ... `arp=off` hacen el acorde **quebrado**. Clic derecho en un acorde: **Arpegiar...**. **Expandir patterns** rechaza por ahora las canciones cuyo sonido cambiaría.
+`$arp` es el acorde **arpegiado** (notas sostenidas); `.arpeggio` y `arp=tipo,rejilla` ... `arp=off` hacen el acorde **quebrado**. Clic derecho en un acorde: **Arpegiar...**.
+
+**Congelar la transformación** (clic derecho en la llamada, botón de la vista previa, **Escribir las notas** en la ventana Transformar) escribe las notas por extenso, para retocarlas a mano: vale también para un acorde con `.arpeggio` y para un tramo `arp=`. El sonido sigue idéntico: si no puede, lo dice y no congela. Sobre las notas escribe un comentario con la llamada de partida (se quita en **Componer → Congelar con el comentario de origen**); **Pista → Congelar todas las transformaciones** lo hace para toda la pista.
 
 ## 11. Biblioteca MIDI (&"Nombre")
 

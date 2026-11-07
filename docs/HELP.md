@@ -1288,6 +1288,8 @@ cromatici o che modulano — un buon punto di partenza, non un verdetto
 infallibile. Se il progetto non contiene note intonate (nessuna traccia, o
 solo percussive), lo segnala invece di indovinare.
 
+**Provare un'altra tonalita' per chi canta.** **Componi → Tonalità del brano...** alza o abbassa tutto il brano di semitoni. Si ascolta ogni prova con ▶, dal punto in cui si era, e il brano cambia solo con OK; Ctrl+Z torna indietro. Si spostano le note, gli accordi, la riga `Tonalita:` con i suoi cambi e le clip audio; le percussioni restano. La finestra avvisa delle note che escono dall'estensione di uno strumento o che un `.sfz` non suona.
+
 ### 8.4 Micro-tempo, accordatura, molte tracce, MTXT
 
 **Micro-tempo (`shift=`).** `shift=N` fa suonare le note che seguono N
@@ -1577,7 +1579,7 @@ tempo di ricerca dei blocchi ripetuti e' comunque sempre limitato (per
 traccia), cosi' che anche su tracce molto lunghe la riorganizzazione non
 resti mai bloccata a tempo indefinito.
 
-**Quando Espandi pattern non si puo' usare.** Scritti per esteso, alcuni pattern cambierebbero il suono del brano, e il comando lo dice senza toccare nulla: i pattern che scrivono griglia, velocity, swing o arpeggio (quindi anche molti di quelli creati da Estrai pattern), i richiami con funzioni, i pattern che cambiano il modo di leggere le note, le tracce con `rel:`, `key=` o `transpose=` e i riferimenti MIDI trasposti.
+**Se Espandi pattern non puo' farlo.** Dopo ogni pattern il testo espanso rimette lo stato di prima, e il comando controlla che il suono resti identico con lo strumento della traccia. Se per una traccia non ci riesce lo dice e non cambia niente nel brano.
 
 ### 10.3 Menu contestuale su una selezione (tasto destro)
 
@@ -1646,7 +1648,9 @@ Dopo un richiamo si scrivono funzioni, applicate da sinistra a destra: `%Tema.in
 
 Fermando il mouse su un richiamo con funzioni, o con Ctrl+I, compare l'anteprima: partitura, catena passo per passo, avvisi e ▶. Con il tasto destro, o da **Componi → Trasforma...**, si apre la finestra che scrive il richiamo. `.retro` da' errore con slide, automazioni o pedale; `.augment` e `.diminish` accettano numeri maggiori di 0, purche' nessuna durata scenda sotto `'128`.
 
-`$arp` e' l'accordo **rullato** (le note restano tenute); `.arpeggio` e `arp=tipo,griglia` ... `arp=off` fanno l'accordo **spezzato**. Tasto destro su un accordo: **Arpeggia...**. **Espandi pattern** per ora rifiuta i brani in cui il suono cambierebbe.
+`$arp` e' l'accordo **rullato** (le note restano tenute); `.arpeggio` e `arp=tipo,griglia` ... `arp=off` fanno l'accordo **spezzato**. Tasto destro su un accordo: **Arpeggia...**.
+
+**Congela la trasformazione** (tasto destro sul richiamo, pulsante nell'anteprima, **Scrivi le note** nella finestra Trasforma) scrive le note per esteso, per ritoccarle a mano: vale anche per un accordo con `.arpeggio` e per un tratto `arp=`. Il suono resta identico: se non puo', lo dice e non congela. Sopra le note scrive un commento con il richiamo di partenza (si toglie da **Componi → Congela con il commento d'origine**); **Traccia → Congela tutte le trasformazioni** lo fa per tutta la traccia.
 
 ## 11. Libreria MIDI (&"Nome")
 

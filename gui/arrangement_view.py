@@ -470,12 +470,12 @@ class AudioBoxItem(BoxItem):
         """Fermando il mouse su un box che ha un richiamo con funzioni."""
         if not self._hover or self._dragging:
             return
-        from core.transform_preview import reference_at, RE_REFERENCE
-        for m in RE_REFERENCE.finditer(self.clip.text):
-            if reference_at(self.clip.text, m.start()):
+        from core.transform_preview import pattern_references, reference_at
+        for reference in pattern_references(self.clip.text):
+            if reference_at(self.clip.text, reference.start):
                 from .transform_preview import show_reference_preview
                 host = self.view.host
-                show_reference_preview(self.view, self.clip.text, m.start(), host.project,
+                show_reference_preview(self.view, self.clip.text, reference.start, host.project,
                                        host.project.get_track(self.track_name), self.view._preview_playback,
                                        QCursor.pos(), origin_beat=self.clip.start_beat)
                 return
@@ -1969,8 +1969,8 @@ class ArrangementView(AudioClipActions, QWidget):
         stop_action = menu.addAction(tr("■ Stop"))
         transpose_action = menu.addAction(tr("Trasponi..."))
         from .reharmonize_dialog import can_reharmonize
-        from core.transform_preview import RE_REFERENCE
-        references = list(RE_REFERENCE.finditer(clip.text))
+        from core.transform_preview import pattern_references
+        references = pattern_references(clip.text)
         transform_action = menu.addAction(tr("Trasforma...")) if len(references) == 1 else None
         reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
             if can_reharmonize(clip.text, self.host.project.patterns) else None
@@ -2051,18 +2051,32 @@ class ArrangementView(AudioClipActions, QWidget):
         from .transform_dialog import TransformDialog
         project = self.host.project
         track = project.get_track(track_name)
-        point = reference_point(clip.text, reference.start(), project.patterns, track.instrument, project.meter(),
+        point = reference_point(clip.text, reference.start, project.patterns, track.instrument, project.meter(),
                                 clip.start_beat)
         dlg = TransformDialog(self, project, self._preview_playback, track.instrument_name, track,
-                              token=reference.group(), point=point)
+                              token=reference.token, point=point)
         self._transform_dialog = dlg   # per i test
         if dlg.exec() != TransformDialog.Accepted:
             return
         if dlg.result_token:
-            clip.text = clip.text[:reference.start()] + dlg.result_token + clip.text[reference.end():]
+            text = clip.text[:reference.start] + dlg.result_token + clip.text[reference.end:]
+            if dlg.freeze:
+                text = self._frozen_clip_text(text, reference.start, reference.start + len(dlg.result_token), track, clip)
+            clip.text = text
             self.on_clip_changed(track_name)
         elif dlg.created_pattern:
             self.on_clip_changed(track_name)
+
+    def _frozen_clip_text(self, text: str, start: int, end: int, track, clip: Clip) -> str:
+        from core.notation import NotationError
+        from core.settings import get_freeze_comment
+        from core.transform_preview import freeze_span
+        try:
+            return freeze_span(text, start, end, self.host.project, track.instrument, clip.start_beat,
+                               get_freeze_comment())
+        except (NotationError, ValueError) as e:
+            QMessageBox.warning(self, tr("Congela la trasformazione"), str(e))
+            return text
 
     def reharmonize_clip(self, track_name: str, clip: Clip):
         """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il

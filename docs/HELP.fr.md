@@ -1329,6 +1329,8 @@ infaillible. Si le projet ne contient pas de notes à hauteur définie
 (aucune piste, ou seulement des percussions), il le signale au lieu de
 deviner.
 
+**Essayer une autre tonalité pour le chanteur.** **Composer → Tonalité du morceau...** monte ou descend tout le morceau par demi-tons. Écoutez chaque essai avec ▶, depuis l'endroit où vous étiez ; le morceau ne change qu'avec OK, et Ctrl+Z revient en arrière. Les notes, les accords, la ligne `Tonalita:` avec ses changements et les clips audio se déplacent ; les percussions restent. La fenêtre signale les notes qui sortent de l'étendue d'un instrument ou qu'un `.sfz` ne joue pas.
+
 ### 8.4 Micro-timing, accordage, nombreuses pistes, MTXT
 
 **Micro-timing (`shift=`).** `shift=N` fait jouer les notes qui suivent N
@@ -1631,7 +1633,7 @@ Le temps de recherche des blocs répétés est de toute façon toujours limité
 (par piste), de sorte que même sur des pistes très longues la
 réorganisation ne reste jamais bloquée indéfiniment.
 
-**Quand les patterns ne peuvent pas être développés.** Écrits en entier, certains patterns changeraient le son du morceau, et la commande le signale sans rien modifier : les patterns qui écrivent grille, vélocité, swing ou arpège (donc aussi beaucoup de ceux créés par l'extraction), les rappels avec fonctions, les patterns qui changent la lecture des notes, les pistes avec `rel:`, `key=` ou `transpose=` et les références MIDI transposées.
+**Si les patterns ne peuvent pas être développés.** Après chaque pattern, le texte développé remet l'état précédent, et la commande vérifie que le son reste identique avec l'instrument de la piste. Si elle n'y arrive pas pour une piste, elle le dit et ne change rien au morceau.
 
 ### 10.3 Menu contextuel sur une sélection (clic droit)
 
@@ -1698,7 +1700,9 @@ Les fonctions suivent un rappel et s'appliquent de gauche à droite : `%Theme.in
 
 En laissant la souris sur un rappel avec fonctions, ou avec Ctrl+I, l'aperçu apparaît : partition, chaîne pas à pas, avertissements et ▶. Le clic droit, ou **Composer → Transformer...**, ouvre la fenêtre qui écrit le rappel. `.retro` donne une erreur avec slides, automations ou pédale ; `.augment` et `.diminish` acceptent les nombres supérieurs à 0, tant qu'aucune durée ne passe sous `'128`.
 
-`$arp` est l'accord **roulé** (notes tenues) ; `.arpeggio` et `arp=type,grille` ... `arp=off` font l'accord **brisé**. Clic droit sur un accord : **Arpéger...**. **Développer les patterns** refuse pour l'instant les morceaux dont le son changerait.
+`$arp` est l'accord **roulé** (notes tenues) ; `.arpeggio` et `arp=type,grille` ... `arp=off` font l'accord **brisé**. Clic droit sur un accord : **Arpéger...**.
+
+**Figer la transformation** (clic droit sur le rappel, bouton de l'aperçu, **Écrire les notes** dans la fenêtre Transformer) écrit les notes en entier, pour les retoucher à la main : cela vaut aussi pour un accord avec `.arpeggio` et pour un passage `arp=`. Le son reste identique : sinon, la commande le dit et ne fige pas. Au-dessus des notes, elle écrit un commentaire avec le rappel de départ (à désactiver dans **Composer → Figer avec le commentaire d'origine**) ; **Piste → Figer toutes les transformations** le fait pour toute la piste.
 
 ## 11. Bibliothèque MIDI (&"Nom")
 

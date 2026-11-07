@@ -135,7 +135,8 @@ class BoxEditDialog(QDialog):
     def _expanded_text(self) -> str:
         text = self.body_edit.toPlainText()
         try:
-            return expand_pattern_refs_text(text, self.project.patterns, self.instrument.default_octave)
+            return expand_pattern_refs_text(text, self.project.patterns, self.instrument.default_octave,
+                                            self.project.meter())
         except (NotationError, ValueError):
             return text   # testo non ancora valido (es. virgolette aperte): niente da espandere
 

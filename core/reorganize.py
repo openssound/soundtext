@@ -18,12 +18,12 @@ sempre limitati anche su tracce molto lunghe.
 import time
 from typing import Dict, List, Optional, Tuple, Callable
 
-from .arrangement import expand_pattern_refs_text
+from st_language import expand_to_text
+
+from .arrangement import flatten_clips_to_text
 from .i18n import tr
-from .notation import (tokenize, tokenize_spans, NotationError, Pattern, RE_ARP, RE_GRID, RE_KEY_MODE, RE_MIDI_REF, RE_PATTERN_REF,
-                       RE_PITCH_MODE, RE_TRANSPOSE, RE_VELOCITY, _resolve_midi_ref, _state_effect, map_nested_tokens,
+from .notation import (tokenize, NotationError, Pattern, RE_ARP, RE_GRID, RE_VELOCITY, find_references,
                        upgrade_pattern_state)
-from st_language.transform import is_transform_reference, parse_reference
 from .model import Project
 
 # Le finestre di ricerca oltre questa lunghezza non vengono considerate: un
@@ -232,134 +232,68 @@ def extract_patterns_for_project(project: Project, min_window: int = 4,
     return summary
 
 
-def _has_reusable_ref(tok: str) -> bool:
-    stripped = tok.lstrip("0123456789")
-    return stripped.startswith("%") or stripped.startswith("&")
+def _expanded(text: str, project: Project, instrument, midi_dir: Optional[str], origin_beat: float = 0.0) -> str:
+    """Il testo con i riferimenti scritti per esteso. expand_to_text controlla
+    il suono con il pianoforte e la tonalita' del punto d'inizio: qui si
+    controlla con lo strumento della traccia e la tonalita' di ogni battuta."""
+    from .transform_preview import sounding
+    meter = project.meter()
+    result = expand_to_text(text, project.patterns, instrument.default_octave, midi_dir,
+                            key=meter.key_at(origin_beat))
+    if sounding(text, project.patterns, instrument, meter, origin_beat, midi_dir) \
+            != sounding(result, {}, instrument, meter, origin_beat, midi_dir):
+        raise NotationError(tr("Questo testo non si puo' scrivere per esteso senza cambiarne il suono"), text[:40])
+    return result
 
 
-def _used_patterns(texts: List[str], patterns: Dict[str, Pattern]) -> Dict[str, Pattern]:
-    """I pattern richiamati dai testi, anche da dentro altri pattern."""
-    used: Dict[str, Pattern] = {}
-
-    def visit(tokens: List[str]):
-        for tok in tokens:
-            map_nested_tokens(tok, note)
-
-    def note(tok: str) -> str:
-        name = None
-        if is_transform_reference(tok):
-            try:
-                name = parse_reference(tok).pattern
-            except NotationError:
-                pass
-        else:
-            m = RE_PATTERN_REF.match(tok)
-            name = m.group(2) if m else None
-        if name in patterns and name not in used:
-            used[name] = patterns[name]
-            visit(patterns[name].tokens)
-        return tok
-
-    for text in texts:
-        visit(tokenize(text))
-    return used
-
-
-def _nested_tokens(text_or_tokens) -> List[str]:
-    """Tutti i token, anche quelli dentro gruppi N(...) e voci { ; }."""
-    tokens = tokenize(text_or_tokens) if isinstance(text_or_tokens, str) else text_or_tokens
-    found: List[str] = []
-
-    def keep(tok: str) -> str:
-        found.append(tok)
-        return tok
-
-    for tok in tokens:
-        map_nested_tokens(tok, keep)
-    return found
-
-
-def expand_blockers(project: Project) -> List[str]:
-    """Perche' i riferimenti di questo brano non si possono scrivere per
-    esteso senza cambiare il suono, una frase per motivo ([] = si puo'). Il
-    testo espanso non ha i confini di un pattern: quello che il pattern
-    scrive resterebbe in vigore dopo di lui, e una funzione non ha testo in
-    cui svolgersi. Serve una funzione di st-language che scriva il testo
-    espanso rimettendo lo stato di prima."""
-    texts = [track.text for track in project.tracks if not track.is_audio]
-    used = _used_patterns(texts, project.patterns)
-    reasons: List[str] = []
-    tokens = [t for text in texts for t in _nested_tokens(text)]
-    inner = [t for pattern in used.values() for t in _nested_tokens(pattern.tokens)]
-    transforms = sorted({t for t in tokens + inner if is_transform_reference(t)})
-    if transforms:
-        reasons.append(tr("richiami con funzioni: {refs}", refs=", ".join(transforms[:5])))
-    writers = sorted(name for name, pattern in used.items() if _state_effect(pattern.tokens, project.patterns)[1])
-    if writers:
-        reasons.append(tr("pattern che scrivono griglia, velocity, swing o arpeggio: {names}",
-                          names=", ".join("%" + n for n in writers[:5])))
-    modal = sorted(name for name, pattern in used.items()
-                   if any(_changes_pitch_reading(t) for t in _nested_tokens(pattern.tokens)))
-    if modal:
-        reasons.append(tr("pattern che cambiano il modo di leggere le note: {names}",
-                          names=", ".join("%" + n for n in modal[:5])))
-    if used and any(_changes_pitch_reading(t) for t in tokens):
-        reasons.append(tr("tracce con rel:, key= o transpose= insieme ai pattern"))
-    midi = sorted({t for t in tokens + inner if (m := RE_MIDI_REF.match(t)) and m.group(3)})
-    if midi:
-        reasons.append(tr("riferimenti MIDI trasposti: {refs}", refs=", ".join(midi[:5])))
-    return reasons
-
-
-def _changes_pitch_reading(tok: str) -> bool:
-    return bool(RE_PITCH_MODE.match(tok) or RE_KEY_MODE.match(tok) or RE_TRANSPOSE.match(tok))
-
-
-def _expand_midi_refs(text: str, midi_dir: Optional[str]) -> str:
-    """Il testo con i riferimenti &midi scritti per esteso."""
-    def expand(tok: str) -> str:
-        m = RE_MIDI_REF.match(tok)
-        if not m:
-            return tok
-        return " ".join(_resolve_midi_ref(m.group(2), midi_dir, tok) * int(m.group(1) or 1))
-
-    out, last = [], 0
-    for tok, start, end in tokenize_spans(text):
-        if "&" in tok:
-            out += [text[last:start], map_nested_tokens(tok, expand)]
-            last = end
-    out.append(text[last:])
-    return "".join(out)
+def _has_references(text: str) -> bool:
+    return any(reference.kind in ("pattern", "midi") for reference in find_references(text))
 
 
 def expand_patterns_for_project(project: Project, midi_dir: Optional[str] = None,
                                   progress_callback: Optional[Callable[[float], None]] = None
                                   ) -> Dict[str, Tuple[int, int]]:
-    """Espande tutti i riferimenti %pattern e &midi di ogni traccia in token
-    letterali, rendendo le tracce autosufficienti. Rimuove dal progetto i
-    pattern (ormai inutilizzati). Ritorna {nome_traccia: (n_token_prima,
-    n_token_dopo)} per le sole tracce effettivamente modificate. Il testo
-    scritto nelle tracce e' testo vero: niente segni interni di expand_patterns.
-    Solleva ValueError se il suono cambierebbe (vedi expand_blockers)."""
-    reasons = expand_blockers(project)
-    if reasons:
-        raise ValueError("; ".join(reasons))
+    """Espande tutti i riferimenti %pattern e &midi di ogni traccia e di ogni
+    box in testo vero, rendendo le tracce autosufficienti, e rimuove dal
+    progetto i pattern (ormai inutilizzati). Ritorna {nome_traccia:
+    (n_token_prima, n_token_dopo)} per le sole tracce modificate. Se un testo
+    non si puo' scrivere per esteso con lo stesso suono solleva ValueError e
+    non cambia niente."""
+    written = []                    # (traccia, box o None, testo nuovo)
     summary = {}
     total = max(1, len(project.tracks))
     for idx, track in enumerate(project.tracks):
         if progress_callback:
             progress_callback(idx / total)
-        instr = track.instrument
-        raw_tokens = tokenize(track.text)
-        if not any(_has_reusable_ref(t) for t in _nested_tokens(raw_tokens)):
+        if track.is_audio:
             continue
-        text = expand_pattern_refs_text(track.text, project.patterns, instr.default_octave)
-        text = _expand_midi_refs(text, midi_dir)
-        summary[track.name] = (len(raw_tokens), len(tokenize(text)))
-        track.text = text
+        parts = [(clip, clip.text, clip.start_beat) for clip in track.clips] or [(None, track.text, 0.0)]
+        before = after = 0
+        for clip, text, origin in parts:
+            if not _has_references(text):
+                continue
+            try:
+                result = _expanded(text, project, track.instrument, midi_dir, origin)
+            except NotationError as e:
+                raise ValueError(tr("Traccia «{name}»: {msg}. Il brano non e' stato cambiato.",
+                                    name=track.name, msg=e)) from e
+            written.append((track, clip, result))
+            before += len(tokenize(text))
+            after += len(tokenize(result))
+        if after:
+            summary[track.name] = (before, after)
 
+    for track, clip, result in written:
+        if clip is None:
+            track.text = result
+        else:
+            clip.text = result
     if summary:
         project.patterns.clear()
+        for track in project.tracks:
+            if track.clips and not track.is_audio:
+                track.text = flatten_clips_to_text(track.clips, project.patterns, track.instrument.default_octave,
+                                                   meter=project.meter())
     if progress_callback:
         progress_callback(1.0)
     return summary
