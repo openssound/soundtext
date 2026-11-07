@@ -58,7 +58,7 @@ def _compute(text, instrument, patterns, meter, origin_beat) -> Optional[ClipPre
     from st_language.chords import parse_chord_symbol, pitch_to_midi, voice_chord
     from .notation import parse_track_text
     events = parse_track_text(text, patterns or {}, default_octave=instrument.default_octave,
-                              meter=meter, origin_beat=origin_beat)
+                              meter=meter, origin_beat=origin_beat, instrument=instrument)
     octave = instrument.default_octave
     drums: List[str] = []                         # i suoni di batteria, nell'ordine in cui compaiono
     hits: List[Tuple[float, float, int]] = []     # colpi di batteria: corsia = indice in drums

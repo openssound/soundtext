@@ -43,7 +43,7 @@ def test_tuplets_slides_and_blocks():
 def test_group_and_pattern_cover_their_whole_expansion():
     p = Project()
     p.add_pattern("Riff", "8: c d e f")
-    assert _spans("3(c r) %Riff g", p.patterns) == [("3(c r)", 0.0, 6.0), ("%Riff", 6.0, 2.0), ("g", 8.0, 0.5)]
+    assert _spans("3(c r) %Riff g", p.patterns) == [("3(c r)", 0.0, 6.0), ("%Riff", 6.0, 2.0), ("g", 8.0, 1.0)]
 
 
 def test_invalid_token_is_skipped_without_losing_the_others():

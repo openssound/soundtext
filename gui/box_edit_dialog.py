@@ -28,7 +28,7 @@ from core import midi_library
 from core.completion import completions_for_word
 from core.instruments import get_instrument
 from core.arrangement import anchored_preview_text, expand_pattern_refs_text
-from core.model import Project, copy_synth
+from core.model import Project, Track, copy_synth
 from core.notation import validate_track_text, notation_warnings, bar_issues_summary, NotationError
 from core.playback import PlaybackEngine
 
@@ -89,6 +89,8 @@ class BoxEditDialog(QDialog):
         self.body_edit.on_double_click_token = self._on_body_double_click
         self.body_edit.on_selection_context_menu = self._on_body_selection_context_menu
         self.body_edit.on_completion_request = self._body_completions
+        self.body_edit.on_token_context_menu = self._on_body_token_context_menu
+        self.body_edit.enable_reference_preview(self._on_body_reference_preview)
         self._highlighter = NotationHighlighter(self.body_edit.document())
         layout.addWidget(self.body_edit)
 
@@ -153,7 +155,8 @@ class BoxEditDialog(QDialog):
         ok, msg = validate_track_text(text, self.project.patterns, default_octave=octave)
         issues = notation_warnings(text, self.project.patterns, self.project.time_sig,
                                  self.project.metrica_changes, start_beat=self.start_beat,
-                                 default_octave=octave, pickup=self.project.pickup) if ok else []
+                                 default_octave=octave, pickup=self.project.pickup,
+                                 key=self.project.key, key_changes=self.project.key_changes) if ok else []
         self._highlighter.set_bar_errors(i.char_start for i in issues)
         self.status_label.setToolTip("\n".join(i.message for i in issues))
         if not text.strip():
@@ -170,7 +173,8 @@ class BoxEditDialog(QDialog):
 
     def _preview_project(self, text: str) -> Project:
         preview = Project(name="preview", tempo_bpm=self.tempo_bpm, time_sig=self.project.time_sig,
-                          metrica_changes=list(self.project.metrica_changes))
+                          metrica_changes=list(self.project.metrica_changes), key=self.project.key,
+                          key_changes=list(self.project.key_changes))
         preview.patterns = self.project.patterns
         copy_synth(preview.add_track("Anteprima", self.instrument_name, text), self._synth_track())
         return preview
@@ -234,10 +238,24 @@ class BoxEditDialog(QDialog):
             synth_track=self._synth_track(), host_project=self.project, origin_beat=self.start_beat,
         )
 
+    def _preview_track(self):
+        """La traccia del box, o una di passaggio con il suo strumento."""
+        return self._synth_track() or Track(name="Anteprima", instrument_name=self.instrument_name)
+
+    def _on_body_token_context_menu(self, pos: int, global_pos) -> bool:
+        from .selection_actions import handle_token_context_menu
+        return handle_token_context_menu(self.body_edit, pos, self.project, self._preview_track(), self._playback,
+                                         global_pos, origin_beat=self.start_beat)
+
+    def _on_body_reference_preview(self, pos: int, global_pos):
+        from .transform_preview import show_reference_preview
+        show_reference_preview(self.body_edit, self.body_edit.toPlainText(), pos, self.project,
+                               self._preview_track(), self._playback, global_pos, origin_beat=self.start_beat)
+
     def _body_completions(self, word: str):
         return completions_for_word(
             word, patterns=self.project.patterns, instrument=self.instrument,
-            midi_ref_names=midi_library.list_midi_library,
+            midi_ref_names=midi_library.list_midi_library, text_before=self.body_edit.text_before_word(),
         )
 
     def accept(self):

@@ -239,6 +239,60 @@ class MixerMixin:
             host_project=self.project,
         )
 
+    def _editable_track(self):
+        """La traccia di note selezionata, None se non ce n'e'."""
+        if not self.current_track_name:
+            return None
+        track = self.project.get_track(self.current_track_name)
+        return None if track.is_audio else track
+
+    def _pattern_created(self):
+        self._after_patterns_edited()
+        self._mark_dirty()
+
+    def _on_editor_token_context_menu(self, pos: int, global_pos) -> bool:
+        track = self._editable_track()
+        if track is None:
+            return False
+        from .selection_actions import handle_token_context_menu
+        return handle_token_context_menu(self.editor, pos, self.project, track, self.playback, global_pos,
+                                         on_pattern_created=self._pattern_created)
+
+    def _on_editor_reference_preview(self, pos: int, global_pos):
+        track = self._editable_track()
+        if track is not None:
+            from .transform_preview import show_reference_preview
+            show_reference_preview(self.editor, self.editor.toPlainText(), pos, self.project, track,
+                                   self.playback, global_pos)
+
+    def transform_reference(self, *_args):
+        """Componi -> Trasforma...: sul richiamo sotto il cursore dell'editor,
+        altrimenti su un pattern da scegliere (il risultato e' un pattern nuovo)."""
+        if not self.project.patterns:
+            QMessageBox.information(self, tr("Trasforma"), tr("Il progetto non ha pattern: le funzioni valgono "
+                                                              "solo sui pattern, quindi prima creane uno."))
+            return
+        from core.transform_preview import reference_at
+        from .selection_actions import open_transform
+        from .transform_dialog import TransformDialog
+        track = self._editable_track()
+        found = reference_at(self.editor.toPlainText(), self.editor.textCursor().position(),
+                             with_functions=False) if track is not None else None
+        if found is not None:
+            open_transform(self.editor, *found, self.project, track, self.playback,
+                           on_pattern_created=self._pattern_created)
+            return
+        instrument = track.instrument_name if track is not None else self._default_preview_instrument()
+        dialog = TransformDialog(self, self.project, self.playback, instrument, track)
+        if dialog.exec() == TransformDialog.Accepted and dialog.created_pattern:
+            self._pattern_created()
+
+    def _default_preview_instrument(self) -> str:
+        from core.instruments import list_instrument_names
+        names = list_instrument_names()
+        return self.project.tracks[0].instrument_name if self.project.tracks and not self.project.tracks[0].is_audio \
+            else names[0]
+
     def _editor_completions(self, word: str):
         if not self.current_track_name:
             return []
@@ -247,7 +301,7 @@ class MixerMixin:
             return []
         return completions_for_word(
             word, patterns=self.project.patterns, instrument=track.instrument,
-            midi_ref_names=midi_library.list_midi_library,
+            midi_ref_names=midi_library.list_midi_library, text_before=self.editor.text_before_word(),
         )
 
     def _expanded_track_text(self, track) -> str:
@@ -308,7 +362,8 @@ class MixerMixin:
         self._instrument_fix = None
         ok, msg = validate_track_text(track.text, self.project.patterns)
         issues = notation_warnings(track.text, self.project.patterns, self.project.time_sig,
-                                 self.project.metrica_changes, pickup=self.project.pickup) if ok else []
+                                 self.project.metrica_changes, pickup=self.project.pickup,
+                                 key=self.project.key, key_changes=self.project.key_changes) if ok else []
         # note che il .sfz della traccia non suona (core.sfz_coverage)
         from core.sfz_coverage import silent_notes_cached
         silent = silent_notes_cached(self.project, track) if ok else None

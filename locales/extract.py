@@ -77,6 +77,8 @@ def data_strings():
             out |= {text for text in _split(desc) if text}
         # e le descrizioni dei plugin nel registro del download
         out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2}
+    from st_language.transform import TRANSFORMS
+    out |= {t.help for t in TRANSFORMS.values()}
     return out
 
 

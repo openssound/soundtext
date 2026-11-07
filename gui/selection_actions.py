@@ -14,13 +14,13 @@ import re
 from typing import Callable, Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QPoint
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QAction, QTextCursor
 from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox, QPlainTextEdit
 
 from core.arrangement import anchored_preview_text, has_bar_anchor
 from core.model import Project, Track, copy_synth
 from core.notation import (
-    tokenize, RE_GRID, RE_VELOCITY, Pattern, validate_track_text, compute_token_spans,
+    tokenize, RE_ARP, RE_GRID, RE_VELOCITY, Pattern, validate_track_text, compute_token_spans, upgrade_pattern_state,
     all_token_spans as _all_token_spans, context_prefix_before as _context_prefix_before,
 )
 from core.instruments import InstrumentProfile
@@ -45,7 +45,7 @@ def _is_reusable_ref(tok: str) -> bool:
 
 
 def _is_state_command(tok: str) -> bool:
-    return bool(RE_GRID.match(tok) or RE_VELOCITY.match(tok))
+    return bool(RE_GRID.match(tok) or RE_VELOCITY.match(tok) or RE_ARP.match(tok))
 
 
 def snap_selection_to_tokens(text: str, sel_start: int, sel_end: int
@@ -86,7 +86,8 @@ def _preview_project(tempo_bpm: int, host_project: Optional[Project]) -> Project
     if host_project is None:
         return Project(name="preview", tempo_bpm=tempo_bpm)
     return Project(name="preview", tempo_bpm=tempo_bpm, time_sig=host_project.time_sig,
-                   metrica_changes=list(host_project.metrica_changes))
+                   metrica_changes=list(host_project.metrica_changes), key=host_project.key,
+                   key_changes=list(host_project.key_changes))
 
 
 def _selection_origin(full_text: str, char_start: int, patterns: Dict[str, Pattern], default_octave: int,
@@ -127,7 +128,8 @@ def _play_selection(editor: QPlainTextEdit, playback: PlaybackEngine,
 
 def _view_selection(editor: QPlainTextEdit, patterns: Dict[str, Pattern], instrument_name: str,
                      tempo_bpm: int, full_text: str, char_start: int, selected_text: str,
-                     default_octave: int, midi_dir: Optional[str], synth_track: Optional[Track] = None):
+                     default_octave: int, midi_dir: Optional[str], synth_track: Optional[Track] = None,
+                     host_project: Optional[Project] = None):
     """Mostra la selezione in partitura (stessa anteprima di Play)."""
     combined = (_context_prefix_before(full_text, char_start) + selected_text).strip()
     ok, msg = validate_track_text(combined, patterns, default_octave=default_octave, midi_dir=midi_dir)
@@ -135,10 +137,24 @@ def _view_selection(editor: QPlainTextEdit, patterns: Dict[str, Pattern], instru
         QMessageBox.critical(editor, tr("Errore di sintassi"), tr("Impossibile mostrare la selezione:\n{msg}", msg=msg))
         return
     from .score_view import show_selection_score
-    project = Project(name="preview", tempo_bpm=tempo_bpm)
+    project = _preview_project(tempo_bpm, host_project)
     project.patterns = patterns
     copy_synth(project.add_track("Anteprima", instrument_name, combined), synth_track)
     show_selection_score(editor, project)
+
+
+def _replace_with_pattern(editor: QPlainTextEdit, char_start: int, char_end: int, name: str, pattern: Pattern):
+    """La selezione diventa %name. Quello che il pattern scrive finisce con
+    lui: se le note dopo lo usavano, upgrade_pattern_state lo riscrive dopo il
+    richiamo (solo per questo pattern, gli altri richiami seguono gia' la
+    regola). Una modifica sola per Annulla."""
+    text = editor.toPlainText()
+    written = text[:char_start] + f"%{name}" + text[char_end:]
+    upgraded = upgrade_pattern_state(written, {name: pattern})
+    tail = 0                # la coda uguale resta fuori dalla sostituzione
+    while tail < min(len(text) - char_end, len(upgraded) - char_start) and text[-1 - tail] == upgraded[-1 - tail]:
+        tail += 1
+    _replace_range(editor, char_start, len(text) - tail, upgraded[char_start:len(upgraded) - tail])
 
 
 def _transform_into_pattern(editor: QPlainTextEdit, patterns: Dict[str, Pattern],
@@ -163,7 +179,79 @@ def _transform_into_pattern(editor: QPlainTextEdit, patterns: Dict[str, Pattern]
         if reply != QMessageBox.Yes:
             return
     patterns[name] = Pattern(name=name, tokens=tokenize(selected_text))
-    _replace_range(editor, char_start, char_end, f"%{name}")
+    _replace_with_pattern(editor, char_start, char_end, name, patterns[name])
+
+
+def open_transform(editor: QPlainTextEdit, char_start: int, char_end: int, token: str, project: Project,
+                   track: Track, playback: PlaybackEngine, origin_beat: float = 0.0,
+                   on_pattern_created: Optional[Callable[[], None]] = None):
+    """La finestra Trasforma sul richiamo [char_start, char_end) dell'editor:
+    il testo si riscrive con l'editor, quindi entra in Annulla/Ripeti."""
+    from core.transform_preview import reference_point
+    from .transform_dialog import TransformDialog
+    point = reference_point(editor.toPlainText(), char_start, project.patterns, track.instrument,
+                            project.meter(), origin_beat)
+    dialog = TransformDialog(editor, project, playback, track.instrument_name, track, token=token, point=point)
+    if dialog.exec() != TransformDialog.Accepted:
+        return
+    if dialog.result_token and dialog.result_token != token:
+        _replace_range(editor, char_start, char_end, dialog.result_token)
+    if dialog.created_pattern and on_pattern_created is not None:
+        on_pattern_created()
+
+
+def _arpeggiate_token(editor: QPlainTextEdit, char_start: int, char_end: int, token: str, project: Project,
+                      track: Track, playback: PlaybackEngine):
+    """Arpeggia...: il suffisso .arpeggio(tipo,griglia) sull'accordo."""
+    from core.transform_preview import with_arpeggio
+    from .transform_dialog import ArpeggioDialog
+    dialog = ArpeggioDialog(editor, tr("Arpeggia"), lambda kind, grid: with_arpeggio(token, kind, grid),
+                            project, playback, track.instrument_name, track)
+    if dialog.exec() == ArpeggioDialog.Accepted:
+        _replace_range(editor, char_start, char_end, dialog.result_text())
+
+
+def arp_selection_text(selected_text: str, kind: str, grid: str = "") -> str:
+    """La selezione fra arp=tipo e arp=off."""
+    return f"arp={kind}{',' + grid if grid else ''} {selected_text} arp=off"
+
+
+def _arpeggiate_selection(editor: QPlainTextEdit, char_start: int, char_end: int, selected_text: str,
+                          project: Project, track: Track, playback: PlaybackEngine):
+    from .transform_dialog import ArpeggioDialog
+    dialog = ArpeggioDialog(editor, tr("Arpeggia la selezione"),
+                            lambda kind, grid: arp_selection_text(selected_text, kind, grid),
+                            project, playback, track.instrument_name, track)
+    if dialog.exec() == ArpeggioDialog.Accepted:
+        _replace_range(editor, char_start, char_end, dialog.result_text())
+
+
+def handle_token_context_menu(editor: QPlainTextEdit, pos: int, project: Project, track: Track,
+                              playback: PlaybackEngine, global_pos: QPoint, origin_beat: float = 0.0,
+                              on_pattern_created: Optional[Callable[[], None]] = None) -> bool:
+    """Tasto destro senza selezione: su un richiamo Trasforma..., su un accordo
+    Arpeggia..., sopra le voci di sempre dell'editor. False se il token sotto il
+    mouse non ha voci sue (resta il menu nativo)."""
+    from core.transform_preview import arpeggiable, reference_at
+    text = editor.toPlainText()
+    reference = reference_at(text, pos, with_functions=False)
+    chord = None
+    if reference is None:
+        chord = next(((cs, ce) for cs, ce in _all_token_spans(text)
+                      if cs <= pos < ce and arpeggiable(text[cs:ce])), None)
+    if reference is None and chord is None:
+        return False
+    menu = editor.createStandardContextMenu()
+    first = menu.actions()[0] if menu.actions() else None
+    action = QAction(tr("Trasforma...") if reference else tr("Arpeggia..."), menu)
+    menu.insertAction(first, action)
+    menu.insertSeparator(first)
+    chosen = menu.exec(global_pos)
+    if chosen is action and reference is not None:
+        open_transform(editor, *reference, project, track, playback, origin_beat, on_pattern_created)
+    elif chosen is action:
+        _arpeggiate_token(editor, *chord, text[chord[0]:chord[1]], project, track, playback)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +288,7 @@ def handle_selection_context_menu(editor: QPlainTextEdit, text: str, sel_start: 
     char_start, char_end, tokens = snap
     selected_text = text[char_start:char_end]
     has_refs = play_only or any(_is_reusable_ref(t) for t in tokens)
+    from core.transform_preview import arpeggiable
 
     menu = QMenu(editor)
     play_action = menu.addAction(tr("▶ Play"))
@@ -209,6 +298,13 @@ def handle_selection_context_menu(editor: QPlainTextEdit, text: str, sel_start: 
     if not has_refs:
         group_action = menu.addAction(tr("Raggruppa"))
         pattern_action = menu.addAction(tr("Trasforma in pattern..."))
+    # un solo richiamo selezionato: Trasforma...; degli accordi: Arpeggia la selezione...
+    can_edit = not play_only and host_project is not None and synth_track is not None
+    transform_action = arpeggio_action = None
+    if can_edit and len(tokens) == 1 and tokens[0].lstrip("0123456789").startswith("%"):
+        transform_action = menu.addAction(tr("Trasforma..."))
+    elif can_edit and not has_refs and any(arpeggiable(t) for t in tokens):
+        arpeggio_action = menu.addAction(tr("Arpeggia la selezione..."))
 
     chosen = menu.exec(global_pos)
     if chosen is play_action:
@@ -219,10 +315,15 @@ def handle_selection_context_menu(editor: QPlainTextEdit, text: str, sel_start: 
                          host_project=host_project, origin_beat=origin_beat)
     elif chosen is view_action:
         _view_selection(editor, patterns, instrument_name, tempo_bpm,
-                        text, char_start, selected_text, instrument.default_octave, midi_dir, synth_track)
+                        text, char_start, selected_text, instrument.default_octave, midi_dir, synth_track,
+                        host_project=host_project)
     elif group_action is not None and chosen is group_action:
         _replace_range(editor, char_start, char_end, f"({selected_text})")
     elif pattern_action is not None and chosen is pattern_action:
         _transform_into_pattern(editor, patterns, char_start, char_end, selected_text)
+    elif transform_action is not None and chosen is transform_action:
+        open_transform(editor, char_start, char_end, selected_text, host_project, synth_track, playback, origin_beat)
+    elif arpeggio_action is not None and chosen is arpeggio_action:
+        _arpeggiate_selection(editor, char_start, char_end, selected_text, host_project, synth_track, playback)
 
     return True

@@ -20,7 +20,7 @@ import time
 import numpy as np
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QCursor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsItem,
@@ -462,7 +462,23 @@ class AudioBoxItem(BoxItem):
     def hoverEnterEvent(self, event):
         self._hover = True
         self.update()
+        if type(self) is BoxItem and "%" in self.clip.text:
+            QTimer.singleShot(500, self._show_reference_preview)
         super().hoverEnterEvent(event)
+
+    def _show_reference_preview(self):
+        """Fermando il mouse su un box che ha un richiamo con funzioni."""
+        if not self._hover or self._dragging:
+            return
+        from core.transform_preview import reference_at, RE_REFERENCE
+        for m in RE_REFERENCE.finditer(self.clip.text):
+            if reference_at(self.clip.text, m.start()):
+                from .transform_preview import show_reference_preview
+                host = self.view.host
+                show_reference_preview(self.view, self.clip.text, m.start(), host.project,
+                                       host.project.get_track(self.track_name), self.view._preview_playback,
+                                       QCursor.pos(), origin_beat=self.clip.start_beat)
+                return
 
     def hoverLeaveEvent(self, event):
         self._hover = False
@@ -1953,6 +1969,9 @@ class ArrangementView(AudioClipActions, QWidget):
         stop_action = menu.addAction(tr("■ Stop"))
         transpose_action = menu.addAction(tr("Trasponi..."))
         from .reharmonize_dialog import can_reharmonize
+        from core.transform_preview import RE_REFERENCE
+        references = list(RE_REFERENCE.finditer(clip.text))
+        transform_action = menu.addAction(tr("Trasforma...")) if len(references) == 1 else None
         reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
             if can_reharmonize(clip.text, self.host.project.patterns) else None
         harmonize_action = None
@@ -1988,6 +2007,8 @@ class ArrangementView(AudioClipActions, QWidget):
             self._stop_preview()
         elif chosen is transpose_action:
             self._transpose_clip(track_name, clip)
+        elif transform_action is not None and chosen is transform_action:
+            self.transform_clip(track_name, clip, references[0])
         elif reharmonize_action is not None and chosen is reharmonize_action:
             self.reharmonize_clip(track_name, clip)
         elif harmonize_action is not None and chosen is harmonize_action:
@@ -2023,6 +2044,25 @@ class ArrangementView(AudioClipActions, QWidget):
         name = add_harmony_track(self, source_name, dlg.result_text(), start_beat)
         if hasattr(self.host, "statusBar"):
             self.host.statusBar().showMessage(tr("Accordi nella traccia nuova '{name}'.", name=name), 6000)
+
+    def transform_clip(self, track_name: str, clip: Clip, reference):
+        """Trasforma... su un box con un solo richiamo (gui.transform_dialog)."""
+        from core.transform_preview import reference_point
+        from .transform_dialog import TransformDialog
+        project = self.host.project
+        track = project.get_track(track_name)
+        point = reference_point(clip.text, reference.start(), project.patterns, track.instrument, project.meter(),
+                                clip.start_beat)
+        dlg = TransformDialog(self, project, self._preview_playback, track.instrument_name, track,
+                              token=reference.group(), point=point)
+        self._transform_dialog = dlg   # per i test
+        if dlg.exec() != TransformDialog.Accepted:
+            return
+        if dlg.result_token:
+            clip.text = clip.text[:reference.start()] + dlg.result_token + clip.text[reference.end():]
+            self.on_clip_changed(track_name)
+        elif dlg.created_pattern:
+            self.on_clip_changed(track_name)
 
     def reharmonize_clip(self, track_name: str, clip: Clip):
         """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il
@@ -2223,7 +2263,8 @@ class ArrangementView(AudioClipActions, QWidget):
         track = self.host.project.get_track(track_name)
         host = self.host.project
         preview = Project(name="preview", tempo_bpm=host.tempo_bpm, time_sig=host.time_sig,
-                          metrica_changes=list(host.metrica_changes))
+                          metrica_changes=list(host.metrica_changes), key=host.key,
+                          key_changes=list(host.key_changes))
         lead = 0.0
         if isinstance(clip, AudioClip):
             if audio_tracks.clip_is_missing(clip):
@@ -2373,7 +2414,8 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         host = self.host.project
         preview = Project(name=clip.name, tempo_bpm=host.tempo_bpm, time_sig=host.time_sig,
-                          metrica_changes=list(host.metrica_changes))
+                          metrica_changes=list(host.metrica_changes), key=host.key,
+                          key_changes=list(host.key_changes))
         preview.patterns = host.patterns
         # Con le ancore bar=N il box suona dal suo punto del brano: la pausa
         # davanti si toglie dal WAV

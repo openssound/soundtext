@@ -23,8 +23,10 @@ from core.notation import (
     strip_comments, comment_spans, split_note_value, RE_PATTERN_REF, RE_MIDI_REF, RE_GRID,
     RE_VELOCITY, RE_REST, RE_NOTE, RE_CHORD, RE_PERC, RE_SLIDE,
     RE_TEMPO_SET, RE_RAMP_UP, RE_RAMP_DOWN, RE_CONTROL, RE_SWING, RE_SHIFT, RE_PITCH_MODE,
-    RE_KEY_MODE, RE_BAR_ANCHOR, RE_TRANSPOSE, RESET_TOKEN, RE_NAVIGATION, RE_HARMONY,
+    RE_KEY_MODE, RE_BAR_ANCHOR, RE_TRANSPOSE, RESET_TOKEN, RE_NAVIGATION, RE_HARMONY, RE_ARP,
+    RE_ARPEGGIO_SUFFIX, NotationError,
 )
+from st_language.transform import is_transform_reference, parse_reference
 from .theme import get_active_theme
 
 # Token di una riga, per colorarla: testo cantato, blocco [...] (col suo
@@ -34,10 +36,12 @@ _LEX = re.compile(r"""
     (?P<text>\$"[^"\n]*"?)
   | (?P<midiref>\d*&"[^"\n]*"?(?:[+-]\d+)?)
   | (?P<lyric>"[^"\n]*"?)
-  | (?P<block>\d*\[[^\]\n]*\]?(?:'[^\s|"(){};]*)?(?:\$[a-z]+)*[<>]?~?\(?)
+  | (?P<block>\d*\[[^\]\n]*\]?(?:'[^\s|"(){};]*)?(?:\$[a-z]+)*(?:\.(?i:arpeggio)(?:\([^()\s]*\)?)?)?[<>]?~?\(?)
   | (?P<group>\d*\(|\))
   | (?P<voices>[{};])
   | (?P<bar>:\|(?:[1-9]\.)?|\|(?::|\||[1-9]\.)?)
+  | (?P<transform>\d*%\w+(?:[+-]\d+)*(?:\.\w*(?:\([^()\s]*\)?)?(?:[+-]\d+)?)+)
+  | (?P<arpeggio>(?:[^\s|"(){};\[\]:]|:(?!\|))+?\.(?i:arpeggio)(?:\([^()\s]*\)?)?[^\s|"(){};\[\]:]*)
   | (?P<plain>(?:[^\s|"(){};\[\]:]|:(?!\|))+\(?)
 """, re.VERBOSE)
 
@@ -63,6 +67,7 @@ _COLORS = {
     "lyric":      ("#ffb0d0", "#a0306a"),  # "testo cantato" - rosa
     "bar":        ("#b8b8b8", "#4a4a4a"),  # | controllo di battuta - grigio chiaro
     "bar_error":  ("#ff5050", "#c00000"),  # | che non cade su una stanghetta - rosso
+    "transform":  ("#9fb4ff", "#3b4fc0"),  # .retro, .arpeggio(...): funzioni - indaco
 }
 
 # Sfondi delle voci di un blocco { ; }, a rotazione: prima voce azzurra,
@@ -81,9 +86,12 @@ _MAX_DEPTH = 6
 _VOICE_BITS = 4
 
 
-def _pack_voices(stack) -> int:
+_ARP_BIT = 1 << 28           # dopo la pila: un arp= e' attivo a fine riga
+
+
+def _pack_voices(stack, arp: bool = False) -> int:
     stack = stack[-_MAX_DEPTH:]
-    state = len(stack)
+    state = len(stack) | (_ARP_BIT if arp else 0)
     for level, voice in enumerate(stack):
         state |= min(voice, 2 ** _VOICE_BITS - 1) << (3 + _VOICE_BITS * level)
     return state
@@ -154,6 +162,11 @@ class NotationHighlighter(QSyntaxHighlighter):
         self.fmt_voices = _fmt(color("voices"), bold=True)
         self.fmt_lyric = _fmt(color("lyric"), italic=True)
         self.fmt_bar = _fmt(color("bar"), bold=True)
+        self.fmt_transform = _fmt(color("transform"), bold=True)
+        # un accordo sotto un arp= attivo: si sente spezzato
+        self.fmt_chord_arp = _fmt(color("chord"), bold=True)
+        self.fmt_chord_arp.setUnderlineStyle(QTextCharFormat.DotLine)
+        self.fmt_chord_arp.setUnderlineColor(QColor(color("transform")))
         self.fmt_bar_error = _fmt(color("bar_error"), bold=True)
         self.fmt_bar_error.setUnderlineStyle(QTextCharFormat.WaveUnderline)
         self.fmt_bar_error.setUnderlineColor(QColor(color("bar_error")))
@@ -204,7 +217,13 @@ class NotationHighlighter(QSyntaxHighlighter):
         background = self._voice_background(stack)
         for i in range(pos, len(text)):
             backgrounds[i] = background
-        self.setCurrentBlockState(_pack_voices(stack))
+        previous = self.previousBlockState()
+        arp = previous >= 0 and bool(previous & _ARP_BIT)
+        arp_after = arp
+        for m in lexemes:
+            if RE_ARP.match(m.group()):
+                arp_after = not m.group().lower().startswith("arp=off")
+        self.setCurrentBlockState(_pack_voices(stack, arp_after))
 
         def apply(start, length, fmt):
             """fmt sui caratteri [start, start+length), con lo sfondo della voce."""
@@ -239,6 +258,17 @@ class NotationHighlighter(QSyntaxHighlighter):
                 opened.append("slur")
             elif tok == ")" and opened and opened.pop() == "slur":
                 kind = "slur_close"
+            if kind == "plain" and RE_ARP.match(tok):
+                arp = not tok.lower().startswith("arp=off")
+            if kind == "transform":
+                if block_start + m.start() in self._bar_errors:
+                    apply(m.start(), len(tok), self.fmt_bar_error)
+                else:
+                    self._apply_reference(apply, m.start(), tok)
+                continue
+            if kind == "arpeggio" or (kind == "block" and ".arpeggio" in tok.lower()):
+                self._apply_arpeggio(apply, m.start(), tok, kind)
+                continue
             if kind == "slur_close":
                 fmt = self.fmt_note
             elif kind == "bar":
@@ -255,8 +285,51 @@ class NotationHighlighter(QSyntaxHighlighter):
                 fmt = self._classify(split_note_value(tok)[0])
             if kind != "bar" and block_start + m.start() in self._bar_errors:
                 fmt = self.fmt_bar_error     # avviso sul testo cantato o su un blocco di voci
+            if fmt is self.fmt_chord and arp:
+                fmt = self.fmt_chord_arp
             if fmt:
                 apply(m.start(), len(tok), fmt)
+
+    def _apply_reference(self, apply, start: int, tok: str):
+        """Un richiamo con funzioni: il pattern corallo, le funzioni con il
+        loro colore, gli argomenti con quelli che hanno gia'. La grammatica e'
+        quella della libreria (parse_reference); un richiamo che non si legge
+        e' tutto un errore."""
+        try:
+            steps = parse_reference(tok).steps
+        except NotationError:
+            apply(start, len(tok), self.fmt_bar_error)
+            return
+        apply(start, steps[0].start if steps else len(tok), self.fmt_ref)
+        for step in steps:
+            if step.name == "transpose":
+                apply(start + step.start, step.end - step.start, self.fmt_ref)
+            else:
+                self._apply_call(apply, start + step.start, tok[step.start:step.end])
+
+    def _apply_call(self, apply, start: int, call: str):
+        """'.nome(a,b)': nome e parentesi colore funzione, argomenti i loro."""
+        apply(start, len(call), self.fmt_transform)
+        opened = call.find("(")
+        if opened < 0:
+            return
+        pos = opened + 1
+        for argument in call[pos:].rstrip(")").split(","):
+            if argument:
+                apply(start + pos, len(argument), self._classify(argument) or self.fmt_state)
+            pos += len(argument) + 1
+
+    def _apply_arpeggio(self, apply, start: int, tok: str, kind: str):
+        """Un accordo o un blocco con .arpeggio(...): prima il suo colore, poi
+        il suffisso."""
+        m = RE_ARPEGGIO_SUFFIX.match(tok)
+        if not m:
+            apply(start, len(tok), self.fmt_block if kind == "block" else self.fmt_chord)
+            return
+        base = self.fmt_block if kind == "block" else (self._classify(split_note_value(m.group(1))[0]) or self.fmt_chord)
+        apply(start, len(tok), base)
+        suffix_end = len(tok) - len(m.group(3))
+        self._apply_call(apply, start + len(m.group(1)), tok[len(m.group(1)):suffix_end])
 
     def _classify(self, tok: str):
         if RE_PATTERN_REF.match(tok) or RE_MIDI_REF.match(tok):
@@ -265,7 +338,9 @@ class NotationHighlighter(QSyntaxHighlighter):
             return self.fmt_sustain
         if RE_TEMPO_SET.match(tok) or RE_RAMP_UP.match(tok) or RE_RAMP_DOWN.match(tok):
             return self.fmt_tempo_ramp
-        if RE_GRID.match(tok) or RE_VELOCITY.match(tok) or RE_CONTROL.match(tok) or RE_SWING.match(tok) \
+        if is_transform_reference(tok):
+            return self.fmt_bar_error     # scritto a meta': un richiamo valido e' un lessema 'transform'
+        if RE_GRID.match(tok) or RE_VELOCITY.match(tok) or RE_ARP.match(tok) or RE_CONTROL.match(tok) or RE_SWING.match(tok) \
                 or RE_SHIFT.match(tok) or RE_PITCH_MODE.match(tok) or RE_KEY_MODE.match(tok) \
                 or RE_BAR_ANCHOR.match(tok) or RE_TRANSPOSE.match(tok) or tok == RESET_TOKEN:
             return self.fmt_state

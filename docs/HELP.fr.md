@@ -62,6 +62,7 @@ Le guide est divisé en six parties ; un clic sur un titre mène à la section.
   - [10.2 Réorganiser le morceau avec les patterns](#10.2)
   - [10.3 Menu contextuel sur une sélection (clic droit)](#10.3)
   - [10.4 Renommer un pattern](#10.4)
+  - [10.5 Transformer les patterns](#10.5)
 - [11. Bibliothèque MIDI (&"Nom")](#11)
   - [11.1 Dossier des morceaux (songs/)](#11.1)
 - [12. Percussions](#12)
@@ -529,6 +530,18 @@ dans l'éditeur restent tels qu'ils ont été écrits, inchangés.
 | `*+` / `*-` après une note (en `rel:`) | une octave au-dessus / au-dessous | `rel: g c*+ c*-` |
 | `key=K` | les notes prennent les altérations de la tonalité K (voir 4.10) | `key=G f` (= fa dièse) |
 | `n` après une note | bécarre : enlève l'altération de la tonalité | `key=G fn` |
+| `.octave` | fonction sur un pattern (voir 10.5): Déplace de n octaves | `%Tema.octave(-1)` |
+| `.invert` | fonction sur un pattern (voir 10.5): Renversement chromatique autour d'une note | `%Tema.invert(e*4)` |
+| `.step` | fonction sur un pattern (voir 10.5): Transposition diatonique : n degrés dans la gamme | `%Tema.step(2)` |
+| `.augment` | fonction sur un pattern (voir 10.5): Durées multipliées par k | `%Tema.augment(2)` |
+| `.diminish` | fonction sur un pattern (voir 10.5): Durées divisées par k | `%Tema.diminish(2)` |
+| `.retro` | fonction sur un pattern (voir 10.5): De la fin au début | `%Tema.retro` |
+| `.sequence` | fonction sur un pattern (voir 10.5): Le motif n fois, déplacé à chaque fois de passo degrés | `%Motivo.sequence(3,-1)` |
+| `.vel` | fonction sur un pattern (voir 10.5): Vélocité relative (+10) ou absolue (80, mf) | `%Tema.vel(-20)` |
+| `.canon` | fonction sur un pattern (voir 10.5): Canon : copies décalées et transposées | `%Tema.canon('2,12)` |
+| `.thirds` | fonction sur un pattern (voir 10.5): Ajoute la tierce en dessous, dans la gamme | `%Tema.thirds` |
+| `.arpeggio` | fonction sur un pattern (voir 10.5): Les accords deviennent des arpèges | `%Giro.arpeggio(alberti,8)` |
+| `arp=type,grille` ... `arp=off` | les accords qui suivent deviennent des arpèges brisés (voir 10.5) | `arp=alberti,16 C F arp=off` |
 
 Le caractère `|` est le **contrôle de mesure** (voir 4.3) : il ne joue
 rien et ne déplace rien, il sert seulement à déclarer où finit une mesure.
@@ -1445,6 +1458,8 @@ durée.
 (trémolo ; à la batterie `snare$trem` est un roulement), `c$harmonic`
 (harmonique).
 
+`C$arp` est l'accord **roulé** : les notes entrent l'une après l'autre puis restent tenues. `.arpeggio` et `arp=` font au contraire l'accord **brisé**, avec des notes séparées sur la grille (voir 10.5).
+
 **Grilles d'accords sans son.** `$Am7` écrit l'accord au-dessus de la
 portée sans le jouer : pratique pour un lead sheet avec seulement la
 mélodie (`$C c d e f $G7 g a b c`).
@@ -1616,6 +1631,8 @@ Le temps de recherche des blocs répétés est de toute façon toujours limité
 (par piste), de sorte que même sur des pistes très longues la
 réorganisation ne reste jamais bloquée indéfiniment.
 
+**Quand les patterns ne peuvent pas être développés.** Écrits en entier, certains patterns changeraient le son du morceau, et la commande le signale sans rien modifier : les patterns qui écrivent grille, vélocité, swing ou arpège (donc aussi beaucoup de ceux créés par l'extraction), les rappels avec fonctions, les patterns qui changent la lecture des notes, les pistes avec `rel:`, `key=` ou `transpose=` et les références MIDI transposées.
+
 ### 10.3 Menu contextuel sur une sélection (clic droit)
 
 En sélectionnant à la souris une suite de tokens dans l'éditeur (piste,
@@ -1658,6 +1675,30 @@ autres patterns — pour que le renommage ne casse pas en silence ce qui
 l'appelle. Le nouveau nom doit respecter la même syntaxe qu'une référence de
 pattern (lettres, chiffres et tirets bas, sans espaces) et ne peut pas être
 celui d'un pattern existant.
+
+### 10.5 Transformer les patterns
+
+Les fonctions suivent un rappel et s'appliquent de gauche à droite : `%Theme.invert(e*5).retro+5`. Ce sont `.octave(n)`, `.invert(axe)`, `.step(n)`, `.augment(k)`, `.diminish(k)`, `.retro`, `.sequence(n,pas)`, `.vel(x)`, `.canon(retard,intervalle,voix)`, `.thirds`, `.arpeggio(type,grille)`.
+
+| Fonction | Nom italien | Ce qu'elle fait | Exemple |
+| --- | --- | --- | --- |
+| `.octave` | `.ottava` | Déplace de n octaves | `%Tema.octave(-1)` |
+| `.invert` | `.inverti` | Renversement chromatique autour d'une note | `%Tema.invert(e*4)` |
+| `.step` | `.grado` | Transposition diatonique : n degrés dans la gamme | `%Tema.step(2)` |
+| `.augment` | `.aumenta` | Durées multipliées par k | `%Tema.augment(2)` |
+| `.diminish` | `.diminuisci` | Durées divisées par k | `%Tema.diminish(2)` |
+| `.retro` | `.retrogrado` | De la fin au début | `%Tema.retro` |
+| `.sequence` | `.progressione` | Le motif n fois, déplacé à chaque fois de passo degrés | `%Motivo.sequence(3,-1)` |
+| `.vel` | `.vel` | Vélocité relative (+10) ou absolue (80, mf) | `%Tema.vel(-20)` |
+| `.canon` | `.canone` | Canon : copies décalées et transposées | `%Tema.canon('2,12)` |
+| `.thirds` | `.terze` | Ajoute la tierce en dessous, dans la gamme | `%Tema.thirds` |
+| `.arpeggio` | `.arpeggio` | Les accords deviennent des arpèges | `%Giro.arpeggio(alberti,8)` |
+
+**Ce qu'un pattern écrit finit avec lui** (ST 2.12) : grille, vélocité, swing et décalage reviennent à leur état après le rappel. Les anciens fichiers sont convertis à l'ouverture et sonnent comme avant.
+
+En laissant la souris sur un rappel avec fonctions, ou avec Ctrl+I, l'aperçu apparaît : partition, chaîne pas à pas, avertissements et ▶. Le clic droit, ou **Composer → Transformer...**, ouvre la fenêtre qui écrit le rappel. `.retro` donne une erreur avec slides, automations ou pédale ; `.augment` et `.diminish` acceptent les nombres supérieurs à 0, tant qu'aucune durée ne passe sous `'128`.
+
+`$arp` est l'accord **roulé** (notes tenues) ; `.arpeggio` et `arp=type,grille` ... `arp=off` font l'accord **brisé**. Clic droit sur un accord : **Arpéger...**. **Développer les patterns** refuse pour l'instant les morceaux dont le son changerait.
 
 ## 11. Bibliothèque MIDI (&"Nom")
 

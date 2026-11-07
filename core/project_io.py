@@ -30,6 +30,8 @@ from .instruments import (
 )
 from .settings import get_accepted_instrument_fixes
 from .version import get_app_root, pick_writable_dir, USER_DATA_ROOT
+from st_language import upgrade_song_text
+from st_language.song import PATTERN_SCOPE_VERSION
 from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_language/stfile.py)
     RE_TEMPO, RE_METRICA, RE_MASTER, RE_KEY, RE_AMBIENTE, RE_TEMPO_LIST_HDR,
     RE_METRICA_LIST_HDR, RE_BAR_VALUE, RE_PATTERN_HDR, RE_INSTRUMENT_HDR, RE_MIXER_HDR,
@@ -340,6 +342,12 @@ _BASE_FILE_VERSION = (2, 8)
 # Il blocco "Conversione Nome:" (traccia di note nata da una traccia audio)
 # c'e' dalla 2.10: solo i file che ne hanno uno lo dichiarano.
 _CONVERSION_VERSION = (2, 10)
+# Dalla 2.12 quello che un pattern scrive finisce con lui: un file con pattern
+# dichiara sempre la 2.12, altrimenti alla riapertura verrebbe riscritto come
+# un file vecchio (upgrade_song_text) e il suono cambierebbe. Senza pattern le
+# due regole si leggono uguali; dichiara la 2.12 solo chi scrive arpeggi, che
+# fuori dai pattern ci sono dalla 2.12.
+_RE_ARPEGGIO = re.compile(r"(?:^|\s)arp=|\.arpeggio\b", re.IGNORECASE)
 
 
 def linked_conversion(project: Project, track) -> Optional[dict]:
@@ -352,7 +360,14 @@ def linked_conversion(project: Project, track) -> Optional[dict]:
     return conversion if source is not None and source.is_audio else None
 
 
+def _uses_arpeggio(project: Project) -> bool:
+    return any(_RE_ARPEGGIO.search(text) for track in project.tracks
+               for text in [track.text] + [clip.text for clip in track.clips])
+
+
 def _file_language_version(project: Project) -> tuple:
+    if project.patterns or _uses_arpeggio(project):
+        return PATTERN_SCOPE_VERSION
     if any(linked_conversion(project, t) for t in project.tracks):
         return _CONVERSION_VERSION
     tempos = [project.tempo_bpm] + [v for _b, v in project.tempo_changes]
@@ -405,6 +420,12 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
 def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Optional[str] = None) -> Project:
     """base_dir e' la cartella del file .st: i percorsi (relativi) dei file
     delle clip audio vengono risolti rispetto a essa."""
+    # Un file di prima della 2.12 riscritto per la regola nuova dei pattern:
+    # suona come prima (questo lettore non passa da st_language.read_song).
+    upgraded = upgrade_song_text(text)
+    added_lines = upgraded.count("\n") - text.count("\n")   # la riga ST: di un file che non l'aveva
+    declared = next((m for m in map(RE_ST_VERSION.match, map(str.strip, text.splitlines())) if m), None)
+    text = upgraded
     # Passo 1: registra automaticamente gli strumenti personalizzati incorporati
     # nel file (cosi' che siano gia' disponibili quando si incontrano le tracce
     # che li usano, indipendentemente dall'ordine dei blocchi).
@@ -509,7 +530,8 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         if m:
             if mode:
                 flush()
-            project.st_version = (int(m.group(1)), int(m.group(2)))
+            # quella scritta nel file, come st_language.read_song: non la 2.12 della conversione
+            project.st_version = (int(declared.group(1)), int(declared.group(2))) if declared else None
             continue
 
         m = RE_PICKUP.match(line)
@@ -660,7 +682,7 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
                     ensure_instrument_available(profile)
                 else:
                     register_unresolved_instrument(profile)
-                    project.file_warnings.append((line_number, unknown_instrument_message(instr_name)))
+                    project.file_warnings.append((line_number - added_lines, unknown_instrument_message(instr_name)))
             if mode:
                 flush()
             current_name = m.group(1).strip()

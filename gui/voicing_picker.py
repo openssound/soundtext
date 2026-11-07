@@ -22,7 +22,7 @@ from core.chords import (
     parse_chord_symbol, voice_chord, midi_to_token, pitch_to_midi,
     pc_to_letter, applicable_voicings, recognize_chord, apply_bass_note,
 )
-from core.completion import current_word_bounds
+from core.completion import Completion, current_word_bounds
 from core.instruments import InstrumentProfile
 from core.notation import (
     RE_NOTE, RE_CHORD, RE_REPEAT_GROUP, RE_VOICES, compute_token_spans, Pattern, NotationError,
@@ -74,6 +74,19 @@ class _LineNumberArea(QWidget):
         self.editor._paint_line_numbers(event)
 
 
+class _CompletionModel(QStringListModel):
+    """I suggerimenti: nell'elenco la loro etichetta, al completer il testo."""
+
+    def __init__(self, candidates, parent=None):
+        super().__init__([str(c) for c in candidates], parent)
+        self._labels = [getattr(c, "label", str(c)) for c in candidates]
+
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and index.isValid():
+            return self._labels[index.row()]
+        return super().data(index, role)
+
+
 class NotationEditor(QPlainTextEdit):
     """QPlainTextEdit specializzato per la notazione: se il proprietario
     imposta on_double_click_token, il doppio click prova prima quel
@@ -101,6 +114,8 @@ class NotationEditor(QPlainTextEdit):
     on_double_click_token = WeakCallback()
     on_selection_context_menu = WeakCallback()
     on_completion_request = WeakCallback()
+    on_token_context_menu = WeakCallback()
+    on_reference_preview = WeakCallback()
 
     def __init__(self, parent=None):
         # Prima di super().__init__: Qt chiama gia' event() durante la costruzione.
@@ -109,6 +124,16 @@ class NotationEditor(QPlainTextEdit):
         self.on_double_click_token: Optional[Callable[[int, QPoint], bool]] = None
         self.on_selection_context_menu: Optional[Callable[[int, int, QPoint], bool]] = None
         self.on_completion_request: Optional[Callable[[str], List[str]]] = None
+        # tasto destro senza selezione: (carattere, posizione globale) -> gestito?
+        self.on_token_context_menu: Optional[Callable[[int, QPoint], bool]] = None
+        # mouse fermo su un carattere, o Ctrl+I: (carattere, posizione globale o None)
+        self.on_reference_preview: Optional[Callable[[int, Optional[QPoint]], None]] = None
+        self._hover_timer = QTimer(self)
+        self._hover_timer.setSingleShot(True)
+        self._hover_timer.setInterval(500)
+        self._hover_timer.timeout.connect(self._on_hover_timeout)
+        self._hover_pos = None
+        self._completion_items = {}
 
         self._completer = QCompleter(self)
         self._completer.setWidget(self)
@@ -206,7 +231,34 @@ class NotationEditor(QPlainTextEdit):
                 if self.on_selection_context_menu(cursor.selectionStart(), cursor.selectionEnd(),
                                                    event.globalPos()):
                     return
+            elif self.on_token_context_menu is not None:
+                if self.on_token_context_menu(self.cursorForPosition(event.pos()).position(), event.globalPos()):
+                    return
         super().contextMenuEvent(event)
+
+    def enable_reference_preview(self, callback):
+        """Il mouse fermo per mezzo secondo e Ctrl+I chiamano callback."""
+        self.on_reference_preview = callback
+        self.viewport().setMouseTracking(True)
+
+    def mouseMoveEvent(self, event):
+        if self.on_reference_preview is not None and not event.buttons():
+            self._hover_pos = event.pos()
+            self._hover_timer.start()
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        self._hover_timer.stop()
+        super().leaveEvent(event)
+
+    def _on_hover_timeout(self):
+        if self.on_reference_preview is not None and self._hover_pos is not None and self.underMouse():
+            self.on_reference_preview(self.cursorForPosition(self._hover_pos).position(),
+                                      self.viewport().mapToGlobal(self._hover_pos))
+
+    def text_before_word(self) -> str:
+        """Il testo prima della parola in digitazione."""
+        return self.toPlainText()[:self._current_word()[0]]
 
     def keyPressEvent(self, event):
         # Le frecce su/giu' e la conferma sono gestite dal QCompleter stesso
@@ -217,6 +269,10 @@ class NotationEditor(QPlainTextEdit):
             Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab,
         ):
             event.ignore()
+            return
+        if (self.on_reference_preview is not None and event.key() == Qt.Key_I
+                and event.modifiers() == Qt.ControlModifier):
+            self.on_reference_preview(self.textCursor().position(), None)
             return
         if event.text() == "-" and self._flat_shortcut_applies():
             cursor = self.textCursor()
@@ -276,7 +332,8 @@ class NotationEditor(QPlainTextEdit):
         if not candidates:
             self._completer.popup().hide()
             return
-        self._completer.setModel(QStringListModel(candidates, self._completer))
+        self._completion_items = {str(c): c for c in candidates}
+        self._completer.setModel(_CompletionModel(candidates, self._completer))
         # i candidati sono gia' filtrati da on_completion_request (e per
         # &"nome" non cominciano per forza con quello che si e' digitato)
         self._completer.setCompletionPrefix("")
@@ -294,6 +351,11 @@ class NotationEditor(QPlainTextEdit):
         cursor.setPosition(start)
         cursor.setPosition(end, QTextCursor.KeepAnchor)
         cursor.insertText(completion)
+        item = self._completion_items.get(completion)
+        if isinstance(item, Completion) and item.select:
+            # gli argomenti da riempire: il primo resta selezionato
+            cursor.setPosition(start + item.select[0])
+            cursor.setPosition(start + item.select[1], QTextCursor.KeepAnchor)
         self.setTextCursor(cursor)
 
 

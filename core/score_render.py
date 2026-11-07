@@ -109,11 +109,26 @@ def render_pages(musicxml: str, scale: int = DEFAULT_SCALE) -> List[str]:
     tk = _get_toolkit()
     tk.setOptions({
         "pageWidth": PAGE_WIDTH, "pageHeight": PAGE_HEIGHT, "scale": scale,
-        "adjustPageHeight": False, "footer": "none", "breaks": "auto",
+        "adjustPageHeight": False, "header": "auto", "footer": "none", "breaks": "auto",
     })
     if not tk.loadData(musicxml):
         raise ValueError("Verovio non ha potuto leggere la partitura")
     return [qt_svg(tk.renderToSVG(n)) for n in range(1, tk.getPageCount() + 1)]
+
+
+def render_snippet(musicxml: str, measures: int = 4, width: int = 1500, scale: int = 40) -> str:
+    """Le prime battute come una striscia di musica, senza intestazione: la
+    piccola partitura dell'anteprima dei richiami e della finestra Trasforma."""
+    root = ET.fromstring(musicxml)
+    for part in root.iter("part"):
+        for measure in part.findall("measure")[measures:]:
+            part.remove(measure)
+    tk = _get_toolkit()
+    tk.setOptions({"pageWidth": width, "pageHeight": 600, "scale": scale, "adjustPageHeight": True,
+                   "header": "none", "footer": "none", "breaks": "auto"})
+    if not tk.loadData(ET.tostring(root, encoding="unicode")):
+        raise ValueError("Verovio non ha potuto leggere la partitura")
+    return qt_svg(tk.renderToSVG(1))
 
 
 def _tag(el) -> str:

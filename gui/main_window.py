@@ -285,6 +285,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.editor.on_double_click_token = self._on_editor_double_click
         self.editor.on_selection_context_menu = self._on_editor_selection_context_menu
         self.editor.on_completion_request = self._editor_completions
+        self.editor.on_token_context_menu = self._on_editor_token_context_menu
+        self.editor.enable_reference_preview(self._on_editor_reference_preview)
         self.highlighter = NotationHighlighter(self.editor.document())
         self.editor.enable_line_numbers()
         right_layout.addWidget(self.editor)
@@ -558,6 +560,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         compose_menu.addSeparator()
         compose_menu.addAction(self._action(tr("Gestisci libreria pattern (%Nome)..."), self.manage_patterns))
         compose_menu.addAction(self._action(tr("Gestisci libreria MIDI (&Nome)..."), self.manage_midi_library))
+        compose_menu.addAction(self._action(
+            tr("Trasforma..."), self.transform_reference,
+            tooltip=tr("Sceglie una funzione per un pattern (.invert, .retro, .sequence...), con l'ascolto "
+                       "prima e dopo.")
+        ))
         compose_menu.addAction(self._action(
             tr("Estrai pattern dalle tracce..."), self.extract_patterns_action,
             tooltip=tr("Individua blocchi ripetuti in tutte le tracce e li converte in pattern riutilizzabili.")

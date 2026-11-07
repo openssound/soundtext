@@ -62,6 +62,7 @@ La guida è divisa in sei parti; un clic su un titolo porta alla sezione.
   - [10.2 Riorganizzare la song con i pattern](#10.2)
   - [10.3 Menu contestuale su una selezione (tasto destro)](#10.3)
   - [10.4 Rinominare un pattern](#10.4)
+  - [10.5 Trasformare i pattern](#10.5)
 - [11. Libreria MIDI (&"Nome")](#11)
   - [11.1 Cartella dei brani (songs/)](#11.1)
 - [12. Percussioni](#12)
@@ -514,6 +515,18 @@ restano quelli scritti, invariati.
 | `*+` / `*-` dopo una nota (in `rel:`) | un'ottava sopra / sotto | `rel: g c*+ c*-` |
 | `key=K` | le note prendono le alterazioni della tonalita' K (vedi 4.10) | `key=G f` (= fa diesis) |
 | `n` dopo una nota | bequadro: toglie l'alterazione della tonalita' | `key=G fn` |
+| `.octave` | funzione su un pattern (vedi 10.5): Sposta di n ottave | `%Tema.octave(-1)` |
+| `.invert` | funzione su un pattern (vedi 10.5): Inversione cromatica intorno a una nota | `%Tema.invert(e*4)` |
+| `.step` | funzione su un pattern (vedi 10.5): Trasposizione diatonica: n gradi nella scala | `%Tema.step(2)` |
+| `.augment` | funzione su un pattern (vedi 10.5): Durate per k | `%Tema.augment(2)` |
+| `.diminish` | funzione su un pattern (vedi 10.5): Durate diviso k | `%Tema.diminish(2)` |
+| `.retro` | funzione su un pattern (vedi 10.5): Dalla fine all'inizio | `%Tema.retro` |
+| `.sequence` | funzione su un pattern (vedi 10.5): Il motivo n volte, ogni volta spostato di passo gradi | `%Motivo.sequence(3,-1)` |
+| `.vel` | funzione su un pattern (vedi 10.5): Velocity relativa (+10) o assoluta (80, mf) | `%Tema.vel(-20)` |
+| `.canon` | funzione su un pattern (vedi 10.5): Canone: copie sfasate e trasposte | `%Tema.canon('2,12)` |
+| `.thirds` | funzione su un pattern (vedi 10.5): Aggiunge la terza sotto, nella scala | `%Tema.thirds` |
+| `.arpeggio` | funzione su un pattern (vedi 10.5): Gli accordi diventano arpeggi | `%Giro.arpeggio(alberti,8)` |
+| `arp=tipo,griglia` ... `arp=off` | gli accordi che seguono diventano arpeggi spezzati (vedi 10.5) | `arp=alberti,16 C F arp=off` |
 
 Il carattere `|` e' il **controllo di battuta** (vedi 4.3): non suona e non
 sposta nulla, serve solo a dichiarare dove finisce una battuta. Le durate si
@@ -1399,6 +1412,8 @@ suonano un attimo prima della nota, che ne perde la durata.
 `c$sfz` (sforzando), `c$fp` (forte-piano), `c$trem` (tremolo; sulla
 batteria `snare$trem` e' una rullata), `c$harmonic` (armonico).
 
+`C$arp` e' l'accordo **rullato**: le note entrano una dopo l'altra e poi restano tenute. `.arpeggio` e `arp=` fanno invece l'accordo **spezzato**, con note separate sulla griglia (vedi 10.5).
+
 **Sigle senza suono.** `$Am7` scrive la sigla sopra il pentagramma senza
 suonarla: comodo per un lead sheet con la sola melodia
 (`$C c d e f $G7 g a b c`).
@@ -1562,6 +1577,8 @@ tempo di ricerca dei blocchi ripetuti e' comunque sempre limitato (per
 traccia), cosi' che anche su tracce molto lunghe la riorganizzazione non
 resti mai bloccata a tempo indefinito.
 
+**Quando Espandi pattern non si puo' usare.** Scritti per esteso, alcuni pattern cambierebbero il suono del brano, e il comando lo dice senza toccare nulla: i pattern che scrivono griglia, velocity, swing o arpeggio (quindi anche molti di quelli creati da Estrai pattern), i richiami con funzioni, i pattern che cambiano il modo di leggere le note, le tracce con `rel:`, `key=` o `transpose=` e i riferimenti MIDI trasposti.
+
 ### 10.3 Menu contestuale su una selezione (tasto destro)
 
 Selezionando con il mouse una sequenza di token nell'editor (traccia,
@@ -1606,6 +1623,30 @@ rinomina non spezza silenziosamente cio' che lo richiama. Il nuovo nome
 deve rispettare la stessa sintassi di un riferimento a pattern (lettere,
 cifre e underscore, senza spazi) e non puo' coincidere con quello di un
 pattern gia' esistente.
+
+### 10.5 Trasformare i pattern
+
+Dopo un richiamo si scrivono funzioni, applicate da sinistra a destra: `%Tema.invert(e*5).retro+5`. Sono `.octave(n)`, `.invert(asse)`, `.step(n)`, `.augment(k)`, `.diminish(k)`, `.retro`, `.sequence(n,passo)`, `.vel(x)`, `.canon(ritardo,int,voci)`, `.thirds`, `.arpeggio(tipo,griglia)`, anche con i nomi italiani (`.inverti`, `.retrogrado`, `.progressione`...).
+
+| Funzione | In italiano | Che cosa fa | Esempio |
+| --- | --- | --- | --- |
+| `.octave` | `.ottava` | Sposta di n ottave | `%Tema.octave(-1)` |
+| `.invert` | `.inverti` | Inversione cromatica intorno a una nota | `%Tema.invert(e*4)` |
+| `.step` | `.grado` | Trasposizione diatonica: n gradi nella scala | `%Tema.step(2)` |
+| `.augment` | `.aumenta` | Durate per k | `%Tema.augment(2)` |
+| `.diminish` | `.diminuisci` | Durate diviso k | `%Tema.diminish(2)` |
+| `.retro` | `.retrogrado` | Dalla fine all'inizio | `%Tema.retro` |
+| `.sequence` | `.progressione` | Il motivo n volte, ogni volta spostato di passo gradi | `%Motivo.sequence(3,-1)` |
+| `.vel` | `.vel` | Velocity relativa (+10) o assoluta (80, mf) | `%Tema.vel(-20)` |
+| `.canon` | `.canone` | Canone: copie sfasate e trasposte | `%Tema.canon('2,12)` |
+| `.thirds` | `.terze` | Aggiunge la terza sotto, nella scala | `%Tema.thirds` |
+| `.arpeggio` | `.arpeggio` | Gli accordi diventano arpeggi | `%Giro.arpeggio(alberti,8)` |
+
+**Quello che un pattern scrive finisce con lui** (ST 2.12): griglia, velocity, swing e spostamento tornano come prima dopo il richiamo. I file vecchi si convertono da soli all'apertura e suonano come prima.
+
+Fermando il mouse su un richiamo con funzioni, o con Ctrl+I, compare l'anteprima: partitura, catena passo per passo, avvisi e ▶. Con il tasto destro, o da **Componi → Trasforma...**, si apre la finestra che scrive il richiamo. `.retro` da' errore con slide, automazioni o pedale; `.augment` e `.diminish` accettano numeri maggiori di 0, purche' nessuna durata scenda sotto `'128`.
+
+`$arp` e' l'accordo **rullato** (le note restano tenute); `.arpeggio` e `arp=tipo,griglia` ... `arp=off` fanno l'accordo **spezzato**. Tasto destro su un accordo: **Arpeggia...**. **Espandi pattern** per ora rifiuta i brani in cui il suono cambierebbe.
 
 ## 11. Libreria MIDI (&"Nome")
 

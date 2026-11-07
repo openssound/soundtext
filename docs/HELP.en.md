@@ -62,6 +62,7 @@ The guide is divided into six parts; click a title to go to that section.
   - [10.2 Reorganising the song with patterns](#10.2)
   - [10.3 Context menu on a selection (right-click)](#10.3)
   - [10.4 Renaming a pattern](#10.4)
+  - [10.5 Transforming patterns](#10.5)
 - [11. MIDI library (&"Name")](#11)
   - [11.1 Songs folder (songs/)](#11.1)
 - [12. Percussion](#12)
@@ -495,6 +496,18 @@ text and the "grid" timeline in the editor stay as written, unchanged.
 | `*+` / `*-` after a note (in `rel:`) | one octave up / down | `rel: g c*+ c*-` |
 | `key=K` | notes take the accidentals of key K (see 4.10) | `key=G f` (= F sharp) |
 | `n` after a note | natural: cancels the key's accidental | `key=G fn` |
+| `.octave` | function on a pattern (see 10.5): Moves by n octaves | `%Tema.octave(-1)` |
+| `.invert` | function on a pattern (see 10.5): Chromatic inversion around a note | `%Tema.invert(e*4)` |
+| `.step` | function on a pattern (see 10.5): Diatonic transposition: n degrees in the scale | `%Tema.step(2)` |
+| `.augment` | function on a pattern (see 10.5): Durations times k | `%Tema.augment(2)` |
+| `.diminish` | function on a pattern (see 10.5): Durations divided by k | `%Tema.diminish(2)` |
+| `.retro` | function on a pattern (see 10.5): From the end to the beginning | `%Tema.retro` |
+| `.sequence` | function on a pattern (see 10.5): The motif n times, each time moved by passo degrees | `%Motivo.sequence(3,-1)` |
+| `.vel` | function on a pattern (see 10.5): Relative (+10) or absolute (80, mf) velocity | `%Tema.vel(-20)` |
+| `.canon` | function on a pattern (see 10.5): Canon: staggered, transposed copies | `%Tema.canon('2,12)` |
+| `.thirds` | function on a pattern (see 10.5): Adds the third below, in the scale | `%Tema.thirds` |
+| `.arpeggio` | function on a pattern (see 10.5): Chords become arpeggios | `%Giro.arpeggio(alberti,8)` |
+| `arp=type,grid` ... `arp=off` | the chords that follow become broken arpeggios (see 10.5) | `arp=alberti,16 C F arp=off` |
 
 The `|` character is the **bar check** (see 4.3): it makes no sound and
 moves nothing, it only states where a bar ends. Durations accumulate along
@@ -1365,6 +1378,8 @@ note, which loses that much of its length.
 `c$sfz` (sforzando), `c$fp` (forte-piano), `c$trem` (tremolo; on drums
 `snare$trem` is a roll), `c$harmonic` (harmonic).
 
+`C$arp` is the **rolled** chord: the notes come in one after the other and are then held. `.arpeggio` and `arp=` make the **broken** chord instead, with separate notes on the grid (see 10.5).
+
 **Chord symbols without sound.** `$Am7` writes the symbol above the
 staff without playing it: handy for a lead sheet with only the melody
 (`$C c d e f $G7 g a b c`).
@@ -1526,6 +1541,8 @@ responsive and the operation can be cancelled. The search time for repeated
 blocks is in any case always limited (per track), so that even on very long
 tracks the reorganisation never stays stuck indefinitely.
 
+**When Expand patterns cannot be used.** Written out in full, some patterns would change the sound of the song, and the command says so without touching anything: patterns that write grid, velocity, swing or arpeggio (so also many of those made by Extract patterns), references with functions, patterns that change how notes are read, tracks with `rel:`, `key=` or `transpose=`, and transposed MIDI references.
+
 ### 10.3 Context menu on a selection (right-click)
 
 Selecting a sequence of tokens with the mouse in the editor (track, body of
@@ -1567,6 +1584,30 @@ in the body of the other patterns — to the new name, so the renaming does
 not silently break what calls it. The new name must follow the same syntax
 as a pattern reference (letters, digits and underscores, no spaces) and
 cannot be the same as that of an existing pattern.
+
+### 10.5 Transforming patterns
+
+Functions follow a reference and apply from left to right: `%Theme.invert(e*5).retro+5`. They are `.octave(n)`, `.invert(axis)`, `.step(n)`, `.augment(k)`, `.diminish(k)`, `.retro`, `.sequence(n,step)`, `.vel(x)`, `.canon(delay,interval,voices)`, `.thirds`, `.arpeggio(type,grid)`.
+
+| Function | Italian name | What it does | Example |
+| --- | --- | --- | --- |
+| `.octave` | `.ottava` | Moves by n octaves | `%Tema.octave(-1)` |
+| `.invert` | `.inverti` | Chromatic inversion around a note | `%Tema.invert(e*4)` |
+| `.step` | `.grado` | Diatonic transposition: n degrees in the scale | `%Tema.step(2)` |
+| `.augment` | `.aumenta` | Durations times k | `%Tema.augment(2)` |
+| `.diminish` | `.diminuisci` | Durations divided by k | `%Tema.diminish(2)` |
+| `.retro` | `.retrogrado` | From the end to the beginning | `%Tema.retro` |
+| `.sequence` | `.progressione` | The motif n times, each time moved by passo degrees | `%Motivo.sequence(3,-1)` |
+| `.vel` | `.vel` | Relative (+10) or absolute (80, mf) velocity | `%Tema.vel(-20)` |
+| `.canon` | `.canone` | Canon: staggered, transposed copies | `%Tema.canon('2,12)` |
+| `.thirds` | `.terze` | Adds the third below, in the scale | `%Tema.thirds` |
+| `.arpeggio` | `.arpeggio` | Chords become arpeggios | `%Giro.arpeggio(alberti,8)` |
+
+**What a pattern writes ends with it** (ST 2.12): grid, velocity, swing and shift go back to what they were after the reference. Old files are converted on opening and sound as before.
+
+Rest the mouse on a reference with functions, or press Ctrl+I, for the preview: score, step-by-step chain, warnings and ▶. Right-click, or **Compose → Transform...**, opens the window that writes the reference. `.retro` gives an error with slides, automations or pedal; `.augment` and `.diminish` accept numbers above 0, as long as no duration falls below `'128`.
+
+`$arp` is a **rolled** chord (notes are held); `.arpeggio` and `arp=type,grid` ... `arp=off` make a **broken** chord. Right-click a chord: **Arpeggiate...**. **Expand patterns** currently refuses songs whose sound would change.
 
 ## 11. MIDI library (&"Name")
 

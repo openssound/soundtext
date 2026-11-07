@@ -243,7 +243,8 @@ class ProjectMixin:
             QMessageBox.warning(
                 self, tr("File di una versione piu' recente"),
                 tr("Il file e' scritto con ST {0}.{1}, questa versione di SoundText conosce la {2}.{3}: "
-                   "qualcosa potrebbe non essere letto. Salvandolo, quelle parti andrebbero perse.",
+                   "qualcosa potrebbe non essere letto: una traccia che usa una notazione nuova (per esempio le "
+                   "funzioni sui pattern) non suona. Salvandolo, quelle parti andrebbero perse.",
                    *project.st_version, *LANGUAGE_VERSION))
 
         if newly_loaded:
@@ -1038,7 +1039,15 @@ class ProjectMixin:
             QMessageBox.information(self, tr("Niente da espandere"),
                                      tr("Nessuna traccia usa pattern (%) o riferimenti MIDI (&) al momento."))
             return
-        from core.reorganize import expand_patterns_for_project
+        from core.reorganize import expand_blockers, expand_patterns_for_project
+
+        reasons = expand_blockers(self.project)
+        if reasons:
+            QMessageBox.information(
+                self, tr("Espandi pattern nelle tracce"),
+                tr("Scritti per esteso, questi pattern cambierebbero il suono del brano, quindi per ora "
+                   "non si possono espandere:\n\n") + "\n".join(f"• {r}" for r in reasons))
+            return
 
         reply = QMessageBox.question(
             self, tr("Espandi pattern nelle tracce"),

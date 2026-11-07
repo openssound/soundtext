@@ -203,7 +203,7 @@ class Track:
                       meter: Optional[Meter] = None) -> List[Event]:
         instr = self.instrument
         return parse_track_text(self.text, patterns, default_octave=instr.default_octave,
-                                 midi_dir=midi_dir, meter=meter)
+                                 midi_dir=midi_dir, meter=meter, instrument=instr)
 
 
 def copy_synth(dst: "Track", src: Optional["Track"]) -> "Track":
@@ -257,8 +257,9 @@ class Project:
     lyricist: str = ""
 
     def meter(self) -> Meter:
-        """Dove cominciano le battute del progetto (per le ancore bar=N)."""
-        return Meter(self.time_sig, self.metrica_changes, self.pickup)
+        """Dove cominciano le battute del progetto (per le ancore bar=N) e la
+        sua tonalita' (per le funzioni sui pattern che lavorano nella scala)."""
+        return Meter(self.time_sig, self.metrica_changes, self.pickup, self.key, self.key_changes)
 
     def add_track(self, name: str, instrument_name: str, text: str = "") -> Track:
         if instrument_name not in self.instruments:
