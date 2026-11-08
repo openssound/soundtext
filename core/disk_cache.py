@@ -202,7 +202,7 @@ def store(key: str, data: np.ndarray, wait: bool = False) -> None:
             np.save(tmp, np.ascontiguousarray(data), allow_pickle=False)
             os.replace(tmp, path)
             prune(directory)
-            prune_global(directory)
+            _maybe_prune_global(directory)
         except OSError:
             logging.getLogger(__name__).warning("Cache su disco non scritta: %s", path, exc_info=True)
         finally:
@@ -243,22 +243,42 @@ def _cache_files(directory: str) -> List[Tuple[bool, float, int, str]]:
     return files
 
 
-def _remove_oldest(files, max_bytes: int) -> int:
+def _remove_oldest(files, max_bytes: int, protected: frozenset = frozenset()) -> int:
     """Toglie i file di un formato vecchio e poi i meno usati di recente
-    finche' il totale sta in max_bytes. Un file che non si puo' togliere
-    (mappato su Windows) si salta."""
+    finche' il totale sta in max_bytes; quelli in 'protected' (il progetto
+    aperto) si contano ma non si toccano. Un file che non si puo' togliere
+    (mappato su Windows) si salta e si conta come tolto: altrimenti, per
+    compensare, si cancellerebbero tutti i file piu' recenti."""
     total = sum(size for _cur, _t, size, _p in files)
     removed = 0
     for current, _mtime, size, path in sorted(files):     # i vecchi formati (False) prima
         if current and total <= max_bytes:
             break
+        if path in protected:
+            continue
         try:
             os.remove(path)
-            total -= size
             removed += 1
         except OSError:
-            pass
+            pass                 # in uso: tornera' candidato la prossima volta
+        total -= size
     return removed
+
+
+GLOBAL_PRUNE_INTERVAL = 60.0      # secondi fra due controlli del limite complessivo
+_last_global_prune = 0.0
+
+
+def _maybe_prune_global(directory: str) -> None:
+    """prune_global al piu' una volta al minuto: scorre le cache di tutti i
+    progetti, e un render ne scrive anche centinaia di file."""
+    global _last_global_prune
+    now = time.monotonic()
+    with _lock:
+        if now - _last_global_prune < GLOBAL_PRUNE_INTERVAL and _last_global_prune:
+            return
+        _last_global_prune = now
+    prune_global(directory)
 
 
 def prune_global(directory: Optional[str] = None, max_bytes: Optional[int] = None) -> int:
@@ -269,7 +289,11 @@ def prune_global(directory: Optional[str] = None, max_bytes: Optional[int] = Non
         if d:
             dirs.add(os.path.abspath(d))
     files = [f for d in dirs for f in _cache_files(d)]
-    removed = _remove_oldest(files, global_limit(directory) if max_bytes is None else max_bytes)
+    # il progetto aperto non si tocca (lo limita gia' prune, a MAX_BYTES): con
+    # un limite piccolo (poco spazio libero) si cancellavano i render appena
+    # scritti del brano che si sta ascoltando, e la cache non serviva piu'
+    protected = frozenset(p for _c, _t, _s, p in _cache_files(os.path.abspath(_dir))) if _dir else frozenset()
+    removed = _remove_oldest(files, global_limit(directory) if max_bytes is None else max_bytes, protected)
     if directory:
         _register(directory)
     return removed

@@ -297,6 +297,7 @@ class _Worker:
         self.instances = {}          # (ref, rate) -> istanza
         self.applied_state = {}      # (ref, rate) -> stato gia' applicato
         self.live = None             # _Live, dopo "live_start"
+        self.fresh_sfz = {}          # (file .sfz, rate) -> FreshSfz, per il rendering
 
     # -- caricamento -----------------------------------------------------
     def _vst3(self, ref: str):
@@ -330,6 +331,14 @@ class _Worker:
             else:
                 raise RuntimeError(tr("formato di plugin sconosciuto: {fmt}", fmt=fmt))
         return self.instances[key]
+
+    def _fresh_sfz(self, target: str, rate: int):
+        from core.sfz_engine import FreshSfz
+        key = (target, int(rate))
+        fresh = self.fresh_sfz.get(key)
+        if fresh is None:
+            fresh = self.fresh_sfz[key] = FreshSfz(target, int(rate))
+        return fresh
 
     def _drop_instance(self, ref: str, rate: int):
         key = (ref, int(rate))
@@ -452,10 +461,15 @@ class _Worker:
         if parse_ref(ref)[0] == "sfz":
             raise RuntimeError(tr("uno strumento SFZ non elabora audio"))
         if parse_ref(ref)[0] == "lv2":
-            # un'istanza nuova (meno di 1 ms): deactivate/activate non svuota
-            # sempre lo stato del plugin (la modulazione di ACE Reverb
-            # continuava), e lo stesso audio usciva ogni volta un po' diverso
-            self._drop_instance(ref, rate)
+            cached = self.instances.get((ref, int(rate)))
+            if cached is not None and not getattr(cached, "files", None):
+                # un'istanza nuova (meno di 1 ms): deactivate/activate non
+                # svuota sempre lo stato del plugin (la modulazione di ACE
+                # Reverb continuava), e lo stesso audio usciva ogni volta un
+                # po' diverso. Non per i plugin con file caricati (profili NAM,
+                # risposte all'impulso): ricaricarli costa a ogni pezzo, e il
+                # loro stato si rifa' con l'audio che precede (vedi core.nam_plugin)
+                self._drop_instance(ref, rate)
         inst = self.configure(ref, rate, params, state)
         audio = np.ascontiguousarray(audio, dtype=np.float32)
         if parse_ref(ref)[0] == "vst3":
@@ -473,11 +487,11 @@ class _Worker:
     def render(self, ref, rate, params, state, events, seconds):
         fmt, target, _name = parse_ref(ref)
         if fmt == "sfz":
-            # una copia nuova della libreria: le scelte casuali (lorand/hirand)
-            # ripartono dallo stesso seme, lo stesso brano suona sempre uguale
-            from core.sfz_engine import render_reproducible
-            return render_reproducible(target, int(rate), [(float(t), bytes(d)) for t, d in events],
-                                       float(seconds))
+            # un'istanza mai suonata, con una copia sua della libreria: le
+            # scelte casuali (lorand/hirand) ripartono dallo stesso seme, lo
+            # stesso brano suona sempre uguale (vedi core.sfz_engine.FreshSfz)
+            return self._fresh_sfz(target, rate).render([(float(t), bytes(d)) for t, d in events],
+                                                         float(seconds))
         inst = self.configure(ref, rate, params, state)
         if parse_ref(ref)[0] == "vst3":
             y = inst.process([(bytes(data), float(t)) for t, data in events], duration=float(seconds),
@@ -530,7 +544,13 @@ class _Worker:
         if op == "render":
             return self.render(*request[1:])
         if op == "warm":
-            self.configure(*request[1:])
+            ref, rate = request[1], request[2]
+            fmt, target, _name = parse_ref(ref)
+            if fmt == "sfz":
+                # il rendering usa le istanze di FreshSfz, non quella condivisa
+                self._fresh_sfz(target, rate).prepare()
+            else:
+                self.configure(*request[1:])
             return None
         raise RuntimeError(tr("richiesta sconosciuta: {op}", op=op))
 

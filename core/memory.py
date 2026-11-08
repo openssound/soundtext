@@ -91,8 +91,31 @@ def available_ram() -> Optional[int]:
         import psutil
         return int(psutil.virtual_memory().available)
     except Exception:
-        total = total_ram()
-        return total // 3 if total else None
+        pass
+    if sys.platform == "darwin":
+        value = _macos_available()
+        if value is not None:
+            return value
+    total = total_ram()
+    return total // 3 if total else None
+
+
+def _macos_available() -> Optional[int]:
+    """Pagine libere, inattive e riutilizzabili (vm_stat), come la memoria
+    disponibile di Monitoraggio Attivita'."""
+    import re
+    import subprocess
+    try:
+        out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=2).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    size = re.search(r"page size of (\d+) bytes", out)
+    pages = 0
+    for key in ("Pages free", "Pages inactive", "Pages speculative", "Pages purgeable"):
+        match = re.search(re.escape(key) + r":\s+(\d+)", out)
+        if match:
+            pages += int(match.group(1))
+    return pages * int(size.group(1)) if size and pages else None
 
 
 def cache_budget_total(ram: Optional[int] = None) -> int:
@@ -154,8 +177,14 @@ def peak_rss_mb() -> Optional[float]:
 
             counters = PROCESS_MEMORY_COUNTERS()
             counters.cb = ctypes.sizeof(counters)
-            handle = ctypes.windll.kernel32.GetCurrentProcess()
-            if not ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
+            # i tipi a 64 bit: senza, l'handle (-1, il processo corrente)
+            # passava troncato e la chiamata falliva
+            current = ctypes.windll.kernel32.GetCurrentProcess
+            current.restype = wintypes.HANDLE
+            info = ctypes.windll.psapi.GetProcessMemoryInfo
+            info.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESS_MEMORY_COUNTERS), wintypes.DWORD]
+            info.restype = wintypes.BOOL
+            if not info(current(), ctypes.byref(counters), counters.cb):
                 return None
             return counters.PeakWorkingSetSize / MB
         import resource

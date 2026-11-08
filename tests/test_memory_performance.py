@@ -100,7 +100,11 @@ def test_convolution_and_oversampling_write_32_bit_output():
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def two_projects(tmp_path):
+def two_projects(tmp_path, monkeypatch):
+    # un registro solo per il test: quello del processo elenca anche le cache
+    # degli altri test (con pytest -n, nello stesso processo)
+    registry = str(tmp_path / "registry.json")
+    monkeypatch.setattr(disk_cache, "_registry_path", lambda: registry)
     yield tmp_path / "A.st", tmp_path / "B.st"
     disk_cache.wait_writes()
     disk_cache.set_project(None)
@@ -218,3 +222,63 @@ def test_flush_validation_validates_at_once():
     w.editor.setPlainText("4: c d e f |")
     w.flush_validation()
     assert "Sintassi valida" in w.validation_label.text()
+
+
+def test_global_prune_never_touches_the_open_project(two_projects):
+    a, b = two_projects
+    disk_cache.set_project(str(a))
+    _fill("a1")
+    disk_cache.set_project(str(b))                          # B e' il progetto aperto
+    _fill("b1")
+    _fill("b2")
+    dir_b = disk_cache.cache_dir()
+    old = time.time() - 1000
+    for name in os.listdir(dir_b):                          # i file di B sono i piu' vecchi
+        os.utime(os.path.join(dir_b, name), (old, old))
+    disk_cache.prune_global(max_bytes=MB // 2)
+    assert disk_cache.load("b1") is not None and disk_cache.load("b2") is not None
+    assert disk_cache.dir_size(os.path.join(os.path.dirname(dir_b), "..", "A_audio", "cache")) == 0
+
+
+def test_a_file_in_use_does_not_make_prune_remove_the_newer_ones(tmp_path, monkeypatch):
+    directory = tmp_path / "cache"
+    directory.mkdir()
+    paths = []
+    for i in range(3):
+        path = directory / f"{i:040d}{disk_cache.SUFFIX}"
+        np.save(path, np.zeros((MB // 8, 2), np.float32))
+        os.utime(path, (1000 + i, 1000 + i))
+        paths.append(str(path))
+    real_remove = os.remove
+
+    def remove(path):
+        if path == paths[0]:
+            raise PermissionError("in uso")                 # come un file mappato su Windows
+        real_remove(path)
+    monkeypatch.setattr(os, "remove", remove)
+    disk_cache.prune(str(directory), max_bytes=int(2.5 * MB))
+    assert all(os.path.exists(p) for p in paths)            # niente da togliere al suo posto
+
+
+def test_stale_library_copies_are_removed(tmp_path, monkeypatch):
+    import sys
+    import tempfile
+    from core import sfz_engine
+    if sys.platform == "win32":
+        pytest.skip("su Windows si prova a cancellare, il pid non si controlla")
+    folder = tmp_path / "soundtext-sfz"
+    folder.mkdir()
+    dead = folder / "libsfizz-999999999-3.so"
+    mine = folder / f"libsfizz-{os.getpid()}-1.so"
+    dead.write_bytes(b"x")
+    mine.write_bytes(b"x")
+    sfz_engine._remove_stale_copies(str(folder))
+    assert not dead.exists() and mine.exists()
+
+
+def test_render_log_counts_a_single_stem(monkeypatch):
+    from core import effect_render
+    effect_render.last_render_workers = 7
+    monkeypatch.setattr(effect_render, "render_stem", lambda request, stop_check=None: None)
+    effect_render.render_stems([object()])
+    assert effect_render.last_render_workers == 1

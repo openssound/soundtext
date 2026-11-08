@@ -172,10 +172,16 @@ def _choose_from_context_menu(editor, sel_start, sel_end, choose=None):
     cursor.setPosition(sel_end, QTextCursor.KeepAnchor)
     editor.setTextCursor(cursor)
     captured = {}
+    tries = [0]
 
     def pick():
         menu = QApplication.activePopupWidget()
         if menu is None:
+            # il menu si apre dopo: su una macchina carica (test in parallelo
+            # della CI) 50 ms non bastavano e il menu restava senza voci lette
+            tries[0] += 1
+            if tries[0] < 100:
+                QTimer.singleShot(20, pick)
             return
         captured["actions"] = [a.text() for a in menu.actions() if a.text()]
         target = next((a for a in menu.actions() if a.text() == choose), None)

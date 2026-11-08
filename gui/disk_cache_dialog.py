@@ -60,12 +60,22 @@ class DiskCacheDialog(QDialog):
         self.total_label.setText(format_size(disk_cache.total_size()))
         self.limit_label.setText(format_size(disk_cache.global_limit()))
 
-    def _clear_project(self):
+    @staticmethod
+    def _release_files():
+        """Le cache in memoria tengono mappati i file letti dal disco: su
+        Windows un file mappato non si cancella. Si lasciano prima."""
+        import gc
+        from core.memory import clear_memory_caches
         disk_cache.wait_writes(5.0)
+        clear_memory_caches()
+        gc.collect()
+
+    def _clear_project(self):
+        self._release_files()
         disk_cache.clear()
         self.refresh()
 
     def _clear_all(self):
-        disk_cache.wait_writes(5.0)
+        self._release_files()
         disk_cache.clear_all()
         self.refresh()

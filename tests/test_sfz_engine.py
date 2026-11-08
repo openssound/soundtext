@@ -219,22 +219,24 @@ def _random_choice_sfz(tmp_path):
 @needs_lib
 def test_render_with_random_regions_is_repeatable(tmp_path):
     """Le scelte casuali di sfizz avanzano a ogni nota in tutta la libreria:
-    render_reproducible (una copia nuova della libreria) da' ogni volta lo
-    stesso audio, mentre la stessa istanza riusata no."""
-    from core.sfz_engine import render_reproducible
+    render_reproducible e FreshSfz (un'istanza mai suonata, con una copia
+    nuova della libreria) danno ogni volta lo stesso audio, con le note che
+    scelgono comunque campioni diversi fra loro."""
+    from core.sfz_engine import FreshSfz, render_reproducible
     path = _random_choice_sfz(tmp_path)
     events = []
     for k in range(16):
         events += [(k * 0.25, bytes([0x90, 60, 100])), (k * 0.25 + 0.2, bytes([0x80, 60, 0]))]
     first = render_reproducible(path, 48000, events, 4.5)
     assert np.abs(first).max() > 0.01
-    for _ in range(3):
+    notes = [first[int(k * 0.25 * 48000):int(k * 0.25 * 48000) + 4800, 0] for k in range(16)]
+    assert any(not np.allclose(notes[0], n, atol=1e-4) for n in notes[1:])   # casuale dentro il render
+    for _ in range(2):
         assert np.array_equal(render_reproducible(path, 48000, events, 4.5), first)
-    shared = SfzInstance(path, 48000)
+    fresh = FreshSfz(path, 48000)
     try:
-        a = shared.render(events, 4.5)
-        shared.reset()
-        b = shared.render(events, 4.5)
+        fresh.prepare()
+        for _ in range(3):                   # l'istanza pronta e quelle preparate dopo
+            assert np.array_equal(fresh.render(events, 4.5), first)
     finally:
-        shared.close()
-    assert not np.array_equal(a, b)          # senza la copia le scelte cambiano
+        fresh.close()

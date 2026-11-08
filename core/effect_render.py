@@ -412,15 +412,12 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
 
 
 last_render_workers = 0             # per il log degli export
-DEFAULT_STEM_SECONDS = 300.0       # durata presunta quando non si conosce
 
 
 def stem_workers(requests: List[StemRequest], frames: Optional[int] = None) -> int:
-    """Quanti thread per render_stems: vedi core.memory.render_workers."""
-    from .audio_tracks import AUDIO_SAMPLE_RATE
-    if not frames:
-        frames = int(DEFAULT_STEM_SECONDS * AUDIO_SAMPLE_RATE)
-    return render_workers(frames, len(requests))
+    """Quanti thread per render_stems: vedi core.memory.render_workers. Senza
+    la durata del brano (pre-rendering) si limita solo per core e tracce."""
+    return render_workers(frames or 0, len(requests))
 
 
 def render_stems(requests: List[StemRequest], stop_check=None, on_done=None,
@@ -437,11 +434,12 @@ def render_stems(requests: List[StemRequest], stop_check=None, on_done=None,
         if on_done is not None:
             on_done()
         return result
+    global last_render_workers
     if len(requests) <= 1:
+        last_render_workers = len(requests)
         return [one(r) for r in requests]
     from concurrent.futures import ThreadPoolExecutor
     workers = stem_workers(requests, frames)
-    global last_render_workers
     last_render_workers = workers
     if workers <= 1:
         return [one(r) for r in requests]

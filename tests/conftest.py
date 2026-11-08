@@ -15,9 +15,12 @@ def _reset_global_state():
     """Ogni test parte dallo stesso stato globale, qualunque test sia girato
     prima nello stesso processo (con pytest -n l'ordine cambia): lingua
     italiana e cache dei moduli audio vuote (vedi core.memory)."""
+    import st_language
     from core import i18n
     from core.memory import clear_memory_caches
-    if i18n._language != "it":
+    # anche la lingua della libreria: un processo di test nuovo (pytest -n)
+    # su un sistema in inglese (la CI) la sceglieva dal sistema
+    if i18n._language != "it" or st_language.language() != "it":
         i18n.set_language("it")
     clear_memory_caches()
     yield
@@ -51,16 +54,24 @@ def _close_main_windows():
     if app is None:
         return
     closed = False
-    for window in QApplication.topLevelWidgets():
-        if not isinstance(window, cls) or id(window) in before:
-            continue
-        window._dirty = False                       # niente domanda "Salvare le modifiche?"
-        try:
-            window.close()
-        except RuntimeError:
-            continue                                # gia' distrutta
-        window.deleteLater()
-        closed = True
+    # la chiusura di una finestra spegne i processi dei plugin (closeEvent):
+    # nei test li condividono tutte le finestre e le fixture di modulo, che
+    # li ritroverebbero da riavviare (e i plugin da ricaricare)
+    from core import plugins
+    shutdown, plugins.shutdown = plugins.shutdown, lambda: None
+    try:
+        for window in QApplication.topLevelWidgets():
+            if not isinstance(window, cls) or id(window) in before:
+                continue
+            window._dirty = False                   # niente domanda "Salvare le modifiche?"
+            try:
+                window.close()
+            except RuntimeError:
+                continue                            # gia' distrutta
+            window.deleteLater()
+            closed = True
+    finally:
+        plugins.shutdown = shutdown
     if closed:
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         app.processEvents()

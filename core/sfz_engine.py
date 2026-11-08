@@ -18,7 +18,7 @@ import os
 import re
 import sys
 import threading
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from .i18n import tr
@@ -161,10 +161,12 @@ def _private_library():
     if shared is None:
         return None, None
     base, ext = os.path.splitext(os.path.basename(shared.path))
+    folder = os.path.join(tempfile.gettempdir(), "soundtext-sfz")
     with _copy_lock:
+        if _copy_counter == 0:
+            _remove_stale_copies(folder)
         _copy_counter += 1
         name = f"{base}-{os.getpid()}-{_copy_counter}{ext}"
-    folder = os.path.join(tempfile.gettempdir(), "soundtext-sfz")
     copy = os.path.join(folder, name)
     try:
         os.makedirs(folder, exist_ok=True)
@@ -181,6 +183,37 @@ def _private_library():
         _remove_quietly(copy)
         return None, None
     return lib, copy
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid == os.getpid():
+        return True
+    if sys.platform == "win32":
+        return True              # si prova a cancellare: un file in uso non si toglie
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True              # esiste, di un altro utente
+    return True
+
+
+def _remove_stale_copies(folder: str):
+    """Toglie le copie della libreria lasciate da un processo dei plugin
+    chiuso a meta' render (tempo scaduto, crash): il nome porta il pid."""
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        match = re.search(r"-(\d+)-\d+\.[^.]+$", name)
+        if match is None:
+            continue
+        pid = int(match.group(1))
+        if sys.platform == "win32" or not _pid_alive(pid):
+            if pid != os.getpid():
+                _remove_quietly(os.path.join(folder, name))
 
 
 def _remove_quietly(path: str):
@@ -202,30 +235,83 @@ def _unload(lib, copy: str):
     _remove_quietly(copy)
 
 
-def render_reproducible(path: str, samplerate: int, events: List[Tuple[float, bytes]],
-                        seconds: float) -> np.ndarray:
-    """Come SfzInstance(path, samplerate).render(events, seconds), ma con le
-    scelte casuali del file sempre uguali (vedi sopra). Senza una copia
-    della libreria si usa quella condivisa: il suono e' lo stesso, solo non
-    ripetibile."""
+def _fresh_instance(path: str, samplerate: int):
+    """(istanza mai suonata, libreria privata, copia) per 'path'; senza una
+    copia della libreria, l'istanza usa quella condivisa (libreria e copia
+    None): il suono e' lo stesso, solo non ripetibile."""
     lib, copy = _private_library()
     if lib is None:
         import logging
         logging.getLogger(__name__).warning("Copia della libreria SFZ non caricata: render non ripetibile")
-        inst = SfzInstance(path, samplerate)
-        try:
-            return inst.render(events, seconds)
-        finally:
-            inst.close()
+        return SfzInstance(path, samplerate, block=OFFLINE_BLOCK), None, None
     try:
-        inst = SfzInstance(path, samplerate, lib=lib, block=OFFLINE_BLOCK)
+        return SfzInstance(path, samplerate, lib=lib, block=OFFLINE_BLOCK), lib, copy
+    except Exception:
+        _unload(lib, copy)
+        raise
+
+
+def _release(inst, lib, copy):
+    inst.close()
+    if lib is not None:
+        _unload(lib, copy)
+
+
+def render_reproducible(path: str, samplerate: int, events: List[Tuple[float, bytes]],
+                        seconds: float) -> np.ndarray:
+    """Come SfzInstance(path, samplerate).render(events, seconds), ma con le
+    scelte casuali del file sempre uguali (vedi sopra)."""
+    inst, lib, copy = _fresh_instance(path, samplerate)
+    try:
+        return inst.render(events, seconds)
+    finally:
+        _release(inst, lib, copy)
+
+
+class FreshSfz:
+    """render_reproducible senza aspettare il caricamento: un'istanza mai
+    suonata (con la sua copia della libreria) si prepara in anticipo in un
+    thread (prepare, alla precarica dei plugin e dopo ogni render) e il
+    render la usa e la butta. In memoria resta un solo strumento per file,
+    pronto per il render successivo. Non e' thread-safe: un render alla volta."""
+
+    def __init__(self, path: str, samplerate: int):
+        self.path = path
+        self.samplerate = int(samplerate)
+        self._spare = None                  # (istanza, libreria, copia)
+        self._thread: Optional[threading.Thread] = None
+
+    def prepare(self):
+        if self._spare is not None or (self._thread is not None and self._thread.is_alive()):
+            return
+
+        def build():
+            try:
+                self._spare = _fresh_instance(self.path, self.samplerate)
+            except Exception:
+                self._spare = None          # il render riprova e mostra l'errore
+        self._thread = threading.Thread(target=build, daemon=True, name="sfz-prepare")
+        self._thread.start()
+
+    def _take(self):
+        if self._thread is not None:
+            self._thread.join()
+            self._thread = None
+        spare, self._spare = self._spare, None
+        return spare or _fresh_instance(self.path, self.samplerate)
+
+    def render(self, events: List[Tuple[float, bytes]], seconds: float) -> np.ndarray:
+        inst, lib, copy = self._take()
         try:
             return inst.render(events, seconds)
         finally:
-            inst.close()
-            del inst
-    finally:
-        _unload(lib, copy)
+            _release(inst, lib, copy)
+            self.prepare()                  # il prossimo render lo trova pronto
+
+    def close(self):
+        spare = self._take() if (self._spare is not None or self._thread is not None) else None
+        if spare is not None:
+            _release(*spare)
 
 
 def sfz_available() -> bool:

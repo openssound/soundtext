@@ -78,7 +78,8 @@ def test_picker_offers_the_installed_file(strumenti, monkeypatch):
     assert row is not None and row.flags() & Qt.ItemIsEnabled and "FluteSusVib.sfz" in row.text(0)
     dialog.tree.setCurrentItem(row)
     ref = dialog.selected_ref()
-    assert ref.startswith("sfz:") and os.path.expanduser(ref[4:]) == str(path)
+    # il riferimento usa "/" (vale su ogni sistema): su Windows si confronta normalizzato
+    assert ref.startswith("sfz:") and os.path.normpath(os.path.expanduser(ref[4:])) == os.path.normpath(str(path))
 
 
 def test_picker_greys_the_file_still_to_download(strumenti, monkeypatch):

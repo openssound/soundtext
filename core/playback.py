@@ -338,11 +338,6 @@ class _PersistentSynth:
             sfid = synth.sfload(soundfont)
         if sfid == -1:
             raise RuntimeError(tr("SoundFont non valido: {soundfont}", soundfont=soundfont))
-        # un primo passaggio a vuoto: il primo render di un synth appena
-        # creato suonava appena diverso (-70 dB) dai successivi, tutti uguali
-        synth.system_reset()
-        synth.reset_effects()
-        synth.get_samples(4096)
         self._override_synths[soundfont] = synth
         return synth
 
