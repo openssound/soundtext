@@ -120,22 +120,12 @@ def test_real_drag_still_snaps_and_moves_the_box():
 
 
 def _open_menu_and_capture_actions(open_menu_fn):
-    """Apre un QMenu modale (exec() blocca finche' non si chiude) e ne
-    legge i testi delle azioni da un QTimer che scatta mentre e' ancora
-    aperto, poi lo chiude per sbloccare la exec() - tecnica standard per
-    testare un QMenu in un ambiente headless (QMenu.exec non e'
-    monkeypatchabile: e' un binding Shiboken, non un metodo Python)."""
-    captured = {}
-
-    def check_and_close():
-        menu = QApplication.activePopupWidget()
-        if menu is not None:
-            captured["actions"] = [a.text() for a in menu.actions()]
-            menu.close()
-
-    QTimer.singleShot(50, check_and_close)
-    open_menu_fn()
-    return captured.get("actions", [])
+    """Apre un QMenu (exec) e ne legge i testi delle azioni, chiudendolo
+    senza scegliere (vedi tests/_menus.py)."""
+    from _menus import scripted_menus
+    with scripted_menus() as menus:
+        open_menu_fn()
+    return menus.all_texts[-1] if menus.all_texts else []
 
 
 def test_empty_row_menu_offers_generate_drums_for_percussion_track():
@@ -596,12 +586,9 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     item = next(i for i in av.canvas._scene.items() if isinstance(i, BoxItem) and i.clip is track.clips[1])
     from PySide6.QtTest import QTest
 
-    def choose_wav():            # QMenu.exec non si puo' sostituire: si sceglie la voce dal menu aperto
-        menu = QApplication.activePopupWidget()
-        menu.setActiveAction(next(x for x in menu.actions() if x.text() == "Esporta come WAV..."))
-        QTest.keyClick(menu, Qt.Key_Return)
-    QTimer.singleShot(50, choose_wav)
-    av.show_box_menu(item, av.mapToGlobal(av.rect().center()))
+    from _menus import scripted_menus
+    with scripted_menus("Esporta come WAV..."):
+        av.show_box_menu(item, av.mapToGlobal(av.rect().center()))
     deadline = time.time() + 10
     while not os.path.exists(out) or w._export_wav_worker is not None:
         app.processEvents()

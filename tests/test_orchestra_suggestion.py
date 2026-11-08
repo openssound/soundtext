@@ -105,17 +105,9 @@ def test_text_view_column_menu_fixes_an_unknown_instrument(monkeypatch):
     window.project = parse_project_text("Tempo: 120 BPM\n\nTraccia Melodia [Flautoo]:\n  4: c d e f |\n")
     window.refresh_mixer()
     window.select_track("Melodia")
-    shown = {}
-
-    def choose_fix():
-        # il menu e' aperto (exec): si sceglie la voce come farebbe l'utente
-        menu = QApplication.activePopupWidget()
-        shown["labels"] = [a.text() for a in menu.actions()]
-        from PySide6.QtTest import QTest
-        menu.setActiveAction(next(a for a in menu.actions() if a.text().startswith("Usa")))
-        QTest.keyClick(menu, Qt.Key_Return)
-    from PySide6.QtCore import QPoint, QTimer
-    QTimer.singleShot(200, choose_fix)
-    window.show_track_actions_menu("Melodia", QPoint(0, 0))
-    assert "Usa «Flauto»" in shown["labels"]
+    from PySide6.QtCore import QPoint
+    from _menus import scripted_menus
+    with scripted_menus(lambda text: text.startswith("Usa")) as menus:      # si sceglie la correzione
+        window.show_track_actions_menu("Melodia", QPoint(0, 0))
+    assert "Usa «Flauto»" in menus.actions
     assert window.project.get_track("Melodia").instrument_name == "Flauto"

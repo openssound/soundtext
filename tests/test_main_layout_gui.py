@@ -17,7 +17,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6.QtCore import QPoint, Qt, QTimer
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -44,17 +44,10 @@ def _window(width=1200, height=720, tracks=(("Piano", "Piano"),), audio=("Voce",
 
 
 def _menu_texts(open_menu_fn):
-    captured = {}
-
-    def grab():
-        menu = QApplication.activePopupWidget()
-        if menu is not None:
-            captured["actions"] = [a.text() for a in menu.actions() if a.text()]
-            menu.close()
-
-    QTimer.singleShot(50, grab)
-    open_menu_fn()
-    return captured.get("actions", [])
+    from _menus import scripted_menus
+    with scripted_menus() as menus:
+        open_menu_fn()
+    return menus.actions
 
 
 # --------------------------------------------------------------- barra dei comandi
@@ -504,13 +497,9 @@ def test_header_menu_on_free_text_track_writes_into_the_text(monkeypatch):
     called = []
     monkeypatch.setattr(w, "play_keyboard_into_selected_track", lambda: called.append(w.current_track_name))
 
-    def pick():
-        menu = QApplication.activePopupWidget()
-        menu.setActiveAction(next(a for a in menu.actions() if a.text() == "Suona con la tastiera..."))
-        QTest.keyClick(menu, Qt.Key_Return)
-
-    QTimer.singleShot(50, pick)
-    w.show_track_actions_menu("Piano", header.mapToGlobal(QPoint(0, 0)))
+    from _menus import scripted_menus
+    with scripted_menus("Suona con la tastiera..."):
+        w.show_track_actions_menu("Piano", header.mapToGlobal(QPoint(0, 0)))
     assert called == ["Piano"]
 
 

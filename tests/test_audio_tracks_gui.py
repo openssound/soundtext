@@ -53,17 +53,10 @@ def _window():
 
 
 def _menu_actions(open_menu_fn):
-    captured = {}
-
-    def check_and_close():
-        menu = QApplication.activePopupWidget()
-        if menu is not None:
-            captured["actions"] = [a.text() for a in menu.actions() if a.text()]
-            menu.close()
-
-    QTimer.singleShot(50, check_and_close)
-    open_menu_fn()
-    return captured.get("actions", [])
+    from _menus import scripted_menus
+    with scripted_menus() as menus:
+        open_menu_fn()
+    return menus.actions
 
 
 def test_add_audio_track_from_mixer(monkeypatch):
