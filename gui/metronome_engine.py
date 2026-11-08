@@ -99,7 +99,7 @@ class MetronomeEngine(QObject):
         """Fa sentire un click di accento seguito da uno normale, con le
         impostazioni correnti (pulsante 'Prova' del dialogo Metronomo)."""
         self._play_click(True)
-        QTimer.singleShot(350, lambda: self._play_click(False))
+        QTimer.singleShot(350, self, lambda: self._play_click(False))
 
     def is_running(self) -> bool:
         return self._running

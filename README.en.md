@@ -153,8 +153,17 @@ editor; the default folder is `songs/`.
 **Tests**:
 
 ```bash
-pip install pytest
+pip install -r requirements-dev.txt
 QT_QPA_PLATFORM=offscreen python3 -m pytest -q
+```
+
+In parallel on all cores (about 7 times faster), the quick run without the slow tests, and the memory and timing benchmark to run before each release:
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto --dist loadfile
+# quick run while working; --lf reruns only the failed ones
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto -m "not slow"
+python3 tools/benchmark.py
 ```
 
 They also run on GitHub on every push (`.github/workflows/tests.yml`).

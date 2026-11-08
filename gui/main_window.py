@@ -407,6 +407,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tooltip=tr("Esporta le tracce udibili in MTXT (testo, un evento per riga): note, strumenti, "
             "automazioni, tempo e metrica, come nel MIDI.")))
         file_menu.addSeparator()
+        file_menu.addAction(self._action(
+            tr("Cache su disco..."), self.manage_disk_cache,
+            tooltip=tr("Quanto spazio occupano i rendering salvati accanto ai progetti, e i pulsanti per "
+                       "svuotarli.")))
+        file_menu.addSeparator()
         file_menu.addAction(self._action(tr("Esci"), self.close, "Ctrl+Q"))
 
         edit_menu = menubar.addMenu(tr("&Modifica"))
@@ -1113,7 +1118,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         text_bar = self.scroll.verticalScrollBar()
         offset = (text_bar if checked else canvas_bar).value()
         target = canvas_bar if checked else text_bar
-        QTimer.singleShot(0, lambda: target.setValue(offset))
+        QTimer.singleShot(0, target, lambda: target.setValue(offset))
         self.center_stack.setCurrentIndex(1 if checked else 0)
         (self.view_structure_btn if checked else self.view_text_btn).setChecked(True)
         # Colonna delle tracce solo nella vista Testo: nella Struttura le
@@ -1164,7 +1169,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             if adapt_clips_to_tempo(self.project) and hasattr(self, "arrangement_view"):
                 # al giro dopo, come in ArrangementView.on_clip_changed: un box puo'
                 # essere ancora in mezzo alla gestione di un evento
-                QTimer.singleShot(0, self.arrangement_view.refresh)
+                QTimer.singleShot(0, self.arrangement_view, self.arrangement_view.refresh)
         self._forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:

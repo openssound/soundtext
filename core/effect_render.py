@@ -31,11 +31,12 @@ import numpy as np
 from .effects import (DRY_SYNTH_ROOM, active_effects, apply_effect_chain, chain_signature, effects_available,
                       lv2_instrument_missing, plugin_substitute, synth_dry_for)
 from . import disk_cache
+from .memory import cache_budget, render_workers
 from .model import Project, Track
 
 # Memoria massima delle due cache insieme (una traccia stereo di 3 minuti a
 # 48 kHz occupa circa 70 MB).
-STEM_CACHE_BYTES = 600 * 1024 * 1024
+STEM_CACHE_BYTES = cache_budget("stem")           # vedi core.memory
 
 _cache: "OrderedDict[str, np.ndarray]" = OrderedDict()
 _cache_lock = threading.Lock()
@@ -69,6 +70,9 @@ def _cache_put(key: str, value: np.ndarray, to_disk: bool = True):
 def clear_stem_cache():
     with _cache_lock:
         _cache.clear()
+
+
+clear_caches = clear_stem_cache
 
 
 # Un lock per chiave di cache: chi chiede una traccia che un altro thread
@@ -407,13 +411,27 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
         return wet
 
 
-def render_stems(requests: List[StemRequest], stop_check=None, on_done=None) -> List[Optional[np.ndarray]]:
+last_render_workers = 0             # per il log degli export
+DEFAULT_STEM_SECONDS = 300.0       # durata presunta quando non si conosce
+
+
+def stem_workers(requests: List[StemRequest], frames: Optional[int] = None) -> int:
+    """Quanti thread per render_stems: vedi core.memory.render_workers."""
+    from .audio_tracks import AUDIO_SAMPLE_RATE
+    if not frames:
+        frames = int(DEFAULT_STEM_SECONDS * AUDIO_SAMPLE_RATE)
+    return render_workers(frames, len(requests))
+
+
+def render_stems(requests: List[StemRequest], stop_check=None, on_done=None,
+                 frames: Optional[int] = None) -> List[Optional[np.ndarray]]:
     """render_stem di ogni richiesta, in parallelo (un thread per traccia):
     i plugin lavorano nei loro processi (vedi core.plugins.render_channel)
     e la sintesi col SoundFont ha il suo lock, quindi le tracce si
     sovrappongono invece di sommarsi. on_done() si chiama (da quei thread)
     a ogni traccia pronta, per mostrare l'avanzamento. Solleva RuntimeError
-    se annullata."""
+    se annullata. 'frames' (la durata del brano, se nota) serve a stimare
+    quante tracce stanno insieme nella RAM libera (vedi stem_workers)."""
     def one(request):
         result = render_stem(request, stop_check)
         if on_done is not None:
@@ -422,7 +440,12 @@ def render_stems(requests: List[StemRequest], stop_check=None, on_done=None) -> 
     if len(requests) <= 1:
         return [one(r) for r in requests]
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=min(8, len(requests))) as pool:
+    workers = stem_workers(requests, frames)
+    global last_render_workers
+    last_render_workers = workers
+    if workers <= 1:
+        return [one(r) for r in requests]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(one, r) for r in requests]
         return [f.result() for f in futures]
 

@@ -2547,5 +2547,15 @@
  "Correggi prima gli errori della traccia «{name}»: {msg}": "Corrigez d'abord les erreurs de la piste « {name} » : {msg}",
  "Non si puo' spostare il brano di {n} semitoni senza cambiare le note: qualcuna esce dall'estensione MIDI o da un pattern che non si puo' riscrivere.": "Le morceau ne peut pas être déplacé de {n} demi-tons sans changer les notes : certaines sortent de l'étendue MIDI ou d'un pattern qui ne peut pas être réécrit.",
  "«{name}»: {n} note fuori dall'estensione dello strumento": "« {name} » : {n} notes hors de l'étendue de l'instrument",
- "Le tracce audio si spostano di {n} semitoni: con salti grandi il suono peggiora": "Les pistes audio se déplacent de {n} demi-tons : avec de grands sauts, le son se dégrade"
+ "Le tracce audio si spostano di {n} semitoni: con salti grandi il suono peggiora": "Les pistes audio se déplacent de {n} demi-tons : avec de grands sauts, le son se dégrade",
+ "Cache su disco...": "Cache sur disque...",
+ "Quanto spazio occupano i rendering salvati accanto ai progetti, e i pulsanti per svuotarli.": "L'espace occupé par les rendus enregistrés à côté des projets, avec les boutons pour les vider.",
+ "Cache su disco": "Cache sur disque",
+ "I rendering delle tracce con effetti, degli strumenti plugin e dei time-stretch si salvano accanto al progetto, per riascoltarlo senza ricalcolare. Svuotare la cache non toglie niente del brano: si ricalcola al prossimo ascolto.": "Les rendus des pistes avec effets, des instruments plugin et des time-stretch sont enregistrés à côté du projet, pour le réécouter sans recalculer. Vider le cache n'enlève rien au morceau : il est recalculé à la prochaine écoute.",
+ "Questo progetto:": "Ce projet :",
+ "Tutti i progetti:": "Tous les projets :",
+ "Limite complessivo:": "Limite globale :",
+ "Svuota la cache di questo progetto": "Vider le cache de ce projet",
+ "Svuota tutte le cache": "Vider tous les caches",
+ "nessuna (progetto non salvato)": "aucun (projet non enregistré)"
 }

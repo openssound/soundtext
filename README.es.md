@@ -156,8 +156,17 @@ modificables con cualquier editor; la carpeta predeterminada es `songs/`.
 **Tests**:
 
 ```bash
-pip install pytest
+pip install -r requirements-dev.txt
 QT_QPA_PLATFORM=offscreen python3 -m pytest -q
+```
+
+En paralelo en todos los núcleos (unas 7 veces más rápido), la pasada rápida sin los tests lentos, y el benchmark de memoria y tiempos que se lanza antes de cada versión:
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto --dist loadfile
+# pasada rápida mientras se trabaja; --lf relanza solo los fallidos
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto -m "not slow"
+python3 tools/benchmark.py
 ```
 
 También se ejecutan en GitHub en cada push (`.github/workflows/tests.yml`).

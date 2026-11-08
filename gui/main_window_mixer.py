@@ -208,7 +208,34 @@ class MixerMixin:
             return
         track.text = self.editor.toPlainText()
         self._mark_dirty(merge_key=f"text:{track.name}")
-        self._validate_current()
+        self._schedule_validation()
+
+    # La validazione (sintassi, avvisi, note mute negli SFZ) costa decine di
+    # millisecondi nelle tracce lunghe: mentre si scrive parte quando ci si
+    # ferma per VALIDATION_DELAY_MS; gli avvisi gia' mostrati restano fino
+    # ad allora. Cambiare traccia, aprire, annullare (che chiamano
+    # _validate_current), suonare ed esportare (flush_validation) validano subito.
+    VALIDATION_DELAY_MS = 250
+
+    def _validation_timer_obj(self):
+        timer = getattr(self, "_validation_timer", None)
+        if timer is None:
+            from PySide6.QtCore import QTimer
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(self.VALIDATION_DELAY_MS)
+            timer.timeout.connect(self._validate_current)
+            self._validation_timer = timer
+        return timer
+
+    def _schedule_validation(self):
+        self._validation_timer_obj().start()
+
+    def flush_validation(self):
+        """Valida subito se una validazione ritardata e' in attesa."""
+        timer = getattr(self, "_validation_timer", None)
+        if timer is not None and timer.isActive():
+            self._validate_current()
 
     def _on_editor_double_click(self, char_offset: int, global_pos) -> bool:
         if not self.current_track_name:
@@ -372,6 +399,9 @@ class MixerMixin:
         self._sync_expanded_patterns(self.project.find_track(self.current_track_name))
 
     def _validate_current(self):
+        timer = getattr(self, "_validation_timer", None)
+        if timer is not None:
+            timer.stop()
         if not self.current_track_name:
             self._sync_expanded_patterns(None)
             return

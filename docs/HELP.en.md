@@ -3837,8 +3837,12 @@ slow computers: Play no longer recomputes the heavy tracks.
 **Disk cache**: tracks processed by effects, plugin instruments and
 time-stretch are saved in `<Project>_audio/cache/` and reused when the
 project is opened again, instead of being redone. A change (notes, clips,
-effects, files) makes them recompute; the folder stays under 2 GB (the
-least recently used renders are removed) and can be deleted at any time.
+effects, files) makes them recompute; the folder stays under 2 GB and the
+caches of all projects together stay under 5 GB (or 10% of the free space,
+if less): beyond that, the least recently used renders are removed.
+**Project → Disk cache...** shows how much space they take up and has the
+**Clear this project's cache** and **Clear all caches** buttons: the song
+loses nothing, it is recalculated the next time you listen.
 
 ### Exporting
 

@@ -38,6 +38,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .memory import cache_budget
 from .model import AudioClip, Project, Track
 from .i18n import tr
 
@@ -149,7 +150,7 @@ def read_wav(path: str) -> Tuple[np.ndarray, int]:
 # recente fino a _DECODED_MAX_BYTES.
 _decoded: "OrderedDict[tuple, Tuple[np.ndarray, int]]" = OrderedDict()
 _decoded_lock = threading.Lock()
-_DECODED_MAX_BYTES = 512 * 1024 * 1024
+_DECODED_MAX_BYTES = cache_budget("decoded")      # vedi core.memory
 
 
 def decoded_wav(path: str) -> Tuple[np.ndarray, int]:
@@ -843,7 +844,15 @@ MIN_STRETCH, MAX_STRETCH = 0.25, 4.0
 _stretch_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _stretch_lock = threading.Lock()
 # in byte, non in clip: con "tempo fisso" una ripresa e' un pezzo per battuta
-_STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
+_STRETCH_CACHE_MAX_BYTES = cache_budget("stretch")
+
+
+def clear_caches() -> None:
+    """Svuota le cache in memoria dei file decodificati e dei time-stretch."""
+    with _decoded_lock:
+        _decoded.clear()
+    with _stretch_lock:
+        _stretch_cache.clear()
 
 
 def _has_shift(semitones) -> bool:
@@ -1328,10 +1337,10 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
     'stems' sono tracce gia' renderizzate ed elaborate (catena di effetti,
     vedi core.effect_render): [(campioni (frame, 2) a 'samplerate', inizio
     in secondi)], un inizio negativo ne taglia la parte iniziale."""
-    mix = base.astype(np.float32, copy=True)
     # La lunghezza finale prima di mixare: allungare il mix a ogni clip lo
-    # ricopierebbe tutto ogni volta (lentissimo con centinaia di pezzi).
-    needed = len(mix)
+    # ricopierebbe tutto ogni volta (lentissimo con centinaia di pezzi). Il
+    # mix si prepara subito lungo quanto serve e base vi si copia una volta.
+    needed = len(base)
     for samples, start_seconds in stems:
         needed = max(needed, int(round(start_seconds * samplerate)) + len(samples))
     for layer in layers:
@@ -1339,9 +1348,9 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if info is not None:
             part = max(0.0, info.seconds - layer.trim_start - layer.trim_end) * layer.stretch
             needed = max(needed, int(round(layer.start_seconds * samplerate)) + int(math.ceil(part * samplerate)) + 2)
-    used = len(mix)                                # fin dove si e' scritto davvero
-    if needed > len(mix):
-        mix = np.concatenate([mix, np.zeros((needed - len(mix), 2), dtype=np.float32)])
+    mix = np.zeros((needed, 2), dtype=np.float32)
+    mix[:len(base)] = base[:, :2]
+    used = len(base)                               # fin dove si e' scritto davvero
     for samples, start_seconds in stems:
         offset = int(round(start_seconds * samplerate))
         part = samples[max(0, -offset):]

@@ -202,3 +202,39 @@ def test_instrument_in_the_home_folder_is_saved_portable(tmp_path, monkeypatch, 
     ref = "sfz:" + home_relative(path)
     assert parse_ref(ref)[1] == path
     assert _plugins.describe(ref).name
+
+
+def _random_choice_sfz(tmp_path):
+    """Un .sfz con due campioni diversi scelti a caso (lorand/hirand)."""
+    from core.audio_tracks import write_wav
+    t = np.arange(24000) / 48000.0
+    for name, freq in (("a.wav", 220.0), ("b.wav", 330.0)):
+        write_wav(str(tmp_path / name), (0.5 * np.sin(2 * np.pi * freq * t)).reshape(-1, 1).astype(np.float32), 48000)
+    path = tmp_path / "caso.sfz"
+    path.write_text("<region> sample=a.wav lorand=0 hirand=0.5 key=60 ampeg_release=0.01\n"
+                    "<region> sample=b.wav lorand=0.5 hirand=1 key=60 ampeg_release=0.01\n")
+    return str(path)
+
+
+@needs_lib
+def test_render_with_random_regions_is_repeatable(tmp_path):
+    """Le scelte casuali di sfizz avanzano a ogni nota in tutta la libreria:
+    render_reproducible (una copia nuova della libreria) da' ogni volta lo
+    stesso audio, mentre la stessa istanza riusata no."""
+    from core.sfz_engine import render_reproducible
+    path = _random_choice_sfz(tmp_path)
+    events = []
+    for k in range(16):
+        events += [(k * 0.25, bytes([0x90, 60, 100])), (k * 0.25 + 0.2, bytes([0x80, 60, 0]))]
+    first = render_reproducible(path, 48000, events, 4.5)
+    assert np.abs(first).max() > 0.01
+    for _ in range(3):
+        assert np.array_equal(render_reproducible(path, 48000, events, 4.5), first)
+    shared = SfzInstance(path, 48000)
+    try:
+        a = shared.render(events, 4.5)
+        shared.reset()
+        b = shared.render(events, 4.5)
+    finally:
+        shared.close()
+    assert not np.array_equal(a, b)          # senza la copia le scelte cambiano

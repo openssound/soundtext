@@ -160,8 +160,17 @@ modifiables avec n'importe quel éditeur ; le dossier par défaut est
 **Tests** :
 
 ```bash
-pip install pytest
+pip install -r requirements-dev.txt
 QT_QPA_PLATFORM=offscreen python3 -m pytest -q
+```
+
+En parallèle sur tous les cœurs (environ 7 fois plus rapide), le passage rapide sans les tests lents, et le benchmark de mémoire et de temps à lancer avant chaque version :
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto --dist loadfile
+# passage rapide pendant le travail ; --lf relance seulement les échecs
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto -m "not slow"
+python3 tools/benchmark.py
 ```
 
 Ils tournent aussi sur GitHub à chaque push (`.github/workflows/tests.yml`).

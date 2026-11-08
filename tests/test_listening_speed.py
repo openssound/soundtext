@@ -117,6 +117,7 @@ def test_comparison_buffer_sequence_and_together(tmp_path, monkeypatch):
     assert together[-10, 0] == pytest.approx(0.2, abs=1e-3)         # solo l'audio
 
 
+@pytest.mark.slow
 def test_slowed_mix_starts_from_the_chosen_chunk_and_joins_cleanly():
     """Rallentare la prima volta: si comincia appena e' pronto il pezzo da
     cui si parte, il resto si riempie dopo; alle giunture niente buchi."""

@@ -53,6 +53,7 @@ def test_plugin_is_found_in_the_lv2_folders(fake_plugin, tmp_path):
     assert nam_plugin.available()
 
 
+@pytest.mark.slow
 @needs_profile
 def test_segments_join_into_the_same_result(fake_plugin, monkeypatch):
     monkeypatch.setattr(plugins, "NAM_HOSTS", 4)

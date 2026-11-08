@@ -151,6 +151,8 @@ class ProjectMixin:
         finestra ed eventuale messaggio in barra di stato). Usato da
         nuovo/apri/importa MIDI, che condividono questa sequenza."""
         self.effects_panel.discard()      # il pannello Effetti era sul brano precedente
+        from core.memory import clear_memory_caches
+        clear_memory_caches()             # l'audio del brano precedente non serve piu'
         self.project = project
         self.schedule_playback_prepare()
         set_session_instruments(project.instruments)
@@ -492,6 +494,7 @@ class ProjectMixin:
         )
 
     def _check_tracks_syntax(self) -> bool:
+        self.flush_validation()
         for t in self.project.tracks:
             ok, msg = validate_track_text(t.text, self.project.patterns)
             if not ok:
@@ -1272,3 +1275,9 @@ class ProjectMixin:
         self._autosave_timer.stop()
         self._recovery.close()
         super().closeEvent(event)
+
+    def manage_disk_cache(self):
+        """Progetto → Cache su disco...: quanto occupano le cache dei
+        rendering e i pulsanti per svuotarle (vedi core.disk_cache)."""
+        from .disk_cache_dialog import DiskCacheDialog
+        DiskCacheDialog(self).exec()

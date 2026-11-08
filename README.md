@@ -153,8 +153,17 @@ anche con un editor qualsiasi; la cartella predefinita è `songs/`.
 **Test**:
 
 ```bash
-pip install pytest
+pip install -r requirements-dev.txt
 QT_QPA_PLATFORM=offscreen python3 -m pytest -q
+```
+
+In parallelo su tutti i core (circa 7 volte più veloce), il giro veloce senza i test lenti, e il benchmark di memoria e tempi da lanciare prima di ogni versione:
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto --dist loadfile
+# giro veloce mentre si lavora; --lf rilancia solo i falliti
+QT_QPA_PLATFORM=offscreen python3 -m pytest -q -n auto -m "not slow"
+python3 tools/benchmark.py
 ```
 
 Girano anche su GitHub a ogni push (`.github/workflows/tests.yml`).

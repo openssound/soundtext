@@ -198,6 +198,7 @@ class Synth:
         self.settings = lib.new_fluid_settings()
         self.setting("synth.gain", gain)
         self.setting("synth.sample-rate", samplerate)
+        self.samplerate = samplerate
         self.setting("synth.midi-channels", channels)
         for key, value in settings.items():
             self.setting(key, value)
@@ -272,6 +273,21 @@ class Synth:
 
     def system_reset(self) -> int:
         return self._lib.fluid_synth_system_reset(self.synth)
+
+    def reset_effects(self) -> bool:
+        """Riporta riverbero e chorus allo stato iniziale. system_reset()
+        ne svuota i buffer ma non la modulazione delle linee di ritardo del
+        riverbero, che continua da un render all'altro: lo stesso brano
+        suonava ogni volta un po' diverso. Reimpostare la frequenza di
+        campionamento (la stessa) li ricrea; False se la libreria non lo
+        permette."""
+        f = getattr(self._lib, "fluid_synth_set_sample_rate", None)
+        if f is None:
+            return False
+        f.restype = None
+        f.argtypes = [c_void_p, c_float]
+        f(self.synth, float(self.samplerate))
+        return True
 
     def set_gain(self, value: float):
         """Guadagno di un synth gia' creato: a differenza dell'impostazione

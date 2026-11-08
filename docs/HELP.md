@@ -3932,8 +3932,12 @@ le tracce pesanti.
 **Cache su disco**: le tracce elaborate dagli effetti, gli strumenti plugin
 e il time-stretch si salvano in `<Progetto>_audio/cache/` e si riusano alla
 riapertura del progetto, invece di rifarli. Una modifica (note, clip,
-effetti, file) li fa ricalcolare; la cartella non supera 2 GB (si tolgono
-i rendering usati meno di recente) e si puo' cancellare quando si vuole.
+effetti, file) li fa ricalcolare; la cartella non supera 2 GB e le cache di
+tutti i progetti insieme non superano 5 GB (o il 10% dello spazio libero, se
+è meno): oltre, si tolgono i rendering usati meno di recente. **Progetto →
+Cache su disco...** mostra quanto occupano e ha i pulsanti **Svuota la cache
+di questo progetto** e **Svuota tutte le cache**: il brano non perde niente,
+si ricalcola al prossimo ascolto.
 
 ### Esportare
 

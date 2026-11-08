@@ -75,6 +75,18 @@ def library_found() -> str:
     return ""
 
 
+def _open_library(path: str):
+    """La libreria in 'path' con le firme delle funzioni; None se non va."""
+    try:
+        lib = ctypes.CDLL(path)
+        lib.sfizz_create_synth
+    except (OSError, AttributeError):
+        return None
+    _set_signatures(lib)
+    lib.path = path
+    return lib
+
+
 def _load_library():
     global _lib
     with _lib_lock:
@@ -83,37 +95,137 @@ def _load_library():
         for path in library_candidates():
             if os.sep in path and not os.path.exists(path):
                 continue
-            try:
-                lib = ctypes.CDLL(path)
-                lib.sfizz_create_synth
-            except (OSError, AttributeError):
+            lib = _open_library(path)
+            if lib is None:
                 continue
-            vp, i = ctypes.c_void_p, ctypes.c_int
-            sigs = {
-                "sfizz_create_synth": ([], vp), "sfizz_free": ([vp], None),
-                "sfizz_load_file": ([vp, ctypes.c_char_p], ctypes.c_bool),
-                "sfizz_get_num_regions": ([vp], i),
-                "sfizz_set_samples_per_block": ([vp, i], None),
-                "sfizz_set_sample_rate": ([vp, ctypes.c_float], None),
-                "sfizz_enable_freewheeling": ([vp], None), "sfizz_disable_freewheeling": ([vp], None),
-                "sfizz_all_sound_off": ([vp], None),
-                "sfizz_send_note_on": ([vp, i, i, i], None), "sfizz_send_note_off": ([vp, i, i, i], None),
-                "sfizz_send_cc": ([vp, i, i, i], None), "sfizz_send_program_change": ([vp, i, i], None),
-                "sfizz_send_pitch_wheel": ([vp, i, i], None),
-                "sfizz_send_channel_aftertouch": ([vp, i, i], None),
-                "sfizz_render_block": ([vp, ctypes.POINTER(ctypes.POINTER(ctypes.c_float)), i, i], None),
-            }
-            if hasattr(lib, "sfizz_set_sample_quality"):        # assente nelle sfizz molto vecchie
-                sigs["sfizz_set_sample_quality"] = ([vp, i, i], None)
-            for name, (args, res) in sigs.items():
-                fn = getattr(lib, name)
-                fn.argtypes = args
-                fn.restype = res
-            lib.path = path
             _lib = lib
             return lib
         _lib = False
         return None
+
+
+def _set_signatures(lib):
+    """Tipi di argomenti e risultato delle funzioni usate."""
+    vp, i = ctypes.c_void_p, ctypes.c_int
+    sigs = {
+        "sfizz_create_synth": ([], vp), "sfizz_free": ([vp], None),
+        "sfizz_load_file": ([vp, ctypes.c_char_p], ctypes.c_bool),
+        "sfizz_get_num_regions": ([vp], i),
+        "sfizz_set_samples_per_block": ([vp, i], None),
+        "sfizz_set_sample_rate": ([vp, ctypes.c_float], None),
+        "sfizz_enable_freewheeling": ([vp], None), "sfizz_disable_freewheeling": ([vp], None),
+        "sfizz_all_sound_off": ([vp], None),
+        "sfizz_send_note_on": ([vp, i, i, i], None), "sfizz_send_note_off": ([vp, i, i, i], None),
+        "sfizz_send_cc": ([vp, i, i, i], None), "sfizz_send_program_change": ([vp, i, i], None),
+        "sfizz_send_pitch_wheel": ([vp, i, i], None),
+        "sfizz_send_channel_aftertouch": ([vp, i, i], None),
+        "sfizz_render_block": ([vp, ctypes.POINTER(ctypes.POINTER(ctypes.c_float)), i, i], None),
+    }
+    if hasattr(lib, "sfizz_set_sample_quality"):        # assente nelle sfizz molto vecchie
+        sigs["sfizz_set_sample_quality"] = ([vp, i, i], None)
+    for name, (args, res) in sigs.items():
+        fn = getattr(lib, name)
+        fn.argtypes = args
+        fn.restype = res
+
+
+# ---------------------------------------------------------------------------
+# Render riproducibile
+# ---------------------------------------------------------------------------
+# Le regioni con lorand/hirand (round robin casuale: colpi di batteria, note
+# ripetute che non suonano tutte uguali) usano un generatore casuale unico
+# per tutta la libreria, che parte sempre dallo stesso seme ma avanza a ogni
+# nota: due render dello stesso brano nello stesso processo suonavano diversi,
+# e la libreria non ha una funzione per reimpostare il seme. Per il render
+# offline si carica percio' una copia privata della libreria, che riparte dal
+# seme iniziale, e la si scarica alla fine (circa 0,3 s): lo stesso brano da'
+# lo stesso audio, campione per campione. Dal vivo resta l'istanza condivisa.
+
+_copy_counter = 0
+_copy_lock = threading.Lock()
+# Blocchi piccoli nel render offline: oltre la parte precaricata, sfizz legge
+# i campioni in sottofondo e in freewheeling li aspetta solo fra un blocco e
+# l'altro; con blocchi da 4096 frame una nota trasposta in alto consumava la
+# parte precaricata prima della pausa, e su un computer carico il suono
+# cambiava da un render all'altro.
+OFFLINE_BLOCK = 256
+
+
+def _private_library():
+    """(libreria, percorso della copia) caricata da una copia nuova; (None,
+    None) se non si riesce (si ripiega sulla libreria condivisa)."""
+    import shutil
+    import tempfile
+    global _copy_counter
+    shared = _load_library()
+    if shared is None:
+        return None, None
+    base, ext = os.path.splitext(os.path.basename(shared.path))
+    with _copy_lock:
+        _copy_counter += 1
+        name = f"{base}-{os.getpid()}-{_copy_counter}{ext}"
+    folder = os.path.join(tempfile.gettempdir(), "soundtext-sfz")
+    copy = os.path.join(folder, name)
+    try:
+        os.makedirs(folder, exist_ok=True)
+        shutil.copyfile(shared.path, copy)
+    except OSError:
+        return None, None
+    if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
+        try:
+            os.add_dll_directory(os.path.dirname(os.path.abspath(shared.path)))   # DLL accanto all'originale
+        except OSError:
+            pass
+    lib = _open_library(copy)
+    if lib is None:
+        _remove_quietly(copy)
+        return None, None
+    return lib, copy
+
+
+def _remove_quietly(path: str):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def _unload(lib, copy: str):
+    import _ctypes
+    try:
+        if sys.platform == "win32":
+            _ctypes.FreeLibrary(lib._handle)
+        else:
+            _ctypes.dlclose(lib._handle)
+    except (OSError, AttributeError):
+        pass
+    _remove_quietly(copy)
+
+
+def render_reproducible(path: str, samplerate: int, events: List[Tuple[float, bytes]],
+                        seconds: float) -> np.ndarray:
+    """Come SfzInstance(path, samplerate).render(events, seconds), ma con le
+    scelte casuali del file sempre uguali (vedi sopra). Senza una copia
+    della libreria si usa quella condivisa: il suono e' lo stesso, solo non
+    ripetibile."""
+    lib, copy = _private_library()
+    if lib is None:
+        import logging
+        logging.getLogger(__name__).warning("Copia della libreria SFZ non caricata: render non ripetibile")
+        inst = SfzInstance(path, samplerate)
+        try:
+            return inst.render(events, seconds)
+        finally:
+            inst.close()
+    try:
+        inst = SfzInstance(path, samplerate, lib=lib, block=OFFLINE_BLOCK)
+        try:
+            return inst.render(events, seconds)
+        finally:
+            inst.close()
+            del inst
+    finally:
+        _unload(lib, copy)
 
 
 def sfz_available() -> bool:
@@ -159,8 +271,9 @@ class SfzInstance:
     """Un file .sfz caricato a una frequenza di campionamento, pronto a
     suonare eventi MIDI (render). Non e' thread-safe."""
 
-    def __init__(self, path: str, samplerate: int):
-        lib = _load_library()
+    def __init__(self, path: str, samplerate: int, lib=None, block: int = BLOCK):
+        lib = lib or _load_library()
+        self.block = int(block)
         if lib is None:
             raise SfzError(tr("libreria SFZ (sfizioso o sfizz) non trovata"))
         if not os.path.isfile(path):
@@ -171,7 +284,7 @@ class SfzInstance:
         if not self._synth:
             raise SfzError(tr("impossibile creare il motore SFZ"))
         lib.sfizz_set_sample_rate(self._synth, float(self.samplerate))
-        lib.sfizz_set_samples_per_block(self._synth, BLOCK)
+        lib.sfizz_set_samples_per_block(self._synth, self.block)
         # offline: i campioni si caricano tutti subito, niente streaming
         lib.sfizz_enable_freewheeling(self._synth)
         if hasattr(lib, "sfizz_set_sample_quality"):
@@ -180,8 +293,8 @@ class SfzInstance:
             self.close()
             raise SfzError(tr("il file SFZ non si puo' caricare: {path}", path=path))
         self.regions = lib.sfizz_get_num_regions(self._synth)
-        self._left = np.zeros(BLOCK, dtype=np.float32)
-        self._right = np.zeros(BLOCK, dtype=np.float32)
+        self._left = np.zeros(self.block, dtype=np.float32)
+        self._right = np.zeros(self.block, dtype=np.float32)
         ptr = ctypes.POINTER(ctypes.c_float)
         self._channels = (ptr * 2)(self._left.ctypes.data_as(ptr), self._right.ctypes.data_as(ptr))
 
@@ -211,8 +324,8 @@ class SfzInstance:
         out = np.zeros((n, 2), dtype=np.float32)
         pending = [(int(round(t * self.samplerate)), data) for t, data in events]
         i = 0
-        for start in range(0, n, BLOCK):
-            frames = min(BLOCK, n - start)
+        for start in range(0, n, self.block):
+            frames = min(self.block, n - start)
             while i < len(pending) and pending[i][0] < start + frames:
                 self._send(max(0, pending[i][0] - start), pending[i][1])
                 i += 1

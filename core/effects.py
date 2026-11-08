@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from .i18n import tr
+from .memory import cache_budget
 
 # chiave -> (etichetta, room size, damping, width, level) di fluidsynth
 REVERB_ROOMS = {
@@ -703,11 +704,18 @@ def _convolve(x: np.ndarray, ir: np.ndarray) -> np.ndarray:
     block = 1 << 16
     nfft = 1 << int(np.ceil(np.log2(block + len(ir) - 1)))
     spectrum = np.fft.rfft(ir, nfft)[:, None]
-    out = np.zeros((frames + nfft, x.shape[1]), dtype=np.float64)
+    # uscita a 32 bit; la somma (overlap-add) in float64 solo sugli nfft
+    # frame che il blocco corrente tocca, poi spostata avanti di un blocco
+    out = np.empty((frames, x.shape[1]), dtype=np.float32)
+    acc = np.zeros((nfft, x.shape[1]), dtype=np.float64)
     for start in range(0, frames, block):
         piece = x[start:start + block]
-        out[start:start + nfft] += np.fft.irfft(np.fft.rfft(piece, nfft, axis=0) * spectrum, nfft, axis=0)
-    return out[:frames].astype(np.float32)
+        acc += np.fft.irfft(np.fft.rfft(piece, nfft, axis=0) * spectrum, nfft, axis=0)
+        n = min(block, frames - start)
+        out[start:start + n] = acc[:n]
+        acc[:-block] = acc[block:]
+        acc[-block:] = 0.0
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -879,7 +887,9 @@ def _oversampled(stages: list, factor: int = OVERSAMPLING):
                for st in stages]
         delay = (_OS_TAPS - 1) // factor               # ritardo dei due FIR, in frame originali
         padded = np.concatenate([x, np.zeros((delay, channels), dtype=x.dtype)])
-        out = []
+        # ogni pezzo in uscita va al suo posto nell'array finale a 32 bit
+        out = np.zeros((frames, channels), dtype=np.float32)
+        pos = 0                                        # posizione del pezzo nell'uscita con ritardo
         for start in range(0, len(padded), _OS_BLOCK):
             high = up.process(padded[start:start + _OS_BLOCK].astype(np.float64)).astype(np.float32)
             for op in ops:
@@ -891,8 +901,12 @@ def _oversampled(stages: list, factor: int = OVERSAMPLING):
                     high = op.process(high)
                 else:
                     high = op(np.ascontiguousarray(high.T), rate * factor, reset=start == 0).T
-            out.append(down.process(high.astype(np.float64)))
-        return np.concatenate(out)[delay:delay + frames].astype(np.float32)
+            low = down.process(high.astype(np.float64))
+            first, last = max(pos, delay), min(pos + len(low), delay + frames)
+            if last > first:
+                out[first - delay:last - delay] = low[first - pos:last - pos]
+            pos += len(low)
+        return out
     return run
 
 
@@ -916,9 +930,15 @@ def _nam_normalization_db(path: str) -> float:
 # rete e' di gran lunga la parte piu' lenta della catena (decine di secondi
 # per qualche minuto di chitarra), e toccare il Livello, la cassa o un
 # effetto che viene dopo non cambia quello che le arriva.
-_NAM_CACHE_BYTES = 256 * 1024 * 1024
+_NAM_CACHE_BYTES = cache_budget("nam")            # vedi core.memory
 _nam_out_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _nam_cache_lock = threading.Lock()
+
+
+def clear_caches() -> None:
+    """Svuota la cache delle uscite NAM."""
+    with _nam_cache_lock:
+        _nam_out_cache.clear()
 
 
 def _nam_stage(x: np.ndarray, rate: int, path: str) -> np.ndarray:

@@ -37,7 +37,11 @@ def _remove_config_dir(path):
     shutil.rmtree(path, ignore_errors=True)
 
 
-if _ENV not in os.environ:
+# Con pytest-xdist (pytest -n auto) ogni processo eredita dal principale la
+# variabile gia' impostata: senza una cartella sua, i processi scriverebbero
+# tutti le stesse impostazioni. PYTEST_XDIST_WORKER c'e' solo nei processi
+# di lavoro.
+if _ENV not in os.environ or os.environ.get("PYTEST_XDIST_WORKER"):
     _dir = tempfile.mkdtemp(prefix="soundtext-test-config-")
     os.environ[_ENV] = _dir
     atexit.register(_remove_config_dir, _dir)

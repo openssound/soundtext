@@ -103,6 +103,10 @@ BEATBOX_KICK_LOW_RATIO = 0.38
 _audio_cache = {}
 
 
+def clear_caches() -> None:
+    _audio_cache.clear()
+
+
 def _load(wav_path: str):
     """Campioni e frequenza del file (letto una volta sola, finche' non
     cambia: le finestre dei colpi si ritagliano dall'array in memoria)."""

@@ -1029,6 +1029,7 @@ def test_extract_patterns_does_not_move_blocks_that_depend_on_key_or_rel():
     assert pats
 
 
+@pytest.mark.slow
 def test_extract_and_expand_all_real_songs_roundtrip():
     """Verifica su tutti i progetti reali (examples/ + songs/): l'estrazione
     non deve mai alterare il contenuto musicale ne' produrre sintassi non valida."""

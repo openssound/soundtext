@@ -157,7 +157,7 @@ class CommandPalette(QDialog):
         self._chosen = item.data(Qt.UserRole)
         self.accept()
         # Eseguita dopo la chiusura: molte voci aprono a loro volta un dialogo.
-        QTimer.singleShot(0, self._chosen.action.trigger)
+        QTimer.singleShot(0, self._chosen.action, self._chosen.action.trigger)
 
     def chosen(self):
         return self._chosen

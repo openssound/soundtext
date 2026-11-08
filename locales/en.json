@@ -2547,5 +2547,15 @@
  "Correggi prima gli errori della traccia «{name}»: {msg}": "First correct the errors in the track “{name}”: {msg}",
  "Non si puo' spostare il brano di {n} semitoni senza cambiare le note: qualcuna esce dall'estensione MIDI o da un pattern che non si puo' riscrivere.": "The song cannot be moved by {n} semitones without changing the notes: some go outside the MIDI range or come from a pattern that cannot be rewritten.",
  "«{name}»: {n} note fuori dall'estensione dello strumento": "“{name}”: {n} notes outside the instrument's range",
- "Le tracce audio si spostano di {n} semitoni: con salti grandi il suono peggiora": "Audio tracks move by {n} semitones: with large jumps the sound gets worse"
+ "Le tracce audio si spostano di {n} semitoni: con salti grandi il suono peggiora": "Audio tracks move by {n} semitones: with large jumps the sound gets worse",
+ "Cache su disco...": "Disk cache...",
+ "Quanto spazio occupano i rendering salvati accanto ai progetti, e i pulsanti per svuotarli.": "How much space the renderings saved next to the projects take up, with buttons to clear them.",
+ "Cache su disco": "Disk cache",
+ "I rendering delle tracce con effetti, degli strumenti plugin e dei time-stretch si salvano accanto al progetto, per riascoltarlo senza ricalcolare. Svuotare la cache non toglie niente del brano: si ricalcola al prossimo ascolto.": "The renderings of tracks with effects, plugin instruments and time-stretches are saved next to the project, so it can be played again without recalculating. Clearing the cache removes nothing from the song: it is recalculated the next time you listen.",
+ "Questo progetto:": "This project:",
+ "Tutti i progetti:": "All projects:",
+ "Limite complessivo:": "Overall limit:",
+ "Svuota la cache di questo progetto": "Clear this project's cache",
+ "Svuota tutte le cache": "Clear all caches",
+ "nessuna (progetto non salvato)": "none (project not saved)"
 }

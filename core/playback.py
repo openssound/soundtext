@@ -307,6 +307,18 @@ class _PersistentSynth:
             for synth in self._override_synths.values():
                 synth.set_gain(value)
 
+    def preload(self, soundfont: str) -> bool:
+        """Carica in anticipo il synth del SoundFont (vedi preload_soundfont):
+        con il lock dei render, cosi' un ascolto che parte nel frattempo
+        aspetta questo caricamento invece di farne un secondo."""
+        with self._lock:
+            try:
+                self._ensure_font_loaded(soundfont)
+                return True
+            except Exception:
+                log.warning("Caricamento anticipato del SoundFont fallito: %s", soundfont, exc_info=True)
+                return False
+
     def _ensure_font_loaded(self, soundfont: str):
         """Il synth del SoundFont generale (usato quando non ci sono override
         attivi, o per il gruppo di canali 'di default' del rendering
@@ -326,6 +338,11 @@ class _PersistentSynth:
             sfid = synth.sfload(soundfont)
         if sfid == -1:
             raise RuntimeError(tr("SoundFont non valido: {soundfont}", soundfont=soundfont))
+        # un primo passaggio a vuoto: il primo render di un synth appena
+        # creato suonava appena diverso (-70 dB) dai successivi, tutti uguali
+        synth.system_reset()
+        synth.reset_effects()
+        synth.get_samples(4096)
         self._override_synths[soundfont] = synth
         return synth
 
@@ -352,6 +369,9 @@ class _PersistentSynth:
         # slider con il mouse che raggiungendo lo stesso valore con le
         # frecce, da cui la differenza percepita a parita' di valore finale.
         synth.system_reset()
+        # riverbero e chorus dallo stato iniziale: lo stesso brano da' lo stesso
+        # audio, campione per campione, a ogni render (vedi Synth.reset_effects)
+        synth.reset_effects()
         # L'ambiente del riverbero (vedi core.effects) va reimpostato a ogni
         # render: il synth e' condiviso, e un brano con un'altra sala non
         # deve lasciarla a chi suona dopo (anteprima della libreria MIDI...).
@@ -569,6 +589,29 @@ _shared_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
 _stem_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
 
 
+PRELOAD_MIN_FREE_RAM = 1024 ** 3      # con meno RAM libera non si carica in anticipo
+
+
+def preload_soundfont() -> Optional[threading.Thread]:
+    """All'avvio (finestra gia' visibile): carica in un thread il SoundFont
+    generale nel synth della riproduzione, cosi' il primo Play non aspetta
+    (un SoundFont GM da 150 MB richiede alcuni secondi). Niente se manca la
+    libreria FluidSynth, il SoundFont o la RAM libera."""
+    if _shared_synth is None:
+        return None
+    from .memory import available_ram
+    free = available_ram()
+    if free is not None and free < PRELOAD_MIN_FREE_RAM:
+        return None
+    soundfont = _find_soundfont()
+    if not soundfont:
+        return None
+    thread = threading.Thread(target=_shared_synth.preload, args=(soundfont,), daemon=True,
+                              name="soundfont-preload")
+    thread.start()
+    return thread
+
+
 def _side_synth():
     """Il synth per le sintesi a parte; None se non si usa la libreria
     FluidSynth (anche quando _shared_synth e' stato disattivato)."""
@@ -663,6 +706,10 @@ def render_midi_file_to_samples(midi_path: str, channel_overrides=None, reverb_r
                                            channel_overrides=channel_overrides, reverb_room=reverb_room)
         if not rendered and fluidsynth_bin and soundfont and not stop_check():
             from .settings import get_playback_gain
+            # il comando ricarica il SoundFont ogni volta: lo si annota, per
+            # sapere su quali sistemi succede (vedi le segnalazioni)
+            log.info("Render con il comando fluidsynth (libreria %s): %s",
+                     "non disponibile" if synth is None else "fallita", os.path.basename(soundfont))
             gain = get_playback_gain()
             result = subprocess.run(
                 [fluidsynth_bin, "-ni", "-r", "48000", "-g", str(gain),
@@ -764,7 +811,8 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
                     pass
     requests = [prepare_stem(project, track, tempo_map) for track in fx]
     try:
-        stems = [(samples, 0.0) for samples in render_stems(requests, stop_check) if samples is not None]
+        stems = [(samples, 0.0) for samples in render_stems(requests, stop_check, frames=len(base) or None)
+                 if samples is not None]
     finally:
         for request in requests:
             request.cleanup()
@@ -792,19 +840,38 @@ def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
     "acid", vedi core.audio_tracks.write_acid_tempo), con la metrica del brano."""
     import numpy as np
     from .audio_tracks import write_wav
+    import time
+    started = time.monotonic()
     mixed, rate = render_project_mix(project, stop_check, tracks=tracks, dry=dry)
+    # fette senza copia e dissolvenza sul posto: il mix e' gia' nostro
     if skip_seconds > 0:
         mixed = mixed[int(round(skip_seconds * rate)):]
     if length_seconds is not None:
         frames = max(0, int(round(length_seconds * rate)))
         if len(mixed) > frames:
-            mixed = np.array(mixed[:frames], dtype=np.float32)
+            mixed = mixed[:frames]
             fade = min(frames, int(END_FADE_SECONDS * rate))
             if fade:
+                if not mixed.flags.writeable:
+                    mixed = np.array(mixed, dtype=np.float32)
                 mixed[frames - fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)[:, None]
         elif len(mixed) < frames:
-            mixed = np.concatenate([mixed, np.zeros((frames - len(mixed), mixed.shape[1]), np.float32)])
+            padded = np.zeros((frames, mixed.shape[1]), np.float32)
+            padded[:len(mixed)] = mixed
+            mixed = padded
     write_wav(out_path, mixed, rate, bits=24, tempo=tempo, meter=_wav_meter(project))
+    _log_export(out_path, len(mixed) / float(rate), time.monotonic() - started)
+
+
+def _log_export(path: str, seconds: float, elapsed: float) -> None:
+    """Una riga nel log per ogni export: durata, thread dei render, picco
+    di memoria (utile nelle segnalazioni)."""
+    from . import effect_render
+    from .memory import peak_rss_mb
+    peak = peak_rss_mb()
+    log.info("Export %s: %.1f s di audio in %.1f s, %d thread per le tracce con effetti, picco di memoria %s MB",
+             os.path.basename(path), seconds, elapsed, effect_render.last_render_workers,
+             f"{peak:.0f}" if peak is not None else "?")
 
 
 def _wav_meter(project: Project) -> tuple:

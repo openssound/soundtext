@@ -147,6 +147,7 @@ def test_errors_of_the_plugin_come_back_as_text():
 
 # ------------------------------------------------------------------ LV2
 
+@pytest.mark.slow
 @needs_delay
 def test_scan_lists_lv2_effects_and_instruments():
     found = {i.ref: i for i in plugins.scan_plugins(refresh=True)}

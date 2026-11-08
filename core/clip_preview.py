@@ -18,6 +18,10 @@ _CACHE_MAX = 4096
 _cache: "OrderedDict[tuple, Optional[ClipPreview]]" = OrderedDict()
 
 
+def clear_caches() -> None:
+    _cache.clear()
+
+
 @dataclass(frozen=True)
 class ClipPreview:
     notes: Tuple[Tuple[float, float, int], ...]   # (inizio, durata, corsia)

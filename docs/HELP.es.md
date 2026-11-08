@@ -4031,8 +4031,12 @@ ordenadores lentos: Play ya no recalcula las pistas pesadas.
 plugin y el time-stretch se guardan en `<Proyecto>_audio/cache/` y se
 reutilizan al volver a abrir el proyecto, en lugar de rehacerlos. Un
 cambio (notas, clips, efectos, archivos) los recalcula; la carpeta no
-supera 2 GB (se quitan los renders usados hace más tiempo) y se puede
-borrar cuando se quiera.
+supera 2 GB y las cachés de todos los proyectos juntas no superan 5 GB (o
+el 10% del espacio libre, si es menos): más allá, se quitan los renders
+usados hace más tiempo. **Proyecto → Caché en disco...** muestra cuánto
+ocupan y tiene los botones **Vaciar la caché de este proyecto** y **Vaciar
+todas las cachés**: la canción no pierde nada, se recalcula en la próxima
+escucha.
 
 ### Exportar
 

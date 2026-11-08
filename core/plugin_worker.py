@@ -331,6 +331,16 @@ class _Worker:
                 raise RuntimeError(tr("formato di plugin sconosciuto: {fmt}", fmt=fmt))
         return self.instances[key]
 
+    def _drop_instance(self, ref: str, rate: int):
+        key = (ref, int(rate))
+        inst = self.instances.pop(key, None)
+        self.applied_state.pop(key, None)
+        if inst is not None and hasattr(inst, "close"):
+            try:
+                inst.close()
+            except Exception:
+                pass
+
     def configure(self, ref: str, rate: int, params: dict, state: str):
         inst = self.instance(ref, rate)
         key = (ref, int(rate))
@@ -441,6 +451,11 @@ class _Worker:
     def process(self, ref, rate, params, state, audio):
         if parse_ref(ref)[0] == "sfz":
             raise RuntimeError(tr("uno strumento SFZ non elabora audio"))
+        if parse_ref(ref)[0] == "lv2":
+            # un'istanza nuova (meno di 1 ms): deactivate/activate non svuota
+            # sempre lo stato del plugin (la modulazione di ACE Reverb
+            # continuava), e lo stesso audio usciva ogni volta un po' diverso
+            self._drop_instance(ref, rate)
         inst = self.configure(ref, rate, params, state)
         audio = np.ascontiguousarray(audio, dtype=np.float32)
         if parse_ref(ref)[0] == "vst3":
@@ -456,6 +471,13 @@ class _Worker:
         return inst.process(audio)
 
     def render(self, ref, rate, params, state, events, seconds):
+        fmt, target, _name = parse_ref(ref)
+        if fmt == "sfz":
+            # una copia nuova della libreria: le scelte casuali (lorand/hirand)
+            # ripartono dallo stesso seme, lo stesso brano suona sempre uguale
+            from core.sfz_engine import render_reproducible
+            return render_reproducible(target, int(rate), [(float(t), bytes(d)) for t, d in events],
+                                       float(seconds))
         inst = self.configure(ref, rate, params, state)
         if parse_ref(ref)[0] == "vst3":
             y = inst.process([(bytes(data), float(t)) for t, data in events], duration=float(seconds),

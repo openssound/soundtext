@@ -1,0 +1,4 @@
+# Dipendenze per lo sviluppo e i test (non servono a chi usa SoundText):
+#   pip install -r requirements.txt -r requirements-dev.txt
+pytest
+pytest-xdist        # pytest -n auto --dist loadfile: i test in parallelo

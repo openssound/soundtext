@@ -109,6 +109,7 @@ class PlaybackMixin:
             widget.repaint()
 
     def play(self, _resume_offset_beats: float = 0.0):
+        self.flush_validation()                  # gli errori della traccia scritta adesso
         self.arrangement_view._stop_preview()   # un solo ascolto alla volta
         self.effects_panel.stop_loop()
         previous_time = self.playback_progress.format()

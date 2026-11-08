@@ -4121,8 +4121,12 @@ ne recalcule plus les pistes lourdes.
 plugin et le time-stretch sont enregistrés dans `<Projet>_audio/cache/` et
 réutilisés à la réouverture du projet, au lieu d'être refaits. Une
 modification (notes, clips, effets, fichiers) les fait recalculer ; le
-dossier ne dépasse pas 2 Go (les rendus utilisés le moins récemment sont
-supprimés) et peut être effacé à tout moment.
+dossier ne dépasse pas 2 Go et les caches de tous les projets ensemble ne
+dépassent pas 5 Go (ou 10 % de l'espace libre, si c'est moins) : au-delà,
+les rendus utilisés le moins récemment sont supprimés. **Projet → Cache sur
+disque...** montre l'espace occupé et propose les boutons **Vider le cache
+de ce projet** et **Vider tous les caches** : le morceau ne perd rien, il
+est recalculé à la prochaine écoute.
 
 ### Exporter
 

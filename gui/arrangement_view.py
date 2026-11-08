@@ -463,7 +463,7 @@ class AudioBoxItem(BoxItem):
         self._hover = True
         self.update()
         if type(self) is BoxItem and "%" in self.clip.text:
-            QTimer.singleShot(500, self._show_reference_preview)
+            QTimer.singleShot(500, self, self._show_reference_preview)
         super().hoverEnterEvent(event)
 
     def _show_reference_preview(self):
@@ -1467,7 +1467,7 @@ class ArrangementView(AudioClipActions, QWidget):
         # davvero conclusa - stessa classe di crash gia' incontrata e
         # corretta altrove nel progetto per il mixer (vedi refresh_mixer).
         # Rimandarlo al giro successivo del loop eventi lo rende sicuro.
-        QTimer.singleShot(0, lambda: self._finish_clip_change(track_name))
+        QTimer.singleShot(0, self, lambda: self._finish_clip_change(track_name))
 
     def _finish_clip_change(self, track_name: str):
         self.refresh()
@@ -1589,7 +1589,7 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         track.text = dlg.result_text()
         self.host._mark_dirty()
-        QTimer.singleShot(0, lambda: self._finish_clip_change(track_name))
+        QTimer.singleShot(0, self, lambda: self._finish_clip_change(track_name))
 
     def box_from_free_text(self, track_name: str):
         """Doppio clic su una traccia con testo ma ancora senza box: il box

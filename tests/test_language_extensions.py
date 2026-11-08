@@ -1218,6 +1218,7 @@ def test_bar_indexed_tempo_exports_correct_first_tempo():
 
 # ---------------------------------------------------------------------- round-trip su tutti i progetti reali
 
+@pytest.mark.slow
 def test_all_real_projects_still_valid_after_extensions():
     import glob
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
