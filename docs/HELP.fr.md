@@ -3128,6 +3128,27 @@ disponibles, divisés par famille dans le menu **+ Effet** :
          **Choisir un profil…**.
       Tone3000 propose aussi les **IR** des baffles (type *IR*), à utiliser
       avec **Baffle → Fichier IR…**.
+    - **Le plugin de Tone3000**, gratuit, amène tout le catalogue dans
+      SoundText : on choisit le son dans la fenêtre du plugin, sans
+      télécharger de fichiers à la main. C'est un plugin VST3 et LV2 (aussi
+      CLAP, AU et AAX, que SoundText n'utilise pas) pour Linux, Windows et
+      macOS :
+      1. téléchargez-le sur tone3000.com/plugin/download et installez-le ;
+         sous Linux, le script installe le VST3, le LV2 et l'application
+         autonome ;
+      2. dans la chaîne de la piste, **+ Effet → Plugin → Plugin
+         (VST3/LV2)** et choisissez le plugin de Tone3000 (tapez
+         « tone3000 » dans la recherche) ; s'il n'apparaît pas, indiquez son
+         dossier avec **Sons → Dossiers des plugins VST3...** ;
+      3. sur la carte, **Paramètres…** puis **Interface du plugin…** ouvrent
+         sa fenêtre : connectez-vous avec le compte gratuit de Tone3000,
+         cherchez un son et chargez-le.
+      À savoir : pour charger un son, il faut le compte et le réseau, car le
+      plugin télécharge le modèle à ce moment-là ; il ne lit que les profils
+      **A2** et les IR, pas les anciens A1 (que le **Profil NAM** de
+      SoundText lit). Comme pour tout plugin, c'est le plugin qui calcule le
+      son : avant une longue séance, enregistrez, rouvrez le projet et
+      vérifiez qu'il retrouve le son choisi.
     - **Toute la collection sur GitHub** (environ 260 profils, 108 Mo) : sur
       la page github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
       puis extrayez les `.nam` qui vous intéressent dans `profili_nam`.

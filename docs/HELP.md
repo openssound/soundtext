@@ -3002,6 +3002,25 @@ destra. Gli effetti disponibili, divisi per famiglia nel menu **+ Effetto**:
          profilo…**.
       Su Tone3000 ci sono anche gli **IR** delle casse (tipo *IR*), da usare
       con **Cassa → File IR…**.
+    - **Il plugin di Tone3000**, gratuito, porta tutto il catalogo dentro
+      SoundText: si sceglie il suono nella finestra del plugin, senza
+      scaricare file a mano. È un plugin VST3 e LV2 (anche CLAP, AU e AAX,
+      che SoundText non usa) per Linux, Windows e macOS:
+      1. scaricalo da tone3000.com/plugin/download e installalo; su Linux
+         lo script mette il VST3, l'LV2 e il programma a sé;
+      2. nella catena della traccia, **+ Effetto → Plugin → Plugin
+         (VST3/LV2)** e scegli il plugin di Tone3000 (scrivi «tone3000»
+         nella ricerca); se non compare, indica la sua cartella con
+         **Suoni → Cartelle dei plugin VST3...**;
+      3. sulla card, **Parametri…** e poi **Interfaccia del plugin…** aprono
+         la sua finestra: accedi con l'account gratuito di Tone3000, cerca
+         un suono e caricalo.
+      Da sapere: per caricare un suono servono l'account e la rete, perché
+      il plugin scarica il modello in quel momento; legge solo i profili
+      **A2** e gli IR, non i vecchi A1 (che invece il **Profilo NAM** di
+      SoundText legge). Come per ogni plugin, il suono lo calcola il
+      plugin: prima di un lavoro lungo salva, riapri il progetto e
+      controlla che ritrovi il suono scelto.
     - **Tutta la raccolta su GitHub** (circa 260 profili, 108 MB): nella
       pagina github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
       poi estrai i `.nam` che ti interessano in `profili_nam`.

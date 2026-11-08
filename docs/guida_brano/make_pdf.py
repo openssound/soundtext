@@ -999,6 +999,19 @@ def build_story():
                "Thousands more free profiles are on <b>Tone3000</b> (tone3000.com): filter by NAM and type "
                "(<i>amp</i>, <i>full rig</i>, <i>pedal</i>) and extract the .nam files into the profiles folder.")],
             T("Da sapere", "Good to know")),
+        tip([T("Il plugin gratuito di Tone3000 (VST3 e LV2, da tone3000.com/plugin/download) porta tutto il "
+               "catalogo dentro SoundText: aggiungilo alla catena con "
+               f"{b('+ Effetto')} → {b('Plugin')} → {b('Plugin (VST3/LV2)')}, poi sulla card {b('Parametri…')} e "
+               f"{b('Interfaccia del plugin…')}: accedi con l'account gratuito, cerca un suono e caricalo.",
+               "The free Tone3000 plugin (VST3 and LV2, from tone3000.com/plugin/download) brings the whole "
+               f"catalogue into SoundText: add it to the chain with {b('+ Effetto')} → {b('Plugin')} → "
+               f"{b('Plugin (VST3/LV2)')}, then on the card {b('Parametri…')} and {b('Interfaccia del plugin…')}: "
+               "sign in with the free account, search for a sound and load it."),
+             T("Per caricare un suono servono l'account e la rete; il plugin legge solo i profili A2 e gli IR, non "
+               "i vecchi A1, che il Profilo NAM di SoundText invece legge.",
+               "Loading a sound needs the account and a network connection; the plugin reads only A2 profiles "
+               "and IRs, not the older A1 ones, which SoundText's NAM profile does read.")],
+            T("Il plugin di Tone3000", "The Tone3000 plugin")),
     ]
 
     # -------------------------------------------------------------- 11
