@@ -46,6 +46,13 @@ if _ENV not in os.environ or os.environ.get("PYTEST_XDIST_WORKER"):
     os.environ[_ENV] = _dir
     atexit.register(_remove_config_dir, _dir)
 
+# Anche la configurazione di Qt (~/.config/QtProject.conf, dove il dialogo
+# file salva le cartelle del pannello a sinistra) va in una cartella dei test:
+# un dialogo aperto da un test vi salvava il suo stato, e all'utente restava
+# il pannello senza cartelle.
+os.environ["XDG_CONFIG_HOME"] = os.path.join(os.environ[_ENV], "xdg-config")
+os.makedirs(os.environ["XDG_CONFIG_HOME"], exist_ok=True)
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import settings as _settings  # noqa: E402
 

@@ -58,6 +58,20 @@ def test_all_missing_replaced_by_real_folders(qt_settings, tmp_path):
     assert all(os.path.isdir(QUrl(u).toLocalFile()) for u in shortcuts)
 
 
+def test_empty_saved_list_gets_real_folders(qt_settings, tmp_path):
+    settings = qt_settings()
+    settings.setValue("FileDialog/shortcuts", [])           # scritto come @Invalid()
+    settings.sync()
+    repair_sidebar_shortcuts([str(tmp_path)])
+    shortcuts = _shortcuts(qt_settings())
+    assert shortcuts and _url(tmp_path) in shortcuts
+
+
+def test_tests_never_touch_the_user_qt_config():
+    real = os.path.join(os.path.expanduser("~"), ".config")
+    assert not QSettings(QSettings.Scope.UserScope, "QtProject").fileName().startswith(real)
+
+
 def test_untouched_when_never_saved(qt_settings):
     repair_sidebar_shortcuts(["/tmp"])
     assert qt_settings().value("FileDialog/shortcuts") is None
