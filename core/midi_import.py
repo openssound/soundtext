@@ -25,19 +25,26 @@ from .key_detect import detect_key
 from .import_lyrics import add_lyrics, beats_from_ticks
 from .voice_merge import merged_text
 from .midi_to_tokens import _dynamics_scale
+from .midi_bend_curve import TrackCurve, bend_curve_voice, strip_slides, with_curve
 from .i18n import tr
 
 
 def import_midi_file(path: str, project_name: str = "Import MIDI",
                       recognize_chords: bool = False,
                       min_bend_semitones: float = None,
-                      channel_names=None) -> Project:
+                      channel_names=None, bend_curve: bool = False,
+                      fine_rhythm: bool = False) -> Project:
     """channel_names (canale -> nome, porta * 16 + canale oltre i 16
     canali): i nomi delle tracce al posto di quello dello strumento
-    (l'import MusicXML e MTXT vi passano i nomi delle parti)."""
+    (l'import MusicXML e MTXT vi passano i nomi delle parti). Con bend_curve
+    il pitch bend dei canali che lo usano diventa la sua curva esatta
+    (automazione bend=, vedi core.midi_bend_curve) invece di slide; con
+    fine_rhythm il ritmo resta piu' vicino all'esecuzione (trentaduesimi
+    dove spiegano meglio gli attacchi, vedi midi_to_tokens._choose_beat_grid)."""
     tempo_bpm, tpb, channels = midi_convert.analyze_midi(path, min_bend_semitones=min_bend_semitones)
     key = midi_convert.detect_key_signature(path) or ""
     project = Project(name=project_name, tempo_bpm=tempo_bpm, key=key)
+    project.imported_bend_curves = {}
 
     tempo_changes, time_sigs = midi_convert.detect_tempo_and_meter(path)
     time_sig, metrica_changes = midi_convert.meter_to_project_fields(time_sigs, tpb)
@@ -64,6 +71,8 @@ def import_midi_file(path: str, project_name: str = "Import MIDI",
     used_names = set()
     for part_index, (channel_num, ch) in enumerate(numbered):
         instrument_name = resolve_or_create_instrument_by_program(ch.program, ch.is_percussion)
+        curve = _bend_curve(ch, tpb) if bend_curve else None
+        ch.fine_rhythm = fine_rhythm
         # Le note sovrapposte (nota tenuta sotto una melodia, accordo che
         # continua sotto una voce) vanno in voci separate, unite poi nella
         # stessa traccia con i blocchi { ; } dove suonano insieme (vedi
@@ -71,7 +80,8 @@ def import_midi_file(path: str, project_name: str = "Import MIDI",
         voices = midi_convert.channel_to_voices(
             ch, tpb, recognize_chords=recognize_chords,
             tempo_changes=tempo_changes if part_index == tempo_carrier else None)
-        text = _channel_text(ch, voices, tpb, project.time_sig, project.metrica_changes)
+        plain = _channel_text(ch, voices, tpb, project.time_sig, project.metrica_changes)
+        text = with_curve(plain, curve)
 
         # Volume (CC7) e pan (CC10) di base del canale: senza questo, ogni
         # traccia importata partiva sempre da volume/pan predefiniti
@@ -97,6 +107,9 @@ def import_midi_file(path: str, project_name: str = "Import MIDI",
             candidate = f"{name} {i}"
         used_names.add(candidate)
         track = project.add_track(candidate, instrument_name, text)
+        if curve:
+            # per i box (vedi midi_bend_curve.split_with_curves)
+            project.imported_bend_curves[track.name] = TrackCurve(plain, ch.pitchwheel, ch.bend_range, tpb)
         track.volume = volume
         track.pan = pan
         track.reverb, track.chorus = reverb, chorus
@@ -152,7 +165,8 @@ def track_volume_from_cc(cc_volume: int) -> int:
 
 def import_midi_channel_into_track(path: str, channel: int = None,
                                     recognize_chords: bool = False,
-                                    min_bend_semitones: float = None):
+                                    min_bend_semitones: float = None, bend_curve: bool = False,
+                                    fine_rhythm: bool = False):
     """Import a singola traccia (funzionalita' 3): ritorna (tokens_text,
     instrument_name_suggerito) per il canale indicato, o per il canale
     primario se channel e' None."""
@@ -166,10 +180,24 @@ def import_midi_channel_into_track(path: str, channel: int = None,
         if ch is None:
             raise ValueError(tr("Il file MIDI non contiene note."))
     instrument_name = resolve_or_create_instrument_by_program(ch.program, ch.is_percussion)
+    curve = _bend_curve(ch, tpb) if bend_curve else None
+    ch.fine_rhythm = fine_rhythm
     voices = midi_convert.channel_to_voices(ch, tpb, recognize_chords=recognize_chords)
     _tempo_changes, time_sigs = midi_convert.detect_tempo_and_meter(path)
     time_sig, metrica_changes = midi_convert.meter_to_project_fields(time_sigs, tpb)
-    return _channel_text(ch, voices, tpb, time_sig or "4/4", metrica_changes or []), instrument_name
+    return with_curve(_channel_text(ch, voices, tpb, time_sig or "4/4", metrica_changes or []), curve), \
+        instrument_name
+
+
+def _bend_curve(ch, tpb):
+    """La voce della curva esatta del pitch bend del canale (None se non
+    serve); le note restano allora senza slide."""
+    if ch.is_percussion:
+        return None
+    curve = bend_curve_voice(ch.pitchwheel, ch.bend_range, tpb, ch.notes)
+    if curve:
+        strip_slides(ch)
+    return curve
 
 
 def _channel_text(ch, voices, tpb, time_sig, metrica_changes) -> str:

@@ -2557,5 +2557,9 @@
  "Limite complessivo:": "Overall limit:",
  "Svuota la cache di questo progetto": "Clear this project's cache",
  "Svuota tutte le cache": "Clear all caches",
- "nessuna (progetto non salvato)": "none (project not saved)"
+ "nessuna (progetto non salvato)": "none (project not saved)",
+ "Bottleneck: curva esatta del pitch bend": "Bottleneck: exact pitch bend curve",
+ "Le note si importano senza slide e il pitch bend diventa la sua curva vera, con un'automazione bend= in una voce parallela: segue anche i movimenti fra due semitoni e quelli dentro la stessa nota (bottleneck, slide guitar). Il testo e' piu' lungo.": "The notes are imported without slides and the pitch bend becomes its real curve, with a bend= automation in a parallel voice: it also follows movements between two semitones and within the same note (bottleneck, slide guitar). The text is longer.",
+ "Ritmo fedele all'esecuzione (trentaduesimi)": "Rhythm faithful to the performance (thirty-second notes)",
+ "Usa i trentaduesimi in ogni battito in cui spiegano gli attacchi meglio dei sedicesimi: un brano suonato dal vivo resta piu' vicino all'esecuzione, ma il testo cambia griglia piu' spesso.": "Uses thirty-second notes in every beat where they explain the attacks better than sixteenths: a piece played live stays closer to the performance, but the text changes grid more often."
 }

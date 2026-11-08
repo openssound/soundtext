@@ -2557,5 +2557,9 @@
  "Limite complessivo:": "Límite total:",
  "Svuota la cache di questo progetto": "Vaciar la caché de este proyecto",
  "Svuota tutte le cache": "Vaciar todas las cachés",
- "nessuna (progetto non salvato)": "ninguna (proyecto no guardado)"
+ "nessuna (progetto non salvato)": "ninguna (proyecto no guardado)",
+ "Bottleneck: curva esatta del pitch bend": "Bottleneck: curva exacta del pitch bend",
+ "Le note si importano senza slide e il pitch bend diventa la sua curva vera, con un'automazione bend= in una voce parallela: segue anche i movimenti fra due semitoni e quelli dentro la stessa nota (bottleneck, slide guitar). Il testo e' piu' lungo.": "Las notas se importan sin slides y el pitch bend se convierte en su curva real, con una automatización bend= en una voz paralela: sigue también los movimientos entre dos semitonos y dentro de la misma nota (bottleneck, slide guitar). El texto es más largo.",
+ "Ritmo fedele all'esecuzione (trentaduesimi)": "Ritmo fiel a la interpretación (fusas)",
+ "Usa i trentaduesimi in ogni battito in cui spiegano gli attacchi meglio dei sedicesimi: un brano suonato dal vivo resta piu' vicino all'esecuzione, ma il testo cambia griglia piu' spesso.": "Usa fusas en cada pulso en que explican los ataques mejor que las semicorcheas: una pieza tocada en directo queda más cerca de la interpretación, pero el texto cambia de rejilla más a menudo."
 }

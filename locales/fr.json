@@ -2557,5 +2557,9 @@
  "Limite complessivo:": "Limite globale :",
  "Svuota la cache di questo progetto": "Vider le cache de ce projet",
  "Svuota tutte le cache": "Vider tous les caches",
- "nessuna (progetto non salvato)": "aucun (projet non enregistré)"
+ "nessuna (progetto non salvato)": "aucun (projet non enregistré)",
+ "Bottleneck: curva esatta del pitch bend": "Bottleneck : courbe exacte du pitch bend",
+ "Le note si importano senza slide e il pitch bend diventa la sua curva vera, con un'automazione bend= in una voce parallela: segue anche i movimenti fra due semitoni e quelli dentro la stessa nota (bottleneck, slide guitar). Il testo e' piu' lungo.": "Les notes sont importées sans slides et le pitch bend devient sa courbe réelle, avec une automation bend= dans une voix parallèle : elle suit aussi les mouvements entre deux demi-tons et à l'intérieur d'une même note (bottleneck, slide guitar). Le texte est plus long.",
+ "Ritmo fedele all'esecuzione (trentaduesimi)": "Rythme fidèle à l'interprétation (triples croches)",
+ "Usa i trentaduesimi in ogni battito in cui spiegano gli attacchi meglio dei sedicesimi: un brano suonato dal vivo resta piu' vicino all'esecuzione, ma il testo cambia griglia piu' spesso.": "Utilise les triples croches dans chaque temps où elles expliquent les attaques mieux que les doubles croches : un morceau joué en direct reste plus proche de l'interprétation, mais le texte change de grille plus souvent."
 }

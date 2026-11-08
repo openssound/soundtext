@@ -542,20 +542,22 @@ def test_midi_import_bend_ignores_stale_state_from_previous_note():
 
         _, tpb, channels = midi_convert.analyze_midi(path)
         ch = channels[0]
-        # Ogni nota rilascia a 0 esattamente alla propria fine (vedi sopra):
-        # ognuna ottiene correttamente la propria catena bend-and-release a
-        # due tappe (picco, poi rilascio), senza che il picco della prima
-        # contamini il riferimento della seconda.
+        # Ogni nota torna a 0 esattamente sul proprio note_off: quel reset non
+        # si sente (la nota e' gia' spenta), quindi niente rilascio, e ognuna
+        # resta piegata di un tono sopra la PROPRIA nota, senza che il picco
+        # della prima contamini il riferimento della seconda.
         peak1, waypoints1 = ch.bends[(0, 67)]
         peak2, waypoints2 = ch.bends[(180, 62)]
-        assert waypoints1 == [69, 67]
-        assert waypoints2 == [64, 62]
+        assert waypoints1 == [69]
+        assert waypoints2 == [64]
         assert peak1 == pytest.approx(2 / 3)
         assert peak2 == pytest.approx(0.5)
         tokens = midi_convert.channel_to_tokens(ch, tpb)
         text = " ".join(tokens)
-        assert "1g*4>1a*4>0g*4" in text
-        assert "1d*4>0e*4>0d*4" in text
+        # la prima nota dura 180 tick (0,375 beat): tre trentaduesimi
+        assert "2g*4>1a*4" in text
+        assert "1d*4>1e*4" in text
+        assert "16: 32:" not in text                 # un solo cambio di griglia
     finally:
         shutil.rmtree(tmpdir)
 
@@ -589,11 +591,13 @@ def test_midi_import_bend_release_ignores_next_note_at_same_tick():
 
         _, tpb, channels = midi_convert.analyze_midi(path)
         ch = channels[0]
-        # Nota 1: bend a d*4 (62+2) e rilascio a d*4 stesso (62+0) - NON deve
-        # risultare "nessun rilascio" per colpa del pre-bend della nota 2.
+        # Nota 1: bend a mi (62+2) tenuto; il reset a 0 sul note_off non si
+        # sente e il pre-bend della nota 2 non deve diventare un rilascio
+        # (ne' un'altra tappa) della nota 1.
         peak_fraction, waypoints = ch.bends[(0, 62)]
-        assert waypoints == [64, 62]
+        assert waypoints == [64]
         assert peak_fraction == pytest.approx(0.4)
+        assert (0, 62) not in ch.bend_release
     finally:
         shutil.rmtree(tmpdir)
 

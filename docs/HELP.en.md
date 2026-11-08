@@ -4207,7 +4207,30 @@ channels with a narrow sensitivity (e.g. 2 semitones) nothing changes. The
 lower it is, the more slides are found but the greater the risk of
 mistaking a pitch wheel expression for a slide (seen on jazz pieces): keep
 it high for non-slide pieces. The setting applies from the next import, and
-without the tick the import stays exactly as before. The **release
+without the tick the import stays exactly as before.
+
+**Bottleneck: exact pitch bend curve** (in the same dialog): with a
+bottleneck the note glides continuously, stops between two semitones and
+makes several movements within the same note, which slides from one
+semitone to another cannot follow. With the tick the notes are imported
+without slides and the pitch bend becomes its real curve, a `bend=`
+automation (section 7.4) in a parallel voice of rests, in sixty-fourth
+notes, with decimals and ramps:
+`{ 4a*3 g*3 ; 64: bend=0 12r bend=-0.5 >> 6r bend=-1 }`. The boxes cut at
+import each get their own piece of the curve. The sound is almost identical
+to the original; the text is longer and less readable than a slide. It
+applies to the channels whose pitch wheel moves by at least a quarter of a
+semitone.
+
+**Rhythm faithful to the performance (thirty-second notes)** (in the same
+dialog): normally the import writes the notes in sixteenths and switches to
+thirty-seconds only in a beat that really needs them (repeated notes, or a
+grace note right on the thirty-second). With the tick it uses them in every
+beat where they explain the attacks better than sixteenths: a piece played
+live (blues, slide) stays closer to the performance, but the text changes
+grid more often.
+
+The **release
 timing** is the file's real one: a bend that rises immediately, stays on the
 peak for almost the whole note and releases only at the end becomes a
 4-stage chain with the hold as a flat ramp (`1f*5>11g*5>1g*5>3f*5`: rises,

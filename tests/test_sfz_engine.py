@@ -207,7 +207,10 @@ def test_instrument_in_the_home_folder_is_saved_portable(tmp_path, monkeypatch, 
 def _random_choice_sfz(tmp_path):
     """Un .sfz con due campioni diversi scelti a caso (lorand/hirand)."""
     from core.audio_tracks import write_wav
-    t = np.arange(24000) / 48000.0
+    # piu' corti della parte che sfizz precarica (8192 frame): oltre, li legge
+    # in sottofondo e su una macchina carica (test in parallelo) il risultato
+    # dipende dai tempi del disco, non dalle scelte casuali che il test controlla
+    t = np.arange(4000) / 48000.0
     for name, freq in (("a.wav", 220.0), ("b.wav", 330.0)):
         write_wav(str(tmp_path / name), (0.5 * np.sin(2 * np.pi * freq * t)).reshape(-1, 1).astype(np.float32), 48000)
     path = tmp_path / "caso.sfz"
@@ -229,7 +232,7 @@ def test_render_with_random_regions_is_repeatable(tmp_path):
         events += [(k * 0.25, bytes([0x90, 60, 100])), (k * 0.25 + 0.2, bytes([0x80, 60, 0]))]
     first = render_reproducible(path, 48000, events, 4.5)
     assert np.abs(first).max() > 0.01
-    notes = [first[int(k * 0.25 * 48000):int(k * 0.25 * 48000) + 4800, 0] for k in range(16)]
+    notes = [first[int(k * 0.25 * 48000):int(k * 0.25 * 48000) + 3000, 0] for k in range(16)]
     assert any(not np.allclose(notes[0], n, atol=1e-4) for n in notes[1:])   # casuale dentro il render
     for _ in range(2):
         assert np.array_equal(render_reproducible(path, 48000, events, 4.5), first)

@@ -431,6 +431,8 @@ class ProjectMixin:
             path, project_name=project_name,
             recognize_chords=app_settings.get_midi_import_recognize_chords(),
             min_bend_semitones=app_settings.get_midi_import_min_bend_semitones(),
+            bend_curve=app_settings.get_midi_import_bend_curve(),
+            fine_rhythm=app_settings.get_midi_import_fine_rhythm(),
         )
         newly_created = sorted(set(list_instrument_names()) - before)
         self._split_tracks_into_boxes(project)
@@ -442,8 +444,9 @@ class ProjectMixin:
         o piu' box (vedi core.box_conversion.split_track_into_boxes), cosi'
         il contenuto e' subito visibile e strutturato anche nella vista
         Struttura brano invece di apparire come un canvas vuoto."""
-        for t in project.tracks:
-            split_track_into_boxes(project, t)
+        # le tracce importate con la curva del pitch bend la ritrovano nei box
+        from core.midi_bend_curve import split_with_curves
+        split_with_curves(project, split_track_into_boxes)
 
     def convert_to_boxes_action(self, *_):
         """Converte in box le tracce a testo libero del progetto aperto, solo

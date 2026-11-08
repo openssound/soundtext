@@ -1488,7 +1488,7 @@ def _channel_from_notes(notes_beats, tpb=480, program=0):
 def test_midi_import_triplets_use_8t_grid():
     tokens = midi_convert.channel_to_tokens(
         _channel_from_notes([(0, 1 / 3, 60), (1 / 3, 1 / 3, 62), (2 / 3, 1 / 3, 64), (1, 1, 65)]), 480)
-    assert tokens[:2] == ["16:", "8T:"] or tokens[0] == "16:" and "8T:" in tokens
+    assert tokens[0] == "8T:"            # parte in terzine: niente "16: 8T:"
     assert "8T:" in tokens
     # parsando i token gli attacchi cadono esattamente sui terzi di beat
     events = [e for e in parse_track_text(" ".join(tokens), {}, default_octave=4) if e.kind == "note"]
@@ -1683,8 +1683,12 @@ def test_beat_grid_thirty_seconds_for_fast_repeats():
     # accordo ribattuto a trentaduesimi (Firth of Fifth, quarto 116): con i
     # sedicesimi meta' dei colpi si sovrapponevano e si perdevano
     assert midi_convert._choose_beat_grid([0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]) == 8
-    # una sola nota "sporca" vicino a un 32esimo non basta
-    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.625]) == 4
+    # una sola nota "sporca" fra un sedicesimo e un 32esimo non basta...
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.6]) == 4
+    # ...una sola precisa sul 32esimo si' (un abbellimento: Strange Brew)
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.625]) == 8
+    # con il ritmo fedele all'esecuzione basta che i 32esimi spieghino meglio
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.6], fine_rhythm=True) == 8
 
 
 def test_midi_import_keeps_every_thirty_second_repeat():

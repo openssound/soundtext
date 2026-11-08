@@ -102,6 +102,13 @@ class ChannelData:
         # dei bend a due direzioni (su E giu' rispetto alla nota scritta), che
         # il modello a un solo picco non puo' rappresentare.
         self.bend_paths = {}
+        # Eventi grezzi del pitch wheel [(tick, valore -8192..8191)] e
+        # ampiezza in semitoni: per la curva esatta (core.midi_bend_curve)
+        self.pitchwheel = []
+        self.bend_range = DEFAULT_PITCH_BEND_RANGE_SEMITONES
+        # Ritmo fedele all'esecuzione: trentaduesimi dove spiegano meglio
+        # (vedi midi_to_tokens._choose_beat_grid); lo imposta l'import
+        self.fine_rhythm = False
         # Pedale del sustain (CC64): [(tick, acceso), ...] in ordine di
         # arrivo (acceso = valore >= 64, soglia standard MIDI); vedi
         # channel_to_tokens per la conversione in token SON/SOFF.
@@ -239,6 +246,8 @@ def analyze_midi(path: str, ticks_per_beat_override: Optional[int] = None,
     _assign_lyrics(channels, lyric_events, text_events, track_channels, onsets, tpb)
 
     for ch_num, ch in channels.items():
+        ch.pitchwheel = pitchwheel_events.get(ch_num, [])
+        ch.bend_range = pitch_bend_range.get(ch_num, DEFAULT_PITCH_BEND_RANGE_SEMITONES)
         _collect_pitch_bend_targets(
             ch, pitchwheel_events.get(ch_num, []),
             pitch_bend_range.get(ch_num, DEFAULT_PITCH_BEND_RANGE_SEMITONES), tpb,
@@ -288,6 +297,8 @@ def split_by_program(channel: ChannelData) -> List[ChannelData]:
             before = [e for e in events if e[0] <= first]
             setattr(part, attr, before[-1:] + [e for e in events if e[0] > first])
         part.sustain = list(channel.sustain)
+        part.pitchwheel, part.bend_range = channel.pitchwheel, channel.bend_range
+        part.fine_rhythm = channel.fine_rhythm
         part.lyrics = [ly for ly in channel.lyrics if program_at(ly[0]) == program]
         parts.append(part)
     return parts

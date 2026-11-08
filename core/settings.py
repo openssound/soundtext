@@ -307,6 +307,31 @@ def set_midi_import_slide_threshold(value: float):
     _save()
 
 
+def get_midi_import_bend_curve() -> bool:
+    """Se vero, l'import MIDI scrive il pitch bend come curva esatta
+    (automazione bend=, vedi core.midi_bend_curve) invece che come slide:
+    per il bottleneck. Predefinito falso."""
+    return bool(_load().get("midi_import_bend_curve", False))
+
+
+def set_midi_import_bend_curve(value: bool):
+    _load()
+    _cache["midi_import_bend_curve"] = bool(value)
+    _save()
+
+
+def get_midi_import_fine_rhythm() -> bool:
+    """Se vero, l'import MIDI usa i trentaduesimi dove spiegano gli attacchi
+    meglio dei sedicesimi (brani suonati dal vivo). Predefinito falso."""
+    return bool(_load().get("midi_import_fine_rhythm", False))
+
+
+def set_midi_import_fine_rhythm(value: bool):
+    _load()
+    _cache["midi_import_fine_rhythm"] = bool(value)
+    _save()
+
+
 def get_midi_import_min_bend_semitones():
     """Valore da passare a min_bend_semitones dell'import MIDI: la soglia
     scelta se l'opzione e' attiva, altrimenti None (comportamento di sempre)."""

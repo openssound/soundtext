@@ -4317,7 +4317,28 @@ canali con sensibilita' stretta (es. 2 semitoni) non cambia nulla. Piu' e'
 bassa, piu' slide si trovano ma piu' cresce il rischio di scambiare per uno
 slide un'espressione del pitch wheel (visto su brani jazz): tienila alta per
 i brani non slide. L'impostazione vale dal prossimo import e senza la spunta
-l'import resta identico a prima. Il **timing del rilascio** e' quello reale del file: un bend che sale
+l'import resta identico a prima.
+
+**Bottleneck: curva esatta del pitch bend** (nello stesso dialogo): con il
+bottleneck la nota scivola di continuo, si ferma fra due semitoni e fa piu'
+movimenti dentro la stessa nota, che gli slide da un semitono all'altro non
+possono seguire. Con la spunta le note si importano senza slide e il pitch
+bend diventa la sua curva vera, un'automazione `bend=` (sezione 7.4) in una
+voce di pause parallela, in sessantaquattresimi, con decimali e rampe:
+`{ 4a*3 g*3 ; 64: bend=0 12r bend=-0.5 >> 6r bend=-1 }`. I box tagliati
+all'import hanno ciascuno il proprio pezzo di curva. Il suono e' quasi
+identico all'originale; il testo e' piu' lungo e meno leggibile di uno
+slide. Vale per i canali il cui pitch wheel si muove di almeno un quarto di
+semitono.
+
+**Ritmo fedele all'esecuzione (trentaduesimi)** (nello stesso dialogo): di
+norma l'import scrive le note a sedicesimi e passa ai trentaduesimi solo in un
+battito che li richiede davvero (ribattuti, o un abbellimento preciso sul
+trentaduesimo). Con la spunta li usa in ogni battito in cui spiegano gli
+attacchi meglio dei sedicesimi: un brano suonato dal vivo (blues, slide)
+resta piu' vicino all'esecuzione, ma il testo cambia griglia piu' spesso.
+
+Il **timing del rilascio** e' quello reale del file: un bend che sale
 subito, resta sul picco per quasi tutta la nota e rilascia solo alla fine
 diventa una catena a 4 tappe con la tenuta come rampa piatta
 (`1f*5>11g*5>1g*5>3f*5`: sale, tiene il sol, rilascia, resta sul fa); uno

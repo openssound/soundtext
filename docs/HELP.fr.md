@@ -4530,8 +4530,29 @@ seuil ne peut que descendre, donc sur les canaux à sensibilité étroite
 slides mais plus le risque augmente de prendre pour un slide une
 expression de la molette (constaté sur des morceaux de jazz) : gardez-le
 haut pour les morceaux sans slide. Le réglage vaut à partir du prochain
-import et sans la case cochée l'import reste identique à avant. Le
-**timing du relâchement** est celui, réel, du fichier : un bend qui monte
+import et sans la case cochée l'import reste identique à avant.
+
+**Bottleneck : courbe exacte du pitch bend** (dans la même fenêtre) : avec
+un bottleneck la note glisse sans arrêt, s'arrête entre deux demi-tons et
+fait plusieurs mouvements dans la même note, que les slides d'un demi-ton à
+l'autre ne peuvent pas suivre. Case cochée, les notes sont importées sans
+slides et le pitch bend devient sa courbe réelle, une automation `bend=`
+(section 7.4) dans une voix de silences parallèle, en quadruples croches,
+avec décimales et rampes :
+`{ 4a*3 g*3 ; 64: bend=0 12r bend=-0.5 >> 6r bend=-1 }`. Les boxes coupés à
+l'import ont chacun leur morceau de courbe. Le son est presque identique à
+l'original ; le texte est plus long et moins lisible qu'un slide. Cela vaut
+pour les canaux dont la molette bouge d'au moins un quart de demi-ton.
+
+**Rythme fidèle à l'interprétation (triples croches)** (dans la même
+fenêtre) : normalement l'import écrit les notes en doubles croches et ne
+passe aux triples croches que dans un temps qui en a vraiment besoin (notes
+répétées, ou une note d'ornement pile sur la triple croche). Case cochée, il
+les utilise dans chaque temps où elles expliquent les attaques mieux que les
+doubles croches : un morceau joué en direct (blues, slide) reste plus proche
+de l'interprétation, mais le texte change de grille plus souvent.
+
+Le **timing du relâchement** est celui, réel, du fichier : un bend qui monte
 tout de suite, reste au sommet presque toute la note et ne relâche qu'à la
 fin devient une chaîne à 4 étapes avec la tenue comme rampe plate
 (`1f*5>11g*5>1g*5>3f*5` : monte, tient le sol, relâche, reste sur le fa) ;

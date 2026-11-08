@@ -46,6 +46,24 @@ class MidiImportSlideDialog(QDialog):
         form.addRow(tr("Soglia:"), self.threshold_spin)
         layout.addLayout(form)
 
+        self.curve_check = QCheckBox(tr("Bottleneck: curva esatta del pitch bend"))
+        self.curve_check.setToolTip(
+            tr("Le note si importano senza slide e il pitch bend diventa la sua curva vera, con "
+               "un'automazione bend= in una voce parallela: segue anche i movimenti fra due semitoni "
+               "e quelli dentro la stessa nota (bottleneck, slide guitar). Il testo e' piu' lungo.")
+        )
+        self.curve_check.setChecked(app_settings.get_midi_import_bend_curve())
+        layout.addWidget(self.curve_check)
+
+        self.rhythm_check = QCheckBox(tr("Ritmo fedele all'esecuzione (trentaduesimi)"))
+        self.rhythm_check.setToolTip(
+            tr("Usa i trentaduesimi in ogni battito in cui spiegano gli attacchi meglio dei "
+               "sedicesimi: un brano suonato dal vivo resta piu' vicino all'esecuzione, ma il testo "
+               "cambia griglia piu' spesso.")
+        )
+        self.rhythm_check.setChecked(app_settings.get_midi_import_fine_rhythm())
+        layout.addWidget(self.rhythm_check)
+
         hint = QLabel(tr("Si applica al prossimo import MIDI. Senza la spunta l'import resta come sempre."))
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -61,4 +79,6 @@ class MidiImportSlideDialog(QDialog):
     def _accept(self):
         app_settings.set_midi_import_slide_sensitive(self.slide_check.isChecked())
         app_settings.set_midi_import_slide_threshold(self.threshold_spin.value())
+        app_settings.set_midi_import_bend_curve(self.curve_check.isChecked())
+        app_settings.set_midi_import_fine_rhythm(self.rhythm_check.isChecked())
         self.accept()

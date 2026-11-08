@@ -4427,8 +4427,30 @@ sensibilidad estrecha (p. ej. 2 semitonos) no cambia nada. Cuanto más bajo,
 más slides se encuentran, pero más crece el riesgo de confundir con un
 slide una expresión de la rueda (visto en piezas de jazz): mantenlo alto en
 las piezas sin slide. El ajuste vale a partir de la próxima importación y,
-sin la casilla marcada, la importación sigue siendo idéntica a antes. El
-**timing de la liberación** es el real del archivo: un bend que sube
+sin la casilla marcada, la importación sigue siendo idéntica a antes.
+
+**Bottleneck: curva exacta del pitch bend** (en el mismo diálogo): con el
+bottleneck la nota se desliza sin parar, se detiene entre dos semitonos y
+hace varios movimientos dentro de la misma nota, que los slides de un
+semitono a otro no pueden seguir. Con la casilla marcada las notas se
+importan sin slides y el pitch bend se convierte en su curva real, una
+automatización `bend=` (sección 7.4) en una voz de silencios paralela, en
+semifusas, con decimales y rampas:
+`{ 4a*3 g*3 ; 64: bend=0 12r bend=-0.5 >> 6r bend=-1 }`. Los boxes cortados
+en la importación tienen cada uno su propio trozo de curva. El sonido es
+casi idéntico al original; el texto es más largo y menos legible que un
+slide. Vale para los canales cuya rueda se mueve al menos un cuarto de
+semitono.
+
+**Ritmo fiel a la interpretación (fusas)** (en el mismo diálogo):
+normalmente la importación escribe las notas en semicorcheas y pasa a fusas
+solo en un pulso que las necesita de verdad (notas repetidas, o una nota de
+adorno justo en la fusa). Con la casilla marcada las usa en cada pulso en
+que explican los ataques mejor que las semicorcheas: una pieza tocada en
+directo (blues, slide) queda más cerca de la interpretación, pero el texto
+cambia de rejilla más a menudo.
+
+El **timing de la liberación** es el real del archivo: un bend que sube
 enseguida, se queda en el pico casi toda la nota y solo suelta al final se
 convierte en una cadena de 4 etapas con el mantenimiento como rampa plana
 (`1f*5>11g*5>1g*5>3f*5`: sube, mantiene el sol, suelta, se queda en el fa);

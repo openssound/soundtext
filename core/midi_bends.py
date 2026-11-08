@@ -177,16 +177,24 @@ def _own_wheel_end(events, start, end, note_starts, lead, min_peak):
         if tick >= window_start:
             break
         previous_value = value
+    seen_at_end = False
     for tick, value in events:
         if tick < window_start:
             continue
         if tick > min(end, next_start):
             break
         if abs(value) >= min_peak and abs(value) > abs(previous_value):
-            # Allo stesso tick della fine, gli eventi (il reset a 0 di QUESTA
-            # nota, poi il pre-bend della successiva) li ordina gia' la logica
-            # del chiamante, che ne tiene solo il primo.
-            return end if tick >= end else tick - 1
+            if tick < end:
+                return tick - 1
+            # Allo stesso tick della fine: se prima c'e' il reset a 0 di
+            # QUESTA nota, il chiamante tiene solo quello (il primo evento a
+            # quel tick). Se invece il primo evento e' gia' il pre-bend (la
+            # nota era tornata a 0 da sola), non e' suo: la nota finisce un
+            # tick prima, o lo leggerebbe come un rilascio verso il pre-bend
+            # (Strange Brew: la con scoop dal sol importato come la>si>la).
+            return end if seen_at_end else end - 1
+        if tick >= end:
+            seen_at_end = True
         previous_value = value
     return end
 
@@ -326,15 +334,17 @@ def _collect_pitch_bend_targets(channel: "ChannelData", pitchwheel_events: List[
             if tick > end:
                 break
             if tick > start:
+                if tick >= real_end:
+                    # Un evento allo stesso tick del note_off (in genere il
+                    # reset a 0 di QUESTA nota, o il pre-bend della successiva)
+                    # non si sente: la nota e' gia' spenta. Contarlo come
+                    # rilascio faceva scendere un bend tenuto fino alla fine
+                    # (Strange Brew: re>mi tenuto importato come re>mi>re, il
+                    # mi non si sentiva mai).
+                    continue
                 if tick == end:
-                    # Come per lo start, un evento esattamente alla fine (in
-                    # genere il reset di QUESTA nota prima del suo note_off)
-                    # va incluso - ma solo il PRIMO: se una nota successiva
-                    # inizia esattamente allo stesso tick con un proprio
-                    # gesto (es. un pre-bend), i suoi eventi allo stesso
-                    # tick vengono dopo nello stream e appartengono a lei,
-                    # non al rilascio di questa nota (es. due note legate
-                    # allo stesso tick, la seconda con un pre-bend).
+                    # Fine anticipata (pre-bend della nota successiva, vedi
+                    # _own_wheel_end): solo il PRIMO evento a quel tick.
                     if end_tick_seen:
                         continue
                     end_tick_seen = True

@@ -1156,6 +1156,8 @@ class MixerMixin:
             tokens_text, guessed_instrument = import_midi_channel_into_track(
                 path, channel, recognize_chords=app_settings.get_midi_import_recognize_chords(),
                 min_bend_semitones=app_settings.get_midi_import_min_bend_semitones(),
+                bend_curve=app_settings.get_midi_import_bend_curve(),
+                fine_rhythm=app_settings.get_midi_import_fine_rhythm(),
             )
         except Exception as e:
             QMessageBox.critical(self, tr("Errore import MIDI"), str(e))
