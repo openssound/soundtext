@@ -29,7 +29,7 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--scarica-st
     from core.downloads import run_script as _run_download_script
     sys.exit(_run_download_script(sys.argv[2:]))
 
-from PySide6.QtCore import QTimer, QTranslator
+from PySide6.QtCore import QEvent, QTimer, QTranslator
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 from gui.main_window import MainWindow
@@ -139,6 +139,33 @@ def _disable_console_quick_edit():
         pass                                          # solo una comodita'
 
 
+class _SoundTextApp(QApplication):
+    """Su macOS il doppio clic su un brano nel Finder (o il trascinamento
+    sull'icona nel Dock) arriva come evento, non come argomento: anche
+    all'avvio, prima che la finestra esista. I file si tengono da parte
+    finche' la finestra non c'e' (open_files_with)."""
+
+    def __init__(self, argv):
+        super().__init__(argv)
+        self._window = None
+        self._pending = []
+
+    def event(self, event):
+        if event.type() == QEvent.FileOpen and event.file():
+            if self._window is None:
+                self._pending.append(event.file())
+            else:
+                self._window.open_path(event.file())
+            return True
+        return super().event(event)
+
+    def open_files_with(self, window):
+        self._window = window
+        pending, self._pending = self._pending, []
+        for path in pending:
+            window.open_path(path, ask_to_save=False)
+
+
 def main():
     _disable_console_quick_edit()
     setup_logging()
@@ -151,7 +178,7 @@ def main():
     # solo su Windows reale, non nell'ambiente di test (Fusion e' gia' il
     # fallback li'). Va impostato PRIMA di creare la QApplication.
     QApplication.setStyle("Fusion")
-    app = QApplication(sys.argv)
+    app = _SoundTextApp(sys.argv)
     _install_qt_translations(app)
     app.setApplicationName("SoundText")
     app.setPalette(palette_for(settings.get_theme()))
@@ -169,15 +196,9 @@ def main():
     # riconosciuti: si chiede prima di aprire il brano, che li userebbe.
     window.offer_instrument_fixes()
 
-    if len(sys.argv) > 1:
-        path = sys.argv[1]
-        if os.path.exists(path):
-            if path.lower().endswith((".musicxml", ".mxl")):
-                window._import_musicxml_as_new_project(path)
-            elif path.lower().endswith(".abc"):
-                window._import_abc_as_new_project(path)
-            else:
-                window._load_and_apply_project(path)
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-psn_"):    # -psn_: vecchi macOS dal Finder
+        window.open_path(sys.argv[1], ask_to_save=False)
+    app.open_files_with(window)
 
     window.show()
     # Copia di recupero lasciata da una sessione chiusa male (core.autosave):
@@ -191,5 +212,60 @@ def main():
     sys.exit(app.exec())
 
 
+def _self_test() -> int:
+    """`SoundText --self-test`: controlla che l'app impacchettata abbia
+    tutto quello che serve per suonare (Qt con i plugin multimediali,
+    FluidSynth, il motore SFZ interno, pedalboard, PortAudio, dati e guida)
+    ed esce, senza aprire finestre. Lo usa la build per macOS prima di
+    pubblicare (packaging/macos/build-macos.sh). 0 = tutto a posto."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    problems = []
+
+    def check(label, fn):
+        try:
+            detail = fn()
+            print(f"ok    {label}: {detail}")
+        except Exception as e:  # noqa: BLE001 - qualunque errore e' un problema da dire
+            problems.append(label)
+            print(f"ERRORE {label}: {e}")
+
+    def qt():
+        app = QApplication.instance() or QApplication(sys.argv[:1])
+        from PySide6 import QtMultimedia  # noqa: F401 - decodifica audio (FFmpeg di Qt)
+        from PySide6.QtCore import qVersion
+        return f"Qt {qVersion()}, piattaforma {app.platformName()}"
+
+    def fluidsynth():
+        from core import fluid
+        if not fluid.available():
+            raise RuntimeError(fluid.load_error() or "libreria non trovata")
+        return f"{'.'.join(map(str, fluid.version()))} da {getattr(fluid._lib, '_name', '?')}"
+
+    def sfz():
+        from core import sfz_engine
+        if not sfz_engine.sfz_available():
+            raise RuntimeError("libsfizz non trovata")
+        return sfz_engine.library_path()
+
+    def data():
+        root = get_app_root()
+        for rel in ("assets/icon.png", "docs/HELP.md", "locales/en.json", "examples", "scarica_strumenti.py"):
+            if not os.path.exists(os.path.join(root, rel)):
+                raise RuntimeError(f"manca {rel} in {root}")
+        return root
+
+    check("Qt", qt)
+    check("FluidSynth", fluidsynth)
+    check("motore SFZ", sfz)
+    check("pedalboard", lambda: __import__("pedalboard").__version__)
+    check("PortAudio", lambda: __import__("sounddevice").get_portaudio_version()[1])
+    check("verovio", lambda: __import__("verovio").toolkit(False).getVersion())
+    check("dati", data)
+    print("tutto a posto" if not problems else "problemi: " + ", ".join(problems))
+    return 1 if problems else 0
+
+
 if __name__ == "__main__":
+    if "--self-test" in sys.argv[1:]:
+        sys.exit(_self_test())
     main()

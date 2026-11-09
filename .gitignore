@@ -47,3 +47,6 @@ profili_nam/
 
 # registro dei prompt (personale, non versionato)
 prompts.md
+# output di packaging/macos/build-macos.sh
+SoundText-macos-*.dmg
+fluidsynth-build/

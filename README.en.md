@@ -70,10 +70,11 @@ From the [Releases](https://github.com/openssound/soundtext/releases/latest) dow
 | **Windows**, portable | `SoundText-windows-<version>.zip` | extract, run `setup-windows.bat`, then `SoundText.exe` |
 | **Linux**, AppImage | `SoundText-linux-<version>.AppImage` and `setup-appimage.sh`, in the same folder | `./setup-appimage.sh` (installs with `sudo` FUSE 2, FluidSynth, PortAudio, lilv and the Qt libraries; `--integrate` adds the menu entry and the `soundtext` command), then start the AppImage |
 | **Linux**, portable | `SoundText-linux-portable-<version>.tar.gz` | extract, run `./setup-portable-linux.sh` (the same libraries, without FUSE; `--integrate` here too), then `./SoundText` |
+| **macOS** 13 or later | `SoundText-macos-arm64-<version>.dmg` (Apple chip) or `SoundText-macos-x86_64-<version>.dmg` (Intel) | open the `.dmg` and drag SoundText to Applications; on first launch, until the app is signed, **System Settings → Privacy & Security → Open Anyway** (see the Read me in the `.dmg`) |
 
 ### From the code
 
-For macOS, which has no ready-made package, or to follow updates with git.
+To follow updates with git, or to install from source on macOS too.
 The scripts also work when downloaded on their own: they fetch the sources
 from GitHub.
 

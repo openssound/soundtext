@@ -1,0 +1,68 @@
+SoundText per macOS
+===================
+
+Installare
+----------
+Trascina SoundText nella cartella Applicazioni (l'icona qui accanto).
+
+Primo avvio
+-----------
+Questa versione di SoundText non e' firmata con un certificato Apple: la
+prima volta macOS dice che l'app "non puo' essere aperta perche' Apple non
+puo' verificare che non contenga malware". Non e' un virus: e' l'avviso per
+le app distribuite fuori dall'App Store senza certificato.
+
+1. Apri SoundText dalla cartella Applicazioni. Compare l'avviso: scegli
+   "Fine" (o "OK").
+2. Apri Impostazioni di Sistema -> Privacy e sicurezza, scorri fino a
+   Sicurezza: accanto a "SoundText e' stato bloccato" premi "Apri comunque".
+3. Conferma con "Apri comunque" e la password del Mac.
+
+Si fa una volta sola: da allora SoundText si apre con un doppio clic.
+
+Al primo avvio SoundText propone di scaricare un SoundFont (i suoni degli
+strumenti): accetta, oppure piu' tardi da Suoni -> Scarica e installa.
+
+I tuoi brani si salvano in Documenti/SoundText. Impostazioni e strumenti
+stanno in ~/Library/Application Support/SoundText: aggiornando SoundText
+(nuova .dmg, app nuova al posto della vecchia) restano.
+
+Quale versione?
+---------------
+Menu Apple -> Informazioni su questo Mac: "Chip Apple M..." -> versione
+arm64; "Processore Intel" -> versione x86_64.
+
+
+SoundText for macOS
+===================
+
+Install
+-------
+Drag SoundText to the Applications folder (the icon next to it).
+
+First launch
+------------
+This version of SoundText is not signed with an Apple certificate: the first
+time, macOS says the app "cannot be opened because Apple cannot check it for
+malicious software". It is not a virus: it is the warning for apps
+distributed outside the App Store without a certificate.
+
+1. Open SoundText from the Applications folder. The warning appears: choose
+   "Done" (or "OK").
+2. Open System Settings -> Privacy & Security, scroll down to Security: next
+   to "SoundText was blocked" click "Open Anyway".
+3. Confirm with "Open Anyway" and your Mac's password.
+
+You only do this once: from then on SoundText opens with a double click.
+
+On first launch SoundText offers to download a SoundFont (the instrument
+sounds): accept, or later from Sounds -> Download and install.
+
+Your songs are saved in Documents/SoundText. Settings and instruments are in
+~/Library/Application Support/SoundText: when you update SoundText (new
+.dmg, new app over the old one) they stay.
+
+Which version?
+--------------
+Apple menu -> About This Mac: "Apple M... chip" -> arm64 version; "Intel
+processor" -> x86_64 version.

@@ -435,9 +435,31 @@ class AudioRecordDialog(QDialog):
 
     # ------------------------------------------------------------ registrazione
 
+    def _microphone_blocked_message(self) -> bool:
+        """Su macOS, se il permesso del microfono e' negato, la scheda
+        registra silenzio senza errori: lo si dice, con dove riattivarlo.
+        True se e' bloccato (core.macos_permissions)."""
+        from core.macos_permissions import SETTINGS_URL, microphone_blocked
+        if not microphone_blocked():
+            return False
+        box = QMessageBox(QMessageBox.Warning, tr("Microfono non consentito"),
+                          tr("macOS non permette a SoundText di usare il microfono o la scheda audio, e la "
+                             "ripresa sarebbe muta.\n\nPer registrare attiva SoundText in Impostazioni di "
+                             "Sistema → Privacy e sicurezza → Microfono, poi riapri SoundText."), parent=self)
+        open_btn = box.addButton(tr("Apri le impostazioni"), QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Close)
+        box.exec()
+        if box.clickedButton() is open_btn:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl(SETTINGS_URL))
+        return True
+
     def start_recording(self):
         dev = self.selected_device()
         if dev is None or self._recorder is not None or self._worker is not None:
+            return
+        if self._microphone_blocked_message():
             return
         self.stop_listening()
         if self._take is not None:
@@ -524,7 +546,10 @@ class AudioRecordDialog(QDialog):
         take = self._recorder.stop()
         self._recorder = None
         played = take.seconds - self._backing.count_in_seconds
-        if played <= 0.05:
+        if self._microphone_blocked_message():      # negato alla richiesta di macOS, durante la ripresa
+            self._take = None
+            self._set_status(tr("Ripresa muta: il microfono non e' consentito"), error=True)
+        elif played <= 0.05:
             self._take = None
             self._set_status(tr("Ripresa troppo corta (fermata durante il conteggio)"), error=True)
         else:

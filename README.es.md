@@ -71,11 +71,12 @@ Desde las [Releases](https://github.com/openssound/soundtext/releases/latest) de
 | **Windows**, portable | `SoundText-windows-<versión>.zip` | extrae, ejecuta `setup-windows.bat`, luego `SoundText.exe` |
 | **Linux**, AppImage | `SoundText-linux-<versión>.AppImage` y `setup-appimage.sh`, en la misma carpeta | `./setup-appimage.sh` (instala con `sudo` FUSE 2, FluidSynth, PortAudio, lilv y las bibliotecas de Qt; `--integrate` añade la entrada de menú y el comando `soundtext`), luego inicia el AppImage |
 | **Linux**, portable | `SoundText-linux-portable-<versión>.tar.gz` | extrae, ejecuta `./setup-portable-linux.sh` (las mismas bibliotecas, sin FUSE; también aquí `--integrate`), luego `./SoundText` |
+| **macOS** 13 o más reciente | `SoundText-macos-arm64-<versión>.dmg` (chip de Apple) o `SoundText-macos-x86_64-<versión>.dmg` (Intel) | abre la `.dmg` y arrastra SoundText a Aplicaciones; al primer inicio, mientras la app no esté firmada, **Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente** (ver el Léeme de la `.dmg`) |
 
 ### Desde el código
 
-Para macOS, que no tiene un paquete listo, o para seguir las
-actualizaciones con git. Los scripts funcionan también descargados solos:
+Para seguir las actualizaciones con git, o instalar desde las fuentes
+también en macOS. Los scripts funcionan también descargados solos:
 toman las fuentes de GitHub.
 
 - **Linux**: `./install.sh` instala las bibliotecas del sistema (apt, dnf,

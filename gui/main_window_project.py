@@ -202,6 +202,31 @@ class ProjectMixin:
         except Exception as e:
             QMessageBox.critical(self, tr("Errore apertura"), str(e))
 
+    def open_path(self, path: str, ask_to_save: bool = True) -> bool:
+        """Apre un file dato dal sistema: argomento all'avvio, o doppio clic
+        su un brano nel Finder (macOS lo manda come evento, vedi main.py).
+        .musicxml/.mxl e .abc si importano come progetto nuovo, il resto si
+        apre come progetto. Prima chiede se salvare le modifiche (non
+        all'avvio, quando non c'e' niente da perdere). False se non si e'
+        aperto."""
+        if not os.path.exists(path):
+            return False
+        if ask_to_save and not self._confirm_discard_unsaved():
+            return False
+        import logging
+        logging.getLogger("soundtext").info("Apro dal sistema: %s", path)
+        try:
+            if path.lower().endswith((".musicxml", ".mxl")):
+                self._import_musicxml_as_new_project(path)
+            elif path.lower().endswith(".abc"):
+                self._import_abc_as_new_project(path)
+            else:
+                self._load_and_apply_project(path)
+        except Exception as e:
+            QMessageBox.critical(self, tr("Errore apertura"), str(e))
+            return False
+        return True
+
     def open_example(self):
         """Apre un brano d'esempio (examples/*.st) a scopo didattico. Il
         progetto si apre senza percorso, come uno nuovo: Salva chiede dove
