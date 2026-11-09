@@ -3118,8 +3118,17 @@ instruments** that play the notes of a track instead of the SoundFont.
   Mac the plugin comes back. That is why, **when a plugin also exists as
   VST3, prefer the VST3**: the **Hide AUs that also exist as VST3** option
   (on by default) in the chooser keeps only the VST3 in the list. AUv3
-  plugins (extensions inside an app) and Apple's system effects do not
-  appear in the list for now.
+  plugins (extensions inside an app) do not appear in the list for now.
+
+  **Apple effects.** Every Mac comes with Apple's Audio Unit effects, and
+  SoundText lists them with *Apple* as the maker: **Reverb**, **Matrix
+  reverb**, **Delay**, **Band equalizer**, **Parametric EQ**, **Graphic
+  EQ**, the filters (low-pass, high-pass, band-pass, shelving, multi),
+  **Dynamics**, **Multiband compressor**, **Limiter**, **Distortion**,
+  **Pitch** and, among the instruments, the **General MIDI synth**. To
+  reach them SoundText writes a small file for each one in its settings
+  folder (`Apple AU`) that points to the system effect: nothing is
+  installed.
 
 - **LV2**: on Linux only, and it needs the `lilv` system library (on
   Debian/Ubuntu the `liblilv-0-0` package, already present if Ardour, Carla

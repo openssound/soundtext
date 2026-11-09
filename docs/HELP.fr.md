@@ -3331,8 +3331,19 @@ SoundFont.
   sur le Mac le plugin revient. C'est pourquoi, **quand un plugin existe
   aussi en VST3, mieux vaut le VST3** : l'option **Masquer les AU qui
   existent aussi en VST3** (activée au départ) dans la fenêtre de choix ne
-  garde que le VST3. Les AUv3 (extensions dans une app) et les effets
-  système d'Apple n'apparaissent pas dans la liste pour l'instant.
+  garde que le VST3. Les AUv3 (extensions dans une app) n'apparaissent pas
+  dans la liste pour l'instant.
+
+  **Effets Apple.** Chaque Mac a gratuitement les effets Audio Unit
+  d'Apple, et SoundText les met dans la liste avec le fabricant *Apple* :
+  **Réverbération**, **Réverbération matricielle**, **Delay**, **Égaliseur
+  à bandes**, **EQ paramétrique**, **EQ graphique**, les filtres
+  (passe-bas, passe-haut, passe-bande, shelving, multiple), **Dynamique**,
+  **Compresseur multibande**, **Limiteur**, **Distorsion**, **Hauteur** et,
+  parmi les instruments, le **Synthétiseur General MIDI**. Pour les
+  atteindre, SoundText écrit dans son dossier de réglages (`Apple AU`) un
+  petit fichier pour chacun, qui renvoie à l'effet système : rien n'est
+  installé.
 
 - **LV2** : seulement sous Linux, et il faut la bibliothèque système `lilv`
   (sous Debian/Ubuntu le paquet `liblilv-0-0`, déjà présent si Ardour,

@@ -283,3 +283,87 @@ def test_real_au_instrument_through_the_plugin_process():
     y = plugins.render_events(ref, {}, "", [(0.0, bytes([0x90, 60, 100])), (0.5, bytes([0x80, 60, 0]))], 1.0, RATE)
     assert y.shape == (RATE, 2) and float(np.sqrt(np.mean(y ** 2))) > 1e-3
     assert plugins.parameter_texts(ref, {}, "")
+
+
+# ------------------------------------------------------------------ effetti Apple (bundle ponte, core.apple_au)
+
+def _fake_apple_bundle(tmp_path):
+    """Un CoreAudio.component finto: due componenti utili, uno escluso e uno
+    che non e' un plugin audio."""
+    import plistlib
+    contents = tmp_path / "CoreAudio.component" / "Contents"
+    contents.mkdir(parents=True)
+    comps = [{"type": "afil", "subtype": "MooV", "manufacturer": "appl", "name": "QTAudioFileComponent"},
+             {"type": "aufx", "subtype": "mrev", "manufacturer": "appl", "name": "Apple: AUMatrixReverb",
+              "factoryFunction": "AUMatrixReverbFactory", "version": 67072},
+             {"type": "aufx", "subtype": "nsnd", "manufacturer": "appl", "name": "Apple: AUNetSend"},
+             {"type": "aumu", "subtype": "dls ", "manufacturer": "appl", "name": "Apple: DLSMusicDevice"}]
+    (contents / "Info.plist").write_bytes(plistlib.dumps({"AudioComponents": comps}))
+    return str(tmp_path / "CoreAudio.component")
+
+
+def test_apple_proxies_declare_one_component_each(tmp_path):
+    import plistlib
+    from core import apple_au
+    folder = str(tmp_path / apple_au.FOLDER_NAME)
+    made = apple_au.ensure_proxies(folder, _fake_apple_bundle(tmp_path))
+    assert sorted(os.path.basename(p) for p in made) == ["AUMatrixReverb.component", "DLSMusicDevice.component"]
+    reverb = os.path.join(folder, "AUMatrixReverb.component")
+    plist = plistlib.load(open(os.path.join(reverb, "Contents", "Info.plist"), "rb"))
+    assert [(c["type"], c["subtype"], c["manufacturer"]) for c in plist["AudioComponents"]] == \
+        [("aufx", "mrev", "appl")]
+    assert not os.path.exists(os.path.join(reverb, "Contents", "MacOS"))       # niente codice copiato
+    # gia' giusti: non si riscrivono, la ricerca dei plugin non li ricarica
+    stamp = os.path.getmtime(os.path.join(reverb, "Contents", "Info.plist"))
+    os.utime(os.path.join(reverb, "Contents", "Info.plist"), (stamp - 100, stamp - 100))
+    apple_au.ensure_proxies(folder, _fake_apple_bundle(tmp_path / "di nuovo"))
+    assert os.path.getmtime(os.path.join(reverb, "Contents", "Info.plist")) == stamp - 100
+    # nomi chiari solo per i ponti
+    assert apple_au.friendly_name(reverb) == "Riverbero a matrice (Apple)"
+    assert apple_au.friendly_name(str(tmp_path / "AUMatrixReverb.component")) is None
+    info = plugins._info_from_dict({"ref": "au:" + reverb, "format": "au", "name": "AUMatrixReverb"})
+    assert (info.name, info.format_label) == ("Riverbero a matrice (Apple)", "AU")
+    assert plugins.display_name("au:" + os.path.join(folder, "DLSMusicDevice.component")) == \
+        "Sintetizzatore General MIDI (Apple)"
+    # un altro Mac: il ponte si ritrova per nome nella sua cartella
+    assert apple_au.ensure_proxies(str(tmp_path / "x"), str(tmp_path / "manca.component")) == []
+
+
+def test_apple_folder_is_a_plugin_folder_only_on_macos(tmp_path, monkeypatch):
+    from core import apple_au
+    monkeypatch.setattr(apple_au, "APPLE_BUNDLE", _fake_apple_bundle(tmp_path))
+    monkeypatch.setattr(apple_au, "_ready", None)
+    _pretend_macos(monkeypatch, True)
+    folder = apple_au.proxy_folder()
+    assert folder in plugins.default_au_dirs()
+    assert plugins.in_plugin_dirs(os.path.join(folder, "AUMatrixReverb.component"))
+    _pretend_macos(monkeypatch, False)
+    assert plugins.default_au_dirs() == []
+
+
+def _apple_effects_available() -> bool:
+    from core import apple_au
+    if sys.platform != "darwin" or not os.path.isdir(apple_au.APPLE_BUNDLE):
+        return False
+    try:
+        import pedalboard
+    except ImportError:
+        return False
+    return hasattr(pedalboard, "AudioUnitPlugin")
+
+
+@pytest.mark.skipif(not _apple_effects_available(), reason="serve macOS con pedalboard.AudioUnitPlugin")
+def test_real_apple_reverb_and_synth_through_the_plugin_process():
+    from core import apple_au
+    folder = apple_au.ready_folder()
+    reverb = "au:" + os.path.join(folder, "AUMatrixReverb.component")
+    info = plugins.describe(reverb)
+    assert (info.name, info.vendor, info.instrument, info.usable) == ("Riverbero a matrice (Apple)", "Apple", False, True)
+    x = np.zeros((RATE, 2), dtype=np.float32)
+    x[0] = 0.8                                              # un impulso: il riverbero lo allunga
+    y = plugins.process_audio(reverb, {}, "", x, RATE)
+    assert float(np.sqrt(np.mean(y[RATE // 4:] ** 2))) > 1e-5
+    synth = "au:" + os.path.join(folder, "DLSMusicDevice.component")
+    assert plugins.describe(synth).instrument
+    z = plugins.render_events(synth, {}, "", [(0.0, bytes([0x90, 60, 100]))], 0.5, RATE)
+    assert float(np.sqrt(np.mean(z ** 2))) > 1e-3

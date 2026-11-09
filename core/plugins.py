@@ -275,10 +275,14 @@ def default_vst3_dirs() -> List[str]:
 
 
 def default_au_dirs() -> List[str]:
-    """Le cartelle standard degli Audio Unit: solo su macOS."""
+    """Le cartelle standard degli Audio Unit: solo su macOS. Piu' quella
+    dei bundle ponte verso gli effetti Apple di sistema (core.apple_au)."""
     if not plugin_worker.running_on_macos():
         return []
-    return ["/Library/Audio/Plug-Ins/Components", os.path.expanduser("~/Library/Audio/Plug-Ins/Components")]
+    from .apple_au import ready_folder
+    apple = ready_folder()
+    return ["/Library/Audio/Plug-Ins/Components", os.path.expanduser("~/Library/Audio/Plug-Ins/Components")] + \
+        ([apple] if apple else [])
 
 
 def _unique_dirs(dirs: List[str]) -> List[str]:
@@ -405,10 +409,19 @@ FORMAT_LABELS = {"vst3": "VST3", "au": "AU", "lv2": "LV2", "sfz": "SFZ"}
 
 def _info_from_dict(d: dict) -> PluginInfo:
     params = [PluginParam(**{**p, "choices": [tuple(c) for c in p.get("choices", [])]}) for p in d.get("params", [])]
-    return PluginInfo(ref=d["ref"], format=d["format"], name=d["name"], vendor=d.get("vendor", ""),
+    return PluginInfo(ref=d["ref"], format=d["format"], name=_apple_name(d["ref"]) or d["name"],
+                      vendor=d.get("vendor", ""),
                       category=d.get("category", ""), instrument=bool(d.get("instrument")),
                       problem=d.get("problem", ""), params=params, state=d.get("state", ""),
                       files=[PluginFile(**f) for f in d.get("files", [])])
+
+
+def _apple_name(ref: str) -> Optional[str]:
+    """Il nome chiaro di un effetto Apple (bundle ponte, core.apple_au), o None."""
+    if not ref.startswith("au:"):
+        return None
+    from .apple_au import friendly_name
+    return friendly_name(parse_ref(ref)[1])
 
 
 def _scan_cache_path() -> str:
@@ -762,6 +775,9 @@ def display_name(ref: str) -> str:
     fmt, target, name = parse_ref(ref)
     if name:
         return name
+    apple = _apple_name(ref)
+    if apple:
+        return apple
     if fmt in ("vst3", "au", "sfz"):
         return os.path.splitext(os.path.basename(target.rstrip("/\\")))[0]
     return target.rstrip("/#").rsplit("/", 1)[-1].rsplit("#", 1)[-1].rsplit(":", 1)[-1]
