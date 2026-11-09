@@ -94,7 +94,7 @@ La guía está dividida en seis partes; un clic en un título lleva a la secció
   - [19.5 El panel Efectos](#19.5)
   - [19.6 Conviene saber](#19.6)
 - [20. Efectos en el máster (mastering)](#20)
-- [21. Plugins externos (VST3 y LV2)](#21)
+- [21. Plugins externos (VST3, AU y LV2)](#21)
 - [22. Re-amping: un simulador externo](#22)
 
 **Parte 5 — Tocar, grabar, importar y exportar**
@@ -3228,7 +3228,7 @@ Conviene saber:
   (una palabra distinta de `Effetti`, para que no se confunda con una pista
   llamada «Master»). Sin cadena el bloque no se escribe.
 
-## 21. Plugins externos (VST3 y LV2)
+## 21. Plugins externos (VST3, AU y LV2)
 
 SoundText puede usar los **plugins de audio instalados en el ordenador**,
 tanto como **efectos** en la cadena de una pista o del máster, como
@@ -3252,6 +3252,23 @@ SoundFont.
   - **Dragonfly Reverb**: reverberaciones de sala, habitación y placa;
   - **LSP Plugins**: compresores, ecualizadores, limitadores y delays de
     estudio (solo en Linux: no existen versiones para Windows y macOS).
+- **Audio Unit (AU)**: solo en macOS. SoundText los busca en
+  `/Library/Audio/Plug-Ins/Components` y `~/Library/Audio/Plug-Ins/Components`
+  (los archivos `.component`, los mismos que usan GarageBand y Logic), más
+  las carpetas añadidas en **Sonidos → Carpetas de plugins VST3 y AU...**.
+  En la lista de plugins llevan la etiqueta **AU** y se usan como los VST3:
+  parámetros, ventana del plugin, estado guardado en la canción. En el
+  archivo la referencia empieza por `au:` (por ejemplo
+  `ref="au:/Library/Audio/Plug-Ins/Components/TAL-Reverb-4.component"`).
+
+  Una canción con un AU, abierta en Linux o Windows, se abre y suena sin ese
+  plugin, con un aviso; la referencia se queda en el archivo y en el Mac el
+  plugin vuelve. Por eso, **cuando un plugin existe también en VST3,
+  conviene el VST3**: la opción **Ocultar los AU que también existen en
+  VST3** (activa al principio) en la ventana de elección deja solo el VST3.
+  Los AUv3 (extensiones dentro de una app) y los efectos de sistema de Apple
+  por ahora no aparecen en la lista.
+
 - **LV2**: solo en Linux, y hace falta la biblioteca del sistema `lilv` (en
   Debian/Ubuntu el paquete `liblilv-0-0`, ya presente si están instalados
   Ardour, Carla o Guitarix). Los plugins LV2 se encuentran solos. Por

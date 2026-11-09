@@ -47,7 +47,8 @@ l'ottava, `8:` la durata di base, `|` la fine della battuta.
   partire dagli accordi, senza IA, anche nello stile dei tuoi brani.
 - **Dare forma al suono**: mixer, SoundFont, strumenti campionati SFZ,
   effetti (EQ, compressore, delay, riverbero), amplificatori per chitarra e
-  profili **NAM** di amplificatori veri, plugin **VST3** e **LV2**,
+  profili **NAM** di amplificatori veri, plugin **VST3**, **AU** (macOS) e
+  **LV2** (Linux),
   mastering.
 - **Suonare e registrare**: la tastiera del computer o una tastiera MIDI;
   tracce audio per voce e chitarra, con riprese multiple, loop e punch-in;

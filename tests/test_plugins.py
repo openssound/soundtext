@@ -50,6 +50,14 @@ def _stop_hosts():
     plugins.shutdown()
 
 
+@pytest.fixture(autouse=True)
+def _no_installed_audio_units(monkeypatch):
+    """Su un Mac la ricerca troverebbe anche gli AU installati e li
+    caricherebbe: questi test guardano solo i plugin che preparano loro
+    (gli AU hanno i loro test in test_plugins_au.py)."""
+    monkeypatch.setattr(plugins, "default_au_dirs", lambda: [])
+
+
 def _rms(x):
     return float(np.sqrt(np.mean(np.square(x)))) if len(x) else 0.0
 
@@ -607,3 +615,21 @@ def test_lv2_plugin_list_is_safe_from_several_threads(monkeypatch):
     for t in threads:
         t.join()
     assert len(results) == 8 and len(set(results)) == 1
+
+
+def test_multi_output_plugin_of_a_bundle_is_never_loaded(monkeypatch):
+    """sfizz.vst3 contiene sfizz e sfizz-multi: il secondo va in crash appena
+    caricato (e su macOS fa comparire la finestra del crash di Python), quindi
+    non si chiede nemmeno al processo dei plugin."""
+    asked = []
+
+    def call(channel, ref, request, timeout):
+        asked.append(request[1])
+        if "|" not in request[1]:
+            raise plugins.PluginError('The plugin file contains more than one plugin; '
+                                      'specify one of the following values: "sfizz", "sfizz-multi"')
+        return {"ref": request[1], "format": "vst3", "name": "sfizz", "params": [], "state": "", "problem": ""}
+    monkeypatch.setattr(plugins, "_call", call)
+    infos = plugins._describe_bundle("/x/sfizz.vst3")
+    assert asked == ["vst3:/x/sfizz.vst3", "vst3:/x/sfizz.vst3|sfizz"]
+    assert [(d["name"], bool(d["problem"])) for d in infos] == [("sfizz", False), ("sfizz-multi", True)]

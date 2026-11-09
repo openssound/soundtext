@@ -380,7 +380,7 @@ class EffectCard(QFrame):
         from core import plugins
         self.plugin_row.setEnabled(self.effect.enabled)
         ref = self.effect.plugin
-        fmt = {"vst3": "VST3", "lv2": "LV2"}.get(ref.partition(":")[0], "")
+        fmt = plugins.FORMAT_LABELS.get(ref.partition(":")[0], "")
         problem = plugins.broken_reason(ref)
         if problem:
             self.plugin_label.setText(tr("{0}: {problem}, il suono passa invariato", plugins.display_name(ref), problem=problem))

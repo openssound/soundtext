@@ -47,8 +47,8 @@ des notes, `*5` l'octave, `8:` la durée de base, `|` la fin de la mesure.
   partir des accords, sans IA, aussi dans le style de vos morceaux.
 - **Façonner le son** : table de mixage, SoundFonts, instruments
   échantillonnés SFZ, effets (EQ, compresseur, delay, réverbération),
-  amplis guitare et profils **NAM** d'amplis réels, plugins **VST3** et
-  **LV2**, mastering.
+  amplis guitare et profils **NAM** d'amplis réels, plugins **VST3**, **AU** (macOS) et
+  **LV2** (Linux), mastering.
 - **Jouer et enregistrer** : le clavier de l'ordinateur ou un clavier
   MIDI ; pistes audio pour la voix et la guitare, avec prises multiples,
   boucle et punch-in ; d'un enregistrement audio aux notes.

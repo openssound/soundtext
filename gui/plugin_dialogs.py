@@ -1,13 +1,13 @@
 """
-Finestre dei plugin esterni (VST3/LV2, vedi core.plugins):
+Finestre dei plugin esterni (VST3, AU su macOS, LV2, vedi core.plugins):
   - PluginPickerDialog: sceglie un plugin (effetto o strumento) fra quelli
     installati, con la ricerca per nome; per gli strumenti anche un file
     .sfz suonato dal motore SFZ interno (core.sfz_engine);
   - PluginParamsDialog: regola i parametri di un plugin con controlli
-    generati dalla sua descrizione, che si sentono subito; per i VST3 apre
+    generati dalla sua descrizione, che si sentono subito; per i VST3 e gli AU apre
     anche l'interfaccia grafica del plugin stesso, per gli LV2 sceglie i
     file che il plugin carica (es. l'SFZ di sfizz);
-  - PluginDirsDialog: le cartelle in piu' in cui cercare i VST3.
+  - PluginDirsDialog: le cartelle in piu' in cui cercare i VST3 (e gli AU su macOS).
 
 Il lavoro lento (ricerca dei plugin, finestra del plugin) gira in un thread
 di Python controllato da un QTimer, cosi' la finestra resta viva.
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from core import plugins
 from core.lv2_host import decode_state as decode_lv2_state, encode_state as encode_lv2_state
+from core.plugin_worker import is_pedalboard_format
 from core.plugins import PluginError, PluginInfo, home_relative
 
 from . import theme
@@ -37,6 +38,13 @@ from core.i18n import tr
 
 NO_PLUGIN = "__nessuno__"
 SFZ_CHOICE = "__sfz__"
+MACOS = sys.platform == "darwin"
+
+
+def plugin_dirs_button_text() -> str:
+    return tr("Cartelle VST3 e AU…") if MACOS else tr("Cartelle VST3…")
+
+
 SFZ_LIBRARY_COMMAND = {"win32": "py scarica_strumenti.py libreria",
                        "darwin": "python3 scarica_strumenti.py libreria"}.get(sys.platform,
                                                                              "./scarica_strumenti.sh libreria")
@@ -110,11 +118,18 @@ class PluginPickerDialog(QDialog):
         self.setWindowTitle(tr("Scegli uno strumento plugin") if instrument else tr("Scegli un effetto plugin"))
         self.resize(720, 480)
         layout = QVBoxLayout(self)
-        intro = QLabel(
-            tr("Strumenti virtuali installati sul computer (VST3, e LV2 su Linux): suonano le note della "
-            "traccia al posto del SoundFont.") if instrument else
-            tr("Effetti installati sul computer (VST3, e LV2 su Linux): elaborano il suono della traccia "
-            "come gli effetti interni."))
+        if MACOS:
+            intro = QLabel(
+                tr("Strumenti virtuali installati sul Mac (VST3 e Audio Unit): suonano le note della "
+                   "traccia al posto del SoundFont.") if instrument else
+                tr("Effetti installati sul Mac (VST3 e Audio Unit): elaborano il suono della traccia "
+                   "come gli effetti interni."))
+        else:
+            intro = QLabel(
+                tr("Strumenti virtuali installati sul computer (VST3, e LV2 su Linux): suonano le note della "
+                "traccia al posto del SoundFont.") if instrument else
+                tr("Effetti installati sul computer (VST3, e LV2 su Linux): elaborano il suono della traccia "
+                "come gli effetti interni."))
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.search = QLineEdit()
@@ -135,11 +150,18 @@ class PluginPickerDialog(QDialog):
         self.rescan_btn = QPushButton(tr("Aggiorna elenco"))
         self.rescan_btn.setToolTip(tr("Cerca di nuovo i plugin (per esempio dopo averne installato uno)"))
         self.rescan_btn.clicked.connect(lambda: self._scan(refresh=True))
-        self.dirs_btn = QPushButton(tr("Cartelle VST3…"))
+        self.dirs_btn = QPushButton(plugin_dirs_button_text())
         self.dirs_btn.setToolTip(tr("Aggiungi le cartelle in cui hai installato i plugin VST3"))
+        # molti plugin si installano sia come VST3 sia come AU: il VST3 rende il brano portabile
+        self.hide_twins = QCheckBox(tr("Nascondi gli AU che esistono anche in VST3"))
+        self.hide_twins.setChecked(True)
+        self.hide_twins.setToolTip(tr("Il VST3 rende il brano portabile su Linux e Windows"))
+        self.hide_twins.toggled.connect(lambda *_: self._fill())
+        self.hide_twins.setVisible(MACOS)
         self.dirs_btn.clicked.connect(self._edit_dirs)
         row.addWidget(self.rescan_btn)
         row.addWidget(self.dirs_btn)
+        row.addWidget(self.hide_twins)
         row.addStretch(1)
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self._accept_if_usable)
@@ -195,12 +217,12 @@ class PluginPickerDialog(QDialog):
                 self.status.setText(
                     tr("{usable} strumenti utilizzabili.", usable=usable) if self.infos else
                     tr("Nessuno strumento plugin trovato. Installa un plugin VST3 (o LV2 su Linux) oppure "
-                       "indica la sua cartella con «Cartelle VST3…»."))
+                       "indica la sua cartella con «{button}».", button=plugin_dirs_button_text()))
             else:
                 self.status.setText(
                     tr("{usable} effetti utilizzabili.", usable=usable) if self.infos else
                     tr("Nessun effetto plugin trovato. Installa un plugin VST3 (o LV2 su Linux) oppure "
-                       "indica la sua cartella con «Cartelle VST3…»."))
+                       "indica la sua cartella con «{button}».", button=plugin_dirs_button_text()))
         self._fill()
 
     def _fill(self):
@@ -222,9 +244,13 @@ class PluginPickerDialog(QDialog):
                 self.tree.addTopLevelItem(self._orchestra_item())
         # quelli che non si possono usare in fondo, disattivati (in grigio)
         grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
+        twins = plugins.vst3_twins(self.infos)
+        hide_twins = self.hide_twins.isChecked()
         for info in sorted(self.infos, key=lambda i: not i.usable):
             text = f"{info.name} {info.vendor} {info.category}".lower()
             if query and query not in text:
+                continue
+            if info.ref in twins and hide_twins and info.ref != self.current_ref:
                 continue
             item = QTreeWidgetItem([info.name, info.format_label, info.vendor, info.category])
             item.setData(0, Qt.UserRole, info.ref)
@@ -234,6 +260,10 @@ class PluginPickerDialog(QDialog):
                     item.setForeground(col, grey)
                     item.setToolTip(col, tr("Non utilizzabile: {problem}", problem=info.problem))
                 item.setText(0, tr("{name}  (non utilizzabile)", name=info.name))
+            elif info.ref in twins:
+                note = tr("Esiste anche in VST3, che rende il brano portabile su Linux e Windows")
+                for col in range(4):
+                    item.setToolTip(col, f"{info.ref}\n{note}")
             else:
                 item.setToolTip(0, info.ref)
             self.tree.addTopLevelItem(item)
@@ -573,9 +603,9 @@ class PluginParamsDialog(QDialog):
             grid.addWidget(row.value_label, r, 2)
         grid.setRowStretch(len(info.files) + len(info.params), 1)
         self.scroll.setWidget(holder)
-        self.editor_btn.setVisible(info.format == "vst3")
+        self.editor_btn.setVisible(is_pedalboard_format(info.format))
         self.defaults_btn.setEnabled(True)
-        if info.format == "vst3":
+        if is_pedalboard_format(info.format):
             self._refresh_texts()
 
     def _apply_filter(self, text: str):
@@ -604,7 +634,7 @@ class PluginParamsDialog(QDialog):
         self.params = {k: v for k, v in self.params.items() if k not in defaults or abs(v - defaults[k]) > 1e-9}
         if self.on_change:
             self.on_change(dict(self.params), self.state)
-        if self.info and self.info.format == "vst3":
+        if self.info and is_pedalboard_format(self.info.format):
             self._refresh_texts()
 
     def _refresh_texts(self):
@@ -666,17 +696,19 @@ class PluginParamsDialog(QDialog):
 # ---------------------------------------------------------------------------
 
 class PluginDirsDialog(QDialog):
-    """Le cartelle in piu' in cui cercare i plugin VST3 (quelle standard del
-    sistema si usano sempre)."""
+    """Le cartelle in piu' in cui cercare i plugin VST3, e su macOS gli AU
+    (quelle standard del sistema si usano sempre)."""
 
     def __init__(self, parent=None):
         from core.settings import get_plugin_dirs
         super().__init__(parent)
-        self.setWindowTitle(tr("Cartelle dei plugin VST3"))
+        self.setWindowTitle(tr("Cartelle dei plugin VST3 e AU") if MACOS else tr("Cartelle dei plugin VST3"))
         self.resize(560, 360)
         layout = QVBoxLayout(self)
-        standard = "\n".join(plugins.default_vst3_dirs())
-        info = QLabel(tr("SoundText cerca sempre i VST3 nelle cartelle standard del sistema:\n{standard}\n\nAggiungi qui le altre cartelle in cui hai installato dei plugin. I plugin LV2 si trovano da soli, nelle cartelle standard di Linux.", standard=standard))
+        standard = "\n".join(plugins.default_vst3_dirs() + plugins.default_au_dirs())
+        info = QLabel(tr("SoundText cerca sempre i VST3 e gli Audio Unit nelle cartelle standard del Mac:\n"
+                         "{standard}\n\nAggiungi qui le altre cartelle in cui hai installato dei plugin "
+                         "(.vst3 o .component).", standard=standard) if MACOS else tr("SoundText cerca sempre i VST3 nelle cartelle standard del sistema:\n{standard}\n\nAggiungi qui le altre cartelle in cui hai installato dei plugin. I plugin LV2 si trovano da soli, nelle cartelle standard di Linux.", standard=standard))
         info.setWordWrap(True)
         layout.addWidget(info)
         self.list = QListWidget()
@@ -697,7 +729,8 @@ class PluginDirsDialog(QDialog):
         layout.addLayout(row)
 
     def _add(self):
-        path = QFileDialog.getExistingDirectory(self, tr("Cartella dei plugin VST3"), os.path.expanduser("~"),
+        path = QFileDialog.getExistingDirectory(self, tr("Cartella dei plugin VST3 e AU") if MACOS
+                                                 else tr("Cartella dei plugin VST3"), os.path.expanduser("~"),
                                                  file_dialog_options() | QFileDialog.Option.ShowDirsOnly)
         if path and path not in self.dirs():
             self.list.addItem(path)

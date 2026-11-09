@@ -808,8 +808,8 @@ def build_story():
                [ui("Tono"), ", ".join(ui(x) for x in ("EQ a 3 bande", "Filtro passa-alto", "Filtro passa-basso"))],
                [ui("Saturazione"), ", ".join(ui(x) for x in ("Amplificatore", "Profilo NAM", "Distorsione"))],
                [ui("Spazio"), ", ".join(ui(x) for x in ("Delay", "Riverbero", "Chorus", "Phaser"))],
-               [ui("Plugin"), T("Gli effetti VST3 e LV2 installati (capitolo 14)",
-                                "The installed VST3 and LV2 effects (chapter 14)")]], [0.25, 0.75]),
+               [ui("Plugin"), T("Gli effetti VST3, AU (macOS) e LV2 installati (capitolo 14)",
+                                "The installed VST3, AU (macOS) and LV2 effects (chapter 14)")]], [0.25, 0.75]),
         *section(T("Il loop di calibrazione", "The calibration loop")),
         P(T(f"Aprendo il pannello, SoundText sceglie un tratto di <b>10 secondi</b> (dal box selezionato o dalla "
             f"testina) e lo imposta come loop sul righello. Premi {b('▶ Ascolta il loop')}: il tratto si ripete e "
@@ -1170,12 +1170,12 @@ def build_story():
     story += [
         P(T("Oltre agli effetti interni e ai SoundFont, SoundText usa i <b>plugin audio installati sul computer</b>: "
             "strumenti virtuali che suonano le note di una traccia al posto del SoundFont, ed effetti da mettere "
-            "nella catena di una traccia o del master. Funzionano i plugin <b>VST3</b> (Linux, Windows, macOS) e, su "
-            "Linux, <b>LV2</b>, ciascuno in un processo separato. CLAP e VST2 non sono supportati.",
+            "nella catena di una traccia o del master. Funzionano i plugin <b>VST3</b> (Linux, Windows, macOS), su macOS "
+            "gli <b>Audio Unit</b> (AU) e su Linux gli <b>LV2</b>, ciascuno in un processo separato. CLAP e VST2 non sono supportati.",
             "Besides the built-in effects and SoundFonts, SoundText uses the <b>audio plugins installed on your "
             "computer</b>: virtual instruments that play a track's notes instead of the SoundFont, and effects for "
-            "a track's or the master's chain. <b>VST3</b> plugins work (Linux, Windows, macOS) and, on Linux, "
-            "<b>LV2</b>, each in its own process. CLAP and VST2 are not supported.")),
+            "a track's or the master's chain. <b>VST3</b> plugins work (Linux, Windows, macOS), on macOS "
+            "<b>Audio Units</b> (AU) and on Linux <b>LV2</b>, each in its own process. CLAP and VST2 are not supported.")),
         P(T(f"Per cominciare, {path('Suoni', 'Scarica e installa...')} → <b>Plugin e programmi gratuiti</b> installa "
             "una scelta di plugin gratuiti nella cartella dell'utente: Surge XT, Dexed, Dragonfly Reverb, "
             "Airwindows Consolidated, OB-Xf e altri, secondo il sistema.",

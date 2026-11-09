@@ -1,6 +1,6 @@
 """
-Processo separato che carica ed esegue i plugin VST3 (con pedalboard) e
-LV2 (con core.lv2_host), e gli strumenti SFZ del motore interno
+Processo separato che carica ed esegue i plugin VST3 e Audio Unit (AU, solo
+macOS; entrambi con pedalboard) e LV2 (con core.lv2_host), e gli strumenti SFZ del motore interno
 (core.sfz_engine, riferimento "sfz:/percorso/file.sfz"). Gira fuori dall'app perche' un plugin puo'
 bloccarsi o andare in crash (alcuni synth VST3 si piantano gia' al
 caricamento): se succede, core.plugins uccide questo processo e ne avvia
@@ -16,6 +16,7 @@ Richieste (tuple con il nome dell'operazione in testa):
     ("ping",)
     ("list_lv2",)                              -> [descrittore, ...]
     ("describe", ref)                           -> descrittore con i parametri
+    ("au_names", percorso)                      -> nomi dei plugin di un bundle .component
     ("process", ref, rate, params, state, audio) -> audio (effetto)
     ("render", ref, rate, params, state, events, seconds) -> audio (strumento)
     ("warm", ref, rate, params, state)          -> None (carica e configura in anticipo)
@@ -47,6 +48,18 @@ from core.i18n import tr
 # Parametri "tecnici" che alcuni VST3 (quelli fatti con DPF) espongono come
 # parametri normali: non hanno senso da regolare a mano.
 HIDDEN_VST3_PARAMS = {"buffer_size_frames", "sample_rate_frames"}
+
+# Formati caricati con pedalboard: da qui in poi un AU si usa come un VST3
+# (parametri normalizzati 0-1, stato in base64, finestra, MIDI).
+PEDALBOARD_FORMATS = ("vst3", "au")
+
+
+def is_pedalboard_format(fmt: str) -> bool:
+    return fmt in PEDALBOARD_FORMATS
+
+
+def au_only_on_macos() -> str:
+    return tr("I plugin Audio Unit funzionano solo su macOS")
 
 
 # Architetture dei VST3 per Windows: cartella dentro il bundle
@@ -126,11 +139,11 @@ def windows_load_diagnosis(bundle: str) -> str:
 
 def parse_ref(ref: str):
     """'vst3:/percorso/X.vst3' o 'vst3:/percorso/X.vst3|Nome' (bundle con piu'
-    plugin), 'sfz:/percorso/file.sfz', 'lv2:uri' -> (formato, percorso o uri,
-    nome o None). Un percorso che comincia con "~" e' nella cartella
-    dell'utente."""
+    plugin), 'au:/percorso/X.component[|Nome]' (Audio Unit, macOS),
+    'sfz:/percorso/file.sfz', 'lv2:uri' -> (formato, percorso o uri, nome o
+    None). Un percorso che comincia con "~" e' nella cartella dell'utente."""
     fmt, _, rest = ref.partition(":")
-    if fmt == "vst3":
+    if is_pedalboard_format(fmt):
         path, _, name = rest.partition("|")
         return fmt, _expand_home(path), name or None
     if fmt == "sfz":
@@ -258,7 +271,7 @@ class _Live:
         msgs = []
         while self.pending:
             msgs.append(self.pending.popleft())
-        if self.fmt == "vst3":
+        if is_pedalboard_format(self.fmt):
             y = self.inst.process([(m, 0.0) for m in msgs], duration=frames / self.rate,
                                   sample_rate=float(self.rate), num_channels=2, buffer_size=frames,
                                   reset=False).T
@@ -316,12 +329,34 @@ class _Worker:
                     raise RuntimeError(f"{e} — {reason}") from e
             raise
 
+    @staticmethod
+    def _au_class():
+        """pedalboard.AudioUnitPlugin, che c'e' solo su macOS."""
+        import pedalboard
+        cls = getattr(pedalboard, "AudioUnitPlugin", None)
+        if cls is None or sys.platform != "darwin":
+            raise RuntimeError(au_only_on_macos())
+        return cls
+
+    def _au(self, ref: str):
+        _fmt, path, name = parse_ref(ref)
+        cls = self._au_class()
+        if not os.path.exists(path):
+            raise RuntimeError(tr("plugin non trovato: {path}", path=path))
+        return cls(path, plugin_name=name) if name else cls(path)
+
+    def au_names(self, path: str) -> list:
+        """I nomi dei plugin di un bundle .component (di solito uno)."""
+        return [str(n) for n in self._au_class().get_plugin_names_for_file(path)]
+
     def instance(self, ref: str, rate: int):
         key = (ref, int(rate))
         if key not in self.instances:
             fmt, target, _name = parse_ref(ref)
             if fmt == "vst3":
                 self.instances[key] = self._vst3(ref)
+            elif fmt == "au":
+                self.instances[key] = self._au(ref)
             elif fmt == "lv2":
                 from core.lv2_host import LV2Instance
                 self.instances[key] = LV2Instance(target, int(rate))
@@ -354,7 +389,7 @@ class _Worker:
         inst = self.instance(ref, rate)
         key = (ref, int(rate))
         fmt = parse_ref(ref)[0]
-        if fmt == "vst3":
+        if is_pedalboard_format(fmt):
             if state and self.applied_state.get(key) != state:
                 try:
                     inst.raw_state = base64.b64decode(state)
@@ -422,19 +457,19 @@ class _Worker:
             state = base64.b64encode(inst.raw_state).decode("ascii")
         except Exception:
             state = ""          # senza stato iniziale si usa lo stesso
-        return {"ref": ref, "format": "vst3", "name": inst.name, "vendor": inst.manufacturer_name or "",
+        return {"ref": ref, "format": fmt, "name": inst.name, "vendor": inst.manufacturer_name or "",
                 "category": inst.category or "", "instrument": bool(inst.is_instrument),
                 "params": params, "state": state, "problem": ""}
 
     def strings(self, ref: str, params: dict, state: str) -> dict:
-        if parse_ref(ref)[0] != "vst3":
+        if not is_pedalboard_format(parse_ref(ref)[0]):
             return {}
         inst = self.configure(ref, 48000, params, state)
         return {k: p.string_value for k, p in inst.parameters.items() if k not in HIDDEN_VST3_PARAMS}
 
     def editor(self, ref: str, params: dict, state: str) -> dict:
-        if parse_ref(ref)[0] != "vst3":
-            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3"))
+        if not is_pedalboard_format(parse_ref(ref)[0]):
+            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3 e AU"))
         inst = self.configure(ref, 48000, params, state)
         if sys.platform == "win32":
             import threading
@@ -472,7 +507,7 @@ class _Worker:
                 self._drop_instance(ref, rate)
         inst = self.configure(ref, rate, params, state)
         audio = np.ascontiguousarray(audio, dtype=np.float32)
-        if parse_ref(ref)[0] == "vst3":
+        if is_pedalboard_format(parse_ref(ref)[0]):
             y = inst.process(np.ascontiguousarray(audio.T), float(rate), reset=True).T
             if y.ndim == 1:
                 y = y[:, None]
@@ -493,7 +528,7 @@ class _Worker:
             return self._fresh_sfz(target, rate).render([(float(t), bytes(d)) for t, d in events],
                                                          float(seconds))
         inst = self.configure(ref, rate, params, state)
-        if parse_ref(ref)[0] == "vst3":
+        if is_pedalboard_format(parse_ref(ref)[0]):
             y = inst.process([(bytes(data), float(t)) for t, data in events], duration=float(seconds),
                              sample_rate=float(rate), num_channels=2, reset=True)
             return np.ascontiguousarray(y.T[:, :2], dtype=np.float32)
@@ -535,6 +570,8 @@ class _Worker:
             return [_lv2_descriptor(i, with_params=False) for i in list_lv2_plugins()]
         if op == "describe":
             return self.describe(request[1])
+        if op == "au_names":
+            return self.au_names(request[1])
         if op == "strings":
             return self.strings(*request[1:])
         if op == "editor":

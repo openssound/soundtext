@@ -47,7 +47,8 @@ notes for the track's instrument by itself. Lowercase letters are notes,
   chords, without AI, also in the style of your own songs.
 - **Shape the sound**: mixer, SoundFonts, SFZ sampled instruments, effects
   (EQ, compressor, delay, reverb), guitar amplifiers and **NAM** profiles of
-  real amplifiers, **VST3** and **LV2** plugins, mastering.
+  real amplifiers, **VST3**, **AU** (macOS) and
+  **LV2** (Linux) plugins, mastering.
 - **Play and record**: the computer keyboard or a MIDI keyboard; audio
   tracks for voice and guitar, with multiple takes, loop and punch-in; from
   an audio recording to notes.
