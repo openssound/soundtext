@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pytest
 
-from core import plugins
+from core import plugin_worker, plugins
 from core.model import Effect, Project
 from core.plugin_worker import _Worker, is_pedalboard_format, parse_ref
 from core.project_io import parse_project_text, project_to_text
@@ -83,6 +83,12 @@ class FakeAU:
         pass
 
 
+def _pretend_macos(monkeypatch, value: bool):
+    """Come se SoundText girasse (o no) su macOS, senza toccare sys.platform:
+    cambiarlo in tutto il processo rompe altre librerie (sysconfig su Linux)."""
+    monkeypatch.setattr(plugin_worker, "running_on_macos", lambda: value)
+
+
 @pytest.fixture
 def fake_pedalboard(monkeypatch, tmp_path):
     """pedalboard con AudioUnitPlugin finto, "su macOS"; torna la cartella
@@ -90,7 +96,7 @@ def fake_pedalboard(monkeypatch, tmp_path):
     module = types.ModuleType("pedalboard")
     module.AudioUnitPlugin = FakeAU
     monkeypatch.setitem(sys.modules, "pedalboard", module)
-    monkeypatch.setattr(sys, "platform", "darwin")
+    _pretend_macos(monkeypatch, True)
     FakeAU.loaded = []
     folder = tmp_path / "Components"
     folder.mkdir()
@@ -128,10 +134,9 @@ def test_find_au_bundles_only_takes_component_folders(tmp_path, monkeypatch):
     (tmp_path / "file.component.txt").write_text("x")
     found = plugins.find_au_bundles([str(tmp_path)])
     assert [os.path.basename(p) for p in found] == ["Due.component", "Uno.component", "finto.component"]
-    for platform in ("linux", "win32"):
-        monkeypatch.setattr(sys, "platform", platform)
-        assert plugins.default_au_dirs() == [] and plugins.au_dirs() == [] and plugins.find_au_bundles() == []
-    monkeypatch.setattr(sys, "platform", "darwin")
+    _pretend_macos(monkeypatch, False)
+    assert plugins.default_au_dirs() == [] and plugins.au_dirs() == [] and plugins.find_au_bundles() == []
+    _pretend_macos(monkeypatch, True)
     assert "/Library/Audio/Plug-Ins/Components" in plugins.default_au_dirs()
 
 
@@ -189,7 +194,7 @@ def test_au_bundle_with_several_plugins_gets_one_ref_each(fake_pedalboard, monke
 
 def test_song_with_an_au_opened_elsewhere_plays_without_it(monkeypatch):
     from core.effects import apply_effect_chain
-    monkeypatch.setattr(sys, "platform", "linux")
+    _pretend_macos(monkeypatch, False)
     ref = "au:/Library/Audio/Plug-Ins/Components/TAL-Reverb-4.component"
     assert "Audio Unit" in plugins.broken_reason(ref)
     with pytest.raises(plugins.PluginError, match="Audio Unit"):

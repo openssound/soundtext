@@ -58,6 +58,13 @@ def is_pedalboard_format(fmt: str) -> bool:
     return fmt in PEDALBOARD_FORMATS
 
 
+def running_on_macos() -> bool:
+    """Gli Audio Unit esistono solo su macOS. Una funzione a parte perche' i
+    test la sostituiscono: cambiare sys.platform in tutto il processo rompe
+    altre librerie (sysconfig su Linux)."""
+    return sys.platform == "darwin"
+
+
 def au_only_on_macos() -> str:
     return tr("I plugin Audio Unit funzionano solo su macOS")
 
@@ -334,7 +341,7 @@ class _Worker:
         """pedalboard.AudioUnitPlugin, che c'e' solo su macOS."""
         import pedalboard
         cls = getattr(pedalboard, "AudioUnitPlugin", None)
-        if cls is None or sys.platform != "darwin":
+        if cls is None or not running_on_macos():
             raise RuntimeError(au_only_on_macos())
         return cls
 

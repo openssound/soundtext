@@ -44,6 +44,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from . import plugin_worker
 from .plugin_worker import au_only_on_macos, is_pedalboard_format, parse_ref
 from .i18n import tr
 
@@ -237,7 +238,7 @@ def au_elsewhere_reason() -> str:
 def broken_reason(ref: str) -> str:
     """Perche' il plugin non si usa (si e' bloccato o chiuso, o e' un
     Audio Unit fuori da macOS), o ''."""
-    if ref.startswith("au:") and sys.platform != "darwin":
+    if ref.startswith("au:") and not plugin_worker.running_on_macos():
         return au_elsewhere_reason()
     return _broken.get(ref, "")
 
@@ -275,7 +276,7 @@ def default_vst3_dirs() -> List[str]:
 
 def default_au_dirs() -> List[str]:
     """Le cartelle standard degli Audio Unit: solo su macOS."""
-    if sys.platform != "darwin":
+    if not plugin_worker.running_on_macos():
         return []
     return ["/Library/Audio/Plug-Ins/Components", os.path.expanduser("~/Library/Audio/Plug-Ins/Components")]
 
@@ -299,7 +300,7 @@ def vst3_dirs() -> List[str]:
 def au_dirs() -> List[str]:
     """Le cartelle in cui cercare gli Audio Unit (solo macOS): quelle
     standard e le stesse aggiunte in Opzioni per i VST3."""
-    if sys.platform != "darwin":
+    if not plugin_worker.running_on_macos():
         return []
     from .settings import get_plugin_dirs
     return _unique_dirs(default_au_dirs() + get_plugin_dirs())
@@ -697,7 +698,7 @@ def _check_allowed(ref: str) -> None:
     comunque (lo dira' il processo dei plugin). Un AU fuori da macOS non
     arriva nemmeno al processo dei plugin."""
     fmt, path, _name = parse_ref(ref)
-    if fmt == "au" and sys.platform != "darwin":
+    if fmt == "au" and not plugin_worker.running_on_macos():
         raise PluginError(au_elsewhere_reason())
     if is_pedalboard_format(fmt) and os.path.exists(path) and not in_plugin_dirs(path):
         raise PluginError(tr("Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi "
@@ -726,7 +727,7 @@ def resolve_ref(ref: str) -> str:
     fmt, path, name = parse_ref(ref)
     if not is_pedalboard_format(fmt) or (os.path.exists(path) and in_plugin_dirs(path)):
         return ref
-    if fmt == "au" and sys.platform != "darwin":
+    if fmt == "au" and not plugin_worker.running_on_macos():
         return ref                # resta com'e' nel file: su un Mac torna
     base = os.path.basename(path.rstrip("/\\")).lower()
     for bundle in (find_vst3_bundles() if fmt == "vst3" else find_au_bundles()):
