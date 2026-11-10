@@ -26,6 +26,16 @@ def _reset_global_state():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _microphone_allowed(monkeypatch):
+    """Il permesso del microfono di macOS (core.macos_permissions) vale come
+    concesso: sul Mac della CI potrebbe risultare negato, e la finestra di
+    registrazione aprirebbe l'avviso aspettando un clic. Il test
+    dell'avviso lo cambia da se'."""
+    from core import macos_permissions
+    monkeypatch.setattr(macos_permissions, "microphone_blocked", lambda: False)
+
+
 def _main_window_class():
     import sys
     module = sys.modules.get("gui.main_window")

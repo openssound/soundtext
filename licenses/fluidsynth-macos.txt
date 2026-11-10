@@ -1,0 +1,24 @@
+FluidSynth nell'app per macOS (SoundText.app)
+
+SoundText.app contiene un'unica libreria di FluidSynth,
+Contents/Frameworks/libfluidsynth.3.dylib, compilata dai sorgenti ufficiali
+da packaging/macos/build-fluidsynth.sh (versioni e sha256 dei sorgenti sono
+nello script). Le librerie qui sotto sono collegate in modo statico dentro
+quella libreria, che dipende solo da librerie di sistema di macOS e resta un
+file separato, sostituibile con un'altra build di FluidSynth.
+
+  FluidSynth 2.4.7         LGPL-2.1 o successiva
+  GLib 2.84.4              LGPL-2.1 o successiva
+    con dentro: PCRE2 10.44 (BSD 3-Clause), libffi (MIT),
+    proxy-libintl (LGPL-2.0 o successiva), zlib 1.3.1 (zlib)
+  libsndfile 1.2.2         LGPL-2.1 o successiva
+  libogg 1.3.6             BSD 3-Clause
+  libvorbis 1.3.7          BSD 3-Clause
+  libFLAC 1.5.0            BSD 3-Clause
+  libopus 1.5.2            BSD 3-Clause
+
+Il testo della LGPL-2.1 e' in licenses/LGPL-2.1.txt (vale anche per le
+"o successiva" e per la LGPL-2.0 di proxy-libintl). I testi di licenza di
+ciascun progetto, presi dai suoi sorgenti, sono nella cartella
+licenses/fluidsynth-macos/ dell'app. I sorgenti si scaricano dagli
+indirizzi indicati in build-fluidsynth.sh, alle versioni indicate.

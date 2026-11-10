@@ -7,7 +7,8 @@ installata e i controlli sui tipi delle impostazioni.
 Serve FluidSynth 2.x (libfluidsynth.so.3 / libfluidsynth-3.dll /
 libfluidsynth.dylib). La libreria si cerca, nell'ordine:
 - accanto all'app (build portable Windows: DLL affiancate a SoundText.exe;
-  build Linux: cartella lib/);
+  build Linux: cartella lib/; app per macOS: Contents/Frameworks, dove
+  packaging/macos/build-macos.sh mette la libreria con le sue dipendenze);
 - con i nomi di sistema (ctypes.util.find_library, poi il caricamento
   diretto per nome, che rispetta LD_LIBRARY_PATH);
 - nelle cartelle di Homebrew su macOS (su Apple Silicon find_library non
@@ -49,6 +50,9 @@ def _candidates() -> List[str]:
             names += sorted(glob.glob(os.path.join(folder, "libfluidsynth*.dll")))
             names += sorted(glob.glob(os.path.join(folder, "fluidsynth*.dll")))
     elif sys.platform == "darwin":
+        if getattr(sys, "frozen", False):
+            frameworks = os.path.join(os.path.dirname(sys.executable), "..", "Frameworks")
+            names += sorted(glob.glob(os.path.join(os.path.normpath(frameworks), "libfluidsynth*.dylib")))
         names += sorted(glob.glob(os.path.join(root, "lib", "libfluidsynth*.dylib")))
     else:
         names += sorted(glob.glob(os.path.join(root, "lib", "libfluidsynth.so*")))

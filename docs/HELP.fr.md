@@ -5160,7 +5160,50 @@ le dossier de SoundText. Sinon, avec
 
 ## 32. Installation sous macOS
 
-Il n'y a pas de paquet prêt pour macOS : on l'installe depuis le code.
+Le plus simple est l'app prête, **SoundText.app** dans une image disque
+`.dmg` : ni Homebrew, ni Python, ni Terminal. Le script `install-macos.sh`
+reste pour ceux qui préfèrent installer depuis le code.
+
+### Paquet prêt : SoundText.app
+
+Depuis les [Releases](https://github.com/openssound/soundtext/releases/latest)
+téléchargez la `.dmg` pour votre Mac (menu Apple → **À propos de ce Mac**) :
+
+| Votre Mac | Quoi télécharger |
+|---|---|
+| Puce Apple (M1 et suivantes) | `SoundText-macos-arm64-<version>.dmg` |
+| Processeur Intel | `SoundText-macos-x86_64-<version>.dmg` |
+
+Il faut macOS 13 Ventura ou plus récent. Ouvrez la `.dmg` et faites glisser
+**SoundText** dans le dossier **Applications**. FluidSynth et le moteur SFZ
+intégré sont déjà dans l'app ; au premier lancement SoundText propose de
+télécharger une SoundFont.
+
+**Premier lancement d'une app non signée.** Tant que SoundText n'est pas
+signé avec un certificat Apple, la première fois macOS dit que l'app ne
+peut pas être vérifiée. Ouvrez **Réglages Système → Confidentialité et
+sécurité**, descendez jusqu'à **Sécurité** et cliquez sur **Ouvrir quand
+même** à côté de SoundText, puis confirmez avec le mot de passe du Mac. On
+le fait une seule fois (le « Lisez-moi » de la `.dmg` l'explique pas à
+pas).
+
+- **Vos fichiers** : les morceaux s'enregistrent dans
+  **Documents/SoundText**, jamais dans l'app ; réglages et instruments sont
+  dans `~/Library/Application Support/SoundText`, le journal des erreurs
+  dans `~/Library/Logs/SoundText.log`.
+- **Ouvrir un morceau depuis le Finder** : double-clic sur un fichier
+  `.st`.
+- **Mettre à jour** : téléchargez la nouvelle `.dmg` et remplacez l'app
+  dans Applications ; morceaux et réglages restent.
+- **Version Intel sur un Mac à puce Apple** : elle fonctionne avec
+  Rosetta, mais plus lentement et sans les plugins seulement arm64 :
+  choisissez la version arm64.
+- **Si vous utilisiez install-macos.sh** : la nouvelle app lit les mêmes
+  réglages et instruments. Les morceaux enregistrés avant sont dans
+  `~/Library/Application Support/SoundText/songs` (ouvrez-les avec **Projet
+  → Ouvrir**). La commande `soundtext` et l'ancienne SoundText.app dans
+  `~/Applications` s'enlèvent avec `./install-macos.sh --uninstall`, qui ne
+  touche ni aux morceaux ni aux réglages.
 
 ### Avec le script install-macos.sh
 
@@ -5204,4 +5247,5 @@ python3 main.py
   l'autorisation pour le programme depuis lequel vous avez lancé SoundText
   (SoundText.app ou le terminal) : accordez-la dans **Réglages Système →
   Confidentialité et sécurité → Microphone**, sinon l'enregistrement reste
-  muet.
+  muet. Si l'autorisation est refusée, SoundText le dit avant d'enregistrer,
+  avec un bouton qui ouvre ce réglage.

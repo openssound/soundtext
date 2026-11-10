@@ -242,6 +242,105 @@ jobs:
             SoundText-linux-*.AppImage
             setup-appimage.sh
 
+  # -------------------------------------------------------------------- MACOS
+  # SoundText.app in una .dmg, una per architettura, ciascuna sul suo runner
+  # (un'app "universale" richiederebbe versioni universali di ogni pacchetto
+  # Python). Tutto il lavoro e' in packaging/macos/build-macos.sh, che si
+  # puo' lanciare anche su un Mac. Dopo build-windows, che crea la Release.
+  build-macos:
+    needs: build-windows
+    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15          # Apple Silicon (arm64)
+          - runner: macos-15-intel    # Intel (x86_64)
+    runs-on: ${{ matrix.runner }}
+    env:
+      # i secret non si leggono in un "if": se ne ricava una variabile
+      HAS_SIGNING_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
+    steps:
+      - name: Checkout codice
+        uses: actions/checkout@v7
+
+      - name: Imposta Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # FluidSynth 2.4.7 con glib e libsndfile dentro, compilato per la
+      # versione minima di macOS dell'app (build-fluidsynth.sh): si ricompila
+      # solo se lo script cambia.
+      - name: Cache di FluidSynth
+        id: fluidsynth-cache
+        uses: actions/cache@v4
+        with:
+          path: fluidsynth-build/prefix
+          key: fluidsynth-${{ matrix.runner }}-${{ hashFiles('packaging/macos/build-fluidsynth.sh') }}
+
+      - name: Compila FluidSynth
+        if: steps.fluidsynth-cache.outputs.cache-hit != 'true'
+        run: |
+          brew install pkgconf || true
+          packaging/macos/build-fluidsynth.sh fluidsynth-build
+
+      - name: Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      # Firma Developer ID e notarizzazione, solo se nei secret del
+      # repository ci sono certificato e chiave API (elenco in
+      # packaging/macos/README.md); altrimenti build-macos.sh firma ad-hoc e
+      # mette nella .dmg il Leggimi per il primo avvio.
+      - name: Certificato di firma (se configurato)
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        if: env.HAS_SIGNING_CERTIFICATE == 'true'
+        run: |
+          keychain="$RUNNER_TEMP/firma.keychain-db"
+          password="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificato.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificato.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/certificato.p12"
+          echo "SOUNDTEXT_CODESIGN_IDENTITY=$MACOS_CODESIGN_IDENTITY" >> "$GITHUB_ENV"
+          if [ -n "$APPLE_API_KEY" ]; then
+            echo "$APPLE_API_KEY" | base64 --decode > "$RUNNER_TEMP/chiave_api.p8"
+            {
+              echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/chiave_api.p8"
+              echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID"
+              echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Costruisci SoundText.app e la .dmg
+        run: |
+          FLUIDSYNTH_LIB="$PWD/fluidsynth-build/prefix/lib/libfluidsynth.3.dylib" PYTHON=python \
+            packaging/macos/build-macos.sh "${{ github.ref_name }}"
+
+      - name: Togli il portachiavi temporaneo
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/firma.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/chiave_api.p8"
+
+      - name: Pubblica la .dmg sulla Release GitHub
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            SoundText-macos-*.dmg
+
   # ---------------------------------------------------------- LINUX PORTABLE
   # Il tar.gz di build-linux-portable.sh (eseguibile, dati, SoundFont GM,
   # libfluidsynth con le sue dipendenze e setup-portable-linux.sh). Su Ubuntu
