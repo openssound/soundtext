@@ -8,8 +8,9 @@
 //   messi in cache al primo uso. Il SoundFont si scarica solo al primo Play.
 "use strict";
 
-const CACHE = "stmobile-v2";            // pagina e bundle: si cambia a ogni versione
+const CACHE = "stmobile-v7";            // pagina e bundle: si cambia a ogni versione
 const VENDOR = "stmobile-vendor-v1";     // Pyodide, wheel, FluidSynth, SoundFont: restano
+const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide, gestita da worker.js
 const SHELL = [
   "./", "index.html", "diagnostica.html", "style.css", "app.js", "metrics.js", "worker.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "bundle/files.json",
@@ -30,7 +31,7 @@ self.addEventListener("install", (ev) => {
 self.addEventListener("activate", (ev) => {
   ev.waitUntil((async () => {
     for (const name of await caches.keys()) {
-      if (name !== CACHE && name !== VENDOR) await caches.delete(name);
+      if (!KEEP.includes(name)) await caches.delete(name);
     }
     await self.clients.claim();
   })());
@@ -74,5 +75,9 @@ self.addEventListener("fetch", (ev) => {
   const scope = new URL(self.registration.scope);
   const path = url.pathname.slice(scope.pathname.length);
   const handler = path.startsWith("vendor/") ? cacheFirst : networkFirst;
-  ev.respondWith(handler(req).then(isolated));
+  // Le intestazioni COOP/COEP servono solo alla pagina e ai worker: le altre
+  // risposte restano quelle della cache, cosi' il browser puo' tenere il
+  // WebAssembly gia' compilato (una Response ricreata perde il suo URL).
+  const needsHeaders = req.mode === "navigate" || req.destination === "worker" || req.destination === "document";
+  ev.respondWith(needsHeaders ? handler(req).then(isolated) : handler(req));
 });

@@ -45,6 +45,7 @@ function startWorker() {
     state.worker.onmessage = (ev) => {
       const msg = ev.data;
       if (msg.type === "booted") return resolve(msg.timings);
+      if (msg.type === "numpy") return void Metrics.record("numpy", { background_ms: msg.ms });
       const p = pending.get(msg.id);
       if (msg.type === "error") {
         if (p) { pending.delete(msg.id); p.reject(new Error(msg.message)); }
@@ -108,7 +109,8 @@ async function openSong(name, text) {
   const t0 = performance.now();
   const r = await call("load", { name, text });
   const roundtrip = ms(t0);
-  state.song = { name, text, info: r.info, midi: r.midi, spans: r.spans, offsets: codepointOffsets(text) };
+  const song = { name, text, info: r.info, midi: r.midi, spans: null, offsets: codepointOffsets(text) };
+  state.song = song;
   state.semitones = 0;
   $("trans").value = 0; $("transOut").value = "0";
   state.midi = r.midi;
@@ -117,14 +119,22 @@ async function openSong(name, text) {
   showText(text);
   fillFollow(r.info.tracks);
   const t = r.timings;
+  // roundtrip_ms: dalla richiesta al brano pronto da suonare
   Metrics.record("analisi", {
-    song: name, chars: text.length, tracks: r.info.tracks.length, spans: r.spans.length / 6,
+    song: name, chars: text.length, tracks: r.info.tracks.length,
     parse_ms: Math.round(t.parse_s * 1000), midi_ms: Math.round(t.midi_s * 1000),
-    spans_ms: Math.round(t.spans_s * 1000), worker_total_ms: t.total_ms, roundtrip_ms: roundtrip,
+    worker_total_ms: t.total_ms, roundtrip_ms: roundtrip,
   });
-  setStatus(`${name}: ${r.info.tracks.length} tracce, analisi ${roundtrip} ms`);
+  setStatus(`${name}: ${r.info.tracks.length} tracce, pronto in ${roundtrip} ms`);
   $("play").disabled = false;
-  measureMemory("dopo l'analisi di " + name);
+  // La mappa per l'evidenziazione arriva dopo: si puo' gia' suonare.
+  song.spansReady = call("spans").then((m) => {
+    if (state.song !== song) return;
+    song.spans = m.spans;
+    lastKey = "";
+    Metrics.record("mappa", { song: name, spans: m.spans.length / 6, ms: m.ms });
+    measureMemory("dopo l'analisi di " + name);
+  });
 }
 
 function showText(text) {
@@ -352,7 +362,8 @@ async function frame() {
 }
 
 function highlightAt(beat) {
-  const s = state.song.spans;           // 6 numeri per span: traccia, cs, ce, b0, durata, livello
+  const s = state.song.spans;
+  if (!s) return;                       // mappa non ancora pronta           // 6 numeri per span: traccia, cs, ce, b0, durata, livello
   const deepest = new Map();            // traccia -> indice dello span piu' profondo attivo
   const boxes = [];
   for (let i = 0; i < s.length; i += 6) {
@@ -478,9 +489,11 @@ async function main() {
 // ?misura=1: analizza i due esempi della fase 0 e manda le misure con un
 // POST a "misure" (il server di prova in mobile/misura_headless.py).
 async function automaticMeasure() {
-  await loadExample("symphony_d_minor_box.st");
-  await loadExample("jazz_aaba.st");
-  await loadExample("symphony_d_minor_box.st");
+  await state.song.spansReady;
+  for (const name of ["symphony_d_minor_box.st", "jazz_aaba.st", "symphony_d_minor_box.st"]) {
+    await loadExample(name);
+    await state.song.spansReady;
+  }
   await measureMemory("fine della misura automatica");
   await fetch("misure", { method: "POST", body: JSON.stringify(Metrics.all()) }).catch(() => {});
 }

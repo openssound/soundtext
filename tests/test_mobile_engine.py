@@ -163,3 +163,41 @@ def test_static_check_finds_lazy_qt_imports():
     # la stessa prova sui due moduli di core/ che usano Qt li trova
     assert _pyside_imports("core.audio_decode")
     assert _pyside_imports("core.autosave")
+
+
+# Nel browser numpy si carica solo dopo l'avvio (mobile/worker.js): l'analisi
+# dei brani non deve usarlo. Un numpy finto conta gli attributi letti dopo
+# l'import dei moduli (prima, Python < 3.14 valuta le annotazioni del modulo,
+# es. Dict[..., np.ndarray] in core/effects.py; Pyodide usa la 3.14, dove
+# non si valutano piu' all'import).
+_NO_NUMPY_PROBE = r"""
+import importlib, json, os, sys, types
+used = []
+class FakeNumpy(types.ModuleType):
+    armed = False
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        if FakeNumpy.armed:
+            used.append(name)
+        return type(name, (), {})
+sys.modules["numpy"] = FakeNumpy("numpy")
+root, mobile = sys.argv[1], sys.argv[2]
+sys.path.insert(0, root); sys.path.insert(0, mobile)
+import build, engine
+for name in engine.ENGINE_MODULES:
+    importlib.import_module(name)
+FakeNumpy.armed = True
+for name in build.EXAMPLES:
+    with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
+        engine.analyze(f.read(), name, transpose=-2)
+print(json.dumps(used))
+"""
+
+
+@pytest.mark.slow
+def test_song_analysis_never_uses_numpy():
+    out = subprocess.run([sys.executable, "-c", _NO_NUMPY_PROBE, ROOT, MOBILE],
+                         capture_output=True, text=True, timeout=180, cwd=ROOT, env=dict(os.environ))
+    assert out.returncode == 0, out.stderr
+    assert json.loads(out.stdout.strip().splitlines()[-1]) == []

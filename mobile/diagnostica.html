@@ -26,9 +26,11 @@
 <script>
 "use strict";
 const COLUMNS = {
-  avvio: ["when", "cache", "pyodide_ms", "numpy_ms", "wheels_ms", "engine_import_ms", "total_ms", "page_to_ready_ms",
+  avvio: ["when", "cache", "snapshot", "files_ms", "python_ms", "snapshot_make_ms", "snapshot_bytes", "total_ms", "page_to_ready_ms",
           "network", "heap_bytes", "versions", "standalone", "isolated"],
-  analisi: ["when", "song", "chars", "tracks", "spans", "parse_ms", "midi_ms", "spans_ms", "worker_total_ms", "roundtrip_ms"],
+  analisi: ["when", "song", "chars", "tracks", "parse_ms", "midi_ms", "worker_total_ms", "roundtrip_ms"],
+  mappa: ["when", "song", "spans", "ms"],
+  numpy: ["when", "background_ms"],
   audio: ["when", "worklet_ms", "soundfont_cached", "soundfont_bytes", "soundfont_fetch_ms", "soundfont_load_ms",
           "sample_rate", "base_latency_ms", "output_latency_ms"],
   play: ["when", "first", "tap_to_play_ms", "ctx_state", "song"],

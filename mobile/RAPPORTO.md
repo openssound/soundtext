@@ -40,71 +40,82 @@ La pagina `diagnostica.html` mostra tutte le misure salvate (e le copia in JSON)
 | Offline | `sw.js`, `manifest.webmanifest` | Pagina e bundle: prima la rete, poi la cache. `vendor/`: prima la cache, in una cache a parte che resta fra le versioni |
 | Misure | `metrics.js`, `diagnostica.html` | In console (`[misura]`) e in `localStorage` |
 
-**Come funziona l'evidenziazione.** `engine.py` scorre i blocchi del file `.st` (box, tracce, pattern). Per ogni blocco chiama `compute_token_spans` di st-language, come fa SoundText. Quando incontra un `%Pattern`, scende nel corpo del pattern con lo spostamento di tempo del riferimento. Così su `jazz_aaba.st` e `symphony_d_minor_box.st` si illumina la nota che suona dentro `Pattern %HeadA1`, e non tutto il box (vedi la decisione 4).
+**Avvio con istantanea.** Il primo avvio fa partire Python, importa il motore e salva in Cache Storage un'istantanea della memoria di Pyodide: circa 30 MB, creata in 50 ms. Usa `makeMemorySnapshot` con le opzioni `_makeSnapshot` e `_loadSnapshot`, ancora sperimentali in Pyodide. Gli avvii seguenti ripartono dall'istantanea, senza rifare l'avvio dell'interprete né gli import. I file non sono nell'istantanea: a ogni avvio si rimettono `engine.zip` e le wheel (meno di 0,1 s).
 
-La posizione arriva dal player di FluidSynth (`retrievePlayerCurrentTick`, 480 tick per battito come `core/midi_export.py`), corretta della latenza d'uscita. L'evidenziazione usa la CSS Custom Highlight API: niente DOM da rifare a ogni fotogramma.
+La chiave dell'istantanea cambia con `engine.zip`, le wheel, la versione di Pyodide e il browser. Se un'istantanea non si carica, il worker la cancella e fa l'avvio normale.
+
+**numpy dopo.** Fra i moduli usati, numpy lo importa solo `core/effects.py`, per gli effetti audio che qui non servono, e l'analisi dei brani non lo usa mai (lo controlla un test). Al suo posto c'è un modulo sostituto, che importa numpy vero al primo uso. Il pacchetto si carica in background dopo il primo brano aperto.
+
+**Come funziona l'evidenziazione.** `engine.py` scorre i blocchi del file `.st` (box, tracce, pattern). Per ogni blocco chiama `compute_token_spans` di st-language, come fa SoundText. Quando incontra un `%Pattern`, scende nel corpo del pattern con lo spostamento di tempo del riferimento. Così su `jazz_aaba.st` e `symphony_d_minor_box.st` si illumina la nota che suona dentro `Pattern %HeadA1`, e non tutto il box.
+
+La mappa si calcola dopo l'apertura: il brano si può già suonare mentre arriva. La posizione arriva dal player di FluidSynth (`retrievePlayerCurrentTick`, 480 tick per battito come `core/midi_export.py`), corretta della latenza d'uscita. L'evidenziazione usa la CSS Custom Highlight API: niente DOM da rifare a ogni fotogramma.
 
 **Trasposizione.** Si fa sulle note del MIDI esportato, tranne il canale 10 delle percussioni. Il documento proponeva invece `transpose=` di st-language davanti al testo, ma non funziona: i box degli esempi cominciano con `reset:` e hanno un loro `transpose=` (per esempio il sax un'ottava sotto), che lo annullano. Il MIDI si esporta una volta sola e si traspone in circa 0,5 s.
 
-**Test.** `tests/test_mobile_engine.py` (8 test):
+**Test.** `tests/test_mobile_engine.py` (9 test):
 
 - in un processo nuovo, un finder intercetta ogni tentativo di importare PySide6 mentre il motore analizza ed esporta i due esempi;
 - un controllo statico (AST) cerca gli import di PySide6 anche dentro le funzioni dei moduli usati; lo stesso controllo trova quelli di `core/audio_decode.py` e `core/autosave.py`;
+- l'analisi dei quattro esempi non legge nessun attributo di numpy;
 - verifica la trasposizione e la mappa nota → testo.
 
 ## Misure sul computer
 
 Portatile AMD Ryzen 7 3700U, 8 GB di RAM, Linux, server locale. Quindi la rete non pesa: i tempi sono di caricamento e calcolo.
 
-- **Chrome 152**: il pannello del browser dell'app Claude, che era nascosto durante le prove; un pannello in secondo piano può rallentare un po'.
+- **Chrome 152**: il pannello del browser dell'app Claude, nascosto durante le prove; un pannello in secondo piano può rallentare un po'.
 - **Firefox 160**: senza finestra, con `misura_headless.py`.
 
-### Avvio del motore (Pyodide + numpy + st-language + core/)
+### Avvio del motore
 
-| | Chrome, 1° avvio | Chrome, con cache (media di 4) | Firefox, 1° avvio | Firefox, con cache |
+«Prima» è la prima versione del prototipo (Pyodide, numpy e import a ogni avvio); «ora» è con l'istantanea e numpy rinviato.
+
+| | Chrome, prima | Chrome, ora | Firefox, prima | Firefox, ora |
 | --- | --- | --- | --- | --- |
-| `loadPyodide` | 5,0 s | 4,8 s | 7,1 s | 5,9 s |
-| numpy (+ packaging) | 1,1 s | 1,0 s | 1,1 s | 1,0 s |
-| wheel st-language e mido | 0,1 s | 0,1 s | 0,1 s | 0,1 s |
-| import dei moduli di `core/` | 2,5 s | 2,5 s | 3,2 s | 3,1 s |
-| **totale** | **8,6 s** | **8,4 s** | **11,5 s** | **10,1 s** |
+| Primo avvio (crea l'istantanea) | 8,6 s | 5,4 s | 11,5 s | 9,4–10,8 s |
+| **Avvio con la cache** | **8,4 s** | **0,67–0,82 s** | **10,1 s** | **2,2 s** |
+| Heap WebAssembly di Pyodide all'avvio | 43 MB | 30 MB | 43 MB | 30 MB |
 
-Obiettivo del documento: meno di 3 s con la cache. **Non è raggiunto nemmeno sul computer.** La cache toglie quasi solo il tempo di rete, che qui è zero. Il tempo se ne va a compilare il WebAssembly, avviare Python e compilare i sorgenti `.py`.
+Obiettivo del documento: meno di 3 s con la cache. Sul computer ora è raggiunto in tutti e due i browser. Il primo avvio resta lungo: è l'avvio di Python (4–5 s in Chrome); la compilazione del WebAssembly costa solo 80 ms.
+
+Prima dell'istantanea avevo provato anche i `.pyc` precompilati in cache: l'import di `core/` scendeva da 3,1 a 1,4 s in Firefox (con numpy rinviato). L'istantanea li rende inutili e li ho tolti.
 
 **Peso da scaricare al primo avvio:**
 
 | Parte | Peso | Compresso (gzip) |
 | --- | --- | --- |
-| Motore (Pyodide, numpy, wheel, `engine.zip`) | 16,4 MB | circa 9,5 MB |
+| Motore (Pyodide, wheel, `engine.zip`) | 13,5 MB | circa 6,7 MB |
 | `pyodide.asm.wasm` (incluso sopra) | 9,2 MB | 3,4 MB |
 | `python_stdlib.zip` (incluso sopra) | 2,4 MB | già compresso |
-| numpy (incluso sopra) | 2,8 MB | già compresso |
+| numpy, dopo il primo brano | 2,8 MB | già compresso |
 | Audio (al primo Play): js-synthesizer + FluidSynth | 0,7 MB | 0,24 MB |
 | Audio (al primo Play): SoundFont | 5,7 MB | 5,3 MB |
 
-Su un 4G a 20 Mbit/s il motore richiede circa 4 s di solo download, più l'avvio. **L'obiettivo di 10 s la prima volta è quindi a rischio, già prima di misurare il telefono.**
+Su un 4G a 20 Mbit/s il motore richiede circa 3 s di solo download, più l'avvio di Python. **L'obiettivo di 10 s la prima volta è quindi stretto, già prima di misurare il telefono.**
 
 ### Analisi dei due esempi (nel worker, con la cache calda)
 
-| Brano | Python nativo | Chrome | Firefox | Rapporto Chrome/nativo |
-| --- | --- | --- | --- | --- |
-| `jazz_aaba.st` (10 KB, 5 tracce) | 0,86 s | 1,65–2,07 s | 2,4–2,7 s | circa 2× |
-| `symphony_d_minor_box.st` (30 KB, 12 tracce) | 1,25 s | 2,09–2,19 s | 3,1–3,6 s | circa 1,7× |
+«Pronto» va dalla richiesta al brano che si può suonare: lettura del file ed export MIDI. La mappa per l'evidenziazione arriva dopo.
 
-Il totale comprende lettura del file, export MIDI e mappa per l'evidenziazione. Il dettaglio per `symphony_d_minor_box.st` in Chrome:
+| Brano | Python nativo (lettura + MIDI) | Chrome, pronto | Chrome, mappa | Firefox, pronto | Firefox, mappa |
+| --- | --- | --- | --- | --- | --- |
+| `jazz_aaba.st` (10 KB, 5 tracce) | 0,59 s | 1,1 s | 0,5 s | 1,8–2,9 s | 0,8–1,1 s |
+| `symphony_d_minor_box.st` (30 KB, 12 tracce) | 0,88 s | 1,4–1,5 s | 0,7 s | 2,1–3,1 s | 1,0–1,5 s |
+
+Il dettaglio per `symphony_d_minor_box.st` in Chrome, contro Python nativo:
 
 - lettura: 0,54 s (nativo 0,45);
 - MIDI: 0,86 s (nativo 0,43);
-- evidenziazione: 0,68 s (nativo 0,37).
+- mappa: 0,68 s (nativo 0,37).
 
-Il documento stimava da 2 a 4 volte il tempo nativo: siamo in basso in quella forbice. Trasposizione: 0,48 s (il MIDI si riscrive con mido nel worker).
+Il documento stimava da 2 a 4 volte il tempo nativo: Chrome sta in basso in quella forbice. Trasposizione: 0,46–0,48 s (il MIDI si riscrive con mido nel worker).
 
 ### Audio (Chrome)
 
 | Misura | Valore |
 | --- | --- |
 | Dal tocco su Play al suono, primo Play (SoundFont non in cache) | 0,5 s |
-| Dal tocco su Play al suono, primo Play della sessione (SoundFont in cache) | 0,34 s |
+| Dal tocco su Play al suono, primo Play della sessione (SoundFont in cache) | 0,33 s |
 | Ripresa dopo una pausa | immediata |
 | Caricamento del worklet FluidSynth | 0,13–0,17 s |
 | Caricamento del SoundFont in FluidSynth | 0,09 s |
@@ -120,18 +131,19 @@ FluidSynth avvisa una volta: «Instrument not found on channel 9 [bank=248]». I
 
 | Misura | Valore |
 | --- | --- |
-| Heap WebAssembly di Pyodide, dopo l'analisi della sinfonia | 43 MB, stabile aprendo i brani più volte |
+| Heap WebAssembly di Pyodide | 30 MB all'avvio, 36–43 MB dopo i brani e numpy |
+| Istantanea in Cache Storage | 30 MB |
 | Heap JavaScript della pagina (Chrome) | 2–3 MB |
 | Memoria totale di pagina, worker e worklet | non misurata |
 
 La memoria totale (`measureUserAgentSpecificMemory`) non è disponibile nel pannello dell'app né in Firefox, anche con la pagina isolata (il service worker aggiunge COOP/COEP). Su Chrome per Android va provata. Su iPhone si legge con Safari → Sviluppo → Timeline, collegando il telefono al Mac.
 
-## Cosa si può migliorare prima della fase 1
+## Cosa resta da migliorare prima della fase 1
 
-1. **`.pyc` precompilati per Python 3.14.** Nel worker l'import di `core/` e st-language costa 2,5–3 s. In Python nativo i `.pyc` tolgono più di un terzo del tempo di import (0,61 → 0,39 s). Si possono preparare con `pyodide py-compile` nella CI.
-2. **Moduli di `core/` più leggeri.** `core.effects` (numpy, pedalboard facoltativo) e `core.memory` entrano solo perché li importa `project_io`. Con `soundtext-engine` conviene spostarli dietro import locali.
-3. **Mappa dell'evidenziazione al primo Play** e non all'apertura: risparmia 0,5–0,7 s sull'apertura del brano.
-4. **Pyodide in cache già alla prima visita**, con un indicatore di avanzamento. I 9,5 MB compressi restano: bisogna vedere sul telefono se l'attesa è accettabile, con la schermata Brani usabile nel frattempo, come propone il documento.
+1. **L'istantanea su iPhone.** È un'opzione sperimentale di Pyodide: va provata su Safari (prova 17). Se non funziona, il ripiego sono i `.pyc` precompilati con `pyodide py-compile` nella CI, che valgono circa 1–2 s.
+2. **Moduli di `core/` più leggeri.** `core.effects` (numpy, pedalboard facoltativo) e `core.memory` entrano solo perché li importa `project_io`. Con `soundtext-engine` conviene spostarli dietro import locali: così numpy non servirebbe neanche dopo.
+3. **Il primo avvio.** Restano 6,7 MB compressi da scaricare e 4–5 s di avvio di Python, che sul telefono saranno di più. Serve un indicatore di avanzamento, con la schermata Brani usabile nel frattempo, come propone il documento.
+4. **numpy in background in Firefox.** Nelle prove headless in Firefox il caricamento di numpy dopo il primo brano non ha registrato la sua misura (in Chrome sì: 0,7 s). Non tocca l'analisi né l'ascolto, ma va guardato.
 
 ## Prove da fare a mano su iPhone e Android
 
@@ -154,13 +166,14 @@ Su almeno un iPhone (Safari) e un telefono Android (Chrome), uno dei due di fasc
 | 13 | **Batteria** | Carica scollegata, 10 minuti di ascolto in loop (schermo acceso) | livello prima/dopo. Chrome Android lo registra da solo ogni minuto (voci `batteria`); su iPhone a mano |
 | 14 | Memoria | Dopo i due brani e dopo 10 minuti | iPhone: Timeline di Safari; Android: `chrome://inspect` → Memory |
 | 15 | Confronto con il computer | Stesso brano su SoundText (FluidSynth con il suo SoundFont) e sul telefono | differenze di suono, volume relativo delle tracce, batteria |
-| 16 | Telefono di fascia bassa | Prove 1, 2, 5, 6 e 13 | se l'avvio supera di molto i 10 s, provare SpessaSynth o un motore senza numpy |
+| 16 | Telefono di fascia bassa | Prove 1, 2, 5, 6 e 13 | se l'avvio supera di molto i 10 s, provare SpessaSynth o un motore più leggero |
+| 17 | **Istantanea di Pyodide** | Secondo avvio dopo il primo, e di nuovo dopo aver chiuso Safari o Chrome del tutto | in Diagnostica, `avvio.snapshot` deve dire «caricata» e `total_ms` deve scendere sotto i 3 s |
 
 ## Decisione proposta (da confermare dopo le prove sui telefoni)
 
-Sul computer la strada PWA funziona: stesso codice di SoundText, stesso sintetizzatore, nessuna riscrittura. Il punto debole è l'avvio (8–11 s su un portatile, senza rete in mezzo). Sui telefoni sarà probabilmente più lento.
+Sul computer la strada PWA funziona: stesso codice di SoundText, stesso sintetizzatore, nessuna riscrittura. Con l'istantanea l'avvio con la cache sta sotto i 3 s (0,7 s in Chrome, 2,2 s in Firefox). Il punto debole resta il primo avvio: 5–11 s su un portatile, senza rete in mezzo. Sui telefoni sarà probabilmente più lento.
 
 La proposta è decidere fra «PWA sì» e «PWA sì con Capacitor da subito» guardando due risultati:
 
 - **prove 2 e 6–9 su iPhone.** Se lo schermo bloccato e l'interruttore silenzioso fermano l'audio, serve Capacitor con la sessione audio nativa;
-- **prova 1 sul telefono economico.** Se l'avvio è molto oltre i 10 s, prima di cambiare tecnologia conviene fare i miglioramenti 1–2 qui sopra e rimisurare.
+- **prove 1 e 17 sul telefono economico e su iPhone.** Se l'istantanea non funziona su Safari, o il primo avvio è molto oltre i 10 s, prima di cambiare tecnologia conviene fare i miglioramenti 1–3 qui sopra e rimisurare.

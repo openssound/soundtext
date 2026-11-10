@@ -62,14 +62,16 @@ def run(browser: str, out_json: str = ""):
 def report(label, entries):
     boot = [e for e in entries if e["kind"] == "avvio"][-1]
     print(f"--- {label}: {boot.get('ua', '')}")
-    print(f"avvio motore {boot['total_ms']} ms (Pyodide {boot['pyodide_ms']}, numpy {boot['numpy_ms']}, "
-          f"wheel {boot['wheels_ms']}, import core/ {boot['engine_import_ms']}); "
-          f"caricati {boot['network']['decoded'] / 1048576:.1f} MB; heap wasm "
+    print(f"avvio motore {boot['total_ms']} ms, istantanea {boot.get('snapshot')} "
+          f"(file {boot.get('files_ms')}, Python {boot.get('python_ms')}, "
+          f"creazione istantanea {boot.get('snapshot_make_ms', '-')}); heap wasm "
           f"{boot['heap_bytes'] / 1048576:.0f} MB")
     for e in entries:
         if e["kind"] == "analisi" and e["when"] >= boot["when"]:
-            print(f"analisi {e['song']}: {e['worker_total_ms']} ms (lettura {e['parse_ms']}, MIDI {e['midi_ms']}, "
-                  f"evidenziazione {e['spans_ms']})")
+            print(f"analisi {e['song']}: pronto in {e['roundtrip_ms']} ms (lettura {e['parse_ms']}, "
+                  f"MIDI {e['midi_ms']})")
+        if e["kind"] == "mappa" and e["when"] >= boot["when"]:
+            print(f"   mappa per l'evidenziazione: {e['ms']} ms")
         if e["kind"] == "memoria" and e["when"] >= boot["when"] and e["when_label"].startswith("fine"):
             print("memoria:", {k: v for k, v in e.items() if k.endswith("bytes")})
 
