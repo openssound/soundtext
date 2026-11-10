@@ -94,10 +94,17 @@ class Engine:
         if getattr(self, "_midi", None) is None:
             from core.midi_export import export_project_to_midi
             t0 = time.perf_counter()
-            path = "/tmp/_soundtext_mobile.mid"
-            export_project_to_midi(self.project, path)
-            with open(path, "rb") as f:
-                self._midi = f.read()
+            # un file temporaneo del sistema (/tmp non esiste su Windows)
+            import os
+            import tempfile
+            fd, path = tempfile.mkstemp(suffix=".mid")
+            os.close(fd)
+            try:
+                export_project_to_midi(self.project, path)
+                with open(path, "rb") as f:
+                    self._midi = f.read()
+            finally:
+                os.remove(path)
             self.timings["midi_s"] = time.perf_counter() - t0
         if not transpose:
             return self._midi
