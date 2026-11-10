@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SoundText Mobile</title>
+<meta name="theme-color" content="#1e1f22">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>SoundText <span>prototipo</span></h1>
+  <a href="diagnostica.html" class="link">Diagnostica</a>
+</header>
+
+<section class="bar">
+  <label>Brano
+    <select id="song"></select>
+  </label>
+  <label class="file">Apri .st…<input id="file" type="file" accept=".st,text/plain"></label>
+  <label>Segui
+    <select id="follow"></select>
+  </label>
+</section>
+
+<pre id="text" aria-label="Testo del brano" tabindex="0"></pre>
+
+<section class="player" aria-label="Lettore">
+  <button id="play" class="play" disabled aria-label="Suona">▶</button>
+  <div class="controls">
+    <label>Velocità <output id="speedOut">100%</output>
+      <input id="speed" type="range" min="50" max="100" step="5" value="100">
+    </label>
+    <label>Trasposizione <output id="transOut">0</output>
+      <input id="trans" type="range" min="-6" max="6" step="1" value="0">
+    </label>
+    <div class="pos"><span id="pos">–</span></div>
+  </div>
+</section>
+
+<details class="opts">
+  <summary>Opzioni audio (prove su iPhone)</summary>
+  <label><input id="unlockAudio" type="checkbox" checked> elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</label>
+  <label><input id="audioSession" type="checkbox" checked> navigator.audioSession.type = "playback" (Safari 17+)</label>
+</details>
+
+<p id="status" role="status">Avvio del motore…</p>
+
+<script src="vendor/js-synthesizer/js-synthesizer.js"></script>
+<script src="metrics.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
