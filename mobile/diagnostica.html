@@ -26,7 +26,7 @@
 <script>
 "use strict";
 const COLUMNS = {
-  avvio: ["when", "cache", "snapshot", "files_ms", "python_ms", "snapshot_make_ms", "snapshot_bytes", "total_ms", "page_to_ready_ms",
+  avvio: ["when", "cache", "snapshot", "files_ms", "python_ms", "snapshot_make_ms", "snapshot_bytes", "total_ms", "page_to_ready_ms", "discarded", "started_hidden",
           "network", "heap_bytes", "versions", "standalone", "isolated"],
   analisi: ["when", "song", "chars", "tracks", "parse_ms", "midi_ms", "worker_total_ms", "roundtrip_ms"],
   mappa: ["when", "song", "spans", "ms"],
@@ -37,7 +37,7 @@ const COLUMNS = {
   trasposizione: ["when", "semitones", "ms"],
   memoria: ["when", "when_label", "pyodide_heap_bytes", "ua_specific_bytes", "js_heap_used_bytes"],
   batteria: ["when", "minute", "level", "charging", "drop_percent"],
-  visibilita: ["when", "state", "playing", "ctx_state", "tick"],
+  visibilita: ["when", "event", "state", "playing", "ctx_state", "tick"],
 };
 
 function fmt(key, v) {

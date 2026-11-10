@@ -451,6 +451,7 @@ async function loadExample(name) {
 
 async function main() {
   const tPage = performance.now();
+  const startedHidden = document.visibilityState === "hidden";
   if (!window.isSecureContext) {
     // http:// fuori da localhost: niente service worker ne' AudioWorklet
     const warn = document.createElement("p");
@@ -477,16 +478,27 @@ async function main() {
   $("trans").onchange = (ev) => setTranspose(Number(ev.target.value)).catch(showError);
   $("trans").oninput = (ev) => { $("transOut").value = ev.target.value; };
   $("follow").onchange = () => { lastFollow = -1; };
-  document.addEventListener("visibilitychange", () => {
-    Metrics.record("visibilita", { state: document.visibilityState, playing: state.playing,
-                                   ctx_state: state.ctx ? state.ctx.state : null, tick: state.lastTick });
-  });
+  // Schermo bloccato, app in background: il tick si chiede al player (non
+  // quello dell'ultimo fotogramma, che in background non si aggiorna), cosi'
+  // fra "hidden" e "visible" si vede se la musica e' andata avanti.
+  const lifecycle = async (event) => {
+    let tick = null;
+    try { if (state.synth) tick = await state.synth.retrievePlayerCurrentTick(); } catch (e) {}
+    Metrics.record("visibilita", { event, state: document.visibilityState, playing: state.playing,
+                                   ctx_state: state.ctx ? state.ctx.state : null, tick });
+  };
+  document.addEventListener("visibilitychange", () => lifecycle("visibilitychange"));
+  // Chrome: pagina congelata o ripresa (risparmio energetico, scheda in background)
+  document.addEventListener("freeze", () => lifecycle("freeze"));
+  document.addEventListener("resume", () => lifecycle("resume"));
 
   try {
     const t = await state.booted;
     Metrics.record("avvio", {
       cache: coldCache ? "senza cache (primo avvio)" : "con cache", service_worker: sw,
       page_to_ready_ms: ms(tPage), ...t, ...Metrics.device(),
+      // scheda ricaricata dal browser dopo averla scaricata in background
+      discarded: document.wasDiscarded === true, started_hidden: startedHidden,
     });
     setStatus(`Motore pronto in ${(t.total_ms / 1000).toFixed(1)} s (${t.versions})`);
     await loadExample(files.examples[0]);

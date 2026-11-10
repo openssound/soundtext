@@ -172,7 +172,31 @@ Su questo telefono l'avvio con la cache sta sotto i 3 s e l'analisi è veloce qu
 
 Nei tempi d'avvio, 0,55–0,58 s su 1–1,5 s servono a leggere `engine.zip` e le wheel dalla cache: si possono mettere nell'istantanea o in un solo file.
 
-Non ancora provati: primo avvio su 4G, schermo bloccato e app in background mentre suona, 10 minuti di batteria, confronto all'ascolto. Le voci `visibilita` registrate finora sono tutte a riproduzione ferma.
+**Dal sito pubblico** (`https://openssound.github.io/soundtext/`, stesso telefono; rete da annotare, Wi-Fi o 4G):
+
+| Misura | Valore |
+| --- | --- |
+| Primo avvio da internet, con creazione dell'istantanea | 8,4 s (pagina pronta in 9,5 s) |
+| Avvio con l'istantanea | 1,4 s |
+| `symphony_d_minor_box.st` pronto da suonare | 1,6 s, mappa 0,7 s |
+| Primo Play, con download di FluidSynth e SoundFont | 1,56 s |
+| Memoria totale (`measureUserAgentSpecificMemory`) | 54 MB |
+| Batteria | 0 punti percentuali persi in 2–3 minuti di ascolto (Chrome li conta a interi: servono i 10 minuti) |
+
+Il primo avvio sta sotto i 10 s dell'obiettivo.
+
+**Schermo bloccato e background.** Mentre suonava, la pagina è passata più volte a «hidden» con l'AudioContext ancora in «running». Il motore audio non si ferma subito.
+
+In un caso l'avvio seguente ha avuto 39 s fra l'apertura della pagina e il motore pronto. Probabilmente Chrome aveva scaricato la scheda in background e l'ha ricaricata al ritorno.
+
+Le voci di questa prova non dicono se la musica si sentiva ancora, perché il tick registrato era quello dell'ultimo fotogramma. Ora la diagnostica chiede il tick al player e registra anche:
+
+- `freeze` e `resume` della pagina;
+- `discarded` e `started_hidden` nell'avvio.
+
+Da annotare all'ascolto: la musica continua a schermo bloccato? Per quanto tempo?
+
+Non ancora provati: 10 minuti di batteria, confronto all'ascolto con SoundText, iPhone.
 
 ## Cosa resta da migliorare prima della fase 1
 
