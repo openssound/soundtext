@@ -672,7 +672,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                     "crepitii/distorsione nei passaggi piu' densi.")
         ))
         sounds_menu.addAction(self._action(
-            tr("Cartelle dei plugin VST3..."), self.show_plugin_dirs,
+            tr("Cartelle dei plugin VST3 e AU...") if sys.platform == "darwin" else tr("Cartelle dei plugin VST3..."),
+            self.show_plugin_dirs,
             tooltip=tr("Le cartelle in cui cercare i plugin VST3, oltre a quelle standard del sistema.")))
         sounds_menu.addSeparator()
         sounds_menu.addAction(self._action(

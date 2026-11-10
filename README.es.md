@@ -47,8 +47,8 @@ notas, `*5` la octava, `8:` la duración base, `|` el final del compás.
   de los acordes, sin IA, también en el estilo de tus canciones.
 - **Dar forma al sonido**: mezclador, SoundFonts, instrumentos sampleados
   SFZ, efectos (EQ, compresor, delay, reverberación), amplificadores de
-  guitarra y perfiles **NAM** de amplificadores reales, plugins **VST3** y
-  **LV2**, mastering.
+  guitarra y perfiles **NAM** de amplificadores reales, plugins **VST3**, **AU** (macOS) y
+  **LV2** (Linux), mastering.
 - **Tocar y grabar**: el teclado del ordenador o un teclado MIDI; pistas de
   audio para voz y guitarra, con varias tomas, loop y punch-in; de una
   grabación de audio a las notas.
