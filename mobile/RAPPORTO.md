@@ -26,6 +26,15 @@ Sul telefono serve HTTPS: il service worker e l'AudioWorklet non funzionano su `
 - GitHub Pages su un ramo o repository di prova;
 - un tunnel HTTPS verso il computer.
 
+**Online, per iPhone e 4G.** Il workflow `.github/workflows/mobile-pages.yml` pubblica `mobile/` su GitHub Pages a ogni push sul ramo `mobile-prototipo`: `https://openssound.github.io/soundtext/`. Il sito ridistribuisce componenti di terzi, ciascuno con la sua licenza:
+
+- Pyodide: MPL 2.0;
+- js-synthesizer: BSD-3;
+- FluidSynth: LGPL 2.1;
+- TimGM6mb: GPL 2, e il file `.sf2` è anche la sua forma sorgente;
+- st-language: GPL 3 (come SoundText);
+- mido: MIT.
+
 La pagina `diagnostica.html` mostra tutte le misure salvate (e le copia in JSON). Ha anche un pulsante per svuotare la cache e ripetere l'avvio a freddo. Per le misure automatiche in un browser senza finestra: `python3 mobile/misura_headless.py`.
 
 ## Com'è fatto
@@ -137,6 +146,33 @@ FluidSynth avvisa una volta: «Instrument not found on channel 9 [bank=248]». I
 | Memoria totale di pagina, worker e worklet | non misurata |
 
 La memoria totale (`measureUserAgentSpecificMemory`) non è disponibile nel pannello dell'app né in Firefox, anche con la pagina isolata (il service worker aggiunge COOP/COEP). Su Chrome per Android va provata. Su iPhone si legge con Safari → Sviluppo → Timeline, collegando il telefono al Mac.
+
+## Prime misure su un telefono Android
+
+11 novembre 2026. Telefono Android 10 con Chrome 156, 8 core e 4 GB di RAM (modello da annotare), in Wi-Fi verso il server del computer. È stato usato il flag `unsafely-treat-insecure-origin-as-secure`: senza, la pagina non è «sicura» e mancano service worker, istantanea e audio.
+
+| Misura | Telefono | Computer (Chrome) |
+| --- | --- | --- |
+| Primo avvio senza service worker (pagina non sicura) | 7,2–9,8 s | – |
+| Primo avvio, con creazione dell'istantanea | 6,5 s | 5,4 s |
+| **Avvio con l'istantanea** | **0,96–1,53 s** (pagina pronta in 1,1–1,9 s) | 0,7–0,8 s |
+| `jazz_aaba.st` pronto da suonare | 1,13–1,21 s (una volta 2,4 s, subito dopo l'avvio) | 1,1 s |
+| `boom_bap.st` pronto da suonare | 1,21 s | – |
+| Mappa per l'evidenziazione | 0,28–0,58 s | 0,5 s |
+| numpy in background | 0,8–1,3 s | 0,7 s |
+| Trasposizione | 0,53 s | 0,46 s |
+| Primo Play, con download di FluidSynth e SoundFont in Wi-Fi | 1,8 s (worklet 0,77 s, SoundFont 0,88 s) | 0,5 s |
+| Primo Play con il SoundFont in cache | 0,28 s | 0,33 s |
+| Ripresa dopo una pausa | 12 ms | immediata |
+| Latenza d'uscita (`baseLatency` + `outputLatency`) | 21 + 120–128 ms | 21 + 64 ms |
+| Memoria totale di pagina, worker e worklet (`measureUserAgentSpecificMemory`) | 57 MB | non misurabile |
+| Heap di Pyodide (dopo numpy) | 43 MB | 43 MB |
+
+Su questo telefono l'avvio con la cache sta sotto i 3 s e l'analisi è veloce quanto sul portatile. L'audio parte al primo tocco.
+
+Nei tempi d'avvio, 0,55–0,58 s su 1–1,5 s servono a leggere `engine.zip` e le wheel dalla cache: si possono mettere nell'istantanea o in un solo file.
+
+Non ancora provati: primo avvio su 4G, schermo bloccato e app in background mentre suona, 10 minuti di batteria, confronto all'ascolto. Le voci `visibilita` registrate finora sono tutte a riproduzione ferma.
 
 ## Cosa resta da migliorare prima della fase 1
 

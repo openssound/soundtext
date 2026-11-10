@@ -451,6 +451,16 @@ async function loadExample(name) {
 
 async function main() {
   const tPage = performance.now();
+  if (!window.isSecureContext) {
+    // http:// fuori da localhost: niente service worker ne' AudioWorklet
+    const warn = document.createElement("p");
+    warn.id = "insecure";
+    warn.textContent = "Pagina non sicura: il testo si apre, ma l'audio e l'uso offline non funzionano. " +
+      "Usa HTTPS, http://localhost, o in Chrome per Android il flag " +
+      "chrome://flags/#unsafely-treat-insecure-origin-as-secure con " + location.origin + ".";
+    warn.style.cssText = "margin:4px 16px;padding:8px;border-radius:6px;background:#7a2e00;color:#fff;font-size:13px";
+    $("status").before(warn);
+  }
   const sw = await serviceWorker();
   const coldCache = !(await cached("vendor/pyodide/pyodide.asm.wasm"));
   startWorker();

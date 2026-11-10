@@ -128,8 +128,8 @@ async function bootFromSnapshot(f, snap) {
   return pyodide;
 }
 
-async function bootFresh(f) {
-  const pyodide = await loadPyodide({ indexURL: INDEX_URL, _makeSnapshot: true });
+async function bootFresh(f, makeSnapshot) {
+  const pyodide = await loadPyodide({ indexURL: INDEX_URL, _makeSnapshot: makeSnapshot });
   installFiles(pyodide, f);
   // Tutti i moduli del bundle, anche quelli che core/ importa solo dentro le
   // funzioni (es. core.tempo_map): cosi' finiscono nell'istantanea.
@@ -146,10 +146,13 @@ async function boot() {
   const t0 = performance.now();
   const f = await fetchFiles();
   t.files_ms = ms(t0);
-  const key = await snapshotKey(f);
-  const snap = await cachedSnapshot(key);
+  // In una pagina non sicura (http:// fuori da localhost) mancano
+  // crypto.subtle e Cache Storage: niente istantanea, avvio normale.
+  const canSnapshot = !!(self.isSecureContext && self.crypto && crypto.subtle && self.caches);
+  const key = canSnapshot ? await snapshotKey(f) : null;
+  const snap = key ? await cachedSnapshot(key) : null;
   let t1 = performance.now();
-  t.snapshot = "creata";
+  t.snapshot = canSnapshot ? "creata" : "non disponibile (pagina non sicura)";
   if (snap) {
     try {
       py = await bootFromSnapshot(f, snap);
@@ -162,10 +165,10 @@ async function boot() {
     }
   }
   if (!py) {
-    py = await bootFresh(f);
+    py = await bootFresh(f, canSnapshot);
     t.python_ms = ms(t1);
     t1 = performance.now();
-    try {
+    if (canSnapshot) try {
       const made = py.makeMemorySnapshot();
       t.snapshot_bytes = made.byteLength;
       t.snapshot_make_ms = ms(t1);
