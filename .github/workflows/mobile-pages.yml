@@ -45,7 +45,7 @@ jobs:
 
       # Un .st aperto e salvato senza modifiche resta identico (songs.js)
       - name: Test dell'app (formato dei file)
-        run: node --test mobile/tests/
+        run: node --test mobile/tests/*.test.cjs
 
       - name: Componenti di terzi (Pyodide, js-synthesizer, SoundFont)
         run: mobile/scarica_vendor.sh

@@ -42,7 +42,7 @@ Ogni tappa si pubblica sul sito di prova (`https://openssound.github.io/soundtex
 - **Esempi:** in sola lettura; la prima modifica crea una copia fra i brani dell'utente, e l'esempio resta intatto.
 - **Testo:** modificabile (`contenteditable="plaintext-only"`), salvato da solo in IndexedDB 0,6 s dopo l'ultima modifica e quando l'app va in background. Il Play rianalizza il testo se è cambiato.
 - **Riapertura:** all'avvio si riapre l'ultimo brano aperto.
-- **Formato:** il file torna identico byte per byte, anche con il BOM e gli a capo di Windows. Lo verificano `mobile/tests/formato.test.cjs` (`node --test mobile/tests/`), su tutti gli esempi, e il workflow di pubblicazione.
+- **Formato:** il file torna identico byte per byte, anche con il BOM e gli a capo di Windows. Lo verificano `mobile/tests/formato.test.cjs` (`node --test mobile/tests/*.test.cjs`), su tutti gli esempi, e il workflow di pubblicazione.
 
 Da provare sul telefono: scrivere con la tastiera del telefono nel testo, condividere un `.st` (per esempio verso Drive o WhatsApp) e aprirne uno ricevuto.
 

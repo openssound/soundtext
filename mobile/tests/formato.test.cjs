@@ -1,5 +1,5 @@
 // Un .st aperto e salvato senza modifiche resta identico byte per byte
-// (criterio della fase 1). Si lancia con: node --test mobile/tests/
+// (criterio della fase 1). Si lancia con: node --test mobile/tests/*.test.cjs
 "use strict";
 
 const test = require("node:test");
