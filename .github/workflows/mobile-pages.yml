@@ -43,6 +43,10 @@ jobs:
       - name: Dipendenze del motore
         run: pip install "st-language==2.12.1" "mido==1.3.3" "numpy>=1.24,<2"
 
+      # Un .st aperto e salvato senza modifiche resta identico (songs.js)
+      - name: Test dell'app (formato dei file)
+        run: node --test mobile/tests/
+
       - name: Componenti di terzi (Pyodide, js-synthesizer, SoundFont)
         run: mobile/scarica_vendor.sh
 
