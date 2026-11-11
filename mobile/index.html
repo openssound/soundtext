@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="style.css">
 </head>
+<!-- I testi sono in italiano: i18n.js li traduce all'avvio (data-i18n,
+     aria-label, title, placeholder), con i cataloghi di locales/. -->
 <body class="view-brani">
 <header>
   <h1 id="title">SoundText</h1>
@@ -21,36 +23,39 @@
   <!-- Brani -->
   <section id="view-brani" class="view" aria-label="Brani">
     <div class="actions">
-      <button id="newSong" class="primary">＋ Nuovo brano</button>
-      <label class="button">Apri file…<input id="file" type="file" accept=".st,text/plain,application/octet-stream"></label>
+      <button id="newSong" class="primary"><span aria-hidden="true">＋ </span><span data-i18n>Nuovo brano</span></button>
+      <label class="button"><span data-i18n>Apri file…</span><input id="file" type="file" accept=".st,text/plain,application/octet-stream"></label>
     </div>
-    <h2>I miei brani</h2>
+    <h2 data-i18n>I miei brani</h2>
     <ul id="mySongs" class="songs"></ul>
-    <p id="noSongs" class="hint">Ancora nessun brano: creane uno nuovo, apri un file .st o modifica un esempio.</p>
-    <h2>Esempi</h2>
+    <p id="noSongs" class="hint" data-i18n>Ancora nessun brano: creane uno nuovo, apri un file .st o modifica un esempio.</p>
+    <h2 data-i18n>Esempi</h2>
     <ul id="examples" class="songs"></ul>
-    <p class="hint"><a href="diagnostica.html">Diagnostica</a> · motore: <span id="engineState">avvio…</span></p>
+    <label class="language"><span data-i18n>Lingua</span>
+      <select id="language"></select>
+    </label>
+    <p class="hint"><a href="diagnostica.html" data-i18n>Diagnostica</a> · <span data-i18n>motore:</span> <span id="engineState"></span></p>
   </section>
 
   <!-- Testo -->
   <section id="view-testo" class="view" aria-label="Testo">
     <div class="textbar">
-      <select id="goto" aria-label="Vai a un blocco"><option value="">Vai a…</option></select>
-      <button id="warnButton" class="warn-button" aria-expanded="false" hidden>⚠ <span id="warnCount">0</span></button>
+      <select id="goto" aria-label="Vai a un blocco"><option value="" data-i18n>Vai a…</option></select>
+      <button id="warnButton" class="warn-button" aria-expanded="false" aria-controls="warnings" hidden><span aria-hidden="true">⚠ </span><span id="warnCount">0</span></button>
     </div>
-    <ul id="warnings" class="warnings" hidden></ul>
-    <pre id="text" aria-label="Testo del brano" spellcheck="false" autocapitalize="off" autocorrect="off"
+    <ul id="warnings" class="warnings" aria-label="Avvisi nel testo" hidden></ul>
+    <pre id="text" role="textbox" aria-multiline="true" aria-label="Testo del brano" spellcheck="false" autocapitalize="off" autocorrect="off"
          autocomplete="off" translate="no"></pre>
     <!-- Barra musicale: sopra la tastiera del telefono mentre si scrive -->
     <div id="musicbar" class="musicbar" role="toolbar" aria-label="Barra musicale" hidden>
-      <div id="suggest" class="suggest" aria-label="Suggerimenti"></div>
+      <div id="suggest" class="suggest" role="group" aria-label="Suggerimenti"></div>
       <div class="barrow">
         <div class="pages" role="tablist" aria-label="Pagine della barra">
-          <button data-page="0" role="tab" aria-selected="true">Note</button>
-          <button data-page="1" role="tab" aria-selected="false">Durate</button>
-          <button data-page="2" role="tab" aria-selected="false">Accordi</button>
+          <button data-page="0" role="tab" aria-selected="true" aria-controls="keys" data-i18n>Note</button>
+          <button data-page="1" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Durate</button>
+          <button data-page="2" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Accordi</button>
         </div>
-        <div id="keys" class="keys"></div>
+        <div id="keys" class="keys" role="tabpanel"></div>
       </div>
     </div>
   </section>
@@ -62,59 +67,60 @@
       <button id="zoomOut" aria-label="Rimpicciolisci">−</button>
       <button id="zoomIn" aria-label="Ingrandisci">＋</button>
     </div>
-    <div id="score" class="score" aria-live="polite"><p class="hint">Apri un brano per vederne la partitura.</p></div>
+    <div id="score" class="score" role="region" aria-label="Partitura"><p class="hint" data-i18n>Apri un brano per vederne la partitura.</p></div>
   </section>
 
   <!-- Lettore -->
   <section id="view-lettore" class="view" aria-label="Lettore">
     <div class="controls">
-      <label>Velocità <output id="speedOut">100%</output>
-        <input id="speed" type="range" min="50" max="100" step="5" value="100">
+      <label><span data-i18n>Velocità</span> <output id="speedOut" aria-hidden="true">100%</output>
+        <input id="speed" type="range" min="50" max="100" step="5" value="100" aria-label="Velocità" aria-valuetext="100%">
       </label>
-      <label>Trasposizione <output id="transOut">0</output>
-        <input id="trans" type="range" min="-6" max="6" step="1" value="0">
+      <label><span data-i18n>Trasposizione</span> <output id="transOut" aria-hidden="true">0</output>
+        <input id="trans" type="range" min="-6" max="6" step="1" value="0" aria-label="Trasposizione" aria-valuetext="0">
       </label>
-      <label class="inline">Segui la traccia
+      <label class="inline"><span data-i18n>Segui la traccia</span>
         <select id="follow"></select>
       </label>
     </div>
-    <h2>Ripeti un tratto</h2>
-    <div class="loop" role="group" aria-label="Loop A–B">
-      <button id="loopA" title="Inizio della battuta che suona">A</button>
-      <button id="loopB" title="Fine della battuta che suona">B</button>
-      <span id="loopOut" class="loop-out">nessun tratto</span>
-      <button id="loopOn" aria-pressed="false" disabled>Ripeti</button>
+    <h2 id="loopTitle" data-i18n>Ripeti un tratto</h2>
+    <div class="loop" role="group" aria-labelledby="loopTitle">
+      <button id="loopA" aria-label="A: inizio della battuta che suona">A</button>
+      <button id="loopB" aria-label="B: fine della battuta che suona">B</button>
+      <span id="loopOut" class="loop-out" aria-live="polite" data-i18n>nessun tratto</span>
+      <button id="loopOn" aria-pressed="false" disabled data-i18n>Ripeti A–B</button>
     </div>
-    <label class="check"><input id="metronome" type="checkbox"> Metronomo</label>
-    <h2>Tracce</h2>
-    <ul id="mixer" class="mixer" aria-label="Tracce: mute e solo"></ul>
+    <label class="check"><input id="metronome" type="checkbox"> <span data-i18n>Metronomo</span></label>
+    <h2 id="mixerTitle" data-i18n>Tracce</h2>
+    <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
     <details class="opts">
-      <summary>Opzioni audio (prove su iPhone)</summary>
-      <label><input id="unlockAudio" type="checkbox" checked> elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</label>
+      <summary data-i18n>Opzioni audio (prove su iPhone)</summary>
+      <label><input id="unlockAudio" type="checkbox" checked> <span data-i18n>elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</span></label>
       <label><input id="audioSession" type="checkbox" checked> navigator.audioSession.type = "playback" (Safari 17+)</label>
     </details>
   </section>
 </main>
 
 <!-- Mini lettore, sempre visibile -->
-<section class="player" aria-label="Lettore">
+<section class="player" aria-label="Ascolto">
   <input id="seek" class="seek" type="range" min="0" max="0" step="any" value="0" disabled aria-label="Posizione nel brano">
   <button id="play" class="play" disabled aria-label="Suona">▶</button>
   <div class="now">
     <div id="nowName" class="name">–</div>
-    <div id="status" role="status" class="status">Avvio del motore…</div>
+    <div id="status" role="status" class="status" data-i18n>Avvio del motore…</div>
   </div>
   <div id="pos" class="pos"></div>
 </section>
 
 <nav class="tabs" aria-label="Schermate">
-  <button data-view="brani" aria-current="page">Brani</button>
-  <button data-view="testo">Testo</button>
-  <button data-view="partitura">Partitura</button>
-  <button data-view="lettore">Lettore</button>
+  <button data-view="brani" aria-current="page" data-i18n>Brani</button>
+  <button data-view="testo" data-i18n>Testo</button>
+  <button data-view="partitura" data-i18n>Partitura</button>
+  <button data-view="lettore" data-i18n>Lettore</button>
 </nav>
 
 <script src="vendor/js-synthesizer/js-synthesizer.js"></script>
+<script src="i18n.js"></script>
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
 <script src="app.js"></script>

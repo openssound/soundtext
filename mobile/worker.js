@@ -141,7 +141,7 @@ for _name in ${JSON.stringify(f.coreModules)}:
   return pyodide;
 }
 
-async function boot() {
+async function boot(language) {
   const t = {};
   const t0 = performance.now();
   const f = await fetchFiles();
@@ -179,6 +179,9 @@ async function boot() {
   } else {
     t.python_ms = ms(t1);
   }
+  // La lingua dei messaggi del motore (avvisi, errori di notazione,
+  // suggerimenti), dopo l'istantanea, che resta uguale per tutte le lingue.
+  setLanguage(language);
   t.total_ms = ms(t0);
   t.versions = py.runPython(`
 import sys
@@ -188,6 +191,11 @@ from importlib.metadata import version
   t.network = loadedBytes();
   t.heap_bytes = wasmHeap();
   return t;
+}
+
+function setLanguage(language) {
+  py.globals.set("_language", language || "it");
+  py.runPython("from core import i18n as _i18n\n_i18n.set_language(_language)");
 }
 
 // numpy in background, dopo il primo brano aperto: prima occuperebbe il
@@ -243,7 +251,7 @@ self.onmessage = async (ev) => {
   const msg = ev.data;
   try {
     if (msg.cmd === "boot") {
-      post({ type: "booted", timings: await boot() });
+      post({ type: "booted", timings: await boot(msg.language) });
     } else if (msg.cmd === "load") {
       const r = await load(msg.name, msg.text);
       post({ type: "loaded", id: msg.id, ...r }, [r.midi.buffer]);

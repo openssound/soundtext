@@ -120,3 +120,26 @@ Limiti:
 
 - la partitura non segue la trasposizione del lettore, ed è scritta come in SoundText (strumenti traspositori compresi);
 - con molte tracce e molte battute il disegno può richiedere parecchi secondi sul telefono. La partitura precedente resta visibile finché la nuova non è pronta.
+
+**Tappa 6, fatta (11 novembre 2026), da provare con TalkBack sul telefono.** Provata nel browser del computer, nel formato del telefono, in inglese, francese e spagnolo:
+
+- **Lingue come in SoundText:** i testi restano scritti in italiano nel codice, dentro `t("...")` (`mobile/i18n.js`) o con `data-i18n` nella pagina. Le traduzioni stanno negli stessi cataloghi `locales/*.json` del programma per computer (circa 100 voci nuove per lingua).
+  - `locales/extract.py` raccoglie anche i testi dell'app: `t("...")` in `app.js`; `data-i18n`, `aria-label`, `title` e `placeholder` in `index.html`; `tr("...")` in `engine.py`.
+  - `tests/test_i18n.py` controlla quindi che l'app sia tradotta tutta, con i segnaposto conservati.
+  - `build.py` copia in `bundle/locales/` solo le voci dell'app (circa 5 KB per lingua).
+- **Messaggi del motore:** avvisi, errori di notazione, suggerimenti e nomi delle funzioni sui pattern escono nella stessa lingua, con `core.i18n` nel worker; l'istantanea di Pyodide resta una sola per tutte le lingue.
+- **Scelta della lingua:** in fondo alla schermata Brani; senza una scelta vale quella del telefono, se è fra le quattro, altrimenti l'inglese. Date e numeri seguono la lingua. Il commento del modello «Nuovo brano» è nella lingua dell'app; le parole del formato (`Tempo:`, `Metrica:`) restano quelle del file.
+- **Testi del programma con un senso diverso:** «Ripeti» nel programma è il comando di modifica (in inglese «Redo»), quindi il pulsante del loop ha la sua voce, «Ripeti A–B».
+- **Accessibilità (TalkBack, VoiceOver):**
+  - ogni pulsante e cursore ha un nome: nella barra musicale «nota C», «diesis», «semiminima», «accordo F»…; nel lettore «Mute Piano», «Solo Bass»;
+  - le pagine della partitura sono figure con un nome («Partitura di jazz_aaba, pagina 1 di 4»);
+  - la barra di avanzamento e i cursori dicono il valore in parole («battuta 5/104», «+2 semitoni»);
+  - il testo del brano è una casella di testo multiriga;
+  - il pulsante degli avvisi dice quanti sono e quale elenco apre;
+  - il fuoco si vede.
+
+  Un controllo automatico nella pagina non trova più elementi senza nome. In questa prova ho corretto i cursori Velocità e Trasposizione: la loro etichetta finiva sull'`<output>` accanto.
+
+Non tradotti: la pagina `diagnostica.html` (strumento di misura) e i nomi degli argomenti delle funzioni sui pattern che vengono da st-language (per esempio `.invert(asse)`).
+
+Da provare: TalkBack su Android e VoiceOver su iPhone, criterio della tappa.

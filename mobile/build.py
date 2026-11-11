@@ -6,6 +6,9 @@ Prepara mobile/bundle/ per il prototipo SoundText Mobile (fase 0):
   con PySide6 bloccato) e locales/*.json, da estrarre nel file system di
   Pyodide;
 - examples/: gli esempi che la pagina propone;
+- locales/<lingua>.json: le traduzioni dell'interfaccia dell'app, prese dai
+  cataloghi di SoundText (locales/, vedi mobile/i18n.js) e ridotte alle sue
+  voci;
 - files.json: l'elenco, per la pagina e per il service worker.
 
 Da lanciare dopo ogni modifica a core/ o a engine.py:
@@ -58,6 +61,30 @@ def engine_core_modules() -> list:
     return json.loads(out.stdout.strip().splitlines()[-1])
 
 
+def app_catalogs() -> list:
+    """bundle/locales/<lingua>.json: le voci dei cataloghi di SoundText che
+    usa l'interfaccia dell'app (locales/extract.py, mobile_strings)."""
+    sys.path.insert(0, os.path.join(ROOT, "locales"))
+    try:
+        from extract import mobile_strings
+    finally:
+        sys.path.pop(0)
+    wanted = mobile_strings()
+    out_dir = os.path.join(BUNDLE, "locales")
+    os.makedirs(out_dir, exist_ok=True)
+    languages = []
+    for fname in sorted(os.listdir(os.path.join(ROOT, "locales"))):
+        if not fname.endswith(".json"):
+            continue
+        with open(os.path.join(ROOT, "locales", fname), encoding="utf-8") as f:
+            catalog = json.load(f)
+        subset = {k: catalog[k] for k in sorted(wanted) if catalog.get(k)}
+        with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as f:
+            json.dump(subset, f, ensure_ascii=False, indent=0)
+        languages.append(fname[:-5])
+    return languages
+
+
 def build():
     modules = engine_core_modules()
     os.makedirs(os.path.join(BUNDLE, "examples"), exist_ok=True)
@@ -71,11 +98,12 @@ def build():
         for fname in sorted(os.listdir(locales)):
             if fname.endswith(".json"):
                 z.write(os.path.join(locales, fname), "locales/" + fname)
+    languages = app_catalogs()
     for name in EXAMPLES:
         with open(os.path.join(ROOT, "examples", name), "rb") as src, \
                 open(os.path.join(BUNDLE, "examples", name), "wb") as dst:
             dst.write(src.read())
-    info = {"core_modules": modules, "examples": EXAMPLES,
+    info = {"core_modules": modules, "examples": EXAMPLES, "languages": languages,
             "engine_zip_bytes": os.path.getsize(zpath)}
     with open(os.path.join(BUNDLE, "files.json"), "w", encoding="utf-8") as f:
         json.dump(info, f, indent=1)

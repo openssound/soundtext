@@ -68,7 +68,7 @@ function startWorker() {
     };
     state.worker.onerror = (e) => reject(new Error(e.message));
   });
-  state.worker.postMessage({ cmd: "boot" });
+  state.worker.postMessage({ cmd: "boot", language: I18n.language });
 }
 
 // ------------------------------------------------------------ service worker
@@ -108,8 +108,10 @@ async function cached(url) {
 // motore (il testo analizzato e' state.song.text): se il testo cambia, si
 // rianalizza al prossimo Play.
 
-const NEW_SONG_TEXT = `// Nuovo brano: scrivi qui la tua musica.
-// Ogni traccia comincia con il suo nome e i due punti; le battute si separano con |
+// I commenti nella lingua dell'app; le parole del formato (Tempo:,
+// Metrica:...) restano quelle del file .st.
+const newSongText = () => `// ${t("Nuovo brano: scrivi qui la tua musica.")}
+// ${t("Ogni traccia comincia con il suo nome e i due punti; le battute si separano con |")}
 
 ST: 2.6
 Tempo: 100 BPM
@@ -170,7 +172,7 @@ function showDocTitle() {
   $("title").textContent = doc ? doc.name : "SoundText";
   $("nowName").textContent = doc ? doc.name : "–";
   $("badge").hidden = !(doc && doc.kind === "example");
-  $("badge").textContent = "esempio: le modifiche creano una copia";
+  $("badge").textContent = t("esempio: le modifiche creano una copia");
 }
 
 // Analizza il testo attuale, se non e' gia' quello analizzato.
@@ -181,7 +183,7 @@ async function analyze() {
   if (state.song && state.song.text === text) return state.song;
   if (state.analyzing && state.analyzing.text === text) return state.analyzing.promise;
   const promise = (async () => {
-    setStatus("Analisi…");
+    setStatus(t("Analisi…"));
     await state.booted;
     const t0 = performance.now();
     let r;
@@ -204,14 +206,14 @@ async function analyze() {
     renderMixer();
     // trasposizione, mute, solo e metronomo restano dopo una modifica del testo
     if (midiKey() !== "") await renderMidi();
-    const t = r.timings;
+    const tm = r.timings;
     // roundtrip_ms: dalla richiesta al brano pronto da suonare
     Metrics.record("analisi", {
       song: doc.name, chars: text.length, tracks: r.info.tracks.length,
-      parse_ms: Math.round(t.parse_s * 1000), midi_ms: Math.round(t.midi_s * 1000),
-      worker_total_ms: t.total_ms, roundtrip_ms: roundtrip,
+      parse_ms: Math.round(tm.parse_s * 1000), midi_ms: Math.round(tm.midi_s * 1000),
+      worker_total_ms: tm.total_ms, roundtrip_ms: roundtrip,
     });
-    setStatus(`${r.info.tracks.length} tracce, pronto in ${roundtrip} ms`);
+    setStatus(t("Tracce: {n}, pronto in {ms} ms", { n: r.info.tracks.length, ms: roundtrip }));
     if (document.body.classList.contains("view-partitura")) setTimeout(() => showScore().catch(showError), 0);
     // La mappa per l'evidenziazione arriva dopo: si puo' gia' suonare.
     song.spansReady = call("spans").then((m) => {
@@ -232,9 +234,13 @@ async function analyze() {
 }
 
 // Il messaggio di un errore di notazione, senza il traceback di Python.
-function shortError(e) {
+function errorText(e) {
   const lines = String(e && e.message || e).trim().split("\n").filter(Boolean);
-  return "Errore: " + (lines[lines.length - 1] || "sconosciuto").replace(/^[\w.]*(Error|Exception): /, "");
+  return (lines[lines.length - 1] || t("sconosciuto")).replace(/^[\w.]*(Error|Exception): /, "");
+}
+
+function shortError(e) {
+  return t("Errore: {message}", { message: errorText(e) });
 }
 
 function showText(text) {
@@ -248,8 +254,8 @@ function fillFollow(tracks) {
   const sel = $("follow");
   const previous = sel.value;
   sel.innerHTML = "";
-  tracks.forEach((t, i) => sel.add(new Option(t.name, String(i))));
-  const melodic = tracks.findIndex((t) => !t.percussion);
+  tracks.forEach((tr, i) => sel.add(new Option(tr.name, String(i))));
+  const melodic = tracks.findIndex((tr) => !tr.percussion);
   sel.value = previous && Number(previous) < tracks.length ? previous : String(Math.max(0, melodic));
 }
 
@@ -296,7 +302,7 @@ async function onEdit() {
     showDocTitle();
     rememberDoc(doc);
     renderSongs();
-    setStatus("Copia salvata fra i tuoi brani");
+    setStatus(t("Copia salvata fra i tuoi brani"));
   }
   clearTimeout(editor.saveTimer);
   editor.saveTimer = setTimeout(saveDoc, 600);
@@ -424,7 +430,7 @@ function renderWarnings(warnings) {
   const list = $("warnings");
   button.hidden = warnings.length === 0;
   $("warnCount").textContent = warnings.length;
-  button.setAttribute("aria-label", `${warnings.length} avvisi nel testo`);
+  button.setAttribute("aria-label", t("Avvisi nel testo: {n}", { n: warnings.length }));
   if (!warnings.length) {
     list.hidden = true;
     button.setAttribute("aria-expanded", "false");
@@ -437,7 +443,7 @@ function renderWarnings(warnings) {
     const b = document.createElement("button");
     const where = document.createElement("span");
     where.className = "where";
-    where.textContent = `riga ${lineOf(text, w.start)}`;
+    where.textContent = t("riga {n}", { n: lineOf(text, w.start) });
     b.append(where, w.message);
     b.onclick = () => goTo(w.start, w.end);
     li.append(b);
@@ -450,13 +456,14 @@ function setWarningStatus(warnings) {
   if (state.playing) return;
   const status = $("status");
   if (status.classList.contains("error")) return;
-  if (warnings.length) setStatus(`${warnings.length} ${warnings.length === 1 ? "avviso" : "avvisi"} nel testo`);
+  if (warnings.length) setStatus(t("Avvisi nel testo: {n}", { n: warnings.length }));
 }
 
 function renderBlocks(blocks) {
   const sel = $("goto");
-  sel.innerHTML = '<option value="">Vai a…</option>';
-  const groups = { track: "Tracce", box: "Box", pattern: "Pattern" };
+  sel.innerHTML = "";
+  sel.add(new Option(t("Vai a…"), ""));
+  const groups = { track: t("Tracce"), box: t("Box"), pattern: t("Pattern") };
   for (const [kind, label] of Object.entries(groups)) {
     const items = blocks.filter((b) => b.kind === kind);
     if (!items.length) continue;
@@ -617,27 +624,29 @@ function K(label, run, cls = "", aria = "") {
 const SEP = { sep: true };
 
 function pageKeys(page) {
-  const common = [SEP, K("⌫", deleteToken, "wide", "Cancella il token"), K("▶ battuta", playBarAtCaret, "wide play-bar")];
+  const common = [SEP, K("⌫", deleteToken, "wide", t("Cancella il token")),
+                  K("▶ " + t("battuta"), playBarAtCaret, "wide play-bar", t("Suona la battuta del cursore"))];
   if (page === 0) {
     return [
-      ..."cdefgab".split("").map((n) => K(n, () => insertToken(n))),
-      K("r", () => insertToken("r"), "", "pausa"),
+      ..."cdefgab".split("").map((n) => K(n, () => insertToken(n), "", t("nota {n}", { n: n.toUpperCase() }))),
+      K("r", () => insertToken("r"), "", t("pausa")),
       SEP,
-      K("#", () => attach("#"), "", "diesis"), K("♭", () => attach("b"), "", "bemolle"),
-      K("*3", () => attach("*3")), K("*4", () => attach("*4")), K("*5", () => attach("*5")), K("*6", () => attach("*6")),
-      K("~", () => attach("~"), "", "legatura"),
+      K("#", () => attach("#"), "", t("diesis")), K("♭", () => attach("b"), "", t("bemolle")),
+      ...[3, 4, 5, 6].map((o) => K("*" + o, () => attach("*" + o), "", t("ottava {n}", { n: o }))),
+      K("~", () => attach("~"), "", t("legatura")),
       ...common,
     ];
   }
   if (page === 1) {
     return [
-      ...["1:", "2:", "4:", "8:", "16:", "8T:"].map((g) => K(g, () => insertToken(g))),
+      ...[["1:", t("semibreve")], ["2:", t("minima")], ["4:", t("semiminima")], ["8:", t("croma")],
+          ["16:", t("semicroma")], ["8T:", t("terzina di crome")]].map(([g, name]) => K(g, () => insertToken(g), "", name)),
       SEP,
-      ...["2", "3", "4"].map((m) => K(m, () => insertToken(m, false), "", "moltiplicatore " + m)),
+      ...["2", "3", "4"].map((m) => K(m, () => insertToken(m, false), "", t("moltiplicatore {n}", { n: m }))),
       SEP,
-      K("|", () => insertToken("|"), "", "stanghetta"),
-      K("(", () => insertToken("(", false)), K(")", () => attach(")")),
-      K("[", () => insertToken("[", false)), K("]", () => attach("]")),
+      K("|", () => insertToken("|"), "", t("stanghetta")),
+      K("(", () => insertToken("(", false), "", t("apri gruppo")), K(")", () => attach(")"), "", t("chiudi gruppo")),
+      K("[", () => insertToken("[", false), "", t("apri blocco")), K("]", () => attach("]"), "", t("chiudi blocco")),
       ...common,
     ];
   }
@@ -645,11 +654,11 @@ function pageKeys(page) {
   const pos = caretPos() ?? text.length;
   const patterns = (checks.last ? checks.last.blocks : []).filter((b) => b.kind === "pattern").map((b) => b.label);
   return [
-    ...diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c))),
+    ...diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c), "", t("accordo {name}", { name: c }))),
     SEP,
-    ...patterns.map((p) => K(p, () => insertToken(p))),
+    ...patterns.map((p) => K(p, () => insertToken(p), "", t("pattern {name}", { name: p }))),
     ...(patterns.length ? [SEP] : []),
-    ...bar.transforms.map((t) => K(t.call, () => attach(t.call), "", t.help)),
+    ...bar.transforms.map((f) => K(f.call, () => attach(f.call), "", f.help)),
     ...common,
   ];
 }
@@ -667,7 +676,7 @@ function renderKeys() {
     const b = document.createElement("button");
     b.textContent = k.label;
     if (k.cls) b.className = k.cls;
-    if (k.aria) { b.title = k.aria; b.setAttribute("aria-label", k.aria === k.label ? k.label : `${k.label}, ${k.aria}`); }
+    if (k.aria) { b.title = k.aria; b.setAttribute("aria-label", k.aria); }
     b.onclick = () => Promise.resolve(k.run()).catch(showError);
     box.append(b);
   }
@@ -709,6 +718,7 @@ async function suggest() {
     const b = document.createElement("button");
     b.textContent = item.text;
     b.title = item.label;
+    b.setAttribute("aria-label", t("Suggerimento: {text}", { text: item.text }));
     b.onclick = () => {
       if (state.doc.text !== text) return;
       selectRange(r.start, r.end);
@@ -745,10 +755,10 @@ async function playBarAtCaret() {
     }
   }
   const at = best >= 0 ? best : next;
-  if (at < 0) { setStatus("Il cursore non è su una nota da suonare"); return; }
+  if (at < 0) { setStatus(t("Il cursore non è su una nota da suonare")); return; }
   const [start, end] = (await call("bar", { args: [song.text, s[at + 3]] })).result;
   if (!state.audioReady) {
-    setStatus("Preparo il sintetizzatore e il SoundFont…");
+    setStatus(t("Preparo il sintetizzatore e il SoundFont…"));
     state.audioReady = initAudio();
   }
   await state.audioReady;
@@ -756,7 +766,7 @@ async function playBarAtCaret() {
   const stop = { beat: end, restore: keep };
   state.stopAtBeat = stop;
   await startPlayer(Math.round(start * TICKS_PER_BEAT));
-  setStatus(`Battuta ${barNumber(start)}`);
+  setStatus(t("Battuta {n}", { n: barNumber(start) }));
   requestAnimationFrame(frame);
 }
 
@@ -787,8 +797,8 @@ function showMusicBar(on) {
 
 // ------------------------------------------------------------ brani
 
-function formatDate(t) {
-  return new Date(t).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+function formatDate(time) {
+  return new Date(time).toLocaleString(I18n.locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 async function renderSongs() {
@@ -797,23 +807,23 @@ async function renderSongs() {
   ul.innerHTML = "";
   $("noSongs").hidden = list.length > 0;
   for (const song of list) {
-    ul.append(songItem(song.name, `modificato ${formatDate(song.updated)}`,
+    ul.append(songItem(song.name, t("modificato {date}", { date: formatDate(song.updated) }),
                        state.doc && state.doc.kind === "song" && state.doc.id === song.id,
                        () => openSong(song.id), [
-      ["Rinomina", () => renameSong(song.id)],
-      ["Duplica", () => duplicate(song)],
-      ["Condividi", () => share(song)],
-      ["Elimina", () => deleteSong(song.id), "danger"],
+      [t("Rinomina"), () => renameSong(song.id)],
+      [t("Duplica"), () => duplicate(song)],
+      [t("Condividi"), () => share(song)],
+      [t("Elimina"), () => deleteSong(song.id), "danger"],
     ]));
   }
   const ex = $("examples");
   ex.innerHTML = "";
   for (const file of state.examples) {
-    ex.append(songItem(file.replace(/\.st$/, ""), "sola lettura",
+    ex.append(songItem(file.replace(/\.st$/, ""), t("sola lettura"),
                        state.doc && state.doc.kind === "example" && state.doc.file === file,
                        () => openExample(file, true), [
-      ["Crea una copia", async () => duplicate(await exampleDoc(file))],
-      ["Condividi", async () => share(await exampleDoc(file))],
+      [t("Crea una copia"), async () => duplicate(await exampleDoc(file))],
+      [t("Condividi"), async () => share(await exampleDoc(file))],
     ]));
   }
 }
@@ -830,7 +840,7 @@ function songItem(title, subtitle, current, onOpen, actions) {
   const more = document.createElement("button");
   more.className = "more";
   more.textContent = "⋯";
-  more.setAttribute("aria-label", "Altre azioni per " + title);
+  more.setAttribute("aria-label", t("Altre azioni per {name}", { name: title }));
   more.setAttribute("aria-expanded", "false");
   more.onclick = () => {
     const menu = li.querySelector(".menu");
@@ -874,8 +884,8 @@ async function openSong(id, show = true) {
 }
 
 async function newSong() {
-  const name = await Songs.freeName("Nuovo brano");
-  const song = await Songs.create({ name, text: NEW_SONG_TEXT, source: "nuovo" });
+  const name = await Songs.freeName(t("Nuovo brano"));
+  const song = await Songs.create({ name, text: newSongText(), source: "nuovo" });
   await openSong(song.id);
 }
 
@@ -888,7 +898,7 @@ async function openFile(file) {
 
 async function renameSong(id) {
   const song = await Songs.get(id);
-  const name = prompt("Nuovo nome del brano", song.name);
+  const name = prompt(t("Nuovo nome del brano"), song.name);
   if (!name || !name.trim() || name.trim() === song.name) return;
   song.name = await Songs.freeName(name.trim());
   await Songs.put(song);
@@ -909,7 +919,7 @@ async function duplicate(source) {
 
 async function deleteSong(id) {
   const song = await Songs.get(id);
-  if (!confirm(`Eliminare «${song.name}»? Non si può annullare.`)) return;
+  if (!confirm(t("Eliminare «{name}»? Non si può annullare.", { name: song.name }))) return;
   await Songs.remove(id);
   if (state.doc && state.doc.kind === "song" && state.doc.id === id) {
     stop(true);
@@ -1008,7 +1018,7 @@ async function initAudio() {
   const t1 = performance.now();
   const sfCached = await cached(SOUNDFONT_URL);
   const resp = await fetch(SOUNDFONT_URL);
-  if (!resp.ok) throw new Error(`SoundFont non trovato (${resp.status})`);
+  if (!resp.ok) throw new Error(t("SoundFont non trovato ({status})", { status: resp.status }));
   const sf = await resp.arrayBuffer();
   const download_ms = ms(t1);
   const t2 = performance.now();
@@ -1041,7 +1051,7 @@ async function startPlayer(fromTick) {
     setPlayButton();
     clearHighlight();
     showPosition(0);
-    setStatus("Fine del brano");
+    setStatus(t("Fine del brano"));
   });
 }
 
@@ -1062,7 +1072,7 @@ async function play() {
     }
     normalizeEditor();
     if (!state.audioReady) {
-      setStatus("Preparo il sintetizzatore e il SoundFont…");
+      setStatus(t("Preparo il sintetizzatore e il SoundFont…"));
       state.audioReady = initAudio();
     }
     await state.audioReady;
@@ -1074,14 +1084,14 @@ async function play() {
     const first = !state.firstPlayDone;
     state.firstPlayDone = true;
     Metrics.record("play", { first, tap_to_play_ms: ms(tTap), ctx_state: state.ctx.state, song: state.song.name });
-    setStatus("Suona");
+    setStatus(t("Suona"));
     batteryProbe();
     requestAnimationFrame(frame);
   } catch (e) {
     console.error(e);
     if (state.song && state.song.text === (state.doc && state.doc.text)) {
       state.audioReady = null;
-      setStatus("Errore audio: " + e.message, true);
+      setStatus(t("Errore audio: {message}", { message: e.message }), true);
     }
   }
 }
@@ -1094,7 +1104,7 @@ async function pause() {
   state.synth.midiAllSoundsOff();
   state.playing = false;
   setPlayButton();
-  setStatus("In pausa");
+  setStatus(t("In pausa"));
 }
 
 function stop(reset) {
@@ -1112,12 +1122,13 @@ function stop(reset) {
 function setPlayButton() {
   const b = $("play");
   b.textContent = state.playing ? "❚❚" : "▶";
-  b.setAttribute("aria-label", state.playing ? "Pausa" : "Suona");
+  b.setAttribute("aria-label", state.playing ? t("Pausa") : t("Suona"));
 }
 
 async function setTranspose(semitones) {
   state.semitones = semitones;
   $("transOut").value = (semitones > 0 ? "+" : "") + semitones;
+  $("trans").setAttribute("aria-valuetext", t("{n} semitoni", { n: $("transOut").value }));
   if (state.song) await renderMidi();
 }
 
@@ -1126,7 +1137,7 @@ async function setTranspose(semitones) {
 // Le tracce da non sentire: con un solo attivo tutte le altre, altrimenti
 // quelle in mute.
 function silentTracks() {
-  const names = state.song ? state.song.info.tracks.map((t) => t.name) : [];
+  const names = state.song ? state.song.info.tracks.map((tr) => tr.name) : [];
   return state.solo.size ? names.filter((n) => !state.solo.has(n)) : names.filter((n) => state.muted.has(n));
 }
 
@@ -1163,42 +1174,42 @@ function renderMixer() {
   list.innerHTML = "";
   const tracks = state.song ? state.song.info.tracks : [];
   const silent = new Set(silentTracks());
-  for (const t of tracks) {
+  for (const track of tracks) {
     const li = document.createElement("li");
-    li.classList.toggle("silent", silent.has(t.name));
+    li.classList.toggle("silent", silent.has(track.name));
     const name = document.createElement("span");
     name.className = "tname";
-    name.textContent = t.name;
-    if (t.instrument && t.instrument !== t.name) {
+    name.textContent = track.name;
+    if (track.instrument && track.instrument !== track.name) {
       const small = document.createElement("small");
-      small.textContent = t.instrument;
+      small.textContent = track.instrument;
       name.append(small);
     }
     const toggle = (label, set, aria) => {
       const b = document.createElement("button");
       b.textContent = label;
-      b.setAttribute("aria-label", `${aria} ${t.name}`);
-      b.setAttribute("aria-pressed", String(set.has(t.name)));
+      b.setAttribute("aria-label", `${aria} ${track.name}`);
+      b.setAttribute("aria-pressed", String(set.has(track.name)));
       b.onclick = () => {
-        if (set.has(t.name)) set.delete(t.name); else set.add(t.name);
+        if (set.has(track.name)) set.delete(track.name); else set.add(track.name);
         renderMixer();
         renderMidi().catch(showError);
       };
       return b;
     };
-    li.append(name, toggle("M", state.muted, "Mute"), toggle("S", state.solo, "Solo"));
+    li.append(name, toggle("M", state.muted, t("Mute")), toggle("S", state.solo, t("Solo")));
     list.append(li);
   }
 }
 
 function setTimeline(timeline) {
-  const t = timeline && timeline.bars && timeline.bars.length ? timeline : { length: 0, bars: [0] };
-  state.timeline = t;
+  const tl = timeline && timeline.bars && timeline.bars.length ? timeline : { length: 0, bars: [0] };
+  state.timeline = tl;
   const seek = $("seek");
-  seek.max = String(t.length);
-  seek.disabled = !(t.length > 0);
+  seek.max = String(tl.length);
+  seek.disabled = !(tl.length > 0);
   const loop = state.loop;
-  if (loop.b != null && loop.b > t.length + 1e-9) state.loop = { a: null, b: null, on: false };
+  if (loop.b != null && loop.b > tl.length + 1e-9) state.loop = { a: null, b: null, on: false };
   renderLoop();
   showPosition(state.pausedTick / TICKS_PER_BEAT);
 }
@@ -1223,12 +1234,17 @@ function barEnd(i) {
   return i + 1 < bars.length ? bars[i + 1] : state.timeline.length;
 }
 
+// "battuta 5/104"
+function positionText(beat) {
+  return t("battuta {n}/{total}", { n: barNumber(Math.max(0, beat)), total: state.timeline.bars.length });
+}
+
 function showPosition(beat) {
-  const t = state.timeline;
-  if (!state.seeking) $("seek").value = String(Math.max(0, Math.min(beat, t.length)));
-  $("pos").textContent = t.length > 0
-    ? `battuta ${barNumber(Math.max(0, beat))}/${t.bars.length}` + (state.playing ? ` · ${Math.round(state.bpm)} BPM` : "")
-    : "";
+  const tl = state.timeline;
+  if (!state.seeking) $("seek").value = String(Math.max(0, Math.min(beat, tl.length)));
+  const where = tl.length > 0 ? positionText(beat) : "";
+  $("pos").textContent = where + (where && state.playing ? ` · ${Math.round(state.bpm)} BPM` : "");
+  $("seek").setAttribute("aria-valuetext", where);
 }
 
 // Il battito che si sente ora: il player e' avanti della latenza d'uscita;
@@ -1281,11 +1297,11 @@ async function setLoopPoint(which) {
 function renderLoop() {
   const { a, b, on } = state.loop;
   const out = $("loopOut");
-  if (a == null) out.textContent = "nessun tratto";
-  else if (b == null) out.textContent = `dalla battuta ${barNumber(a)}…`;
+  if (a == null) out.textContent = t("nessun tratto");
+  else if (b == null) out.textContent = t("dalla battuta {n}…", { n: barNumber(a) });
   else {
     const first = barNumber(a), last = barNumber(b - 1e-6);
-    out.textContent = first === last ? `battuta ${first}` : `battute ${first}–${last}`;
+    out.textContent = first === last ? t("battuta {n}", { n: first }) : t("battute {first}–{last}", { first, last });
   }
   const ready = a != null && b != null;
   $("loopOn").disabled = !ready;
@@ -1322,7 +1338,7 @@ async function watchTransport(token) {
         state.pausedTick = stop.restore;
         clearHighlight();
         showPosition(stop.restore / TICKS_PER_BEAT);
-        setStatus("Fine della battuta");
+        setStatus(t("Fine della battuta"));
         return;
       }
     } else if (looping && beat >= loop.b) {
@@ -1339,6 +1355,7 @@ async function watchTransport(token) {
 function setSpeed(percent) {
   state.speed = percent / 100;
   $("speedOut").value = percent + "%";
+  $("speed").setAttribute("aria-valuetext", percent + "%");
   if (state.synth) state.synth.setPlayerTempo(0, state.speed);
 }
 
@@ -1428,7 +1445,7 @@ function highlightAt(beat) {
   if (fi !== undefined && fi !== lastFollow) {
     lastFollow = fi;
     scrollToRange(rangeFor(node, s[fi + 1], s[fi + 2]));
-    if (!highlightApi) setStatus("Suona: " + state.song.text.slice(s[fi + 1], s[fi + 2]));
+    if (!highlightApi) setStatus(t("Suona: {token}", { token: state.song.text.slice(s[fi + 1], s[fi + 2]) }));
   }
 }
 
@@ -1491,16 +1508,16 @@ function resetScore() {
   score.timemap = null;
   score.index = -1;
   score.active.clear();
-  $("score").innerHTML = '<p class="hint">Apri un brano per vederne la partitura.</p>';
+  scoreMessage(t("Apri un brano per vederne la partitura."));
 }
 
 // Tutte le tracce se sono poche, altrimenti quella seguita dal lettore:
 // sul telefono una partitura d'orchestra intera e' illeggibile.
 function fillScoreTracks(tracks) {
   const sel = $("scoreTracks");
-  const names = tracks.map((t) => t.name);
+  const names = tracks.map((tr) => tr.name);
   sel.innerHTML = "";
-  sel.add(new Option(`Tutte le tracce (${tracks.length})`, "*"));
+  sel.add(new Option(t("Tutte le tracce ({n})", { n: tracks.length }), "*"));
   for (const n of names) sel.add(new Option(n, n));
   if (score.choice !== "*" && !names.includes(score.choice)) {
     score.choice = tracks.length <= 4 ? "*" : names[Number($("follow").value)] || "*";
@@ -1535,8 +1552,8 @@ async function renderScore(key) {
   try {
     song = await analyze();
     if (!song) { score.key = key; return; }
-    if (!score.timemap) box.innerHTML = '<p class="hint">Disegno la partitura…</p>';
-    if (!state.playing) setStatus("Disegno la partitura…");
+    if (!score.timemap) scoreMessage(t("Disegno la partitura…"));
+    if (!state.playing) setStatus(t("Disegno la partitura…"));
     xml = await call("musicxml", { tracks });
     // larghezza della pagina nelle unita' di verovio: lo SVG esce largo
     // pageWidth * scale / 100 pixel
@@ -1544,23 +1561,32 @@ async function renderScore(key) {
     r = await scoreCall({ cmd: "render", xml: xml.xml, scale: score.scale, pageWidth: Math.round(width * 100 / score.scale) });
   } catch (e) {
     score.key = key;
-    box.innerHTML = "";
-    const p = document.createElement("p");
-    p.className = "hint error";
-    p.textContent = "Partitura non disponibile: " + shortError(e).replace(/^Errore: /, "");
-    box.append(p);
+    scoreMessage(t("Partitura non disponibile: {message}", { message: errorText(e) }), true);
     return;
   }
   score.key = key;
   box.innerHTML = r.pages.join("");
+  // per TalkBack e VoiceOver: le pagine sono figure, con un nome
+  for (const svg of box.children) {
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", t("Partitura di {name}, pagina {n} di {total}",
+                                     { name: song.name, n: [...box.children].indexOf(svg) + 1, total: r.pages.length }));
+  }
   score.timemap = r.timemap;
   score.index = -1;
   score.active.clear();
-  if (!state.playing) setStatus(`Partitura: ${r.pages.length} pagine in ${ms(t0)} ms`);
+  if (!state.playing) setStatus(t("Partitura: {n} pagine in {ms} ms", { n: r.pages.length, ms: ms(t0) }));
   Metrics.record("partitura", {
     song: song.name, tracks: tracks ? tracks.length : song.info.tracks.length, pages: r.pages.length,
     musicxml_ms: xml.ms, verovio_boot_ms: r.boot_ms, render_ms: r.render_ms, total_ms: ms(t0), verovio: r.version,
   });
+}
+
+function scoreMessage(text, error = false) {
+  const p = document.createElement("p");
+  p.className = error ? "hint error" : "hint";
+  p.textContent = text;
+  $("score").replaceChildren(p);
 }
 
 function clearScoreHighlight() {
@@ -1678,13 +1704,17 @@ async function restoreLastDoc() {
 async function main() {
   const tPage = performance.now();
   const startedHidden = document.visibilityState === "hidden";
+  await I18n.load();
+  I18n.translate();
+  setupLanguageChoice();
+  $("engineState").textContent = t("avvio…");
   if (!window.isSecureContext) {
     // http:// fuori da localhost: niente service worker ne' AudioWorklet
     const warn = document.createElement("p");
     warn.id = "insecure";
-    warn.textContent = "Pagina non sicura: il testo si apre, ma l'audio e l'uso offline non funzionano. " +
+    warn.textContent = t("Pagina non sicura: il testo si apre, ma l'audio e l'uso offline non funzionano. " +
       "Usa HTTPS, http://localhost, o in Chrome per Android il flag " +
-      "chrome://flags/#unsafely-treat-insecure-origin-as-secure con " + location.origin + ".";
+      "chrome://flags/#unsafely-treat-insecure-origin-as-secure con {origin}.", { origin: location.origin });
     warn.style.cssText = "margin:4px 16px;padding:8px;border-radius:6px;background:#7a2e00;color:#fff;font-size:13px";
     $("view-brani").prepend(warn);
   }
@@ -1729,7 +1759,7 @@ async function main() {
   seek.oninput = () => {
     state.seeking = true;
     const beat = Number(seek.value);
-    $("pos").textContent = `battuta ${barNumber(beat)}/${state.timeline.bars.length}`;
+    $("pos").textContent = positionText(beat);
   };
   seek.onchange = () => { state.seeking = false; seekTo(Number(seek.value)); };
   $("loopA").onclick = () => setLoopPoint("a").catch(showError);
@@ -1763,28 +1793,40 @@ async function main() {
   // La schermata Brani si usa subito, mentre il motore si avvia.
   await renderSongs();
   const restored = restoreLastDoc().catch(() => null);
-  if (!state.doc) setStatus("Avvio del motore…");
+  if (!state.doc) setStatus(t("Avvio del motore…"));
 
   try {
-    const t = await state.booted;
+    const boot = await state.booted;
     Metrics.record("avvio", {
       cache: coldCache ? "senza cache (primo avvio)" : "con cache", service_worker: sw,
-      page_to_ready_ms: ms(tPage), ...t, ...Metrics.device(),
+      page_to_ready_ms: ms(tPage), ...boot, ...Metrics.device(),
       // scheda ricaricata dal browser dopo averla scaricata in background
       discarded: document.wasDiscarded === true, started_hidden: startedHidden,
     });
-    $("engineState").textContent = `pronto in ${(t.total_ms / 1000).toFixed(1)} s (${t.versions})`;
+    $("engineState").textContent = t("pronto in {s} s ({versions})",
+                                     { s: (boot.total_ms / 1000).toLocaleString(I18n.locale, { maximumFractionDigits: 1 }), versions: boot.versions });
     call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 2) renderKeys(); }).catch(() => {});
     await restored;
     if (!state.doc) {
-      setStatus("Scegli un brano");
+      setStatus(t("Scegli un brano"));
       setView("brani");
     }
     if (new URLSearchParams(location.search).has("misura")) await automaticMeasure();
   } catch (e) {
-    $("engineState").textContent = "errore";
+    $("engineState").textContent = t("errore");
     showError(e);
   }
+}
+
+// La scelta della lingua (in fondo alla schermata Brani): l'app si
+// ricarica nella nuova lingua.
+function setupLanguageChoice() {
+  const sel = $("language");
+  for (const [code, name] of Object.entries(I18n.LANGUAGES)) sel.add(new Option(name, code));
+  sel.value = I18n.language;
+  sel.onchange = () => {
+    saveDoc().catch(() => {}).finally(() => I18n.setLanguage(sel.value));
+  };
 }
 
 // ?misura=1: analizza i due esempi della fase 0 e manda le misure con un

@@ -326,6 +326,7 @@ def check_text(text: str, name: str = "Brano") -> dict:
     - blocks: tracce, box e pattern per il menu "Vai a" {start, label, kind}.
     Le posizioni sono indici di carattere nel testo."""
     import st_language.stfile as stfile
+    from core.i18n import tr
     from core.notation import comment_spans, notation_warnings, validate_track_text
     from core.project_io import parse_project_text
     from core.syntax import LineState, line_spans
@@ -368,7 +369,8 @@ def check_text(text: str, name: str = "Brano") -> dict:
             out["blocks"].append({"start": hstart, "label": f"{track_name} · {title.group(1) if title else ''}",
                                   "kind": "box"})
             if track is None and project:
-                warn(hstart, hend, "ignored", f"Il box è della traccia «{track_name}», che nel brano non c'è.")
+                warn(hstart, hend, "ignored",
+                     tr("Il box è della traccia «{track}», che nel brano non c'è.", track=track_name))
             continue
         if any(rx.match(header) for rx in other_headers):
             continue
@@ -380,10 +382,11 @@ def check_text(text: str, name: str = "Brano") -> dict:
         elif project and stfile.RE_TRACK_HDR.match(header) and not stfile.RE_TRACK_HDR_EXPLICIT.match(header):
             # "Basso:": una traccia di uno strumento che non si conosce
             instrument = stfile.RE_TRACK_HDR.match(header).group(1)
-            message = f"«{header}» viene ignorato: «{instrument}» non è uno strumento noto."
+            message = tr("«{header}» viene ignorato: «{instrument}» non è uno strumento noto.",
+                         header=header, instrument=instrument)
             suggestion = suggest_instrument(instrument)
             if suggestion:
-                message += f" Forse intendevi «{suggestion}»?"
+                message += " " + tr("Forse intendevi «{suggestion}»?", suggestion=suggestion)
             warn(hstart, hend, "ignored", message)
 
     # avvisi del lettore dei file (strumenti sconosciuti nelle intestazioni esplicite...)
