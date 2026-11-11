@@ -273,3 +273,38 @@ def test_completion_bar_and_transforms_for_the_music_bar():
     assert engine.bar_bounds(text, 0) == [0.0, 3.0]
     calls = [t["call"] for t in engine.transforms()]
     assert any(c.startswith(".retro") for c in calls) and all(c.startswith(".") for c in calls)
+
+
+def test_player_mute_solo_and_metronome():
+    """Lettore completo (tappa 4): le tracce in mute perdono le note, il
+    resto del brano resta dov'e'; il metronomo batte ogni battito, piu'
+    forte sul primo della battuta; la linea del tempo arriva alla fine."""
+    import mido
+    e, _ = _engine("jazz_aaba.st")
+    timeline = e.timeline()
+    plain = _notes(e.midi_bytes(0))
+    assert timeline["bars"][:3] == [0.0, 4.0, 8.0]
+    assert max(t for t, _, _ in plain) / 480 < timeline["length"]
+    assert timeline["bars"][-1] < timeline["length"]
+
+    def by_track(data):
+        out = {}
+        for track in mido.MidiFile(file=io.BytesIO(data)).tracks:
+            out[track.name] = sum(1 for m in track if m.type == "note_on" and m.velocity)
+        return out
+
+    counts = by_track(e.midi_bytes(0))
+    muted = by_track(e.midi_bytes(0, ["Piano", "Drums"]))
+    assert muted["Piano"] == muted["Drums"] == 0
+    assert muted["Bass"] == counts["Bass"] > 0
+    # le note che restano non si spostano nel tempo
+    kept = [n for n in _notes(e.midi_bytes(0, ["Piano"])) if n[1] != 9]
+    assert set(kept) <= set(plain)
+
+    clicks = [m for track in mido.MidiFile(file=io.BytesIO(e.midi_bytes(0, (), True))).tracks
+              if track.name == "Metronomo" for m in track if m.type == "note_on"]
+    assert len(clicks) == int(timeline["length"])
+    assert sum(1 for m in clicks if m.note == 76) == len(timeline["bars"])
+    # trasposizione, mute e metronomo insieme
+    both = e.midi_bytes(2, ["Piano"], True)
+    assert by_track(both)["Piano"] == 0 and "Metronomo" in by_track(both)

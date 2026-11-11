@@ -68,6 +68,16 @@
         <select id="follow"></select>
       </label>
     </div>
+    <h2>Ripeti un tratto</h2>
+    <div class="loop" role="group" aria-label="Loop A–B">
+      <button id="loopA" title="Inizio della battuta che suona">A</button>
+      <button id="loopB" title="Fine della battuta che suona">B</button>
+      <span id="loopOut" class="loop-out">nessun tratto</span>
+      <button id="loopOn" aria-pressed="false" disabled>Ripeti</button>
+    </div>
+    <label class="check"><input id="metronome" type="checkbox"> Metronomo</label>
+    <h2>Tracce</h2>
+    <ul id="mixer" class="mixer" aria-label="Tracce: mute e solo"></ul>
     <details class="opts">
       <summary>Opzioni audio (prove su iPhone)</summary>
       <label><input id="unlockAudio" type="checkbox" checked> elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</label>
@@ -78,6 +88,7 @@
 
 <!-- Mini lettore, sempre visibile -->
 <section class="player" aria-label="Lettore">
+  <input id="seek" class="seek" type="range" min="0" max="0" step="any" value="0" disabled aria-label="Posizione nel brano">
   <button id="play" class="play" disabled aria-label="Suona">▶</button>
   <div class="now">
     <div id="nowName" class="name">–</div>

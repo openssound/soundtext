@@ -28,6 +28,14 @@ const state = {
   pausedTick: 0,
   bpm: 120,
   lastTick: 0,
+  // lettore completo (tappa 4): restano per il brano aperto, anche dopo una modifica
+  timeline: { length: 0, bars: [0] },   // fine del brano e inizio delle battute, in battiti
+  muted: new Set(),       // nomi delle tracce in mute
+  solo: new Set(),        // nomi delle tracce in solo
+  metronome: false,
+  loop: { a: null, b: null, on: false },  // in battiti
+  midiKey: "",            // la combinazione di trasposizione, mute e metronomo di state.midi
+  seeking: false,         // il dito sta trascinando la barra di avanzamento
 };
 
 // ------------------------------------------------------------ worker
@@ -139,6 +147,12 @@ function openDoc(doc) {
   state.song = null;
   state.semitones = 0;
   $("trans").value = 0; $("transOut").value = "0";
+  state.muted.clear();
+  state.solo.clear();
+  state.loop = { a: null, b: null, on: false };
+  state.timeline = { length: 0, bars: [0] };
+  renderLoop();
+  showPosition(0);
   showText(doc.text);
   setEditable(true);
   clearCheck();
@@ -181,10 +195,13 @@ async function analyze() {
     const song = { name: doc.name, text, info: r.info, midi: r.midi, spans: null, offsets: codepointOffsets(text) };
     state.song = song;
     state.midi = r.midi;
-    state.semitones = 0;
-    $("trans").value = 0; $("transOut").value = "0";
+    state.midiKey = "";
     state.bpm = (r.info.bpm || 120) * state.speed;
     fillFollow(r.info.tracks);
+    setTimeline(r.info.timeline);
+    renderMixer();
+    // trasposizione, mute, solo e metronomo restano dopo una modifica del testo
+    if (midiKey() !== "") await renderMidi();
     const t = r.timings;
     // roundtrip_ms: dalla richiesta al brano pronto da suonare
     Metrics.record("analisi", {
@@ -736,28 +753,8 @@ async function playBarAtCaret() {
   const stop = { beat: end, restore: keep };
   state.stopAtBeat = stop;
   await startPlayer(Math.round(start * TICKS_PER_BEAT));
-  setStatus(`Battuta dal battito ${start} al ${end}`);
+  setStatus(`Battuta ${barNumber(start)}`);
   requestAnimationFrame(frame);
-  watchBarEnd(stop);
-}
-
-// Ferma "▶ battuta" alla fine della battuta. Un timer e non il disegno dei
-// fotogrammi (requestAnimationFrame), che si sospende quando la pagina non
-// si vede.
-async function watchBarEnd(stop) {
-  while (state.stopAtBeat === stop && state.playing) {
-    const tick = await state.synth.retrievePlayerCurrentTick();
-    if (state.stopAtBeat !== stop) return;
-    if (tick / TICKS_PER_BEAT >= stop.beat) {
-      state.stopAtBeat = null;
-      await pause();
-      state.pausedTick = stop.restore;
-      clearHighlight();
-      setStatus("Fine della battuta");
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 40));
-  }
 }
 
 function setupMusicBar() {
@@ -1032,12 +1029,14 @@ async function startPlayer(fromTick) {
   await synth.playPlayer();
   state.playing = true;
   setPlayButton();
+  watchTransport(token);
   synth.waitForPlayerStopped().then(() => {
     if (token !== state.playToken) return;
     state.playing = false;
     state.pausedTick = 0;
     setPlayButton();
     clearHighlight();
+    showPosition(0);
     setStatus("Fine del brano");
   });
 }
@@ -1063,6 +1062,10 @@ async function play() {
       state.audioReady = initAudio();
     }
     await state.audioReady;
+    const loop = state.loop;
+    if (loop.on && (state.pausedTick < loop.a * TICKS_PER_BEAT || state.pausedTick >= loop.b * TICKS_PER_BEAT)) {
+      state.pausedTick = Math.round(loop.a * TICKS_PER_BEAT);
+    }
     await startPlayer(state.pausedTick);
     const first = !state.firstPlayDone;
     state.firstPlayDone = true;
@@ -1097,7 +1100,7 @@ function stop(reset) {
     state.synth.midiAllSoundsOff();
   }
   state.playing = false;
-  if (reset) state.pausedTick = 0;
+  if (reset) { state.pausedTick = 0; showPosition(0); }
   setPlayButton();
   clearHighlight();
 }
@@ -1111,15 +1114,220 @@ function setPlayButton() {
 async function setTranspose(semitones) {
   state.semitones = semitones;
   $("transOut").value = (semitones > 0 ? "+" : "") + semitones;
-  if (!state.song) return;
-  const r = await call("transpose", { semitones });
-  if (r.semitones !== state.semitones) return;   // superata da un'altra modifica
+  if (state.song) await renderMidi();
+}
+
+// ---- lettore completo: mute, solo, metronomo, avanzamento, loop A-B
+
+// Le tracce da non sentire: con un solo attivo tutte le altre, altrimenti
+// quelle in mute.
+function silentTracks() {
+  const names = state.song ? state.song.info.tracks.map((t) => t.name) : [];
+  return state.solo.size ? names.filter((n) => !state.solo.has(n)) : names.filter((n) => state.muted.has(n));
+}
+
+// "" quando il MIDI e' quello del brano com'e' scritto
+function midiKey() {
+  const silent = silentTracks();
+  if (!state.semitones && !silent.length && !state.metronome) return "";
+  return JSON.stringify([state.semitones, silent, state.metronome]);
+}
+
+// Il MIDI con trasposizione, mute, solo e metronomo, fatto dal motore. Se
+// sta suonando riparte dallo stesso punto: il brano non si rianalizza.
+async function renderMidi() {
+  const song = state.song;
+  if (!song) return;
+  const key = midiKey();
+  if (key === state.midiKey) return;
+  const r = await call("render", {
+    key, semitones: state.semitones, muted: silentTracks(), metronome: state.metronome,
+  });
+  if (state.song !== song || r.key !== midiKey()) return;   // superata da un'altra modifica
   state.midi = r.midi;
-  Metrics.record("trasposizione", { semitones, ms: r.ms });
-  if (state.playing) {
+  state.midiKey = key;
+  Metrics.record("lettore", { semitones: state.semitones, silent: silentTracks().length, metronome: state.metronome, ms: r.ms });
+  if (state.playing && state.stopAtBeat == null) {
     const tick = await state.synth.retrievePlayerCurrentTick();
     state.synth.midiAllSoundsOff();
     await startPlayer(tick);
+  }
+}
+
+function renderMixer() {
+  const list = $("mixer");
+  list.innerHTML = "";
+  const tracks = state.song ? state.song.info.tracks : [];
+  const silent = new Set(silentTracks());
+  for (const t of tracks) {
+    const li = document.createElement("li");
+    li.classList.toggle("silent", silent.has(t.name));
+    const name = document.createElement("span");
+    name.className = "tname";
+    name.textContent = t.name;
+    if (t.instrument && t.instrument !== t.name) {
+      const small = document.createElement("small");
+      small.textContent = t.instrument;
+      name.append(small);
+    }
+    const toggle = (label, set, aria) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.setAttribute("aria-label", `${aria} ${t.name}`);
+      b.setAttribute("aria-pressed", String(set.has(t.name)));
+      b.onclick = () => {
+        if (set.has(t.name)) set.delete(t.name); else set.add(t.name);
+        renderMixer();
+        renderMidi().catch(showError);
+      };
+      return b;
+    };
+    li.append(name, toggle("M", state.muted, "Mute"), toggle("S", state.solo, "Solo"));
+    list.append(li);
+  }
+}
+
+function setTimeline(timeline) {
+  const t = timeline && timeline.bars && timeline.bars.length ? timeline : { length: 0, bars: [0] };
+  state.timeline = t;
+  const seek = $("seek");
+  seek.max = String(t.length);
+  seek.disabled = !(t.length > 0);
+  const loop = state.loop;
+  if (loop.b != null && loop.b > t.length + 1e-9) state.loop = { a: null, b: null, on: false };
+  renderLoop();
+  showPosition(state.pausedTick / TICKS_PER_BEAT);
+}
+
+// L'indice della battuta che contiene 'beat' (0 = la prima)
+function barIndex(beat) {
+  const bars = state.timeline.bars;
+  let lo = 0, hi = bars.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (bars[mid] <= beat + 1e-9) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+
+function barNumber(beat) {
+  return barIndex(beat) + 1;
+}
+
+function barEnd(i) {
+  const bars = state.timeline.bars;
+  return i + 1 < bars.length ? bars[i + 1] : state.timeline.length;
+}
+
+function showPosition(beat) {
+  const t = state.timeline;
+  if (!state.seeking) $("seek").value = String(Math.max(0, Math.min(beat, t.length)));
+  $("pos").textContent = t.length > 0
+    ? `battuta ${barNumber(Math.max(0, beat))}/${t.bars.length}` + (state.playing ? ` · ${Math.round(state.bpm)} BPM` : "")
+    : "";
+}
+
+// Il battito che si sente ora: il player e' avanti della latenza d'uscita;
+// retrievePlayerBpm e' gia' il tempo effettivo (con la velocita').
+function heardBeat(tick) {
+  const ctx = state.ctx;
+  const latency = ctx ? (ctx.outputLatency || 0) + (ctx.baseLatency || 0) : 0;
+  return tick / TICKS_PER_BEAT - (state.playing ? latency * state.bpm / 60 : 0);
+}
+
+// Porta il lettore all'inizio della battuta che contiene 'beat'.
+function seekTo(beat) {
+  const start = state.timeline.bars[barIndex(beat)] || 0;
+  const tick = Math.round(start * TICKS_PER_BEAT);
+  state.stopAtBeat = null;
+  lastKey = "";
+  if (state.playing) {
+    state.synth.midiAllNotesOff();
+    state.synth.seekPlayer(tick);
+  } else {
+    state.pausedTick = tick;
+    clearHighlight();
+  }
+  showPosition(start);
+}
+
+// A e B: inizio e fine della battuta che si sente (o di quella dove il
+// lettore e' fermo).
+async function currentBeat() {
+  if (state.playing && state.synth) return heardBeat(await state.synth.retrievePlayerCurrentTick());
+  return state.pausedTick / TICKS_PER_BEAT;
+}
+
+async function setLoopPoint(which) {
+  if (!state.song) return;
+  const i = barIndex(Math.max(0, await currentBeat()));
+  const loop = state.loop;
+  if (which === "a") {
+    loop.a = state.timeline.bars[i];
+    if (loop.b != null && loop.b <= loop.a) loop.b = barEnd(i);
+  } else {
+    loop.b = barEnd(i);
+    if (loop.a == null || loop.a >= loop.b) loop.a = state.timeline.bars[i];
+    loop.on = true;
+  }
+  if (loop.b == null) loop.on = false;
+  renderLoop();
+}
+
+function renderLoop() {
+  const { a, b, on } = state.loop;
+  const out = $("loopOut");
+  if (a == null) out.textContent = "nessun tratto";
+  else if (b == null) out.textContent = `dalla battuta ${barNumber(a)}…`;
+  else {
+    const first = barNumber(a), last = barNumber(b - 1e-6);
+    out.textContent = first === last ? `battuta ${first}` : `battute ${first}–${last}`;
+  }
+  const ready = a != null && b != null;
+  $("loopOn").disabled = !ready;
+  $("loopOn").setAttribute("aria-pressed", String(ready && on));
+}
+
+// Mentre suona: barra di avanzamento, fine di "▶ battuta", ritorno da B ad
+// A. Con un timer e non con il disegno dei fotogrammi
+// (requestAnimationFrame), che si ferma quando la pagina non si vede.
+async function watchTransport(token) {
+  while (token === state.playToken && state.playing) {
+    let tick;
+    try { tick = await state.synth.retrievePlayerCurrentTick(); } catch (e) { return; }
+    if (token !== state.playToken || !state.playing) return;
+    let beat = tick / TICKS_PER_BEAT;
+    const stop = state.stopAtBeat;
+    const loop = state.loop;
+    const looping = !stop && loop.on && loop.a != null && loop.b != null;
+    // Un controllo ogni 40 ms: se la fine (della battuta o del tratto) cade
+    // prima del prossimo, si aspetta proprio fino a li'.
+    const target = stop ? stop.beat : looping ? loop.b : null;
+    if (target != null && beat < target) {
+      const wait = (target - beat) * 60000 / (state.bpm || 120);
+      if (wait < 45) {
+        await new Promise((r) => setTimeout(r, Math.max(0, wait - 3)));
+        if (token !== state.playToken || !state.playing) return;
+        beat = target;
+      }
+    }
+    if (stop) {
+      if (beat >= stop.beat) {
+        state.stopAtBeat = null;
+        await pause();
+        state.pausedTick = stop.restore;
+        clearHighlight();
+        showPosition(stop.restore / TICKS_PER_BEAT);
+        setStatus("Fine della battuta");
+        return;
+      }
+    } else if (looping && beat >= loop.b) {
+      state.synth.midiAllNotesOff();
+      state.synth.seekPlayer(Math.round(loop.a * TICKS_PER_BEAT));
+      lastKey = "";
+    }
+    showPosition(heardBeat(tick));
+    await new Promise((r) => setTimeout(r, 40));
   }
 }
 
@@ -1164,12 +1372,9 @@ async function frame() {
     }
     // Il player e' avanti rispetto a cio' che si sente della latenza d'uscita;
     // retrievePlayerBpm e' gia' il tempo effettivo (con la velocita').
-    const ctx = state.ctx;
-    const latency = (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
-    const beat = tick / TICKS_PER_BEAT - latency * state.bpm / 60;
+    const beat = heardBeat(tick);
     state.lastTick = tick;
     highlightAt(beat);
-    $("pos").textContent = `battito ${Math.max(0, beat).toFixed(1)} · ${Math.round(state.bpm)} BPM`;
   } catch (e) {
     console.warn(e);
   } finally {
@@ -1322,6 +1527,17 @@ async function main() {
   $("trans").onchange = (ev) => setTranspose(Number(ev.target.value)).catch(showError);
   $("trans").oninput = (ev) => { $("transOut").value = ev.target.value; };
   $("follow").onchange = () => { lastFollow = -1; };
+  const seek = $("seek");
+  seek.oninput = () => {
+    state.seeking = true;
+    const beat = Number(seek.value);
+    $("pos").textContent = `battuta ${barNumber(beat)}/${state.timeline.bars.length}`;
+  };
+  seek.onchange = () => { state.seeking = false; seekTo(Number(seek.value)); };
+  $("loopA").onclick = () => setLoopPoint("a").catch(showError);
+  $("loopB").onclick = () => setLoopPoint("b").catch(showError);
+  $("loopOn").onclick = () => { state.loop.on = !state.loop.on; renderLoop(); };
+  $("metronome").onchange = (ev) => { state.metronome = ev.target.checked; renderMidi().catch(showError); };
   $("goto").onchange = (ev) => {
     if (ev.target.value !== "") goTo(Number(ev.target.value));
     ev.target.value = "";

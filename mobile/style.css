@@ -170,7 +170,7 @@ body.editing .player { padding-top: 4px; padding-bottom: 4px; }
 body.editing .play { width: 40px; height: 40px; font-size: 17px; }
 
 .player {
-  display: flex; gap: 12px; align-items: center; padding: 8px 16px;
+  display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 4px 16px 8px;
   border-top: 1px solid var(--line); background: var(--bg);
 }
 .play {
@@ -189,6 +189,21 @@ body.editing .play { width: 40px; height: 40px; font-size: 17px; }
 .controls label.inline { grid-template-columns: 1fr; }
 .controls input { grid-column: 1 / -1; width: 100%; min-height: 28px; }
 .controls output { justify-self: end; color: var(--text); }
+.seek { flex: 1 0 100%; margin: 0; min-height: 28px; accent-color: var(--accent); }
+body.editing .seek { min-height: 20px; }
+.loop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.loop button { min-width: 48px; min-height: 44px; }
+.loop button:disabled { opacity: .4; }
+.loop-out { flex: 1; font-size: 14px; color: var(--dim); font-variant-numeric: tabular-nums; }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.check { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 15px; min-height: 44px; }
+.check input { width: 22px; height: 22px; }
+.mixer { list-style: none; margin: 0; padding: 0; }
+.mixer li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.mixer .tname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mixer .tname small { color: var(--dim); margin-left: 6px; }
+.mixer button { min-width: 44px; min-height: 40px; font-weight: 600; }
+.mixer li.silent .tname { opacity: .45; }
 .opts { font-size: 13px; color: var(--dim); }
 .opts label { display: block; margin: 4px 0; }
 

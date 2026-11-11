@@ -14,9 +14,10 @@ corpo del pattern, cosi' si vede la nota che suona e non solo il box.
 """
 
 import io
+import math
 import re
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 # I moduli di core/ usati dall'app: tests/test_mobile_engine.py controlla
 # che nessuno importi PySide6, nemmeno indirettamente.
@@ -74,6 +75,7 @@ class Engine:
         t0 = time.perf_counter()
         self.project = parse_project_text(text, name)
         self._midi = None
+        self._length = None
         self.text = text
         self.timings = {"parse_s": time.perf_counter() - t0}
         tracks = [{"name": t.name, "instrument": t.instrument_name,
@@ -83,16 +85,9 @@ class Engine:
 
     # ------------------------------------------------------------ MIDI
 
-    def midi_bytes(self, transpose: int = 0) -> bytes:
-        """Il brano in MIDI, con le note non percussive trasposte di
-        'transpose' semitoni.
-
-        La trasposizione si fa sulle note del MIDI e non con transpose=N
-        davanti al testo delle tracce: i box degli esempi cominciano con
-        reset: e hanno un loro transpose= (es. il sax di jazz_aaba.st,
-        un'ottava sotto), che annullerebbero quello aggiunto. Le percussioni
-        stanno sempre sul canale 10 (st_language.midi._assign_channels) e
-        non si toccano. L'esportazione si fa una volta sola per brano."""
+    def _base_midi(self) -> bytes:
+        """Il MIDI del brano com'e' scritto. L'esportazione si fa una volta
+        sola per brano."""
         if getattr(self, "_midi", None) is None:
             from core.midi_export import export_project_to_midi
             t0 = time.perf_counter()
@@ -108,20 +103,105 @@ class Engine:
             finally:
                 os.remove(path)
             self.timings["midi_s"] = time.perf_counter() - t0
-        if not transpose:
-            return self._midi
+        return self._midi
+
+    def midi_bytes(self, transpose: int = 0, muted: Iterable[str] = (), metronome: bool = False) -> bytes:
+        """Il brano in MIDI, come lo suona il lettore dell'app.
+
+        'transpose': le note non percussive si spostano di tanti semitoni.
+        La trasposizione si fa sulle note del MIDI e non con transpose=N
+        davanti al testo delle tracce: i box degli esempi cominciano con
+        reset: e hanno un loro transpose= (es. il sax di jazz_aaba.st,
+        un'ottava sotto), che annullerebbero quello aggiunto. Le percussioni
+        stanno sempre sul canale 10 (st_language.midi._assign_channels) e
+        non si toccano.
+
+        'muted': i nomi delle tracce da non sentire (mute, o le altre quando
+        una e' in solo): le loro note spariscono, il resto della traccia
+        (strumento, controlli) resta, cosi' riattivarla a meta' suona giusto.
+
+        'metronome': un click sul canale 10 a ogni battito, piu' forte
+        sul primo della battuta (con la metrica del brano)."""
+        base = self._base_midi()
+        muted = set(muted)
+        if not transpose and not muted and not metronome:
+            return base
         import mido
         from st_language.instruments import DRUM_MIDI_CHANNEL
         t0 = time.perf_counter()
-        mid = mido.MidiFile(file=io.BytesIO(self._midi))
+        mid = mido.MidiFile(file=io.BytesIO(base))
         for track in mid.tracks:
-            for i, msg in enumerate(track):
-                if msg.type in ("note_on", "note_off", "polytouch") and msg.channel != DRUM_MIDI_CHANNEL:
-                    track[i] = msg.copy(note=min(127, max(0, msg.note + int(transpose))))
+            silent = track.name in muted
+            kept = []
+            carry = 0
+            for msg in track:
+                if msg.type in ("note_on", "note_off", "polytouch"):
+                    if silent:
+                        carry += msg.time
+                        continue
+                    if transpose and msg.channel != DRUM_MIDI_CHANNEL:
+                        msg = msg.copy(note=min(127, max(0, msg.note + int(transpose))))
+                if carry:
+                    msg = msg.copy(time=msg.time + carry)
+                    carry = 0
+                kept.append(msg)
+            track[:] = kept
+        if metronome:
+            mid.tracks.append(self._metronome_track(mid))
         out = io.BytesIO()
         mid.save(file=out)
-        self.timings["transpose_s"] = time.perf_counter() - t0
+        self.timings["render_s"] = time.perf_counter() - t0
         return out.getvalue()
+
+    def _metronome_track(self, mid):
+        import mido
+        from st_language.instruments import DRUM_MIDI_CHANNEL
+        tpb = mid.ticks_per_beat
+        end = self.length_beats()
+        bars = set(self.bar_list())
+        track = mido.MidiTrack([mido.MetaMessage("track_name", name="Metronomo", time=0)])
+        clicks = sorted({float(b) for b in range(int(math.ceil(end)))} | {b for b in bars if b < end})
+        last = 0
+        for beat in clicks:
+            tick = round(beat * tpb)
+            accent = beat in bars
+            note = 76 if accent else 77        # Hi / Low Wood Block (GM)
+            track.append(mido.Message("note_on", channel=DRUM_MIDI_CHANNEL, note=note,
+                                      velocity=110 if accent else 75, time=tick - last))
+            track.append(mido.Message("note_off", channel=DRUM_MIDI_CHANNEL, note=note,
+                                      velocity=0, time=tpb // 8))
+            last = tick + tpb // 8
+        return track
+
+    # ------------------------------------------------------------ linea del tempo
+
+    def length_beats(self) -> float:
+        """Dove finisce il brano, in battiti: l'ultimo evento del MIDI."""
+        if getattr(self, "_length", None) is None:
+            import mido
+            mid = mido.MidiFile(file=io.BytesIO(self._base_midi()))
+            ticks = max((sum(m.time for m in t) for t in mid.tracks), default=0)
+            self._length = ticks / mid.ticks_per_beat
+        return self._length
+
+    def bar_list(self) -> List[float]:
+        """L'inizio di ogni battuta fino alla fine del brano, in battiti,
+        con la metrica del brano (cambi e levare compresi)."""
+        from st_language.notation import bar_starts
+        end = self.length_beats()
+        out = []
+        for start in bar_starts(self.project.time_sig, self.project.metrica_changes, self.project.pickup):
+            start = float(start)
+            if start >= end - 1e-9 and out:
+                break
+            out.append(start)
+            if len(out) > 100000:
+                break
+        return out
+
+    def timeline(self) -> dict:
+        """Lunghezza e battute, per la barra di avanzamento e il loop A-B."""
+        return {"length": self.length_beats(), "bars": self.bar_list()}
 
     # ------------------------------------------------------------ evidenziazione
 

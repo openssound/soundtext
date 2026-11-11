@@ -80,3 +80,17 @@ Limiti:
 - con caratteri fuori dal piano di base (emoji) nel testo, le posizioni del cursore mandate al motore possono sfasarsi.
 
 Criterio da verificare: 8 battute scritte in meno di 2 minuti, con 3 persone.
+
+**Tappa 4, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono, con `jazz_aaba.st`:
+
+- **Barra di avanzamento** nel mini lettore, sempre visibile: si trascina e il lettore va all'inizio della battuta, anche mentre suona. Accanto, «battuta 5/104».
+- **Ripeti un tratto (loop A–B)** nella schermata Lettore: A segna l'inizio della battuta che si sente, B la sua fine, e accende «Ripeti». Premendo B più avanti, il tratto copre più battute. Il ritorno da B ad A cade a meno di 10 ms dalla fine del tratto (provato: da 19,985 a 16 su un tratto 16–20). Con «Ripeti» acceso, il Play parte da A.
+- **Metronomo:** un click a ogni battito, più forte sul primo della battuta, con la metrica del brano.
+- **Mute e solo** per traccia (M e S): con un solo attivo si sentono solo le tracce in solo.
+- **Durante l'ascolto:** metronomo, mute, solo e trasposizione rifanno solo il MIDI nel motore (circa 0,1 s sul computer) e il lettore riparte dallo stesso punto, senza rianalizzare il brano. Restano anche dopo una modifica del testo; aprire un altro brano li azzera.
+- **Test:** mute, metronomo e linea del tempo in `tests/test_mobile_engine.py` (14 test).
+
+Limiti:
+
+- con lo schermo spento il browser rallenta i timer della pagina: il ritorno da B ad A può arrivare fino a un secondo in ritardo;
+- per togliere il tratto si spegne «Ripeti»; A e B restano segnati.

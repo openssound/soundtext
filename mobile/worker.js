@@ -222,6 +222,9 @@ async function load(name, text) {
   engine = py.runPython("engine.Engine()");
   const info = engine.load(text, name).toJs({ dict_converter: Object.fromEntries });
   const midi = toBytes(engine.midi_bytes(0));
+  const timeline = engine.timeline();
+  info.timeline = timeline.toJs({ dict_converter: Object.fromEntries });
+  timeline.destroy();
   const timings = engine.timings.toJs({ dict_converter: Object.fromEntries });
   timings.total_ms = ms(t0);
   return { info, midi, timings };
@@ -248,10 +251,13 @@ self.onmessage = async (ev) => {
       const r = spans();
       post({ type: "spans", id: msg.id, ...r }, [r.spans.buffer]);
       if (!numpyStarted) { numpyStarted = true; loadNumpyLater(); }   // dopo il primo brano
-    } else if (msg.cmd === "transpose") {
+    } else if (msg.cmd === "render") {
+      // il MIDI che suona il lettore: trasposizione, tracce mute, metronomo
       const t0 = performance.now();
-      const midi = toBytes(engine.midi_bytes(msg.semitones));
-      post({ type: "midi", id: msg.id, midi, semitones: msg.semitones, ms: ms(t0) }, [midi.buffer]);
+      const muted = py.toPy(msg.muted || []);
+      const midi = toBytes(engine.midi_bytes(msg.semitones || 0, muted, !!msg.metronome));
+      muted.destroy();
+      post({ type: "midi", id: msg.id, midi, key: msg.key, ms: ms(t0) }, [midi.buffer]);
     } else if (msg.cmd === "check") {
       // colori, avvisi e blocchi del testo dell'editor (engine.check_text)
       const t0 = performance.now();
