@@ -198,6 +198,8 @@ for name in build.EXAMPLES:
     e = engine.Engine()
     e.load(source, name)
     e.musicxml()
+for kind in engine.GENERATORS:
+    engine.generate(source, kind, {"seed": 1, "bars": 4, "performance": True})
 print(json.dumps(used))
 """
 

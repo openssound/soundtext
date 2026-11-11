@@ -2697,5 +2697,7 @@
  "«{header}» viene ignorato: «{instrument}» non è uno strumento noto.": "«{header}» se ignora: «{instrument}» no es un instrumento conocido.",
  "Strumenti SFZ o plugin ({tracks}): nell'app suonano con il SoundFont General MIDI.": "Instrumentos SFZ o plugin ({tracks}): en la app suenan con el SoundFont General MIDI.",
  "Effetti e catena master non si sentono nell'app; il file li conserva come sono.": "Los efectos y la cadena master no se oyen en la app; el archivo los conserva tal cual.",
- "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Pistas de audio ({tracks}): no suenan en la app; el archivo las conserva tal cual."
+ "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Pistas de audio ({tracks}): no suenan en la app; el archivo las conserva tal cual.",
+ "La traccia '{name}' non c'è.": "La pista '{name}' no existe.",
+ "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "La canción todavía no tiene una pista con acordes que seguir."
 }

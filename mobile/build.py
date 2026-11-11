@@ -65,6 +65,12 @@ for path in sys.argv[3:]:
     e = engine.Engine()
     e.load(source, name)
     e.musicxml()
+# i generatori (fase 2), su un brano con degli accordi
+with open(os.path.join(root, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+    source = f.read()
+for kind in engine.GENERATORS:
+    engine.generate(source, kind, {"seed": 1, "bars": 4, "performance": True})
+engine.generator_choices(source)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 
