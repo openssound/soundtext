@@ -34,6 +34,11 @@
 
   <!-- Testo -->
   <section id="view-testo" class="view" aria-label="Testo">
+    <div class="textbar">
+      <select id="goto" aria-label="Vai a un blocco"><option value="">Vai a…</option></select>
+      <button id="warnButton" class="warn-button" aria-expanded="false" hidden>⚠ <span id="warnCount">0</span></button>
+    </div>
+    <ul id="warnings" class="warnings" hidden></ul>
     <pre id="text" aria-label="Testo del brano" spellcheck="false" autocapitalize="off" autocorrect="off"
          autocomplete="off" translate="no"></pre>
   </section>

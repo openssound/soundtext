@@ -26,6 +26,7 @@ ENGINE_MODULES = (
     "core.notation",
     "core.model",
     "core.instruments",
+    "core.syntax",
 )
 
 RE_PATTERN_HDR = re.compile(r"^Pattern\s+%([\w.\-]+)\s*:\s*$")
@@ -51,7 +52,7 @@ def file_blocks(text: str) -> List[dict]:
         if line[:1] not in (" ", "\t") and stripped and not stripped.startswith("//"):
             current = None
             if stripped.endswith(":"):
-                current = {"header": stripped, "start": pos + len(line), "end": pos + len(line)}
+                current = {"header": stripped, "hstart": pos, "start": pos + len(line), "end": pos + len(line)}
                 blocks.append(current)
         elif current is not None and stripped:
             current["end"] = pos + len(line.rstrip("\r\n"))
@@ -194,6 +195,161 @@ class Engine:
                 head = head[len(prefix):]
         head = re.sub(r"\s*\[[^\]]*\]$", "", head).strip()
         return head if head in index else None
+
+
+# ------------------------------------------------------------ controlli del testo
+
+# Intestazioni che hanno la forma corta "Nome:" ma non sono tracce
+_OTHER_HEADER_NAMES = ("RE_AMBIENTE", "RE_AUDIO_HDR", "RE_COMPOSER", "RE_CONVERSION_HDR", "RE_EFFECTS_HDR",
+                       "RE_INSTRUMENT_HDR", "RE_KEY_LIST_HDR", "RE_LYRICIST", "RE_MASTER", "RE_MASTER_CHAIN_HDR",
+                       "RE_METRICA_LIST_HDR", "RE_MIXER_HDR", "RE_SYNTH_HDR", "RE_TEMPO_LIST_HDR", "RE_TITLE")
+
+# Categorie dei colori: quelle di core.syntax piu' "header" (intestazioni e
+# righe di impostazioni del file, fuori dalla notazione).
+def syntax_categories() -> list:
+    from core.syntax import CATEGORIES
+    return list(CATEGORIES) + ["header"]
+
+
+def check_text(text: str, name: str = "Brano") -> dict:
+    """I controlli del testo per l'editor, sul file intero:
+
+    - syntax: colori, terne piatte (inizio, lunghezza, categoria) con la
+      categoria come indice di syntax_categories(); la notazione si colora
+      con core.syntax (come l'editor di SoundText), il resto del file solo
+      nei commenti e nelle intestazioni;
+    - voices: sfondi delle voci { ; }, terne (inizio, lunghezza, voce);
+    - warnings: avvisi {start, end, kind, message}: "error" (il testo di un
+      box, di una traccia o di un pattern non si legge), "bar", "anchor",
+      "lyric"... (core.notation.notation_warnings, come SoundText),
+      "ignored" (blocco "Nome:" di uno strumento sconosciuto, che il
+      lettore dei file salta senza dirlo), "file" (Project.file_warnings);
+    - blocks: tracce, box e pattern per il menu "Vai a" {start, label, kind}.
+    Le posizioni sono indici di carattere nel testo."""
+    import st_language.stfile as stfile
+    from core.notation import comment_spans, notation_warnings, validate_track_text
+    from core.project_io import parse_project_text
+    from core.syntax import LineState, line_spans
+    from st_language.instruments import suggest_instrument
+
+    categories = {c: i for i, c in enumerate(syntax_categories())}
+    out = {"syntax": [], "voices": [], "warnings": [], "blocks": [], "error": ""}
+    try:
+        project = parse_project_text(text, name)
+    except Exception as e:                     # il file intero non si legge
+        project = None
+        out["error"] = str(e)
+    patterns = project.patterns if project else {}
+    tracks = [t for t in project.tracks if not t.is_audio] if project else []
+    index = {t.name: i for i, t in enumerate(tracks)}
+    meter = project.meter() if project else None
+    other_headers = [getattr(stfile, n) for n in _OTHER_HEADER_NAMES if hasattr(stfile, n)]
+
+    def warn(start, end, kind, message):
+        out["warnings"].append({"start": start, "end": end, "kind": kind, "message": message})
+
+    # che cos'e' ogni blocco
+    notation = []           # (blocco, traccia o None, ottava, battito d'inizio, avvisi di battuta?)
+    for b in file_blocks(text):
+        header, hstart = b["header"], b["hstart"]
+        hend = hstart + len(header)
+        m = RE_PATTERN_HDR.match(header)
+        if m:
+            notation.append((b, None, 4, 0.0, False))
+            out["blocks"].append({"start": hstart, "label": "%" + m.group(1), "kind": "pattern"})
+            continue
+        m = RE_BOX_HDR.match(header)
+        if m:
+            track_name = m.group(1)
+            title = re.search(r'"([^"]*)"', header)
+            track = tracks[index[track_name]] if track_name in index else None
+            notation.append((b, track, track.instrument.default_octave if track else 4, float(m.group(2)),
+                             track is not None))
+            out["blocks"].append({"start": hstart, "label": f"{track_name} · {title.group(1) if title else ''}",
+                                  "kind": "box"})
+            if track is None and project:
+                warn(hstart, hend, "ignored", f"Il box è della traccia «{track_name}», che nel brano non c'è.")
+            continue
+        if any(rx.match(header) for rx in other_headers):
+            continue
+        track_name = Engine._track_of_header(header, index)
+        if track_name is not None:
+            track = tracks[index[track_name]]
+            notation.append((b, track, track.instrument.default_octave, 0.0, True))
+            out["blocks"].append({"start": hstart, "label": track_name, "kind": "track"})
+        elif project and stfile.RE_TRACK_HDR.match(header) and not stfile.RE_TRACK_HDR_EXPLICIT.match(header):
+            # "Basso:": una traccia di uno strumento che non si conosce
+            instrument = stfile.RE_TRACK_HDR.match(header).group(1)
+            message = f"«{header}» viene ignorato: «{instrument}» non è uno strumento noto."
+            suggestion = suggest_instrument(instrument)
+            if suggestion:
+                message += f" Forse intendevi «{suggestion}»?"
+            warn(hstart, hend, "ignored", message)
+
+    # avvisi del lettore dei file (strumenti sconosciuti nelle intestazioni esplicite...)
+    if project:
+        line_starts = [0] + [i + 1 for i, ch in enumerate(text) if ch == "\n"]
+        for line, message in project.file_warnings:
+            if 1 <= line <= len(line_starts):
+                start = line_starts[line - 1]
+                end = text.find("\n", start)
+                warn(start, end if end >= 0 else len(text), "file", message)
+
+    # notazione: errori, avvisi e colori
+    bodies = []
+    for b, track, octave, beat, bar_checks in notation:
+        start, end = b["start"], b["end"]
+        if end <= start:
+            continue
+        bodies.append((start, end))
+        body = _blank_comments(text[start:end])
+        if not body.strip():
+            continue
+        errors = set()
+        ok, msg = validate_track_text(body, patterns, default_octave=octave, meter=meter)
+        if not ok:
+            warn(b["hstart"], b["hstart"] + len(b["header"]), "error", msg)
+        elif bar_checks and project:
+            for issue in notation_warnings(body, patterns, project.time_sig, project.metrica_changes,
+                                           start_beat=beat, default_octave=octave, pickup=project.pickup,
+                                           key=project.key, key_changes=project.key_changes):
+                warn(start + issue.char_start, start + issue.char_end, issue.kind, issue.message)
+                errors.add(start + issue.char_start)
+        state = LineState()
+        pos = start
+        for line in text[start:end].split("\n"):
+            line_errors = [e - pos for e in errors if pos <= e < pos + len(line)]
+            spans, voices, state = line_spans(line, state, line_errors)
+            for s0, length, category in spans:
+                out["syntax"] += [pos + s0, length, categories[category]]
+            run = None
+            for i, v in enumerate(voices + [None]):
+                if run is not None and (v != run[1]):
+                    out["voices"] += [pos + run[0], i - run[0], run[1]]
+                    run = None
+                if v is not None and run is None:
+                    run = (i, v)
+            pos += len(line) + 1
+
+    # fuori dalla notazione: commenti e intestazioni
+    bodies.sort()
+    pos = 0
+    body_i = 0
+    for line in text.split("\n"):
+        while body_i < len(bodies) and bodies[body_i][1] < pos:
+            body_i += 1
+        inside = body_i < len(bodies) and bodies[body_i][0] <= pos <= bodies[body_i][1]
+        if not inside:
+            comments = comment_spans(line)
+            for s0, e0 in comments:
+                out["syntax"] += [pos + s0, e0 - s0, categories["comment"]]
+            code_end = comments[0][0] if comments else len(line)
+            code = line[:code_end].rstrip()
+            if code and line[:1] not in (" ", "\t"):
+                out["syntax"] += [pos, len(code), categories["header"]]
+        pos += len(line) + 1
+    out["warnings"].sort(key=lambda w: w["start"])
+    return out
 
 
 def flat_spans(spans) -> list:

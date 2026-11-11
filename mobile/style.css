@@ -79,6 +79,17 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .menu .danger { color: var(--danger); }
 .songs li.has-menu { flex-wrap: wrap; }
 
+.textbar { display: flex; gap: 8px; padding: 0 16px 6px; }
+.textbar select { flex: 1; min-width: 0; }
+.warn-button { color: #1c1c1c; background: #f0b854; border-color: #f0b854; font-weight: 600; }
+.warnings { list-style: none; margin: 0 16px 6px; padding: 0; max-height: 30vh; overflow-y: auto;
+            border: 1px solid var(--line); border-radius: 8px; }
+.warnings li button { width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--line);
+                      border-radius: 0; background: none; font-size: 13px; min-height: 0; padding: 8px 10px; }
+.warnings li:last-child button { border-bottom: none; }
+.warnings li button { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.warnings .where { color: var(--dim); margin-right: 6px; }
+.warnings .error .where, .warnings .ignored .where { color: var(--danger); }
 #text {
   flex: 1; margin: 0 16px 8px; padding: 10px; overflow: auto; min-height: 0;
   background: var(--panel); border-radius: 8px; outline: none;
@@ -87,6 +98,52 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 }
 #text:focus { box-shadow: 0 0 0 2px var(--accent) inset; }
 #text.empty::before { content: "Nessun brano aperto: scegline uno nella schermata Brani."; color: var(--dim); white-space: normal; font-family: system-ui, sans-serif; }
+/* Sintassi: gli stessi colori dell'editor di SoundText (gui/highlighter.py) */
+::highlight(syn-note), ::highlight(syn-slide) { color: #6fd0ff; }
+::highlight(syn-chord), ::highlight(syn-chord_arp) { color: #f0b854; font-weight: 600; }
+::highlight(syn-chord_arp) { text-decoration: underline dotted #9fb4ff; }
+::highlight(syn-perc) { color: #e685e6; }
+::highlight(syn-state) { color: #7de87d; }
+::highlight(syn-ref) { color: #ff6f6f; font-weight: 600; }
+::highlight(syn-rest) { color: #8f8f8f; }
+::highlight(syn-block) { color: #f0f060; }
+::highlight(syn-repeat) { color: #d6a8f5; font-weight: 600; }
+::highlight(syn-sustain) { color: #7de8b0; font-weight: 600; }
+::highlight(syn-tempo_ramp) { color: #f5a065; font-weight: 600; }
+::highlight(syn-comment) { color: #7f8c8d; }
+::highlight(syn-voices) { color: #5fe0d0; font-weight: 600; }
+::highlight(syn-lyric) { color: #ffb0d0; }
+::highlight(syn-bar) { color: #b8b8b8; font-weight: 600; }
+::highlight(syn-transform) { color: #9fb4ff; font-weight: 600; }
+::highlight(syn-header) { color: #c9a0ff; }
+::highlight(syn-bar_error), ::highlight(warn) { color: #ff5050; text-decoration: underline wavy #ff5050; }
+::highlight(voice-0) { background-color: #1e3a4f; }
+::highlight(voice-1) { background-color: #4a3a1a; }
+::highlight(voice-2) { background-color: #3c2550; }
+::highlight(voice-3) { background-color: #1e4630; }
+@media (prefers-color-scheme: light) {
+  ::highlight(syn-note), ::highlight(syn-slide) { color: #0f6fb0; }
+  ::highlight(syn-chord), ::highlight(syn-chord_arp) { color: #8a5a00; }
+  ::highlight(syn-perc) { color: #8a2d8a; }
+  ::highlight(syn-state) { color: #1f7a1f; }
+  ::highlight(syn-ref) { color: #b03030; }
+  ::highlight(syn-rest) { color: #5a5a5a; }
+  ::highlight(syn-block) { color: #8a6d00; }
+  ::highlight(syn-repeat) { color: #7030a0; }
+  ::highlight(syn-sustain) { color: #1f8a5a; }
+  ::highlight(syn-tempo_ramp) { color: #a85a1a; }
+  ::highlight(syn-comment) { color: #6b7378; }
+  ::highlight(syn-voices) { color: #00807a; }
+  ::highlight(syn-lyric) { color: #a0306a; }
+  ::highlight(syn-bar) { color: #4a4a4a; }
+  ::highlight(syn-transform) { color: #3b4fc0; }
+  ::highlight(syn-header) { color: #6a3fb0; }
+  ::highlight(syn-bar_error), ::highlight(warn) { color: #c00000; text-decoration: underline wavy #c00000; }
+  ::highlight(voice-0) { background-color: #dcefff; }
+  ::highlight(voice-1) { background-color: #fff0d2; }
+  ::highlight(voice-2) { background-color: #f0e2ff; }
+  ::highlight(voice-3) { background-color: #dcf5e4; }
+}
 ::highlight(st-note) { background-color: var(--note-bg); color: var(--note-fg); }
 ::highlight(st-box) { background-color: var(--box-bg); }
 

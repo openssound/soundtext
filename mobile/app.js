@@ -141,6 +141,8 @@ function openDoc(doc) {
   $("trans").value = 0; $("transOut").value = "0";
   showText(doc.text);
   setEditable(true);
+  clearCheck();
+  scheduleCheck(0);
   showDocTitle();
   rememberDoc(doc);
   renderSongs();
@@ -263,6 +265,7 @@ async function onEdit() {
   if (!doc) return;
   doc.text = editorText();
   clearHighlight();
+  scheduleCheck();
   if (doc.kind === "example" && !doc.copying) {
     // prima modifica di un esempio: diventa un brano dell'utente
     doc.copying = true;
@@ -296,6 +299,168 @@ function normalizeEditor() {
     pre.textContent = state.doc.text;
     pre.scrollTop = top;
   }
+}
+
+// ------------------------------------------------------------ controlli del testo
+//
+// Colori della sintassi, avvisi e blocchi (engine.check_text nel worker),
+// chiesti all'apertura e poco dopo l'ultima modifica. Un risultato per un
+// testo che nel frattempo e' cambiato si scarta.
+
+const checks = { timer: null, running: false, again: false, last: null, ranges: [] };
+const CHECK_DELAY_MS = 700;
+
+function scheduleCheck(delay = CHECK_DELAY_MS) {
+  clearTimeout(checks.timer);
+  checks.timer = setTimeout(runCheck, delay);
+}
+
+async function runCheck() {
+  if (!state.doc) return;
+  if (checks.running) { checks.again = true; return; }
+  checks.running = true;
+  const doc = state.doc;
+  const text = doc.text;
+  try {
+    await state.booted;
+    const r = await call("check", { text });
+    if (state.doc === doc && doc.text === text) {
+      checks.last = { text, ...r.result };
+      applyCheck();
+      Metrics.record("controllo", { song: doc.name, ms: r.ms, warnings: r.result.warnings.length });
+    }
+  } catch (e) {
+    console.warn("controllo del testo", e);
+  } finally {
+    checks.running = false;
+    if (checks.again) { checks.again = false; scheduleCheck(0); }
+  }
+}
+
+function clearCheck() {
+  checks.last = null;
+  if (highlightApi) {
+    for (const name of [...CSS.highlights.keys()]) {
+      if (name.startsWith("syn-") || name.startsWith("voice-") || name === "warn") CSS.highlights.delete(name);
+    }
+  }
+  renderWarnings([]);
+  renderBlocks([]);
+}
+
+function applyCheck() {
+  const c = checks.last;
+  if (!c || !state.doc || state.doc.text !== c.text) return;
+  renderWarnings(c.warnings);
+  renderBlocks(c.blocks);
+  if (!highlightApi) return;
+  const pre = $("text");
+  if (pre.childNodes.length > 1) pre.normalize();
+  const node = pre.firstChild;
+  if (!node || node.nodeType !== Node.TEXT_NODE || node.data !== c.text) return;
+  const off = codepointOffsets(c.text);
+  const range = (s, e) => {
+    const r = new Range();
+    r.setStart(node, off ? off[s] : s);
+    r.setEnd(node, off ? off[e] : e);
+    return r;
+  };
+  const byCategory = new Map();
+  for (let i = 0; i < c.syntax.length; i += 3) {
+    const name = c.categories[c.syntax[i + 2]];
+    if (!byCategory.has(name)) byCategory.set(name, []);
+    byCategory.get(name).push(range(c.syntax[i], c.syntax[i] + c.syntax[i + 1]));
+  }
+  for (const name of [...CSS.highlights.keys()]) {
+    if (name.startsWith("syn-") || name.startsWith("voice-") || name === "warn") CSS.highlights.delete(name);
+  }
+  for (const [name, ranges] of byCategory) CSS.highlights.set("syn-" + name, new Highlight(...ranges));
+  const voices = [[], [], [], []];
+  for (let i = 0; i < c.voices.length; i += 3) {
+    voices[c.voices[i + 2]].push(range(c.voices[i], c.voices[i] + c.voices[i + 1]));
+  }
+  voices.forEach((ranges, i) => {
+    if (ranges.length) {
+      const h = new Highlight(...ranges);
+      h.priority = -1;
+      CSS.highlights.set("voice-" + i, h);
+    }
+  });
+  // gli avvisi senza un token colorato (intestazioni, errori di un blocco)
+  const warn = new Highlight(...c.warnings.filter((w) => w.end > w.start).map((w) => range(w.start, w.end)));
+  warn.priority = 1;
+  CSS.highlights.set("warn", warn);
+}
+
+function lineOf(text, pos) {
+  let line = 1;
+  for (let i = text.indexOf("\n"); i >= 0 && i < pos; i = text.indexOf("\n", i + 1)) line++;
+  return line;
+}
+
+function renderWarnings(warnings) {
+  const button = $("warnButton");
+  const list = $("warnings");
+  button.hidden = warnings.length === 0;
+  $("warnCount").textContent = warnings.length;
+  button.setAttribute("aria-label", `${warnings.length} avvisi nel testo`);
+  if (!warnings.length) {
+    list.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  }
+  list.innerHTML = "";
+  const text = state.doc ? state.doc.text : "";
+  for (const w of warnings) {
+    const li = document.createElement("li");
+    li.className = w.kind;
+    const b = document.createElement("button");
+    const where = document.createElement("span");
+    where.className = "where";
+    where.textContent = `riga ${lineOf(text, w.start)}`;
+    b.append(where, w.message);
+    b.onclick = () => goTo(w.start, w.end);
+    li.append(b);
+    list.append(li);
+  }
+  setWarningStatus(warnings);
+}
+
+function setWarningStatus(warnings) {
+  if (state.playing) return;
+  const status = $("status");
+  if (status.classList.contains("error")) return;
+  if (warnings.length) setStatus(`${warnings.length} ${warnings.length === 1 ? "avviso" : "avvisi"} nel testo`);
+}
+
+function renderBlocks(blocks) {
+  const sel = $("goto");
+  sel.innerHTML = '<option value="">Vai a…</option>';
+  const groups = { track: "Tracce", box: "Box", pattern: "Pattern" };
+  for (const [kind, label] of Object.entries(groups)) {
+    const items = blocks.filter((b) => b.kind === kind);
+    if (!items.length) continue;
+    const og = document.createElement("optgroup");
+    og.label = label;
+    for (const b of items) og.append(new Option(b.label, String(b.start)));
+    sel.append(og);
+  }
+}
+
+// Porta il cursore (e la vista) a una posizione del testo.
+function goTo(start, end = start) {
+  const pre = $("text");
+  const node = pre.firstChild;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  const off = codepointOffsets(state.doc.text);
+  const r = new Range();
+  r.setStart(node, off ? off[start] : start);
+  r.setEnd(node, off ? off[end] : end);
+  setView("testo");
+  scrollToRange(r, true);
+  const sel = getSelection();
+  sel.removeAllRanges();
+  r.collapse(true);
+  sel.addRange(r);
 }
 
 // ------------------------------------------------------------ brani
@@ -430,6 +595,7 @@ async function deleteSong(id) {
     state.song = null;
     showText("");
     setEditable(false);
+    clearCheck();
     showDocTitle();
     rememberDoc(null);
     $("play").disabled = true;
@@ -715,8 +881,12 @@ function highlightAt(beat) {
   const node = $("text").firstChild;
   if (!node) return;
   if (highlightApi) {
-    CSS.highlights.set("st-box", new Highlight(...boxes.map((i) => rangeFor(node, s[i + 1], s[i + 2]))));
-    CSS.highlights.set("st-note", new Highlight(...notes.map((i) => rangeFor(node, s[i + 1], s[i + 2]))));
+    const box = new Highlight(...boxes.map((i) => rangeFor(node, s[i + 1], s[i + 2])));
+    const note = new Highlight(...notes.map((i) => rangeFor(node, s[i + 1], s[i + 2])));
+    box.priority = 2;     // sopra i colori della sintassi
+    note.priority = 3;
+    CSS.highlights.set("st-box", box);
+    CSS.highlights.set("st-note", note);
   }
   const follow = Number($("follow").value);
   const fi = deepest.get(follow);
@@ -727,11 +897,11 @@ function highlightAt(beat) {
   }
 }
 
-function scrollToRange(range) {
+function scrollToRange(range, always = false) {
   const pre = $("text");
   const r = range.getBoundingClientRect();
   const box = pre.getBoundingClientRect();
-  if (r.top < box.top + 8 || r.bottom > box.bottom - 8) {
+  if (always || r.top < box.top + 8 || r.bottom > box.bottom - 8) {
     pre.scrollTop += r.top - box.top - box.height / 3;
   }
   if (r.left < box.left || r.right > box.right) {
@@ -828,6 +998,15 @@ async function main() {
   $("trans").onchange = (ev) => setTranspose(Number(ev.target.value)).catch(showError);
   $("trans").oninput = (ev) => { $("transOut").value = ev.target.value; };
   $("follow").onchange = () => { lastFollow = -1; };
+  $("goto").onchange = (ev) => {
+    if (ev.target.value !== "") goTo(Number(ev.target.value));
+    ev.target.value = "";
+  };
+  $("warnButton").onclick = () => {
+    const list = $("warnings");
+    list.hidden = !list.hidden;
+    $("warnButton").setAttribute("aria-expanded", String(!list.hidden));
+  };
   // Schermo bloccato, app in background: il tick si chiede al player (non
   // quello dell'ultimo fotogramma, che in background non si aggiorna), cosi'
   // fra "hidden" e "visible" si vede se la musica e' andata avanti.

@@ -47,3 +47,17 @@ Ogni tappa si pubblica sul sito di prova (`https://openssound.github.io/soundtex
 Da provare sul telefono: scrivere con la tastiera del telefono nel testo, condividere un `.st` (per esempio verso Drive o WhatsApp) e aprirne uno ricevuto.
 
 Trovato durante la tappa: una traccia con un nome di strumento sconosciuto (per esempio «Basso:», che esiste solo nella configurazione personale di un computer) viene ignorata in silenzio. L'avviso va nella tappa 2.
+
+**Tappa 2, fatta (11 novembre 2026).** Provata nel browser del computer, nel formato del telefono:
+
+- **Colori della sintassi** come nell'editor di SoundText: la classificazione dei token è passata da `gui/highlighter.py` (Qt) a **`core/syntax.py`** (senza Qt), che usano sia SoundText sia l'app. I 386 test dell'evidenziazione di SoundText passano senza modifiche. Sono colorati anche commenti e intestazioni; durante l'ascolto la nota corrente resta sopra i colori.
+- **Avvisi**: un pulsante ⚠ con il numero di avvisi e il loro elenco con la riga; un tocco porta alla riga. Nel testo, sottolineatura rossa. Gli avvisi coprono:
+  - le battute che non tornano e gli altri avvisi di `notation_warnings`, con gli stessi parametri dell'editor dei box di SoundText;
+  - i box, le tracce e i pattern che non si leggono;
+  - gli strumenti sconosciuti segnalati dal lettore dei file;
+  - le tracce «Nome:» di uno strumento sconosciuto, che prima venivano saltate in silenzio. Questo avviso nel programma per computer non c'è.
+- **Quando si aggiorna**: all'apertura e 0,7 s dopo l'ultima modifica, nel worker. Costa 0,7 s per `jazz_aaba.st` e 1,1 s per `symphony_d_minor_box.st` (Chrome sul portatile). Mentre gira, un Play aspetta la fine del controllo.
+- **«Vai a»**: menu con tracce, box e pattern del file.
+- **Test**: in `tests/test_mobile_engine.py` (12 test), su avvisi, colori e assenza di falsi avvisi negli esempi; `core.syntax` è fra i moduli controllati per PySide6.
+
+Non fatto: la modifica isolata di un solo blocco (si modifica sempre il file intero; «Vai a» ci porta). Si può aggiungere con la barra musicale della tappa 3, se servirà.

@@ -42,7 +42,9 @@ for name in engine.ENGINE_MODULES:
     importlib.import_module(name)
 for name in sys.argv[3:]:
     with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
-        engine.analyze(f.read(), name, transpose=2)
+        source = f.read()
+    engine.analyze(source, name, transpose=2)
+    engine.check_text(source, name)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

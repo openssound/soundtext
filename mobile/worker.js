@@ -252,6 +252,17 @@ self.onmessage = async (ev) => {
       const t0 = performance.now();
       const midi = toBytes(engine.midi_bytes(msg.semitones));
       post({ type: "midi", id: msg.id, midi, semitones: msg.semitones, ms: ms(t0) }, [midi.buffer]);
+    } else if (msg.cmd === "check") {
+      // colori, avvisi e blocchi del testo dell'editor (engine.check_text)
+      const t0 = performance.now();
+      py.globals.set("_check_text", msg.text);
+      const json = py.runPython(`
+import json as _json
+_r = engine.check_text(_check_text)
+_r["categories"] = engine.syntax_categories()
+_json.dumps(_r)
+`);
+      post({ type: "checked", id: msg.id, result: JSON.parse(json), ms: ms(t0) });
     } else if (msg.cmd === "memory") {
       post({ type: "memory", id: msg.id, heap_bytes: wasmHeap() });
     }

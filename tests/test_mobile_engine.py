@@ -38,7 +38,9 @@ for name in engine.ENGINE_MODULES:
     importlib.import_module(name)
 for name in sys.argv[3:]:
     with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
-        engine.analyze(f.read(), name, transpose=3)
+        source = f.read()
+    engine.analyze(source, name, transpose=3)
+    engine.check_text(source, name)
 print(json.dumps({"attempts": attempts,
                   "core": sorted(m for m in sys.modules if m == "core" or m.startswith("core.")),
                   "qt_loaded": sorted(m for m in sys.modules if m.startswith("PySide6"))}))
@@ -190,7 +192,9 @@ for name in engine.ENGINE_MODULES:
 FakeNumpy.armed = True
 for name in build.EXAMPLES:
     with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
-        engine.analyze(f.read(), name, transpose=-2)
+        source = f.read()
+    engine.analyze(source, name, transpose=-2)
+    engine.check_text(source, name)
 print(json.dumps(used))
 """
 
@@ -201,3 +205,46 @@ def test_song_analysis_never_uses_numpy():
                          capture_output=True, text=True, timeout=180, cwd=ROOT, env=dict(os.environ))
     assert out.returncode == 0, out.stderr
     assert json.loads(out.stdout.strip().splitlines()[-1]) == []
+
+
+def _check(text):
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    return engine, engine.check_text(text)
+
+
+def test_check_finds_ignored_tracks_errors_and_bar_warnings():
+    text = ("ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  4: c d e |\n\nBasso:\n  4: c d e f |\n\n"
+            "Traccia Lead [Violinoo]:\n  4: c d e f |\n\nPattern %A:\n  4: c d zz |\n")
+    _, result = _check(text)
+    kinds = {w["kind"]: w for w in result["warnings"]}
+    assert set(kinds) == {"bar", "ignored", "file", "error"}
+    # la '|' della battuta corta, il blocco "Basso:" saltato, il pattern che non si legge
+    assert text[kinds["bar"]["start"]] == "|"
+    assert text[kinds["ignored"]["start"]:kinds["ignored"]["end"]] == "Basso:"
+    assert "basso" in kinds["ignored"]["message"]
+    assert text[kinds["error"]["start"]:kinds["error"]["end"]] == "Pattern %A:"
+    assert {b["label"] for b in result["blocks"]} >= {"Piano", "Lead", "%A"}
+
+
+@pytest.mark.slow
+def test_check_finds_nothing_wrong_in_the_examples():
+    for name in ("jazz_aaba.st", "symphony_d_minor_box.st", "bossa_nova.st", "boom_bap.st"):
+        with open(os.path.join(ROOT, "examples", name), encoding="utf-8") as f:
+            engine, result = _check(f.read())
+        assert result["warnings"] == [], name
+        assert result["error"] == ""
+
+
+def test_check_colours_like_the_desktop_editor():
+    engine, result = _check("Piano:\n  4: c d %A Am7 r | // fine\n")
+    names = engine.syntax_categories()
+    text = "Piano:\n  4: c d %A Am7 r | // fine\n"
+    colours = {text[s:s + n]: names[c] for s, n, c in zip(*[iter(result["syntax"])] * 3)}
+    assert colours["Piano:"] == "header"
+    assert colours["4:"] == "state" and colours["c"] == "note" and colours["%A"] == "ref"
+    assert colours["Am7"] == "chord" and colours["r"] == "rest" and colours["|"] == "bar"
+    assert colours["// fine"] == "comment"
