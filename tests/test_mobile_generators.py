@@ -151,3 +151,38 @@ def test_readable_errors():
         engine.generate("ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  4: c d e f |\n", "bass", {"bars": 2})
     with pytest.raises(ValueError):
         engine.generate(SONG, "fisarmonica", {})
+
+
+def test_style_labels_like_soundtext():
+    """Le etichette della schermata Crea sono quelle delle finestre di
+    SoundText (copiate in engine._choice_labels, che non puo' importare Qt)."""
+    from gui import rhythm_generate_dialog as dialog
+    labels = engine._choice_labels()
+    assert labels["drums"] == dialog.DRUM_STYLE_LABELS
+    assert labels["bass"] == dialog.BASS_STYLE_LABELS
+    assert labels["comping"] == dialog.COMPING_STYLE_LABELS
+    assert labels["progression"] == dialog.PROGRESSION_STYLE_LABELS
+    assert labels["intensity"] == dialog.INTENSITY_LABELS
+    assert labels["chord_duration"] == [(v, label) for label, v in dialog.CHORD_DURATION_CHOICES]
+
+
+def test_choices_for_the_crea_screen():
+    c = engine.generator_choices(SONG)
+    assert c["key"] == "F" and c["sources"] == ["Piano"] and c["kick_tracks"] == ["Drums"]
+    assert c["bars"] == 8
+    assert {"value": "rock", "label": "Rock"} in c["drums"]
+    assert all(s["value"] != "waltz" for s in c["drums"])          # 3/4: non in un brano in 4/4
+    assert c["instruments"]["bass"][0] == "Bass" and "Piano" in c["instruments"]["comping"]
+
+
+def test_add_track_keeps_the_rest_of_the_file():
+    part = engine.generate(SONG, "bass", {"seed": 3, "bars": 4})["text"]
+    added = engine.add_track(SONG, "Bass", part)
+    assert added["text"].startswith(SONG.rstrip("\n") + "\n\n") and added["name"] == "Bass"
+    assert added["text"][added["start"]:].startswith("Bass:\n  ")
+    project = parse_project_text(added["text"], "Prova")
+    assert project.get_track("Bass").text == part and project.get_track("Bass").instrument_name == "Bass"
+    again = engine.add_track(added["text"], "Bass", part)
+    assert again["name"] == "Bass 2" and "Traccia Bass 2 [Bass]:" in again["text"]
+    chords = engine.add_track(SONG, "Piano", "1: F | C |", name="Accordi")
+    assert parse_project_text(chords["text"], "Prova").get_track("Accordi").instrument_name == "Piano"

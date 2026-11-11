@@ -250,7 +250,7 @@ function spans() {
 // comando -> funzione di engine.py (argomenti e risultato in JSON)
 const CALLS = {
   complete: "complete", transforms: "transforms", bar: "bar_bounds",
-  generate: "generate", generator_choices: "generator_choices",
+  generate: "generate", generator_choices: "generator_choices", add_track: "add_track",
 };
 
 self.onmessage = async (ev) => {
@@ -272,6 +272,18 @@ self.onmessage = async (ev) => {
       const midi = toBytes(engine.midi_bytes(msg.semitones || 0, muted, !!msg.metronome));
       muted.destroy();
       post({ type: "midi", id: msg.id, midi, key: msg.key, ms: ms(t0) }, [midi.buffer]);
+    } else if (msg.cmd === "preview") {
+      // il MIDI di un altro testo (anteprima della schermata Crea), con un
+      // motore a parte: quello del brano aperto resta com'e'
+      const t0 = performance.now();
+      const other = py.runPython("engine.Engine()");
+      try {
+        other.load(msg.text, "Anteprima").destroy();
+        const midi = toBytes(other.midi_bytes(0));
+        post({ type: "midi", id: msg.id, midi, ms: ms(t0) }, [midi.buffer]);
+      } finally {
+        other.destroy();
+      }
     } else if (msg.cmd === "musicxml") {
       // la partitura delle tracce scelte (null: tutte), per verovio
       const t0 = performance.now();

@@ -56,3 +56,28 @@ Non portati nell'app (servono tracce audio o configurazioni del computer):
 - la rigenerazione di singole battute.
 
 Riff e melodie (strumenti monofonici) e la melodia dal testo cantato possono arrivare con la schermata Crea, se servono.
+
+**Tappa 2, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono:
+
+- **Schermata Crea**, fra Testo e Partitura, con quattro schede: Giro, Batteria, Basso, Accompagnamento.
+- **Campi**: i controlli principali delle finestre «Genera …» di SoundText, con le stesse etichette e gli stessi valori predefiniti. Le etichette degli stili vengono dalla finestra di SoundText, copiate nel motore; un test controlla che restino uguali.
+  - Giro: tonalità, stile (secondo il modo della tonalità), durata di ogni accordo, battute (0 = giro intero), strumento, variabilità, cadenza finale.
+  - Batteria: stile (secondo la metrica del brano), battute, intensità, variabilità, fill a frasi, finale.
+  - Basso e accompagnamento: accordi da (le tracce con degli accordi), stile, strumento, battute, intensità, variabilità; per il basso anche la cassa da seguire, per l'accompagnamento i rivolti vicini; per entrambi l'esecuzione dello strumento.
+  - Le battute partono dalla lunghezza del brano.
+- **A ogni modifica** la parte si rigenera con lo stesso seme e il suo testo si vede sotto i campi. «🎲 Un'altra» sceglie un seme nuovo.
+- **▶ Ascolta** suona il brano con la parte nuova. Se si cambia un campo mentre suona, l'anteprima riparte con la parte nuova dallo stesso punto. Per farlo il worker ha un motore a parte: il brano aperto, il suo MIDI e la sua posizione restano com'erano, e alla fine dell'anteprima (o con ■, o con il Play) si torna al brano.
+- **«Aggiungi al brano»** mette la parte in una traccia nuova in fondo al file, senza toccare il resto (`engine.add_track`).
+  - Intestazione breve («Drums:») quando il nome è lo strumento, altrimenti «Traccia Bass 2 [Bass]:».
+  - Un esempio diventa una copia, come per ogni modifica.
+  - Poi si resta in Crea sulla scheda dopo (giro → batteria → basso → accompagnamento), senza aprire la tastiera.
+- **Criterio, da un giro di 4 accordi a una base completa:** dal modello «Nuovo brano» (accordi C F G7 C):
+  - servono 7 tocchi: Nuovo brano, Crea, Batteria, tre volte «Aggiungi al brano», Play;
+  - nella prova automatica, con un secondo fra un tocco e l'altro, ci sono voluti 8,2 s, e la base suona;
+  - a mano restano 20–30 s, sotto il minuto. Da confermare sul telefono.
+- **Test:** etichette uguali a SoundText, scelte della schermata, aggiunta di una traccia che lascia il resto del file identico (`tests/test_mobile_generators.py`, 47 casi).
+
+Da migliorare:
+
+- il modello «Nuovo brano» ha già una linea di basso, quindi il basso generato si aggiunge come «Bass 2». Manca un «Sostituisci la traccia …»;
+- la parte nuova parte sempre dall'inizio del brano: non si accoda a una traccia già scritta e non va in un box.

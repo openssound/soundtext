@@ -733,24 +733,206 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
     return {"text": out, "seed": seed}
 
 
+def _choice_labels() -> dict:
+    """Le etichette degli stili, delle intensita' e delle durate degli
+    accordi, nella lingua dell'interfaccia: le stesse delle finestre
+    «Genera ...» di SoundText (gui/rhythm_generate_dialog.py, che usa Qt e
+    qui non si importa; tests/test_mobile_generators.py controlla che
+    restino uguali). Dentro una funzione, cosi' tr() vale per la lingua
+    scelta nell'app e non per quella dell'istantanea di Pyodide."""
+    from core.i18n import tr
+    drum_style_labels = [
+        ("rock", "Rock"),
+        ("funk", "Funk"),
+        ("disco", tr("Four-on-the-floor (disco)")),
+        ("reggae", tr("Reggae (one drop)")),
+        ("punk", "Punk"),
+        ("soul", tr("Soul (Motown)")),
+        ("bossa", tr("Bossa nova")),
+        ("rocknroll", "Rock'n'roll"),
+        ("shuffle", tr("Shuffle (blues, terzine)")),
+        ("swing", tr("Swing (jazz, terzine)")),
+        ("waltz", tr("Valzer (3/4)")),
+        ("jazz_waltz", tr("Valzer jazz (3/4, terzine)")),
+        ("ballad_68", tr("Ballata (6/8)")),
+        ("afro_68", tr("Afro-cubano (6/8)")),
+        ("blues_128", tr("Slow blues (12/8)")),
+        ("slow_rock_128", tr("Slow rock anni '50 (12/8)")),
+        ("hiphop", tr("Hip-hop (boom bap)")),
+        ("halftime", "Half-time"),
+        ("metal", tr("Metal (doppia cassa)")),
+        ("country", tr("Country (train beat)")),
+        ("samba", "Samba"),
+        ("cha_cha", "Cha-cha-cha"),
+        ("march", tr("Marcia")),
+        ("rock_54", tr("Rock in 5/4 (3+2)")),
+        ("jazz_54", tr("Jazz in 5/4 (terzine)")),
+        ("rock_78", tr("Rock in 7/8 (2+2+3)")),
+        ("balkan_78", tr("Balcanico in 7/8 (3+2+2)")),
+    ]
+    bass_style_labels = [
+        ("root", tr("Fondamentale")),
+        ("root_fifth", tr("Fondamentale/quinta")),
+        ("walking", tr("Walking bass")),
+        ("pedal", tr("Pedale (nota lunga)")),
+        ("two_feel", tr("Due quarti (two-feel)")),
+        ("octaves", tr("Ottave")),
+        ("blues", tr("Blues 1-3-5-6")),
+        ("eighths", tr("Ottavi (rock/pop/punk)")),
+        ("reggae", "Reggae"),
+        ("bossa", tr("Bossa nova")),
+        ("shuffle", tr("Shuffle blues (terzine)")),
+        ("waltz", tr("Valzer (1 del 3/4, oom-pah-pah)")),
+    ]
+    comping_style_labels = [
+        ("block_chords", tr("Accordi battuti (comping)")),
+        ("arpeggio_up", tr("Arpeggio ascendente")),
+        ("broken_chord", tr("Accordo spezzato (Alberti)")),
+        ("sustained", tr("Accordo sostenuto")),
+        ("montuno", tr("Montuno (latin)")),
+        ("skank_chords", tr("Skank reggae (in levare)")),
+        ("quarter_chords", tr("Accordi su ogni quarto")),
+        ("bossa_comp", tr("Bossa nova")),
+        ("funk_stab", tr("Stop-time funk")),
+        ("waltz_comp", tr("Valzer (accordi sul 2 e sul 3)")),
+        ("arpeggio_68", tr("Arpeggio in 6/8")),
+    ]
+    progression_style_labels = [
+        ("pop", tr("Pop (I-V-vi-IV)")),
+        ("doo_wop", tr("Anni '50 / doo-wop (I-vi-IV-V)")),
+        ("rock", tr("Rock (I-IV-I-V)")),
+        ("canon", tr("Canone di Pachelbel")),
+        ("blues_12", tr("Blues 12 battute")),
+        ("jazz_251", tr("Jazz II-V-I")),
+        ("turnaround", tr("Turnaround jazz (I-vi-ii-V)")),
+        ("minor_pop", tr("Pop minore (i-VI-III-VII)")),
+        ("andalusian", tr("Cadenza andalusa (i-VII-VI-V)")),
+        ("minor_rock", tr("Rock minore (i-VII-VI-VII)")),
+        ("minor_cadence", tr("Cadenza minore (i-iv-i-V7)")),
+        ("minor_251", tr("Jazz II-V-I minore")),
+        ("minor_blues_12", tr("Blues minore 12 battute")),
+        ("three_chord", tr("Tre accordi (I-IV-V-I)")),
+        ("ballad", tr("Ballata (I-iii-IV-V)")),
+        ("royal_road", tr("J-pop / royal road (IV-V-iii-vi-ii-V-I)")),
+        ("mixolydian", tr("Rock misolidio (I-bVII-IV-I)")),
+        ("gospel", tr("Gospel (I-I7-IV-iv)")),
+        ("circle", tr("Circolo delle quinte (maggiore)")),
+        ("rhythm_changes", tr("Rhythm changes (jazz, due accordi per battuta)")),
+        ("jazz_blues", tr("Blues jazz 12 battute")),
+        ("minor_three", tr("Minore semplice (i-iv-v-i)")),
+        ("minor_epic", tr("Minore epico (i-VI-VII-i)")),
+        ("dorian_vamp", tr("Vamp dorico (i7-IV7)")),
+        ("line_cliche", tr("Line cliché (i - i maj7 - i7 - i6)")),
+        ("minor_circle", tr("Circolo delle quinte (minore)")),
+        ("phrygian", tr("Frigio (i-bII)")),
+    ]
+    intensity_labels = [
+        ("light", tr("Leggera (strofa, intro)")),
+        ("normal", tr("Normale")),
+        ("full", tr("Piena (ritornello)")),
+        ("build", tr("In crescendo")),
+    ]
+    chord_duration_choices = [(tr("Mezza battuta"), 0.5), (tr("1 battuta"), 1.0), (tr("2 battute"), 2.0)]
+    return {"drums": drum_style_labels, "bass": bass_style_labels, "comping": comping_style_labels,
+            "progression": progression_style_labels, "intensity": intensity_labels,
+            "chord_duration": [(value, label) for label, value in chord_duration_choices]}
+
+
+# Strumenti proposti per ogni generatore (quelli che esistono nel motore)
+_GENERATOR_INSTRUMENTS = {
+    "progression": ("Piano", "Rhodes", "Guitar", "Hammond", "Strings"),
+    "drums": ("Drums",),
+    "bass": ("Bass", "FretlessBass", "DoubleBass", "SlapBass1", "SynthBass1"),
+    "comping": ("Piano", "Rhodes", "Wurli", "Guitar", "Nylon", "Clean", "Hammond", "Strings", "Pad"),
+}
+
+
 def generator_choices(text: str = "") -> dict:
-    """Gli stili di ogni generatore (per la metrica del brano), le
-    tonalita' e le intensita': i valori, senza etichette."""
+    """Quello che serve alla schermata Crea per il brano 'text': per ogni
+    generatore gli stili [{value, label}] (la batteria solo per la metrica
+    del brano, i giri con il loro modo), gli strumenti; intensita', durate
+    degli accordi, tonalita'; la tonalita' del brano, le tracce che possono
+    fare da sorgente di accordi o da cassa e le battute gia' scritte."""
     from core import rhythm_generate as rg
+    from core.instruments import get_instrument
     from core.project_io import parse_project_text
     try:
-        meter = parse_project_text(text, "Brano").time_sig if text else "4/4"
+        project = parse_project_text(text, "Brano") if text.strip() else None
     except Exception:
-        meter = "4/4"
+        project = None
+    meter = project.time_sig if project else "4/4"
+    labels = _choice_labels()
+    drums = set(rg.drum_styles_for_meter(meter))
+    instruments = {}
+    for kind, names in _GENERATOR_INSTRUMENTS.items():
+        available = []
+        for name in names:
+            try:
+                get_instrument(name)
+            except ValueError:
+                continue
+            available.append(name)
+        instruments[kind] = available
+    sources, kicks = [], []
+    bars = 0
+    if project:
+        for track in project.tracks:
+            if track.is_audio or not track.text.strip():
+                continue
+            try:
+                if rg.extract_chords_from_track(track.text, project.patterns, midi_dir=None):
+                    sources.append(track.name)
+                if track.instrument.is_percussion:
+                    kicks.append(track.name)
+            except Exception:
+                continue
+        try:
+            bars = round(rg.tracks_duration_beats(project) / _bar_beats(project))
+        except Exception:
+            bars = 0
+    item = lambda pairs: [{"value": v, "label": label} for v, label in pairs]
     return {
-        "progression": [{"style": n, "mode": spec["mode"]} for n, spec in rg.PROGRESSION_STYLES.items()],
-        "drums": list(rg.drum_styles_for_meter(meter)),
-        "bass": list(rg.BASS_STYLES),
-        "comping": list(rg.COMPING_STYLES),
-        "intensities": list(rg.INTENSITIES),
+        "progression": [{"value": v, "label": label, "mode": rg.PROGRESSION_STYLES[v]["mode"]}
+                        for v, label in labels["progression"]],
+        "drums": [{"value": v, "label": label} for v, label in labels["drums"] if v in drums],
+        "bass": item(labels["bass"]),
+        "comping": item(labels["comping"]),
+        "intensities": item(labels["intensity"]),
+        "chord_durations": item(labels["chord_duration"]),
         "keys": ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B",
                  "Cm", "C#m", "Dm", "Ebm", "Em", "Fm", "F#m", "Gm", "G#m", "Am", "Bbm", "Bm"],
+        "instruments": instruments,
+        "key": ((project.key or "").strip() if project else "") or "C",
+        "sources": sources,
+        "kick_tracks": kicks,
+        "bars": bars,
     }
+
+
+def add_track(text: str, instrument: str, body: str, name: Optional[str] = None) -> dict:
+    """Il brano con una traccia nuova in fondo: {text, name, start}.
+
+    Il nome e' quello dato o quello dello strumento, con un numero se c'e'
+    gia' una traccia che si chiama cosi'. L'intestazione e' la forma breve
+    «Bass:» quando il nome e' lo strumento, altrimenti
+    «Traccia Nome [Strumento]:». Il resto del file non cambia."""
+    from core.project_io import parse_project_text
+    try:
+        taken = {t.name for t in parse_project_text(text, "Brano").tracks}
+    except Exception:
+        taken = set()
+    base = (name or instrument).strip()
+    candidate, n = base, 2
+    while candidate in taken:
+        candidate, n = f"{base} {n}", n + 1
+    if candidate == instrument and re.match(r"^[A-Za-z]\w*$", candidate):
+        header = f"{candidate}:"
+    else:
+        header = f"Traccia {candidate} [{instrument}]:"
+    lines = "\n".join("  " + line if line.strip() else "" for line in body.strip().split("\n"))
+    head = text.rstrip("\n")
+    new = (head + "\n\n" if head else "") + header + "\n" + lines + "\n"
+    return {"text": new, "name": candidate, "start": len(head) + (2 if head else 0)}
 
 
 def flat_spans(spans) -> list:

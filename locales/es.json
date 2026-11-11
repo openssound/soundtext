@@ -2699,5 +2699,15 @@
  "Effetti e catena master non si sentono nell'app; il file li conserva come sono.": "Los efectos y la cadena master no se oyen en la app; el archivo los conserva tal cual.",
  "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Pistas de audio ({tracks}): no suenan en la app; el archivo las conserva tal cual.",
  "La traccia '{name}' non c'è.": "La pista '{name}' no existe.",
- "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "La canción todavía no tiene una pista con acordes que seguir."
+ "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "La canción todavía no tiene una pista con acordes que seguir.",
+ "Aggiungi al brano": "Añadir a la canción",
+ "Anteprima della parte generata": "Vista previa de la parte generada",
+ "Anteprima finita": "Vista previa terminada",
+ "Crea": "Crear",
+ "Generatori": "Generadores",
+ "Niente da aggiungere": "Nada que añadir",
+ "Parte generata": "Parte generada",
+ "Traccia «{name}» aggiunta al brano": "Pista «{name}» añadida a la canción",
+ "Un'altra": "Otra",
+ "Un'altra versione": "Otra versión"
 }

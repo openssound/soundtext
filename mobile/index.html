@@ -60,6 +60,26 @@
     </div>
   </section>
 
+  <!-- Crea: giro, batteria, basso, accompagnamento (generatori di SoundText) -->
+  <section id="view-crea" class="view" aria-label="Crea">
+    <div class="gentabs" role="tablist" aria-label="Generatori">
+      <button role="tab" data-gen="progression" aria-selected="true" aria-controls="genForm" data-i18n>Giro</button>
+      <button role="tab" data-gen="drums" aria-selected="false" aria-controls="genForm" data-i18n>Batteria</button>
+      <button role="tab" data-gen="bass" aria-selected="false" aria-controls="genForm" data-i18n>Basso</button>
+      <button role="tab" data-gen="comping" aria-selected="false" aria-controls="genForm" data-i18n>Accompagnamento</button>
+    </div>
+    <div class="genbody">
+      <form id="genForm" class="genform" role="tabpanel" onsubmit="return false"></form>
+      <pre id="genText" class="gentext" aria-label="Parte generata" translate="no"></pre>
+      <p id="genStatus" class="hint" role="status"></p>
+    </div>
+    <div class="genactions">
+      <button id="genAgain" aria-label="Un'altra versione"><span aria-hidden="true">🎲 </span><span data-i18n>Un'altra</span></button>
+      <button id="genListen" aria-pressed="false"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+      <button id="genAdd" class="primary" data-i18n>Aggiungi al brano</button>
+    </div>
+  </section>
+
   <!-- Partitura: verovio, caricato alla prima apertura -->
   <section id="view-partitura" class="view" aria-label="Partitura">
     <div class="scorebar">
@@ -115,6 +135,7 @@
 <nav class="tabs" aria-label="Schermate">
   <button data-view="brani" aria-current="page" data-i18n>Brani</button>
   <button data-view="testo" data-i18n>Testo</button>
+  <button data-view="crea" data-i18n>Crea</button>
   <button data-view="partitura" data-i18n>Partitura</button>
   <button data-view="lettore" data-i18n>Lettore</button>
 </nav>

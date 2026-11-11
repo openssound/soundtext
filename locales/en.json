@@ -2699,5 +2699,15 @@
  "Effetti e catena master non si sentono nell'app; il file li conserva come sono.": "Effects and the master chain are not heard in the app; the file keeps them as they are.",
  "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Audio tracks ({tracks}): they do not play in the app; the file keeps them as they are.",
  "La traccia '{name}' non c'è.": "The track '{name}' does not exist.",
- "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "The song does not have a track with chords to follow yet."
+ "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "The song does not have a track with chords to follow yet.",
+ "Aggiungi al brano": "Add to the song",
+ "Anteprima della parte generata": "Preview of the generated part",
+ "Anteprima finita": "Preview finished",
+ "Crea": "Create",
+ "Generatori": "Generators",
+ "Niente da aggiungere": "Nothing to add",
+ "Parte generata": "Generated part",
+ "Traccia «{name}» aggiunta al brano": "Track «{name}» added to the song",
+ "Un'altra": "Another",
+ "Un'altra versione": "Another version"
 }
