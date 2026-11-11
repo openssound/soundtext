@@ -8,11 +8,11 @@
 //   messi in cache al primo uso. Il SoundFont si scarica solo al primo Play.
 "use strict";
 
-const CACHE = "stmobile-v14";            // pagina e bundle: si cambia a ogni versione
+const CACHE = "stmobile-v15";            // pagina e bundle: si cambia a ogni versione
 const VENDOR = "stmobile-vendor-v1";     // Pyodide, wheel, FluidSynth, SoundFont: restano
 const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide, gestita da worker.js
 const SHELL = [
-  "./", "index.html", "diagnostica.html", "style.css", "app.js", "metrics.js", "songs.js", "worker.js",
+  "./", "index.html", "diagnostica.html", "style.css", "app.js", "metrics.js", "songs.js", "worker.js", "score-worker.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "bundle/files.json",
   "bundle/engine.zip",
 ];

@@ -258,6 +258,13 @@ self.onmessage = async (ev) => {
       const midi = toBytes(engine.midi_bytes(msg.semitones || 0, muted, !!msg.metronome));
       muted.destroy();
       post({ type: "midi", id: msg.id, midi, key: msg.key, ms: ms(t0) }, [midi.buffer]);
+    } else if (msg.cmd === "musicxml") {
+      // la partitura delle tracce scelte (null: tutte), per verovio
+      const t0 = performance.now();
+      const names = msg.tracks ? py.toPy(msg.tracks) : null;
+      const xml = names ? engine.musicxml(names) : engine.musicxml();   // null di JS non e' None
+      if (names) names.destroy();
+      post({ type: "musicxml", id: msg.id, xml, ms: ms(t0) });
     } else if (msg.cmd === "check") {
       // colori, avvisi e blocchi del testo dell'editor (engine.check_text)
       const t0 = performance.now();

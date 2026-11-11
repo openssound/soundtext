@@ -5,7 +5,9 @@
 #   - st-language e mido, le stesse versioni di requirements.txt (wheel py3-none-any);
 #   - js-synthesizer 1.13.0 (FluidSynth 2.4.6 in WebAssembly, BSD-3 + LGPL 2.1);
 #   - il SoundFont TimGM6mb (GPL 2), dallo stesso pacchetto Debian di
-#     core/soundfont_downloads.py.
+#     core/soundfont_downloads.py;
+#   - verovio 6.3.0 (incisione della partitura in WebAssembly, LGPL 3.0), la
+#     stessa versione della vista Partitura di SoundText.
 # Poi: venv/bin/python mobile/build.py
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -19,7 +21,7 @@ get() {  # url destinazione sha256
   mv "$2.part" "$2"
 }
 
-mkdir -p $V/pyodide $V/wheels $V/js-synthesizer $V/soundfont
+mkdir -p $V/pyodide $V/wheels $V/js-synthesizer $V/soundfont $V/verovio
 
 PY=https://cdn.jsdelivr.net/pyodide/v314.0.7/full
 get $PY/pyodide.js          $V/pyodide/pyodide.js          3141b814715a72e59b51b1b18b9ceae5bf19f7c852417e431bb0a34feadf825c
@@ -60,5 +62,12 @@ get https://deb.debian.org/debian/pool/main/t/timgm6mb-soundfont/timgm6mb-soundf
 tar xzf "$TMP/tim.tgz" -C "$TMP"
 cp "$TMP/timgm6mb-soundfont_1.3/TimGM6mb.sf2" $V/soundfont/
 echo "c5378b62028c920cb11e4803327983fee2f2cdff5dc89c708e39da417e51c854  $V/soundfont/TimGM6mb.sf2" | sha256sum -c --quiet
+
+curl -fsSL https://registry.npmjs.org/verovio/-/verovio-6.3.0.tgz -o "$TMP/verovio.tgz"
+test "$(openssl dgst -sha512 -binary "$TMP/verovio.tgz" | base64 -w0)" = \
+     "1p6WhP/w3WrAhPVDTNUDH9UVPAZOnHnZVTWxclE8haHccVI/q8c+99vLH6rRgL9MuYaFR9HF4UJD6MyW2CfMwg=="
+tar xzf "$TMP/verovio.tgz" -C "$TMP" package/dist/verovio-toolkit-wasm.js
+cp "$TMP/package/dist/verovio-toolkit-wasm.js" $V/verovio/
+echo "d794119cd5ea83a3e835849945f0289c91ac2bac427f4aa312c7010a800b46bd  $V/verovio/verovio-toolkit-wasm.js" | sha256sum -c --quiet
 
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"

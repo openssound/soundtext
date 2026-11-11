@@ -33,7 +33,8 @@ Sul telefono serve HTTPS: il service worker e l'AudioWorklet non funzionano su `
 - FluidSynth: LGPL 2.1;
 - TimGM6mb: GPL 2, e il file `.sf2` è anche la sua forma sorgente;
 - st-language: GPL 3 (come SoundText);
-- mido: MIT.
+- mido: MIT;
+- verovio (Partitura, dalla fase 1): LGPL 3.0, come libreria separata e sostituibile (`vendor/verovio/`).
 
 La pagina `diagnostica.html` mostra tutte le misure salvate (e le copia in JSON). Ha anche un pulsante per svuotare la cache e ripetere l'avvio a freddo. Per le misure automatiche in un browser senza finestra: `python3 mobile/misura_headless.py`.
 
@@ -99,6 +100,7 @@ Prima dell'istantanea avevo provato anche i `.pyc` precompilati in cache: l'impo
 | numpy, dopo il primo brano | 2,8 MB | già compresso |
 | Audio (al primo Play): js-synthesizer + FluidSynth | 0,7 MB | 0,24 MB |
 | Audio (al primo Play): SoundFont | 5,7 MB | 5,3 MB |
+| Partitura (alla prima apertura): verovio | 7,3 MB | 2,4 MB |
 
 Su un 4G a 20 Mbit/s il motore richiede circa 3 s di solo download, più l'avvio di Python. **L'obiettivo di 10 s la prima volta è quindi stretto, già prima di misurare il telefono.**
 

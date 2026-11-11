@@ -55,6 +55,16 @@
     </div>
   </section>
 
+  <!-- Partitura: verovio, caricato alla prima apertura -->
+  <section id="view-partitura" class="view" aria-label="Partitura">
+    <div class="scorebar">
+      <select id="scoreTracks" aria-label="Tracce della partitura"></select>
+      <button id="zoomOut" aria-label="Rimpicciolisci">−</button>
+      <button id="zoomIn" aria-label="Ingrandisci">＋</button>
+    </div>
+    <div id="score" class="score" aria-live="polite"><p class="hint">Apri un brano per vederne la partitura.</p></div>
+  </section>
+
   <!-- Lettore -->
   <section id="view-lettore" class="view" aria-label="Lettore">
     <div class="controls">
@@ -100,6 +110,7 @@
 <nav class="tabs" aria-label="Schermate">
   <button data-view="brani" aria-current="page">Brani</button>
   <button data-view="testo">Testo</button>
+  <button data-view="partitura">Partitura</button>
   <button data-view="lettore">Lettore</button>
 </nav>
 

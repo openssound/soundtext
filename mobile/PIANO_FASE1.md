@@ -94,3 +94,29 @@ Limiti:
 
 - con lo schermo spento il browser rallenta i timer della pagina: il ritorno da B ad A può arrivare fino a un secondo in ritardo;
 - per togliere il tratto si spegne «Ripeti»; A e B restano segnati.
+
+**Tappa 5, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono, con `jazz_aaba.st` e `symphony_d_minor_box.st`:
+
+- **Schermata Partitura**, fra Testo e Lettore. Il MusicXML lo fa il motore con `st_language.musicxml`, lo stesso della vista Partitura di SoundText. Lo impagina **verovio 6.3.0**, la stessa versione di SoundText sul computer, in un worker suo (`score-worker.js`): la pagina non si blocca mentre disegna.
+- **Caricamento:** verovio (7,3 MB, 2,4 MB compressi) si scarica solo alla prima apertura della Partitura, poi resta nella cache come gli altri componenti. Il controllo SHA-256 è in `scarica_vendor.sh`.
+- **Pagine** larghe quanto lo schermo, nero su bianco anche col tema scuro. Si ridisegnano quando si ruota il telefono.
+- **Tracce:** tutte, oppure una sola. Con più di 4 tracce si parte da quella seguita dal lettore, perché una partitura d'orchestra intera sul telefono non si legge.
+- **Zoom** con − e ＋, da 25% a 75%.
+- **Durante l'ascolto** la nota corrente si colora di rosso e la pagina scorre per tenerla in vista. La mappa dei tempi di verovio sviluppa i ritornelli, e i battiti sono quelli del lettore. Provato: la nota colorata era quella giusta in 39 controlli su 40; l'unico scarto cadeva sul cambio di nota.
+- **Un tocco su una nota** porta il lettore all'inizio della sua battuta.
+- **Errori:** un brano con un errore di notazione mostra il messaggio al posto della partitura.
+- **Tempi sul computer (Chrome):**
+
+  | Partitura | Tempo |
+  | --- | --- |
+  | `jazz_aaba.st`, una traccia, compreso l'avvio di verovio | 2,6 s |
+  | `jazz_aaba.st`, tutte e 5 le tracce | 3,6 s |
+  | `symphony_d_minor_box.st`, una traccia | 1,3 s |
+
+  Sul telefono sono da misurare (tabella «partitura» della diagnostica).
+- **Test:** il MusicXML con tutte le tracce o con alcune, in `tests/test_mobile_engine.py` (15 test).
+
+Limiti:
+
+- la partitura non segue la trasposizione del lettore, ed è scritta come in SoundText (strumenti traspositori compresi);
+- con molte tracce e molte battute il disegno può richiedere parecchi secondi sul telefono. La partitura precedente resta visibile finché la nuova non è pronta.

@@ -29,6 +29,7 @@ ENGINE_MODULES = (
     "core.instruments",
     "core.syntax",
     "core.completion",
+    "core.musicxml_export",
 )
 
 RE_PATTERN_HDR = re.compile(r"^Pattern\s+%([\w.\-]+)\s*:\s*$")
@@ -172,6 +173,23 @@ class Engine:
                                       velocity=0, time=tpb // 8))
             last = tick + tpb // 8
         return track
+
+    # ------------------------------------------------------------ partitura
+
+    def musicxml(self, track_names: Optional[Iterable[str]] = None) -> str:
+        """La partitura in MusicXML (st_language.musicxml, la stessa della
+        vista Partitura di SoundText): le tracce udibili, oppure solo
+        quelle nominate, nell'ordine del file. La impagina verovio nella
+        pagina (mobile/score-worker.js)."""
+        from core.musicxml_export import project_to_musicxml
+        t0 = time.perf_counter()
+        tracks = [t for t in self.project.audible_tracks() if not t.is_audio]
+        if track_names is not None:
+            wanted = set(track_names)
+            tracks = [t for t in self.project.tracks if t.name in wanted and not t.is_audio]
+        xml = project_to_musicxml(self.project, tracks=tracks)
+        self.timings["musicxml_s"] = time.perf_counter() - t0
+        return xml
 
     # ------------------------------------------------------------ linea del tempo
 

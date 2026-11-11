@@ -45,6 +45,9 @@ for name in sys.argv[3:]:
         source = f.read()
     engine.analyze(source, name, transpose=2)
     engine.check_text(source, name)
+    e = engine.Engine()
+    e.load(source, name)
+    e.musicxml()
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

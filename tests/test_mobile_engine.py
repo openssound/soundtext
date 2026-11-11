@@ -195,6 +195,9 @@ for name in build.EXAMPLES:
         source = f.read()
     engine.analyze(source, name, transpose=-2)
     engine.check_text(source, name)
+    e = engine.Engine()
+    e.load(source, name)
+    e.musicxml()
 print(json.dumps(used))
 """
 
@@ -308,3 +311,14 @@ def test_player_mute_solo_and_metronome():
     # trasposizione, mute e metronomo insieme
     both = e.midi_bytes(2, ["Piano"], True)
     assert by_track(both)["Piano"] == 0 and "Metronomo" in by_track(both)
+
+
+def test_score_musicxml_all_tracks_or_some():
+    """Partitura (tappa 5): il MusicXML ha una parte per traccia udibile,
+    oppure solo per le tracce scelte."""
+    e, _ = _engine("jazz_aaba.st")
+    full = e.musicxml()
+    assert full.count("<score-part ") == 5
+    one = e.musicxml(["Bass"])
+    assert one.count("<score-part ") == 1 and "<part-name>Bass</part-name>" in one
+    assert e.musicxml(["Piano", "Bass"]).count("<score-part ") == 2
