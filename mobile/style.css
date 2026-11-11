@@ -50,7 +50,8 @@ body.view-brani #view-brani,
 body.view-testo #view-testo,
 body.view-lettore #view-lettore,
 body.view-partitura #view-partitura,
-body.view-crea #view-crea { display: flex; flex-direction: column; }
+body.view-crea #view-crea,
+body.view-struttura #view-struttura { display: flex; flex-direction: column; }
 #view-brani { overflow-y: auto; padding: 0 16px 16px; }
 #view-lettore { padding: 8px 16px; overflow-y: auto; gap: 12px; }
 /* Tablet e telefono in orizzontale: Testo e Lettore affiancati */
@@ -226,7 +227,7 @@ button[aria-pressed="true"] { background: var(--accent); border-color: var(--acc
 }
 .tabs button {
   flex: 1; border: none; border-radius: 0; background: none; color: var(--dim);
-  min-height: 48px; font-size: 13px; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-height: 48px; font-size: 12px; padding: 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tabs button[aria-current="page"] { color: var(--accent); font-weight: 600; box-shadow: 0 -2px 0 var(--accent) inset; }
 
@@ -262,3 +263,30 @@ summary:focus-visible, .button:focus-within {
 .genactions { display: flex; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--line); }
 .genactions button { flex: 1; min-height: 44px; white-space: nowrap; }
 .genactions #genAdd { flex: 1.4; }
+
+/* Struttura: righe = sezioni, colonne = tracce (scorrono in orizzontale) */
+.structbar { display: flex; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.structbar button { min-height: 40px; }
+.structbar button:disabled { opacity: .4; }
+.structure { flex: 1; min-height: 0; overflow: auto; }
+.structure table { border-collapse: separate; border-spacing: 0; font-size: 13px; width: auto; }
+.structure th, .structure td { border-bottom: 1px solid var(--line); padding: 4px; vertical-align: top; }
+.structure thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; color: var(--dim);
+                      font-weight: 600; min-width: 96px; max-width: 140px; white-space: nowrap;
+                      overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.structure th.sec { position: sticky; left: 0; background: var(--panel); z-index: 1; min-width: 92px; max-width: 110px; }
+.structure thead th.sec { z-index: 3; }
+.structure th.sec button { width: 100%; text-align: left; border: none; background: none; padding: 4px; min-height: 44px; }
+.structure th.sec small { display: block; color: var(--dim); font-weight: normal; }
+.structure .box { display: block; width: 100%; min-height: 44px; margin: 0 0 4px; padding: 4px 6px; text-align: left;
+                  background: var(--box-bg); border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+.structure .box small { display: block; color: var(--dim); }
+.structure .box.plain { background: none; border-style: dashed; }
+.sheet { border: none; border-radius: 12px 12px 0 0; padding: 16px; width: 100%; max-width: 480px;
+         margin: auto auto 0; background: var(--panel); color: var(--text); }
+.sheet::backdrop { background: rgba(0, 0, 0, .45); }
+.sheet h2 { margin: 0 0 8px; text-transform: none; font-size: 15px; color: var(--text); letter-spacing: 0; }
+.sheet-actions { display: grid; gap: 6px; }
+.sheet-actions button, .sheet-close { min-height: 44px; text-align: left; padding: 0 12px; width: 100%; }
+.sheet-actions button.danger { color: var(--danger); }
+.sheet-close { margin-top: 10px; text-align: center; }

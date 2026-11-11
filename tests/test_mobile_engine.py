@@ -346,3 +346,67 @@ def test_score_musicxml_all_tracks_or_some():
     one = e.musicxml(["Bass"])
     assert one.count("<score-part ") == 1 and "<part-name>Bass</part-name>" in one
     assert e.musicxml(["Piano", "Bass"]).count("<score-part ") == 2
+
+
+SECTIONS_SONG = ("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\n// accordi\nPiano:\n  1: C | F | G7 | C |\n\n"
+                 "Bass:\n  4: c*2 e*2 g*2 e*2 | f*2 a*2 c*3 a*2 | g*2 b*2 d*3 b*2 | 4c*2 |\n\n"
+                 "Mixer Piano:\n  volume: 90 pan: 0 mute: no solo: no\n")
+
+
+def test_structure_builds_a_song_in_sections():
+    """Struttura (fase 2): dal testo semplice a un brano a sezioni senza
+    scrivere intestazioni; il resto del file resta com'e' e SoundText lo
+    legge con i box giusti."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    from core.project_io import parse_project_text
+
+    def boxes(text):
+        return {t.name: [(c.name, c.start_beat) for c in t.clips] for t in parse_project_text(text, "x").tracks}
+
+    text = engine.box_edit(SECTIONS_SONG, "make_boxes", {"name": "Strofa"})["text"]
+    assert boxes(text) == {"Piano": [("Strofa", 0.0)], "Bass": [("Strofa", 0.0)]}
+    assert "// accordi\n" in text and text.endswith("Mixer Piano:\n  volume: 90 pan: 0 mute: no solo: no\n")
+    info = engine.structure(text)
+    assert [(s["bar"], s["name"]) for s in info["sections"]] == [(1, "Strofa")]
+    assert [b["bars"] for t in info["tracks"] for b in t["boxes"]] == [4, 4]
+
+    text = engine.box_edit(text, "section_duplicate", {"beat": 0})["text"]
+    text = engine.box_edit(text, "section_rename", {"beat": 16, "name": "Ritornello"})["text"]
+    text = engine.box_edit(text, "section_duplicate", {"beat": 0})["text"]
+    assert boxes(text)["Bass"] == [("Strofa", 0.0), ("Ritornello", 16.0), ("Strofa", 32.0)]
+    info = engine.structure(text)
+    assert [(s["bar"], s["name"]) for s in info["sections"]] == [(1, "Strofa"), (5, "Ritornello"), (9, "Strofa")]
+    # la copia suona come l'originale, spostata di 8 battute
+    plain = engine.analyze(SECTIONS_SONG, "x")["midi"]
+    full = engine.analyze(text, "x")["midi"]
+    first = sorted(n for n in _notes(plain))
+    assert [n for n in _notes(full) if n[0] >= 32 * 480] == [(t + 32 * 480, ch, note) for t, ch, note in first]
+
+    piano = [b for b in engine._box_blocks(text) if b["track"] == "Piano"]
+    moved = engine.box_edit(text, "move", {"hstart": piano[2]["hstart"], "bar": 13})["text"]
+    assert boxes(moved)["Piano"][-1] == ("Strofa", 48.0)
+    with pytest.raises(ValueError, match="sovrappone"):
+        engine.box_edit(text, "move", {"hstart": piano[1]["hstart"], "bar": 2})
+    gone = engine.box_edit(text, "section_delete", {"beat": 16})["text"]
+    assert boxes(gone)["Piano"] == [("Strofa", 0.0), ("Strofa", 32.0)]
+    renamed = engine.box_edit(text, "rename", {"hstart": piano[0]["hstart"], "name": "Intro"})["text"]
+    assert boxes(renamed)["Piano"][0] == ("Intro", 0.0)
+
+
+def test_structure_of_the_examples():
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    with open(os.path.join(ROOT, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+        text = f.read()
+    info = engine.structure(text)
+    assert [s["name"] for s in info["sections"]] == ["Intro", "Intro", "Chorus 1", "Chorus 2", "Chorus 3", "Coda"]
+    piano = next(t for t in info["tracks"] if t["name"] == "Piano")
+    assert [(b["name"], b["bar"], b["bars"]) for b in piano["boxes"]][:2] == [("Intro", 1, 4), ("Chorus 1", 5, 32)]
+    assert all(text[b["start"]:].startswith("  ") for b in piano["boxes"])     # il corpo del box nel testo

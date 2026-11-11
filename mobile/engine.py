@@ -935,6 +935,253 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None)
     return {"text": new, "name": candidate, "start": len(head) + (2 if head else 0)}
 
 
+# ------------------------------------------------------------ struttura (fase 2)
+#
+# La schermata Struttura: le sezioni del brano (core.arrangement.song_sections,
+# come il righello della vista Struttura di SoundText) e i box di ogni
+# traccia, con la loro posizione nel testo. Le modifiche (sposta, rinomina,
+# duplica, elimina un box o una sezione, dividi in box) cambiano solo le
+# intestazioni «Box Traccia "Nome" |battito:» e i blocchi dei box: il resto
+# del file resta com'e', come per ogni modifica dell'app.
+
+RE_BOX_LINE = re.compile(r'^Box\s+(.+?)\s+"(.*)"\s*\|\s*([0-9.]+)\s*:\s*$')
+
+
+def _format_beat(beat: float) -> str:
+    """core.project_io._format_beat"""
+    beat = round(float(beat), 6)
+    return str(int(beat)) if beat == int(beat) else str(beat)
+
+
+def _box_header(track: str, name: str, beat: float) -> str:
+    return f'Box {track} "{name.replace(chr(34), chr(39)).strip()}" |{_format_beat(beat)}:'
+
+
+def _box_blocks(text: str) -> List[dict]:
+    """I blocchi dei box del file: track, name, beat, hstart, end (fine
+    dell'ultima riga del corpo), header."""
+    out = []
+    for b in file_blocks(text):
+        m = RE_BOX_LINE.match(b["header"])
+        if m:
+            out.append({"track": m.group(1), "name": m.group(2), "beat": float(m.group(3)),
+                        "hstart": b["hstart"], "hend": b["hstart"] + len(b["header"]),
+                        "start": b["start"], "end": max(b["end"], b["hstart"] + len(b["header"]))})
+    return out
+
+
+def _bars_until(project, end_beat: float) -> List[float]:
+    from st_language.notation import bar_starts
+    bars = []
+    for start in bar_starts(project.time_sig, project.metrica_changes, project.pickup):
+        start = float(start)
+        bars.append(start)
+        if start > end_beat + 1e-9 or len(bars) > 100000:
+            break
+    return bars
+
+
+def _bar_number(bars: List[float], beat: float) -> int:
+    import bisect
+    return max(1, bisect.bisect_right(bars, beat + 1e-9))
+
+
+def structure(text: str) -> dict:
+    """Sezioni e box del brano, per la schermata Struttura.
+
+    {tracks: [{name, instrument, plain, boxes: [{name, beat, length, bar,
+    bars, hstart, start}]}], sections: [{beat, bar, name}], bars: inizio
+    di ogni battuta, end}. Una traccia senza box ('plain') ha un solo box
+    finto, il suo testo, con hstart -1."""
+    from core.arrangement import song_sections
+    from core.project_io import parse_project_text
+    from st_language.song import clip_duration_beats
+    project = parse_project_text(text, "Brano")
+    meter = project.meter()
+    blocks = _box_blocks(text)
+    used = set()
+    tracks, end = [], 0.0
+    for track in project.tracks:
+        if track.is_audio:
+            continue
+        octave = track.instrument.default_octave
+        boxes = []
+        for clip in sorted(track.clips, key=lambda c: c.start_beat):
+            length = clip_duration_beats(clip.text, project.patterns, octave, clip.start_beat, meter)
+            block = next((b for i, b in enumerate(blocks) if i not in used and b["track"] == track.name
+                          and abs(b["beat"] - clip.start_beat) < 1e-6), None)
+            if block is not None:
+                used.add(blocks.index(block))
+            boxes.append({"name": clip.name, "beat": clip.start_beat, "length": length,
+                          "hstart": block["hstart"] if block else -1, "start": block["start"] if block else -1})
+            end = max(end, clip.start_beat + length)
+        plain = not track.clips
+        if plain and track.text.strip():
+            try:
+                events = track.parsed_events(project.patterns, midi_dir=None, meter=meter)
+                length = max((e.start + e.duration for e in events), default=0.0)
+            except Exception:
+                length = 0.0
+            boxes.append({"name": "", "beat": 0.0, "length": length, "hstart": -1, "start": -1})
+            end = max(end, length)
+        tracks.append({"name": track.name, "instrument": track.instrument_name, "plain": plain, "boxes": boxes})
+    bars = _bars_until(project, end)
+    for t in tracks:
+        for b in t["boxes"]:
+            b["bar"] = _bar_number(bars, b["beat"])
+            b["bars"] = max(1, _bar_number(bars, b["beat"] + max(b["length"], 1e-6) - 1e-6) - b["bar"] + 1)
+    sections = [{"beat": beat, "name": name} for beat, name in song_sections(project)]
+    if not sections or sections[0]["beat"] > 1e-9:
+        # l'inizio del brano e' sempre una sezione: col nome di un box che
+        # comincia li', se c'e'
+        first = next((b["name"] for t in tracks if not t["plain"] for b in t["boxes"] if b["beat"] < 1e-9), "")
+        sections.insert(0, {"beat": 0.0, "name": first})
+    for sec in sections:
+        sec["bar"] = _bar_number(bars, sec["beat"])
+    return {"tracks": tracks, "sections": sections, "bars": bars, "end": end}
+
+
+def _check_overlaps(text: str) -> None:
+    """ValueError se due box della stessa traccia si sovrappongono."""
+    from core.i18n import tr
+    info = structure(text)
+    for track in info["tracks"]:
+        boxes = sorted((b for b in track["boxes"] if b["hstart"] >= 0), key=lambda b: b["beat"])
+        for a, b in zip(boxes, boxes[1:]):
+            if a["beat"] + a["length"] > b["beat"] + 1e-6:
+                raise ValueError(tr("Nella traccia «{track}» il box «{a}» si sovrappone a «{b}».",
+                                    track=track["name"], a=a["name"], b=b["name"]))
+
+
+def _insert_after_track_boxes(text: str, track: str, block: str) -> Tuple[str, int]:
+    """Il testo con 'block' dopo l'ultimo box della traccia (o in fondo)."""
+    boxes = [b for b in _box_blocks(text) if b["track"] == track]
+    at = max(b["end"] for b in boxes) if boxes else len(text.rstrip("\n"))
+    insert = "\n\n" + block
+    return text[:at] + insert + text[at:], at + 2
+
+
+def _song_end_bar_beat(text: str) -> float:
+    """L'inizio della battuta dopo la fine del brano (dove si accoda una
+    sezione duplicata)."""
+    from core.project_io import parse_project_text
+    info = structure(text)
+    bars = info["bars"]
+    end = info["end"]
+    return next((b for b in bars if b >= end - 1e-6), bars[-1] if bars else 0.0)
+
+
+def box_edit(text: str, op: str, args: dict) -> dict:
+    """Una modifica della struttura: {text, focus} (focus: dove portare il
+    cursore, o -1). op e args:
+    - "move" {hstart, bar}: il box comincia alla battuta 'bar';
+    - "rename" {hstart, name};
+    - "duplicate" {hstart}: una copia subito dopo l'ultimo box della sua
+      traccia, alla fine del brano;
+    - "delete" {hstart};
+    - "section_duplicate" {beat}: tutti i box che cominciano nella sezione,
+      copiati in fondo al brano con le stesse distanze;
+    - "section_rename" {beat, name}: i box che cominciano nella sezione;
+    - "section_delete" {beat};
+    - "make_boxes" {name}: il testo di ogni traccia senza box diventa un box
+      'name' che comincia alla battuta 1.
+    ValueError con un messaggio leggibile (box che si sovrappongono...)."""
+    from core.i18n import tr
+    blocks = _box_blocks(text)
+    by_start = {b["hstart"]: b for b in blocks}
+
+    def box(hstart):
+        b = by_start.get(int(hstart))
+        if b is None:
+            raise ValueError(tr("Il box non c'è più: il testo è cambiato."))
+        return b
+
+    def section_boxes(beat):
+        info = structure(text)
+        starts = [s["beat"] for s in info["sections"]]
+        beat = float(beat)
+        later = [s for s in starts if s > beat + 1e-9]
+        until = min(later) if later else float("inf")
+        return [b for b in blocks if beat - 1e-9 <= b["beat"] < until - 1e-9], beat, until
+
+    focus = -1
+    if op == "move":
+        b = box(args["hstart"])
+        bars = structure(text)["bars"]
+        n = max(1, int(args["bar"]))
+        while len(bars) < n:
+            bars.append(bars[-1] + (bars[-1] - bars[-2] if len(bars) > 1 else 4.0))
+        header = _box_header(b["track"], b["name"], bars[n - 1])
+        new = text[:b["hstart"]] + header + text[b["hend"]:]
+        focus = b["hstart"]
+    elif op == "rename":
+        b = box(args["hstart"])
+        name = str(args["name"]).strip()
+        if not name:
+            raise ValueError(tr("Il nome non può essere vuoto."))
+        new = text[:b["hstart"]] + _box_header(b["track"], name, b["beat"]) + text[b["hend"]:]
+        focus = b["hstart"]
+    elif op == "duplicate":
+        b = box(args["hstart"])
+        beat = _song_end_bar_beat(text)
+        body = text[b["hend"]:b["end"]]
+        new, focus = _insert_after_track_boxes(text, b["track"], _box_header(b["track"], b["name"], beat) + body)
+    elif op == "delete":
+        b = box(args["hstart"])
+        end = b["end"]
+        while end < len(text) and text[end] == "\n" and end + 1 <= len(text):
+            end += 1
+            if end < len(text) and text[end] != "\n":
+                break
+        new = text[:b["hstart"]] + text[end:]
+        new = new if new.endswith("\n") or not text.endswith("\n") else new
+    elif op in ("section_duplicate", "section_rename", "section_delete"):
+        chosen, beat, _until = section_boxes(args["beat"])
+        if not chosen:
+            raise ValueError(tr("Nella sezione non ci sono box."))
+        new = text
+        if op == "section_duplicate":
+            base = _song_end_bar_beat(text)
+            copies = [(b["track"], _box_header(b["track"], b["name"], base + b["beat"] - beat)
+                       + text[b["hend"]:b["end"]]) for b in chosen]
+            for track, block in copies:
+                new, at = _insert_after_track_boxes(new, track, block)
+                focus = at if focus < 0 else focus
+        elif op == "section_rename":
+            name = str(args["name"]).strip()
+            if not name:
+                raise ValueError(tr("Il nome non può essere vuoto."))
+            for b in sorted(chosen, key=lambda b: -b["hstart"]):
+                new = new[:b["hstart"]] + _box_header(b["track"], name, b["beat"]) + new[b["hend"]:]
+        else:
+            for b in sorted(chosen, key=lambda b: -b["hstart"]):
+                new = box_edit(new, "delete", {"hstart": b["hstart"]})["text"]
+    elif op == "make_boxes":
+        name = str(args.get("name") or "A").strip()
+        from core.project_io import parse_project_text
+        project = parse_project_text(text, "Brano")
+        index = {t.name: i for i, t in enumerate(project.tracks)}
+        boxed = {b["track"] for b in blocks}
+        new = text
+        changed = False
+        for b in reversed(file_blocks(text)):
+            track = Engine._track_of_header(b["header"], index)
+            if track is None or track in boxed or b["end"] <= b["start"]:
+                continue
+            if project.tracks[index[track]].is_audio or not text[b["start"]:b["end"]].strip():
+                continue
+            body = text[b["start"]:b["end"]]
+            block = _box_header(track, name, 0) + "\n" + body
+            new = new[:b["start"]] + "\n" + block + new[b["end"]:]
+            changed = True
+        if not changed:
+            raise ValueError(tr("Tutte le tracce sono già divise in box."))
+    else:
+        raise ValueError(f"modifica sconosciuta: {op}")
+    _check_overlaps(new)
+    return {"text": new, "focus": focus}
+
+
 def flat_spans(spans) -> list:
     """Gli span in una lista piatta di numeri, per un Float64Array in JS."""
     flat = []

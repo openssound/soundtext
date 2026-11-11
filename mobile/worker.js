@@ -251,6 +251,7 @@ function spans() {
 const CALLS = {
   complete: "complete", transforms: "transforms", bar: "bar_bounds",
   generate: "generate", generator_choices: "generator_choices", add_track: "add_track",
+  structure: "structure", box_edit: "box_edit",
 };
 
 self.onmessage = async (ev) => {

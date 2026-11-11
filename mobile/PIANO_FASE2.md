@@ -81,3 +81,26 @@ Da migliorare:
 
 - il modello «Nuovo brano» ha già una linea di basso, quindi il basso generato si aggiunge come «Bass 2». Manca un «Sostituisci la traccia …»;
 - la parte nuova parte sempre dall'inizio del brano: non si accoda a una traccia già scritta e non va in un box.
+
+**Tappa 3, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono:
+
+- **Schermata Struttura**, fra Crea e Partitura:
+  - le sezioni del brano una sotto l'altra, ricavate dai box come il righello della vista Struttura di SoundText (`core.arrangement.song_sections`);
+  - le tracce in colonne, che scorrono in orizzontale con la colonna delle sezioni ferma;
+  - in ogni cella i box di quella traccia che cominciano nella sezione, con le battute.
+- **Un tocco su un box** apre le azioni: «Apri nel Testo» (il cursore va nel corpo del box), «Rinomina…», «Sposta alla battuta…», «Duplica in fondo al brano», «Elimina».
+- **Un tocco su una sezione**: «Duplica la sezione in fondo al brano» (tutti i suoi box, con le stesse distanze), «Rinomina la sezione…», «Elimina la sezione».
+- **«Dividi in sezioni»**, per le tracce senza box (per esempio quelle fatte con Crea): il testo di ogni traccia diventa un box con il nome scelto, alla battuta 1.
+- **«Annulla la modifica»** torna indietro di una modifica della Struttura, fino a 30.
+- **Le modifiche** (`engine.box_edit`) cambiano solo le intestazioni «Box Traccia "Nome" |battito:» (scritte come le scrive SoundText) e i blocchi dei box. Commenti, mixer, effetti e il resto del file restano com'erano. Se due box della stessa traccia si sovrapporrebbero, la modifica non si fa e si dice perché.
+- **Criterio, un brano a sezioni senza scrivere le intestazioni dei box:** dal modello «Nuovo brano» si fanno «Dividi in sezioni» (Strofa), «Duplica la sezione» due volte e «Rinomina la sezione» (Ritornello): esce Strofa–Ritornello–Strofa, 12 battute, che suona. Provato con clic veri sul foglio delle azioni.
+- **Test** in `tests/test_mobile_engine.py`:
+  - il brano a sezioni costruito come sopra, letto da SoundText con i box giusti e con il resto del file intatto;
+  - la sezione copiata suona come l'originale, spostata di 8 battute;
+  - spostamento, sovrapposizione rifiutata, eliminazione e rinomina;
+  - la struttura di `jazz_aaba.st`.
+
+Non fatto:
+
+- trascinare i box con il dito: si spostano con «Sposta alla battuta…», più preciso e utilizzabile con TalkBack;
+- le funzioni sui pattern («trasforma») dal foglio delle azioni: arrivano con la tappa 4.

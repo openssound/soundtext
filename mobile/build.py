@@ -71,6 +71,10 @@ with open(os.path.join(root, "examples", "jazz_aaba.st"), encoding="utf-8") as f
 for kind in engine.GENERATORS:
     engine.generate(source, kind, {"seed": 1, "bars": 4, "performance": True})
 engine.generator_choices(source)
+# la struttura (fase 2): box e sezioni
+engine.structure(source)
+song = engine.add_track("ST: 2.6\nTempo: 100 BPM\n", "Piano", "1: C | F |")["text"]
+engine.box_edit(engine.box_edit(song, "make_boxes", {"name": "A"})["text"], "section_duplicate", {"beat": 0})
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

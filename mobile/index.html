@@ -80,6 +80,16 @@
     </div>
   </section>
 
+  <!-- Struttura: le sezioni (box) del brano, le tracce in colonne -->
+  <section id="view-struttura" class="view" aria-label="Struttura">
+    <div class="structbar">
+      <button id="structUndo" disabled><span aria-hidden="true">↶ </span><span data-i18n>Annulla la modifica</span></button>
+      <button id="structSplit" hidden data-i18n>Dividi in sezioni</button>
+    </div>
+    <div id="structure" class="structure"></div>
+    <p id="structStatus" class="hint" role="status"></p>
+  </section>
+
   <!-- Partitura: verovio, caricato alla prima apertura -->
   <section id="view-partitura" class="view" aria-label="Partitura">
     <div class="scorebar">
@@ -136,9 +146,17 @@
   <button data-view="brani" aria-current="page" data-i18n>Brani</button>
   <button data-view="testo" data-i18n>Testo</button>
   <button data-view="crea" data-i18n>Crea</button>
+  <button data-view="struttura" data-i18n>Struttura</button>
   <button data-view="partitura" data-i18n>Partitura</button>
   <button data-view="lettore" data-i18n>Lettore</button>
 </nav>
+
+<!-- Azioni su un box o una sezione (Struttura) -->
+<dialog id="sheet" class="sheet" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle"></h2>
+  <div id="sheetActions" class="sheet-actions"></div>
+  <button id="sheetClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
 
 <script src="vendor/js-synthesizer/js-synthesizer.js"></script>
 <script src="i18n.js"></script>
