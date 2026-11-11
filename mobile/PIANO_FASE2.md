@@ -104,3 +104,20 @@ Non fatto:
 
 - trascinare i box con il dito: si spostano con «Sposta alla battuta…», più preciso e utilizzabile con TalkBack;
 - le funzioni sui pattern («trasforma») dal foglio delle azioni: arrivano con la tappa 4.
+
+**Tappa 4, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono, con `14_trasformazioni.st`:
+
+- **Trasforma**: un tasto «✦ Trasforma» nella pagina Accordi della barra musicale apre, sul richiamo di pattern sotto il cursore (`%Tema`, `%Tema.invert(e*4)`…), un foglio con le funzioni della finestra Trasforma di SoundText:
+  - il richiamo in un campo che si può scrivere, e «Aggiungi una funzione…», che allunga la catena con una funzione già pronta di valori (`.progressione(3,-1)`, `.canone('2)`…) e ne mostra la spiegazione;
+  - la catena passo per passo (il pattern, poi ogni funzione con le note che produce), come nella finestra del computer;
+  - due piccole partiture con verovio, il pattern e il risultato, e «▶ Ascolta» per tutte e due;
+  - «Sostituisci» scrive il richiamo nuovo come se lo si battesse, quindi entra nell'annulla della tastiera;
+  - «Scrivi le note» lo scrive per esteso nota per nota («Congela la trasformazione» di SoundText), con il commento «// da …», e rifiuta se il suono cambierebbe;
+  - gli errori (una funzione che non esiste, argomenti sbagliati) compaiono sotto il campo.
+- **Il motore** (`transform_at`, `transform_preview`, `transform_apply`) usa `core/transform_preview.py`, lo stesso codice della finestra del computer: griglia, velocity e tonalità del punto del brano in cui sta il richiamo.
+- **Criterio, l'anteprima coincide con quello che suona dopo l'inserimento:** verificato da un test su quattro catene (`.retro`, `.invert(e*4).augment(2)`, `.thirds`, `2%Tema.step(1)`). Le note dell'anteprima sono esattamente quelle che il brano suona in quel punto dopo «Sostituisci». «Scrivi le note» non cambia il suono e lascia il rientro del file.
+- **Trovato e corretto durante la tappa:**
+  - «Scrivi le note» lasciava senza rientro le righe scritte, cosa che in un `.st` rompe il blocco: `freeze_span` lavora sul testo di una traccia, ora il motore toglie e rimette il rientro;
+  - la prova del bundle ha trovato che mancava `core.transform_preview` (24 moduli ora).
+
+Non portato: «Crea pattern» dalla catena (un pattern nuovo con il risultato).

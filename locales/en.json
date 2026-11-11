@@ -2738,5 +2738,20 @@
  "Struttura non disponibile: {message}": "Structure not available: {message}",
  "Traccia {name}": "Track {name}",
  "Tutte le tracce sono già divise in box.": "All tracks are already split into boxes.",
- "testo della traccia": "text of the track"
+ "testo della traccia": "text of the track",
+ "Aggiungi una funzione": "Add a function",
+ "Aggiungi una funzione…": "Add a function…",
+ "Ascolta dopo": "Listen to the result",
+ "Ascolta prima": "Listen to the pattern",
+ "Con le funzioni": "With the functions",
+ "Il testo è cambiato: riapri Trasforma.": "The text has changed: open Transform again.",
+ "Metti il cursore su un richiamo di pattern (%Nome).": "Put the cursor on a pattern reference (%Name).",
+ "Note scritte per esteso": "Notes written out in full",
+ "Passo per passo": "Step by step",
+ "Richiamo": "Reference",
+ "Richiamo sostituito": "Reference replaced",
+ "Trasforma %{name}": "Transform %{name}",
+ "Trasforma il richiamo di pattern sotto il cursore": "Transform the pattern reference under the cursor",
+ "Ascolto del pattern": "Listening to the pattern",
+ "Ascolto del pattern con le funzioni": "Listening to the pattern with the functions"
 }

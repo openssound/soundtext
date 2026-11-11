@@ -75,6 +75,12 @@ engine.generator_choices(source)
 engine.structure(source)
 song = engine.add_track("ST: 2.6\nTempo: 100 BPM\n", "Piano", "1: C | F |")["text"]
 engine.box_edit(engine.box_edit(song, "make_boxes", {"name": "A"})["text"], "section_duplicate", {"beat": 0})
+# trasforma (fase 2)
+with open(os.path.join(root, "examples", "didattici", "14_trasformazioni.st"), encoding="utf-8") as f:
+    source = f.read()
+at = source.index("  %Tema") + 3
+engine.transform_preview(source, at, "%Tema.retro.invert(e*4)")
+engine.transform_apply(source, at, "%Tema.retro", True)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

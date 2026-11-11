@@ -290,3 +290,21 @@ summary:focus-visible, .button:focus-within {
 .sheet-actions button, .sheet-close { min-height: 44px; text-align: left; padding: 0 12px; width: 100%; }
 .sheet-actions button.danger { color: var(--danger); }
 .sheet-close { margin-top: 10px; text-align: center; }
+
+/* Trasforma */
+.sheet.tall { max-height: 92vh; overflow-y: auto; }
+.tf-row { display: grid; gap: 4px; font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+.tf-row input { font: 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; min-height: 44px; padding: 0 8px;
+                background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+#tfAdd { width: 100%; min-height: 44px; }
+.tf-stages { margin: 8px 0; padding-left: 20px; font-size: 13px; }
+.tf-stages li { margin: 2px 0; }
+.tf-stages code { color: var(--accent); }
+.tf-scores { display: grid; gap: 8px; }
+.tf-scores figure { margin: 0; }
+.tf-scores figcaption { font-size: 12px; color: var(--dim); }
+.tf-score svg { display: block; width: 100%; height: auto; background: #fff; color: #000; border-radius: 4px; }
+.tf-scores button { width: 100%; min-height: 40px; margin-top: 4px; }
+.tf-actions { display: flex; gap: 8px; margin-top: 12px; }
+.tf-actions button { flex: 1; min-height: 44px; }
+.hint.error:empty { display: none; }

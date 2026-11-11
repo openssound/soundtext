@@ -696,6 +696,7 @@ function pageKeys(page) {
   return [
     ...diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c), "", t("accordo {name}", { name: c }))),
     SEP,
+    K("✦ " + t("Trasforma"), openTransform, "wide", t("Trasforma il richiamo di pattern sotto il cursore")),
     ...patterns.map((p) => K(p, () => insertToken(p), "", t("pattern {name}", { name: p }))),
     ...(patterns.length ? [SEP] : []),
     ...bar.transforms.map((f) => K(f.call, () => attach(f.call), "", f.help)),
@@ -1278,6 +1279,140 @@ function setupCrea() {
   $("genAdd").onclick = () => addPartToSong().catch(showError);
 }
 
+// ------------------------------------------------------------ trasforma
+//
+// La finestra Trasforma di SoundText sul richiamo di pattern sotto il
+// cursore (%Tema, %Tema.invert...): la catena di funzioni si scrive nel
+// campo o si allunga con «Aggiungi una funzione»; a ogni modifica il
+// motore dice cosa suona passo per passo, nel punto del brano dove sta
+// (engine.transform_preview), e mostra prima e dopo in una piccola
+// partitura da ascoltare. «Sostituisci» scrive il richiamo nuovo,
+// «Scrivi le note» lo scrive per esteso nota per nota.
+
+const tf = { pos: 0, text: "", result: null, timer: null };
+
+function base64Bytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function openTransform() {
+  if (!state.doc) return;
+  const pos = caretPos() ?? 0;
+  const ref = (await call("transform_at", { args: [state.doc.text, pos] })).result;
+  if (!ref) { setStatus(t("Metti il cursore su un richiamo di pattern (%Nome).")); return; }
+  tf.pos = pos;
+  tf.text = state.doc.text;
+  tf.result = null;
+  $("tfTitle").textContent = t("Trasforma %{name}", { name: ref.pattern });
+  $("tfToken").value = ref.token;
+  const add = $("tfAdd");
+  add.replaceChildren(new Option(t("Aggiungi una funzione…"), ""));
+  for (const f of bar.transforms) add.add(new Option(f.ready, f.ready));
+  $("tfHelp").textContent = "";
+  $("tfStages").replaceChildren();
+  $("tfError").textContent = "";
+  $("tfBefore").replaceChildren();
+  $("tfAfter").replaceChildren();
+  $("transform").showModal();
+  refreshTransform();
+}
+
+function scheduleTransform() {
+  clearTimeout(tf.timer);
+  tf.timer = setTimeout(() => refreshTransform().catch(showError), 300);
+}
+
+async function refreshTransform() {
+  const token = $("tfToken").value.trim();
+  const r = (await call("transform_preview", { args: [tf.text, tf.pos, token] })).result;
+  if ($("tfToken").value.trim() !== token) return;            // superata
+  tf.result = r;
+  $("tfError").textContent = r.error || (r.warnings || []).join("\n");
+  const ok = !r.error;
+  $("tfReplace").disabled = !ok;
+  $("tfFreeze").disabled = !ok;
+  $("tfPlayAfter").disabled = !ok;
+  const list = $("tfStages");
+  list.replaceChildren();
+  for (const [step, notes] of ok ? r.stages : []) {
+    const li = document.createElement("li");
+    const code = document.createElement("code");
+    code.textContent = step;
+    li.append(code, " → ", notes || "–");
+    list.append(li);
+  }
+  if (!ok) { $("tfAfter").replaceChildren(); return; }
+  await Promise.all([miniScore($("tfBefore"), r.xml_before), miniScore($("tfAfter"), r.xml_after)]);
+}
+
+// Una striscia di partitura (verovio, come la schermata Partitura)
+async function miniScore(box, xml) {
+  const width = Math.max(240, box.clientWidth || 300);
+  try {
+    const r = await scoreCall({ cmd: "render", xml, scale: 35, pageWidth: Math.round(width * 100 / 35) });
+    box.innerHTML = r.pages[0] || "";
+    const svg = box.querySelector("svg");
+    if (svg) { svg.setAttribute("role", "img"); svg.setAttribute("aria-label", t("Partitura")); }
+  } catch (e) {
+    box.textContent = errorText(e);
+  }
+}
+
+async function playTransform(which) {
+  const resumed = unlockInGesture();
+  await resumed;
+  const r = tf.result;
+  if (!r || r.error) return;
+  await playPreview(base64Bytes(which === "before" ? r.midi_before : r.midi_after),
+                    which === "before" ? t("Ascolto del pattern") : t("Ascolto del pattern con le funzioni"));
+}
+
+async function applyTransform(freeze) {
+  const r = tf.result;
+  if (!r || r.error || !state.doc) return;
+  if (state.previewing) stopPreview();
+  if (state.doc.text !== tf.text) { $("tfError").textContent = t("Il testo è cambiato: riapri Trasforma."); return; }
+  let out;
+  try {
+    out = (await call("transform_apply", { args: [tf.text, tf.pos, r.token, freeze] })).result;
+  } catch (e) {
+    $("tfError").textContent = errorText(e);
+    return;
+  }
+  $("transform").close();
+  if (!freeze) {
+    // come se lo si scrivesse: entra nell'annulla della tastiera
+    selectRange(r.start, r.end);
+    typeText(r.token);
+  } else {
+    await replaceDocText(out.text);
+    goTo(out.start, out.end);
+  }
+  setStatus(freeze ? t("Note scritte per esteso") : t("Richiamo sostituito"));
+}
+
+function setupTransform() {
+  $("tfToken").addEventListener("input", scheduleTransform);
+  $("tfAdd").onchange = (ev) => {
+    const call = ev.target.value;
+    if (!call) return;
+    const f = bar.transforms.find((x) => x.ready === call);
+    $("tfHelp").textContent = f ? f.help : "";
+    $("tfToken").value = $("tfToken").value.trim() + call;
+    ev.target.value = "";
+    refreshTransform().catch(showError);
+  };
+  $("tfPlayBefore").onclick = () => playTransform("before").catch(showError);
+  $("tfPlayAfter").onclick = () => playTransform("after").catch(showError);
+  $("tfReplace").onclick = () => applyTransform(false).catch(showError);
+  $("tfFreeze").onclick = () => applyTransform(true).catch(showError);
+  $("tfClose").onclick = () => $("transform").close();
+  $("transform").addEventListener("close", () => { if (state.previewing) stopPreview(); });
+}
+
 // ------------------------------------------------------------ struttura
 //
 // Le sezioni del brano una sotto l'altra, le tracce in colonne (scorrono in
@@ -1639,7 +1774,7 @@ function stop(reset) {
 // ---- anteprima della schermata Crea: un altro MIDI sullo stesso lettore;
 // alla fine (o con ■) tornano il MIDI e la posizione del brano.
 
-async function playPreview(midi) {
+async function playPreview(midi, label = t("Anteprima della parte generata")) {
   if (!state.audioReady) {
     setStatus(t("Preparo il sintetizzatore e il SoundFont…"));
     state.audioReady = initAudio();
@@ -1659,7 +1794,7 @@ async function playPreview(midi) {
   state.midi = midi;
   state.synth.midiAllSoundsOff();
   await startPlayer(from);
-  setStatus(t("Anteprima della parte generata"));
+  setStatus(label);
   setPreviewButton();
 }
 
@@ -2290,6 +2425,7 @@ async function main() {
   setupMusicBar();
   setupCrea();
   setupStructure();
+  setupTransform();
   for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => setView(b.dataset.view);
   let view = "brani";
   try {

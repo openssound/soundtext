@@ -2738,5 +2738,20 @@
  "Struttura non disponibile: {message}": "Estructura no disponible: {message}",
  "Traccia {name}": "Pista {name}",
  "Tutte le tracce sono già divise in box.": "Todas las pistas ya están divididas en boxes.",
- "testo della traccia": "texto de la pista"
+ "testo della traccia": "texto de la pista",
+ "Aggiungi una funzione": "Añadir una función",
+ "Aggiungi una funzione…": "Añadir una función…",
+ "Ascolta dopo": "Escuchar el resultado",
+ "Ascolta prima": "Escuchar el patrón",
+ "Con le funzioni": "Con las funciones",
+ "Il testo è cambiato: riapri Trasforma.": "El texto ha cambiado: vuelve a abrir Transformar.",
+ "Metti il cursore su un richiamo di pattern (%Nome).": "Pon el cursor sobre una llamada de patrón (%Nombre).",
+ "Note scritte per esteso": "Notas escritas por extenso",
+ "Passo per passo": "Paso a paso",
+ "Richiamo": "Llamada",
+ "Richiamo sostituito": "Llamada sustituida",
+ "Trasforma %{name}": "Transformar %{name}",
+ "Trasforma il richiamo di pattern sotto il cursore": "Transformar la llamada de patrón bajo el cursor",
+ "Ascolto del pattern": "Escuchando el patrón",
+ "Ascolto del pattern con le funzioni": "Escuchando el patrón con las funciones"
 }

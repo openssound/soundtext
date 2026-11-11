@@ -410,3 +410,48 @@ def test_structure_of_the_examples():
     piano = next(t for t in info["tracks"] if t["name"] == "Piano")
     assert [(b["name"], b["bar"], b["bars"]) for b in piano["boxes"]][:2] == [("Intro", 1, 4), ("Chorus 1", 5, 32)]
     assert all(text[b["start"]:].startswith("  ") for b in piano["boxes"])     # il corpo del box nel testo
+
+
+@pytest.mark.parametrize("token", ["%Tema.retro", "%Tema.invert(e*4).augment(2)", "%Tema.thirds", "2%Tema.step(1)"])
+def test_transform_preview_sounds_like_the_song_after_replacing(token):
+    """Trasforma (fase 2): l'anteprima suona proprio quello che suona il
+    brano dopo «Sostituisci», nello stesso punto; «Scrivi le note» non
+    cambia il suono."""
+    import base64
+    import re
+    import mido
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    with open(os.path.join(ROOT, "examples", "didattici", "14_trasformazioni.st"), encoding="utf-8") as f:
+        text = f.read()
+    first = next(m for m in re.finditer(r"%Tema\b", text) if not text[:m.start()].endswith("Pattern "))
+    pos = first.start() + 1
+    preview = engine.transform_preview(text, pos, token)
+    assert preview["error"] == "", preview["error"]
+    assert preview["stages"][0][0] and len(preview["stages"]) >= 2
+
+    def notes(data, track=None, start=0):
+        out = []
+        for tr in mido.MidiFile(file=io.BytesIO(data)).tracks:
+            if track and tr.name != track:
+                continue
+            tick = 0
+            for msg in tr:
+                tick += msg.time
+                if msg.type == "note_on" and msg.velocity:
+                    out.append((tick - start, msg.note, msg.velocity))
+        return sorted(out)
+
+    heard = notes(base64.b64decode(preview["midi_after"]))
+    applied = engine.transform_apply(text, pos, preview["token"])["text"]
+    offset = round(preview["position"] * 480)
+    song = [n for n in notes(engine.analyze(applied, "x")["midi"], track="Melodia", start=offset)
+            if 0 <= n[0] < (heard[-1][0] + 1 if heard else 0)]
+    assert song == heard
+    frozen = engine.transform_apply(text, pos, preview["token"], freeze=True)["text"]
+    assert notes(engine.analyze(frozen, "x")["midi"]) == notes(engine.analyze(applied, "x")["midi"])
+    added = [line for line in frozen.split("\n") if line not in text.split("\n")]
+    assert added and all(line.startswith("  ") for line in added)   # il rientro del file resta

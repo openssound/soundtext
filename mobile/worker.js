@@ -252,6 +252,7 @@ const CALLS = {
   complete: "complete", transforms: "transforms", bar: "bar_bounds",
   generate: "generate", generator_choices: "generator_choices", add_track: "add_track",
   structure: "structure", box_edit: "box_edit",
+  transform_at: "transform_at", transform_preview: "transform_preview", transform_apply: "transform_apply",
 };
 
 self.onmessage = async (ev) => {

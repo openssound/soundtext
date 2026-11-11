@@ -558,8 +558,162 @@ def transforms() -> list:
     for t in list_transforms():
         args = [a["name"] for a in t["arguments"] if a["required"]] or [a["name"] for a in t["arguments"]][:1]
         name = t["alias"] if italian else t["name"]
-        out.append({"call": f".{name}({','.join(args)})" if args else f".{name}", "help": t["help"]})
+        # pronta da aggiungere a un richiamo: gli argomenti obbligatori con
+        # il loro valore iniziale (Trasforma nell'app)
+        values = [str(a["default"]).strip("'") if a["default"] is not None else a["name"]
+                  for a in t["arguments"] if a["required"]]
+        values = [v if not v.startswith("2") or a["type"] != "note_value" else "'" + v
+                  for v, a in zip(values, [a for a in t["arguments"] if a["required"]])]
+        out.append({"call": f".{name}({','.join(args)})" if args else f".{name}", "help": t["help"],
+                    "ready": f".{name}({','.join(values)})" if values else f".{name}"})
     return out
+
+
+# ------------------------------------------------------------ trasforma (fase 2)
+#
+# La finestra Trasforma di SoundText (gui/transform_dialog.py) nell'app: il
+# richiamo di pattern sotto il cursore, la catena di funzioni passo per
+# passo, le note che suona nel suo punto del brano (core.transform_preview,
+# come l'anteprima del computer), il MIDI e il MusicXML di prima e di dopo
+# per ascoltarli e vederli, e la sostituzione nel testo (anche scritta nota
+# per nota, «Congela la trasformazione»).
+
+def _notation_block_at(text: str, pos: int, project):
+    """(blocco, strumento, battito d'inizio) del box, della traccia o del
+    pattern che contiene 'pos'; None fuori dalla notazione."""
+    from core.instruments import get_instrument
+    index = {t.name: i for i, t in enumerate(project.tracks)}
+    for b in file_blocks(text):
+        if not (b["start"] <= pos <= max(b["end"], b["start"])):
+            continue
+        m = RE_BOX_LINE.match(b["header"])
+        if m and m.group(1) in index:
+            return b, project.tracks[index[m.group(1)]].instrument, float(m.group(3))
+        if RE_PATTERN_HDR.match(b["header"]):
+            return b, get_instrument("Piano"), 0.0
+        name = Engine._track_of_header(b["header"], index)
+        if name is not None:
+            return b, project.tracks[index[name]].instrument, 0.0
+    return None
+
+
+def _project_midi(project) -> bytes:
+    import os
+    import tempfile
+    from core.midi_export import export_project_to_midi
+    fd, path = tempfile.mkstemp(suffix=".mid")
+    os.close(fd)
+    try:
+        export_project_to_midi(project, path, only_audible=False)
+        with open(path, "rb") as f:
+            return f.read()
+    finally:
+        os.remove(path)
+
+
+def transform_at(text: str, pos: int) -> Optional[dict]:
+    """Il richiamo di pattern sotto il cursore: {start, end, token,
+    pattern}, oppure None."""
+    from core.project_io import parse_project_text
+    from core.transform_preview import reference_at
+    from st_language.transform import parse_reference
+    try:
+        project = parse_project_text(text, "Brano")
+    except Exception:
+        return None
+    found = _notation_block_at(text, pos, project)
+    if found is None:
+        return None
+    block = found[0]
+    body = text[block["start"]:block["end"]]
+    ref = reference_at(body, pos - block["start"], with_functions=False)
+    if ref is None:
+        return None
+    start, end, token = ref
+    try:
+        pattern = parse_reference(token).pattern
+    except Exception:
+        return None
+    return {"start": block["start"] + start, "end": block["start"] + end, "token": token, "pattern": pattern}
+
+
+def transform_preview(text: str, pos: int, token: str) -> dict:
+    """L'anteprima di 'token' al posto del richiamo sotto il cursore:
+    {token (scritto nella lingua dell'interfaccia), stages: [[passo, note]],
+    notation, warnings, error, midi_before, midi_after (base64), xml_before,
+    xml_after}. Con un richiamo non valido c'e' solo 'error'."""
+    import base64
+    from core.i18n import current_language
+    from core.musicxml_export import project_to_musicxml
+    from core.project_io import parse_project_text
+    from core.transform_preview import expansion, preview_notation, preview_project, reference_point, stage_lines
+    from st_language.notation import NotationError
+    from st_language.transform import format_reference, parse_reference
+    ref = transform_at(text, pos)
+    if ref is None:
+        from core.i18n import tr
+        return {"error": tr("Metti il cursore su un richiamo di pattern (%Nome).")}
+    project = parse_project_text(text, "Brano")
+    block, instrument, origin = _notation_block_at(text, pos, project)
+    body = text[block["start"]:block["end"]]
+    point = reference_point(body, ref["start"] - block["start"], project.patterns, instrument, project.meter(), origin)
+    out = {"start": ref["start"], "end": ref["end"], "pattern": ref["pattern"], "position": point.position}
+    try:
+        written = format_reference(parse_reference(token.strip()), italian=current_language() == "it")
+        result = expansion(written, project, point, instrument)
+        out.update(token=written, stages=[list(x) for x in stage_lines(written, result)],
+                   notation=preview_notation(written, project, point, instrument),
+                   warnings=list(result.warnings), error="")
+    except (NotationError, ValueError, KeyError) as e:
+        return {**out, "error": str(e)}
+    for which, tok in (("before", "%" + ref["pattern"]), ("after", out["token"])):
+        preview = preview_project(project, tok, point, instrument.name)
+        out["midi_" + which] = base64.b64encode(_project_midi(preview)).decode("ascii")
+        out["xml_" + which] = project_to_musicxml(preview, tracks=preview.tracks)
+    return out
+
+
+def transform_apply(text: str, pos: int, token: str, freeze: bool = False) -> dict:
+    """Il brano con 'token' al posto del richiamo sotto il cursore e, con
+    freeze, scritto nota per nota (core.transform_preview.freeze_span, che
+    rifiuta se il suono cambierebbe): {text, start, end}."""
+    from core.project_io import parse_project_text
+    from core.transform_preview import freeze_span
+    ref = transform_at(text, pos)
+    if ref is None:
+        from core.i18n import tr
+        raise ValueError(tr("Metti il cursore su un richiamo di pattern (%Nome)."))
+    new = text[:ref["start"]] + token + text[ref["end"]:]
+    end = ref["start"] + len(token)
+    if freeze:
+        project = parse_project_text(new, "Brano")
+        block, instrument, origin = _notation_block_at(new, ref["start"], project)
+        body = new[block["start"]:block["end"]]
+        # freeze_span lavora sul testo della traccia, senza il rientro del file
+        plain, offset = _dedent(body, [ref["start"] - block["start"], end - block["start"]])
+        frozen = _indent(freeze_span(plain, offset[0], offset[1], project, instrument, origin))
+        new = new[:block["start"]] + frozen + new[block["end"]:]
+        end = block["end"] + len(frozen) - len(body)
+    return {"text": new, "start": ref["start"], "end": end}
+
+
+def _dedent(body: str, positions: List[int]) -> Tuple[str, List[int]]:
+    """Il corpo di un blocco senza il rientro di ogni riga (due spazi o un
+    tab), con le posizioni date riportate nel testo senza rientro."""
+    out, mapped, pos, removed = [], list(positions), 0, 0
+    for line in body.split("\n"):
+        cut = 2 if line.startswith("  ") else 1 if line.startswith("\t") else 0
+        for i, p in enumerate(positions):
+            if p >= pos + cut:
+                mapped[i] = p - removed - cut
+        removed += cut
+        out.append(line[cut:])
+        pos += len(line) + 1
+    return "\n".join(out), mapped
+
+
+def _indent(text: str) -> str:
+    return "\n".join("  " + line if line.strip() else "" for line in text.split("\n"))
 
 
 def bar_bounds(text: str, beat: float) -> list:

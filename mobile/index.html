@@ -151,6 +151,29 @@
   <button data-view="lettore" data-i18n>Lettore</button>
 </nav>
 
+<!-- Trasforma: funzioni su un richiamo di pattern, con anteprima -->
+<dialog id="transform" class="sheet tall" aria-labelledby="tfTitle">
+  <h2 id="tfTitle" data-i18n>Trasforma</h2>
+  <label class="tf-row"><span data-i18n>Richiamo</span>
+    <input id="tfToken" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" translate="no">
+  </label>
+  <select id="tfAdd" aria-label="Aggiungi una funzione"></select>
+  <p id="tfHelp" class="hint"></p>
+  <ol id="tfStages" class="tf-stages" aria-label="Passo per passo"></ol>
+  <p id="tfError" class="hint error" role="alert"></p>
+  <div class="tf-scores">
+    <figure><figcaption data-i18n>Il pattern</figcaption><div id="tfBefore" class="tf-score"></div>
+      <button id="tfPlayBefore"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta prima</span></button></figure>
+    <figure><figcaption data-i18n>Con le funzioni</figcaption><div id="tfAfter" class="tf-score"></div>
+      <button id="tfPlayAfter"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta dopo</span></button></figure>
+  </div>
+  <div class="tf-actions">
+    <button id="tfReplace" class="primary" data-i18n>Sostituisci</button>
+    <button id="tfFreeze" data-i18n>Scrivi le note</button>
+    <button id="tfClose" data-i18n>Chiudi</button>
+  </div>
+</dialog>
+
 <!-- Azioni su un box o una sezione (Struttura) -->
 <dialog id="sheet" class="sheet" aria-labelledby="sheetTitle">
   <h2 id="sheetTitle"></h2>

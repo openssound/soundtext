@@ -2738,5 +2738,20 @@
  "Struttura non disponibile: {message}": "Structure indisponible : {message}",
  "Traccia {name}": "Piste {name}",
  "Tutte le tracce sono già divise in box.": "Toutes les pistes sont déjà divisées en boîtes.",
- "testo della traccia": "texte de la piste"
+ "testo della traccia": "texte de la piste",
+ "Aggiungi una funzione": "Ajouter une fonction",
+ "Aggiungi una funzione…": "Ajouter une fonction…",
+ "Ascolta dopo": "Écouter le résultat",
+ "Ascolta prima": "Écouter le motif",
+ "Con le funzioni": "Avec les fonctions",
+ "Il testo è cambiato: riapri Trasforma.": "Le texte a changé : rouvrez Transformer.",
+ "Metti il cursore su un richiamo di pattern (%Nome).": "Placez le curseur sur un appel de motif (%Nom).",
+ "Note scritte per esteso": "Notes écrites en entier",
+ "Passo per passo": "Pas à pas",
+ "Richiamo": "Appel",
+ "Richiamo sostituito": "Appel remplacé",
+ "Trasforma %{name}": "Transformer %{name}",
+ "Trasforma il richiamo di pattern sotto il cursore": "Transformer l'appel de motif sous le curseur",
+ "Ascolto del pattern": "Écoute du motif",
+ "Ascolto del pattern con le funzioni": "Écoute du motif avec les fonctions"
 }
