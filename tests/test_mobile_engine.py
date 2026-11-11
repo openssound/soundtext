@@ -191,7 +191,7 @@ for name in engine.ENGINE_MODULES:
     importlib.import_module(name)
 FakeNumpy.armed = True
 for name in build.EXAMPLES:
-    with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
+    with open(build.example_path(name), encoding="utf-8") as f:
         source = f.read()
     engine.analyze(source, name, transpose=-2)
     engine.check_text(source, name)
@@ -233,13 +233,35 @@ def test_check_finds_ignored_tracks_errors_and_bar_warnings():
     assert {b["label"] for b in result["blocks"]} >= {"Piano", "Lead", "%A"}
 
 
+def _example_names():
+    sys.path.insert(0, MOBILE)
+    try:
+        import build
+    finally:
+        sys.path.remove(MOBILE)
+    return build, build.EXAMPLES
+
+
 @pytest.mark.slow
-def test_check_finds_nothing_wrong_in_the_examples():
-    for name in ("jazz_aaba.st", "symphony_d_minor_box.st", "bossa_nova.st", "boom_bap.st"):
-        with open(os.path.join(ROOT, "examples", name), encoding="utf-8") as f:
-            engine, result = _check(f.read())
-        assert result["warnings"] == [], name
-        assert result["error"] == ""
+def test_every_example_opens_plays_and_has_a_score():
+    """Criterio della fase 1: tutti gli esempi di examples/ e
+    examples/didattici/ (quelli dell'app, mobile/build.py) si aprono, si
+    leggono e suonano, con un avviso solo per le parti che l'app non suona
+    (strumenti SFZ o plugin, effetti, tracce audio)."""
+    build, names = _example_names()
+    assert len(names) >= 17 and "14_trasformazioni.st" in names
+    for name in names:
+        with open(build.example_path(name), encoding="utf-8") as f:
+            text = f.read()
+        e, result = _check(text)
+        assert result["error"] == "", name
+        assert all(w["kind"] == "unsupported" for w in result["warnings"]), (name, result["warnings"])
+        assert bool(result["warnings"]) == ("__sfz__" in name), name
+        analysis = e.analyze(text, name)
+        assert _notes(analysis["midi"]), name
+        assert analysis["spans"], name
+        assert analysis["engine"].timeline()["length"] > 0, name
+        assert "<score-part " in analysis["engine"].musicxml(), name
 
 
 def test_check_colours_like_the_desktop_editor():

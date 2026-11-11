@@ -305,6 +305,47 @@ _OTHER_HEADER_NAMES = ("RE_AMBIENTE", "RE_AUDIO_HDR", "RE_COMPOSER", "RE_CONVERS
 
 # Categorie dei colori: quelle di core.syntax piu' "header" (intestazioni e
 # righe di impostazioni del file, fuori dalla notazione).
+def _names(names: List[str], most: int = 4) -> str:
+    return ", ".join(names[:most]) + (", …" if len(names) > most else "")
+
+
+def _unsupported_warnings(text: str, project, warn, tr) -> None:
+    """Un avviso per ogni genere di parte che l'app non suona, sul primo
+    blocco che la scrive: strumenti SFZ o plugin (suonano col SoundFont
+    General MIDI), effetti e catena master, tracce audio. Il file le
+    conserva com'erano (l'app modifica solo il testo cambiato)."""
+    import st_language.stfile as stfile
+    first = {}
+    for b in file_blocks(text):
+        header = b["header"]
+        if stfile.RE_SYNTH_HDR.match(header):
+            kind = "synth"
+        elif stfile.RE_EFFECTS_HDR.match(header) or stfile.RE_MASTER_CHAIN_HDR.match(header):
+            kind = "effects"
+        elif stfile.RE_AUDIO_HDR.match(header):
+            kind = "audio"
+        else:
+            continue
+        first.setdefault(kind, (b["hstart"], b["hstart"] + len(header)))
+    synth = [t.name for t in project.tracks if t.synth and not t.is_audio]
+    effects = [t.name for t in project.tracks if t.effects]
+    audio = [t.name for t in project.tracks if t.is_audio]
+    if synth:
+        start, end = first.get("synth", (0, 0))
+        warn(start, end, "unsupported",
+             tr("Strumenti SFZ o plugin ({tracks}): nell'app suonano con il SoundFont General MIDI.",
+                tracks=_names(synth)))
+    if effects or project.master_effects:
+        start, end = first.get("effects", (0, 0))
+        warn(start, end, "unsupported",
+             tr("Effetti e catena master non si sentono nell'app; il file li conserva come sono."))
+    if audio:
+        start, end = first.get("audio", (0, 0))
+        warn(start, end, "unsupported",
+             tr("Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.",
+                tracks=_names(audio)))
+
+
 def syntax_categories() -> list:
     from core.syntax import CATEGORIES
     return list(CATEGORIES) + ["header"]
@@ -388,6 +429,10 @@ def check_text(text: str, name: str = "Brano") -> dict:
             if suggestion:
                 message += " " + tr("Forse intendevi «{suggestion}»?", suggestion=suggestion)
             warn(hstart, hend, "ignored", message)
+
+    # parti del file che l'app non suona (restano nel file come sono)
+    if project:
+        _unsupported_warnings(text, project, warn, tr)
 
     # avvisi del lettore dei file (strumenti sconosciuti nelle intestazioni esplicite...)
     if project:

@@ -92,6 +92,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .warnings li button { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .warnings .where { color: var(--dim); margin-right: 6px; }
 .warnings .error .where, .warnings .ignored .where { color: var(--danger); }
+.warnings .unsupported button { color: var(--dim); }
 #text {
   flex: 1; margin: 0 16px 8px; padding: 10px; overflow: auto; min-height: 0;
   background: var(--panel); border-radius: 8px; outline: none;

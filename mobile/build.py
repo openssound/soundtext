@@ -25,12 +25,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BUNDLE = os.path.join(HERE, "bundle")
 
-EXAMPLES = [
-    "jazz_aaba.st",
-    "symphony_d_minor_box.st",
-    "bossa_nova.st",
-    "boom_bap.st",
-]
+# Tutti gli esempi di examples/ e examples/didattici/ (criterio della fase 1:
+# si aprono, si leggono e suonano), prima i brani e poi i didattici.
+def _example_files() -> list:
+    out = []
+    for folder in ("examples", os.path.join("examples", "didattici")):
+        out += sorted(f for f in os.listdir(os.path.join(ROOT, folder)) if f.endswith(".st"))
+    return out
+
+
+EXAMPLES = _example_files()
+EXAMPLE_DIRS = ("examples", os.path.join("examples", "didattici"))
+
+
+def example_path(name: str) -> str:
+    for folder in EXAMPLE_DIRS:
+        path = os.path.join(ROOT, folder, name)
+        if os.path.exists(path):
+            return path
+    raise FileNotFoundError(name)
 
 # Moduli caricati dal motore mentre analizza ed esporta gli esempi (alcuni
 # moduli di core/ ne importano altri solo dentro le funzioni), con PySide6
@@ -43,8 +56,9 @@ sys.path.insert(0, root); sys.path.insert(0, here)
 import engine
 for name in engine.ENGINE_MODULES:
     importlib.import_module(name)
-for name in sys.argv[3:]:
-    with open(os.path.join(root, "examples", name), encoding="utf-8") as f:
+for path in sys.argv[3:]:
+    name = os.path.basename(path)
+    with open(path, encoding="utf-8") as f:
         source = f.read()
     engine.analyze(source, name, transpose=2)
     engine.check_text(source, name)
@@ -56,7 +70,7 @@ print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("c
 
 
 def engine_core_modules() -> list:
-    out = subprocess.run([sys.executable, "-I", "-c", _PROBE, ROOT, HERE, *EXAMPLES],
+    out = subprocess.run([sys.executable, "-I", "-c", _PROBE, ROOT, HERE, *map(example_path, EXAMPLES)],
                          check=True, capture_output=True, text=True, cwd=ROOT)
     return json.loads(out.stdout.strip().splitlines()[-1])
 
@@ -100,7 +114,7 @@ def build():
                 z.write(os.path.join(locales, fname), "locales/" + fname)
     languages = app_catalogs()
     for name in EXAMPLES:
-        with open(os.path.join(ROOT, "examples", name), "rb") as src, \
+        with open(example_path(name), "rb") as src, \
                 open(os.path.join(BUNDLE, "examples", name), "wb") as dst:
             dst.write(src.read())
     info = {"core_modules": modules, "examples": EXAMPLES, "languages": languages,

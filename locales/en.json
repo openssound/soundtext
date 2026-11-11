@@ -2694,5 +2694,8 @@
  "stanghetta": "bar line",
  "terzina di crome": "eighth-note triplet",
  "Il box è della traccia «{track}», che nel brano non c'è.": "The box belongs to the track «{track}», which is not in the song.",
- "«{header}» viene ignorato: «{instrument}» non è uno strumento noto.": "«{header}» is ignored: «{instrument}» is not a known instrument."
+ "«{header}» viene ignorato: «{instrument}» non è uno strumento noto.": "«{header}» is ignored: «{instrument}» is not a known instrument.",
+ "Strumenti SFZ o plugin ({tracks}): nell'app suonano con il SoundFont General MIDI.": "SFZ or plugin instruments ({tracks}): in the app they play with the General MIDI SoundFont.",
+ "Effetti e catena master non si sentono nell'app; il file li conserva come sono.": "Effects and the master chain are not heard in the app; the file keeps them as they are.",
+ "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Audio tracks ({tracks}): they do not play in the app; the file keeps them as they are."
 }

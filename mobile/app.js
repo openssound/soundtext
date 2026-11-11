@@ -100,6 +100,33 @@ async function cached(url) {
   }
 }
 
+// Senza rete dopo il primo avvio (criterio della fase 1): FluidSynth per
+// l'AudioWorklet, il SoundFont e verovio, che altrimenti si scaricano al
+// primo Play e alla prima Partitura, entrano nella cache in background, uno
+// alla volta (il service worker li tiene in stmobile-vendor). Non se il
+// telefono chiede di risparmiare dati.
+const WORKLET_MODULES = ["vendor/js-synthesizer/libfluidsynth-2.4.6.js", "vendor/js-synthesizer/js-synthesizer.worklet.js"];
+// js-synthesizer.js lo carica la pagina, ma al primo avvio prima che il
+// service worker la controlli: senza questo non sarebbe nella cache.
+const OFFLINE_EXTRAS = ["vendor/js-synthesizer/js-synthesizer.js", ...WORKLET_MODULES, SOUNDFONT_URL,
+                        "vendor/verovio/verovio-toolkit-wasm.js"];
+
+async function prefetchForOffline() {
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+  if (navigator.connection && navigator.connection.saveData) return;
+  for (const url of OFFLINE_EXTRAS) {
+    if (await cached(url)) continue;
+    const t0 = performance.now();
+    try {
+      const resp = await fetch(url);
+      await resp.arrayBuffer();
+      Metrics.record("offline", { url, ok: resp.ok, ms: ms(t0) });
+    } catch (e) {
+      Metrics.record("offline", { url, ok: false, error: String(e.message || e) });
+    }
+  }
+}
+
 // ------------------------------------------------------------ documento
 //
 // state.doc e' il brano aperto: { kind: "song" | "example", id, file, name,
@@ -414,7 +441,9 @@ function applyCheck() {
     }
   });
   // gli avvisi senza un token colorato (intestazioni, errori di un blocco)
-  const warn = new Highlight(...c.warnings.filter((w) => w.end > w.start).map((w) => range(w.start, w.end)));
+  // le parti che l'app non suona hanno un avviso nell'elenco, non una sottolineatura
+  const warn = new Highlight(...c.warnings.filter((w) => w.end > w.start && w.kind !== "unsupported")
+    .map((w) => range(w.start, w.end)));
   warn.priority = 1;
   CSS.highlights.set("warn", warn);
 }
@@ -819,7 +848,7 @@ async function renderSongs() {
   const ex = $("examples");
   ex.innerHTML = "";
   for (const file of state.examples) {
-    ex.append(songItem(file.replace(/\.st$/, ""), t("sola lettura"),
+    ex.append(songItem(exampleTitle(file), t("sola lettura"),
                        state.doc && state.doc.kind === "example" && state.doc.file === file,
                        () => openExample(file, true), [
       [t("Crea una copia"), async () => duplicate(await exampleDoc(file))],
@@ -862,10 +891,16 @@ function songItem(title, subtitle, current, onOpen, actions) {
   return li;
 }
 
+// Il nome di un esempio da mostrare: "jazz_1_evening_swing__sfz__plugin-areverb.st"
+// diventa "jazz 1 evening swing" (dopo "__" ci sono i componenti usati).
+function exampleTitle(file) {
+  return file.replace(/\.st$/, "").split("__")[0].replace(/_/g, " ");
+}
+
 async function exampleDoc(file) {
   const bytes = new Uint8Array(await (await fetch("bundle/examples/" + encodeURIComponent(file))).arrayBuffer());
   const f = StFormat.fromBytes(bytes);
-  return { kind: "example", file, name: file.replace(/\.st$/, ""), text: f.text, eol: f.eol, bom: f.bom };
+  return { kind: "example", file, name: exampleTitle(file), text: f.text, eol: f.eol, bom: f.bom };
 }
 
 async function openExample(file, show) {
@@ -1007,8 +1042,7 @@ function silentWavUrl() {
 async function initAudio() {
   const ctx = state.ctx;
   const t0 = performance.now();
-  await ctx.audioWorklet.addModule("vendor/js-synthesizer/libfluidsynth-2.4.6.js");
-  await ctx.audioWorklet.addModule("vendor/js-synthesizer/js-synthesizer.worklet.js");
+  for (const url of WORKLET_MODULES) await ctx.audioWorklet.addModule(url);
   const synth = new JSSynth.AudioWorkletNodeSynthesizer();
   synth.init(ctx.sampleRate, { midiChannelCount: 32 });
   const node = synth.createAudioNode(ctx, { outputChannelCount: [2] });
@@ -1806,6 +1840,7 @@ async function main() {
     $("engineState").textContent = t("pronto in {s} s ({versions})",
                                      { s: (boot.total_ms / 1000).toLocaleString(I18n.locale, { maximumFractionDigits: 1 }), versions: boot.versions });
     call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 2) renderKeys(); }).catch(() => {});
+    setTimeout(prefetchForOffline, 5000);
     await restored;
     if (!state.doc) {
       setStatus(t("Scegli un brano"));

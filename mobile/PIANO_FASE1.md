@@ -143,3 +143,36 @@ Limiti:
 Non tradotti: la pagina `diagnostica.html` (strumento di misura) e i nomi degli argomenti delle funzioni sui pattern che vengono da st-language (per esempio `.invert(asse)`).
 
 Da provare: TalkBack su Android e VoiceOver su iPhone, criterio della tappa.
+
+**Tappa 7, chiusura, fatta (11 novembre 2026).** Provata nel browser del computer:
+
+- **Tutti gli esempi nell'app:** i 16 di `examples/` e quello di `examples/didattici/` (prima erano 4). `build.py` li prende tutti da sé. Nell'elenco i nomi lunghi si accorciano: `jazz_1_evening_swing__sfz__plugin-areverb__nam-twin.st` diventa «jazz 1 evening swing».
+- **Tutti si aprono, si leggono, suonano e hanno la partitura:**
+  - nel motore: lo verifica `test_every_example_opens_plays_and_has_a_score`;
+  - nel browser: provati `jazz_1_evening_swing` e `symphonic_2_waltz_of_the_lanterns`.
+
+  Nessuno dà errori o avvisi di battuta.
+- **Parti non supportate, con un avviso** (grigio, senza sottolineare il testo), uno per genere:
+  - strumenti SFZ o plugin: nell'app suonano con il SoundFont General MIDI;
+  - effetti e catena master: non si sentono;
+  - tracce audio: non suonano.
+
+  Il file le conserva come sono, perché l'app modifica solo il testo cambiato. Gli avvisi compaiono nei 10 esempi `__sfz__`, e solo in quelli.
+- **Senza rete dopo il primo avvio:** il primo avvio mette in cache, in background, anche FluidSynth per l'AudioWorklet, il SoundFont e verovio, che prima arrivavano solo al primo Play e alla prima Partitura. Non lo fa se il telefono chiede di risparmiare dati.
+  - Prova su un'origine nuova: primo avvio senza aprire brani, poi server spento. L'app si apre, il motore parte dall'istantanea, l'esempio si apre, la partitura si disegna e il Play suona.
+  - La prova ha trovato due file che restavano fuori dalla cache: i moduli dell'AudioWorklet e `js-synthesizer.js`, che la pagina carica prima che il service worker la controlli. Ora sono nell'elenco dei file scaricati in background.
+- **Bundle nell'ambiente della CI** (solo st-language, mido e numpy): si costruisce con tutti gli esempi (20 moduli di `core/`).
+
+`soundtext-engine` come pacchetto separato **non serve ancora**: l'app vive nello stesso repository e `build.py` prende i moduli di `core/` che usa, con il test che nessuno importi PySide6. Servirà se l'app passerà a un repository suo.
+
+## Criteri della fase 1
+
+| Criterio | Stato |
+| --- | --- |
+| Tutti gli esempi di `examples/` e `examples/didattici/` si aprono, si leggono e suonano (le parti non supportate con un avviso) | Fatto; verificato nel motore per tutti e nel browser per alcuni |
+| Un `.st` aperto e salvato senza modifiche resta identico byte per byte | Fatto (`mobile/tests/formato.test.cjs`, tutti gli esempi) |
+| 8 battute con la barra musicale in meno di 2 minuti (3 persone) | **Da provare sul telefono** |
+| Funziona senza rete dopo il primo avvio | Fatto nel browser del computer; **da provare sul telefono** (modalità aereo) |
+| Interfaccia nelle quattro lingue, con i testi di `locales/` | Fatto |
+
+Restano anche le prove su un iPhone e su un telefono Android di fascia bassa, che il documento chiede per chiudere ogni fase, e le prove con TalkBack e VoiceOver della tappa 6.
