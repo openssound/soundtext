@@ -147,6 +147,28 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 ::highlight(st-note) { background-color: var(--note-bg); color: var(--note-fg); }
 ::highlight(st-box) { background-color: var(--box-bg); }
 
+/* Barra musicale */
+.musicbar { border-top: 1px solid var(--line); background: var(--panel); }
+.suggest { display: flex; gap: 6px; overflow-x: auto; padding: 6px 8px 0; min-height: 0; scrollbar-width: none; }
+.suggest:empty { display: none; }
+.suggest button { flex: none; font: 13px ui-monospace, Menlo, Consolas, monospace; min-height: 32px; padding: 4px 10px;
+                  border-radius: 16px; background: var(--bg); }
+.barrow { display: flex; align-items: stretch; }
+.pages { display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+.pages button { flex: 1; border: none; border-radius: 0; background: none; font-size: 11px; min-height: 0;
+                padding: 2px 8px; color: var(--dim); }
+.pages button[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+.keys { flex: 1; display: flex; gap: 4px; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+.keys button { flex: none; min-width: 42px; min-height: 44px; padding: 4px 8px;
+               font: 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.keys button.wide { min-width: 64px; font-family: system-ui, sans-serif; font-size: 13px; }
+.keys button.play-bar { background: var(--accent); border-color: var(--accent); color: #fff; }
+.keys .sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
+/* Mentre si scrive si nasconde la barra delle schermate: piu' spazio sopra la tastiera */
+body.editing .tabs { display: none; }
+body.editing .player { padding-top: 4px; padding-bottom: 4px; }
+body.editing .play { width: 40px; height: 40px; font-size: 17px; }
+
 .player {
   display: flex; gap: 12px; align-items: center; padding: 8px 16px;
   border-top: 1px solid var(--line); background: var(--bg);

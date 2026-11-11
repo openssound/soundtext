@@ -251,6 +251,7 @@ function setupEditor() {
 // Senza un brano aperto il testo non si modifica (e dice cosa fare, vedi style.css).
 function setEditable(on) {
   const pre = $("text");
+  showMusicBar(on);
   pre.contentEditable = on ? (editor.plaintextOnly ? "plaintext-only" : "true") : "false";
   pre.classList.toggle("empty", !on);
 }
@@ -461,6 +462,327 @@ function goTo(start, end = start) {
   sel.removeAllRanges();
   r.collapse(true);
   sel.addRange(r);
+}
+
+// ------------------------------------------------------------ barra musicale
+//
+// Una riga di tasti sopra la tastiera del telefono, in tre pagine (note;
+// durate e struttura; accordi della tonalita', pattern e funzioni), con i
+// suggerimenti di core.completion e "▶ battuta". I tasti scrivono con
+// document.execCommand("insertText"), come la tastiera: l'annulla del
+// telefono e il salvataggio (evento input) funzionano come per il testo
+// scritto a mano.
+
+const bar = { page: 0, transforms: [], suggestTimer: null, suggestFor: null, playing: false };
+
+function textNode() {
+  const pre = $("text");
+  if (pre.childNodes.length > 1) pre.normalize();
+  return pre.firstChild && pre.firstChild.nodeType === Node.TEXT_NODE ? pre.firstChild : null;
+}
+
+// Posizione del cursore nel testo (null se il cursore non e' nell'editor)
+function caretPos() {
+  const sel = getSelection();
+  const node = textNode();
+  if (!sel.rangeCount || !node) return $("text").contains(sel.anchorNode) ? 0 : null;
+  const r = sel.getRangeAt(0);
+  if (r.endContainer === node) return r.endOffset;
+  if (r.endContainer === $("text")) return r.endOffset === 0 ? 0 : node.data.length;
+  return null;
+}
+
+function selectRange(start, end) {
+  const node = textNode();
+  if (!node) return false;
+  const r = new Range();
+  r.setStart(node, Math.min(start, node.data.length));
+  r.setEnd(node, Math.min(end, node.data.length));
+  const sel = getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  return true;
+}
+
+function typeText(s) {
+  $("text").focus({ preventScroll: true });
+  document.execCommand("insertText", false, s);
+}
+
+// La parola prima del cursore (fino allo spazio)
+function wordBefore(text, pos) {
+  let i = pos;
+  while (i > 0 && !/\s/.test(text[i - 1])) i--;
+  return text.slice(i, pos);
+}
+
+function needsSpaceBefore(text, pos) {
+  if (pos === 0) return false;
+  const prev = text[pos - 1];
+  if (/\s/.test(prev) || prev === "(" || prev === "[") return false;
+  return !/^\d+$/.test(wordBefore(text, pos));   // "2" + "c" = "2c": un moltiplicatore
+}
+
+// Un token nuovo, con lo spazio prima (se serve) e dopo.
+function insertToken(tok, trailing = true) {
+  if (!state.doc) return;
+  const pos = caretPos() ?? state.doc.text.length;
+  const text = state.doc.text;
+  const after = text[pos];
+  typeText((needsSpaceBefore(text, pos) ? " " : "") + tok + (trailing && !(after && /\s/.test(after)) ? " " : ""));
+}
+
+// Un pezzo che si attacca al token precedente: alterazioni, ottava, ")".
+function attach(suffix) {
+  if (!state.doc) return;
+  const pos = caretPos() ?? state.doc.text.length;
+  const text = state.doc.text;
+  if (pos > 0 && text[pos - 1] === " " && pos > 1 && !/\s/.test(text[pos - 2])) {
+    selectRange(pos - 1, pos);
+    typeText(suffix + " ");
+  } else {
+    typeText(suffix + (text[pos] && /\s/.test(text[pos]) ? "" : " "));
+  }
+}
+
+// Cancella il token prima del cursore (con lo spazio che lo segue).
+function deleteToken() {
+  if (!state.doc) return;
+  const pos = caretPos() ?? state.doc.text.length;
+  const text = state.doc.text;
+  let start = pos;
+  while (start > 0 && text[start - 1] === " ") start--;
+  while (start > 0 && !/\s/.test(text[start - 1])) start--;
+  if (start === pos) return;
+  selectRange(start, pos);
+  $("text").focus({ preventScroll: true });
+  document.execCommand("delete");
+}
+
+// ---- tonalita' e accordi
+
+const SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const FLAT_KEYS = new Set(["F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm"]);
+
+// La tonalita' in vigore al cursore: l'ultimo key= prima, altrimenti Tonalita:
+function keyAt(text, pos) {
+  const before = text.slice(0, pos);
+  const keys = [...before.matchAll(/(?:^|\s)key=([A-G][#b]?m?)\b/g)];
+  if (keys.length) return keys[keys.length - 1][1];
+  const head = text.match(/^(?:Tonalita|Tonalità|Key):\s*([A-G][#b]?m?)\b/m);
+  return head ? head[1] : "C";
+}
+
+// Gli accordi della scala (triadi, piu' la dominante con la settima)
+function diatonicChords(key) {
+  const minor = key.endsWith("m");
+  const tonic = minor ? key.slice(0, -1) : key;
+  let root = PC[tonic[0]] + (tonic[1] === "#" ? 1 : tonic[1] === "b" ? -1 : 0);
+  root = (root + 12) % 12;
+  const names = FLAT_KEYS.has(key) ? FLATS : SHARPS;
+  const steps = minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+  const qualities = minor ? ["m", "dim", "", "m", "m", "", ""] : ["", "m", "m", "", "", "m", "dim"];
+  const chords = steps.map((s, i) => names[(root + s) % 12] + qualities[i]);
+  chords.push(names[(root + 7) % 12] + "7");
+  return chords;
+}
+
+// ---- tasti
+
+function K(label, run, cls = "", aria = "") {
+  return { label, run, cls, aria };
+}
+const SEP = { sep: true };
+
+function pageKeys(page) {
+  const common = [SEP, K("⌫", deleteToken, "wide", "Cancella il token"), K("▶ battuta", playBarAtCaret, "wide play-bar")];
+  if (page === 0) {
+    return [
+      ..."cdefgab".split("").map((n) => K(n, () => insertToken(n))),
+      K("r", () => insertToken("r"), "", "pausa"),
+      SEP,
+      K("#", () => attach("#"), "", "diesis"), K("♭", () => attach("b"), "", "bemolle"),
+      K("*3", () => attach("*3")), K("*4", () => attach("*4")), K("*5", () => attach("*5")), K("*6", () => attach("*6")),
+      K("~", () => attach("~"), "", "legatura"),
+      ...common,
+    ];
+  }
+  if (page === 1) {
+    return [
+      ...["1:", "2:", "4:", "8:", "16:", "8T:"].map((g) => K(g, () => insertToken(g))),
+      SEP,
+      ...["2", "3", "4"].map((m) => K(m, () => insertToken(m, false), "", "moltiplicatore " + m)),
+      SEP,
+      K("|", () => insertToken("|"), "", "stanghetta"),
+      K("(", () => insertToken("(", false)), K(")", () => attach(")")),
+      K("[", () => insertToken("[", false)), K("]", () => attach("]")),
+      ...common,
+    ];
+  }
+  const text = state.doc ? state.doc.text : "";
+  const pos = caretPos() ?? text.length;
+  const patterns = (checks.last ? checks.last.blocks : []).filter((b) => b.kind === "pattern").map((b) => b.label);
+  return [
+    ...diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c))),
+    SEP,
+    ...patterns.map((p) => K(p, () => insertToken(p))),
+    ...(patterns.length ? [SEP] : []),
+    ...bar.transforms.map((t) => K(t.call, () => attach(t.call), "", t.help)),
+    ...common,
+  ];
+}
+
+function renderKeys() {
+  const box = $("keys");
+  box.innerHTML = "";
+  for (const k of pageKeys(bar.page)) {
+    if (k.sep) {
+      const s = document.createElement("span");
+      s.className = "sep";
+      box.append(s);
+      continue;
+    }
+    const b = document.createElement("button");
+    b.textContent = k.label;
+    if (k.cls) b.className = k.cls;
+    if (k.aria) { b.title = k.aria; b.setAttribute("aria-label", k.aria === k.label ? k.label : `${k.label}, ${k.aria}`); }
+    b.onclick = () => Promise.resolve(k.run()).catch(showError);
+    box.append(b);
+  }
+}
+
+function setPage(page) {
+  bar.page = page;
+  for (const b of document.querySelectorAll(".pages button")) {
+    b.setAttribute("aria-selected", String(Number(b.dataset.page) === page));
+  }
+  renderKeys();
+}
+
+// ---- suggerimenti
+
+function scheduleSuggest() {
+  clearTimeout(bar.suggestTimer);
+  bar.suggestTimer = setTimeout(suggest, 150);
+}
+
+async function suggest() {
+  const box = $("suggest");
+  const pos = caretPos();
+  if (!state.doc || pos === null || document.activeElement !== $("text")) { box.innerHTML = ""; return; }
+  const text = state.doc.text;
+  const word = wordBefore(text, pos);
+  if (!word || word.length < 1) { box.innerHTML = ""; return; }
+  const key = text + "\u0000" + pos;
+  bar.suggestFor = key;
+  let r;
+  try {
+    r = (await call("complete", { args: [text, pos] })).result;
+  } catch (e) {
+    return;
+  }
+  if (bar.suggestFor !== key || state.doc.text !== text) return;
+  box.innerHTML = "";
+  for (const item of r.items) {
+    const b = document.createElement("button");
+    b.textContent = item.text;
+    b.title = item.label;
+    b.onclick = () => {
+      if (state.doc.text !== text) return;
+      selectRange(r.start, r.end);
+      const after = text[r.end];
+      typeText(item.text + (after && /\s/.test(after) ? "" : " "));
+      box.innerHTML = "";
+    };
+    box.append(b);
+  }
+}
+
+// ---- ▶ battuta: suona la battuta sotto il cursore
+
+async function playBarAtCaret() {
+  const resumed = unlockInGesture();
+  if (!state.doc) return;
+  const pos = caretPos() ?? 0;
+  if (state.playing) await pause();
+  await resumed;
+  if (!state.song || state.song.text !== state.doc.text) {
+    if (!(await analyze())) return;
+  }
+  const song = state.song;
+  await song.spansReady;
+  const s = song.spans;
+  if (!s) return;
+  // lo span piu' profondo che contiene il cursore, altrimenti il primo dopo
+  let best = -1, next = -1;
+  for (let i = 0; i < s.length; i += 6) {
+    if (s[i + 1] <= pos && pos <= s[i + 2]) {
+      if (best < 0 || s[i + 5] > s[best + 5]) best = i;
+    } else if (s[i + 1] > pos && (next < 0 || s[i + 1] < s[next + 1])) {
+      next = i;
+    }
+  }
+  const at = best >= 0 ? best : next;
+  if (at < 0) { setStatus("Il cursore non è su una nota da suonare"); return; }
+  const [start, end] = (await call("bar", { args: [song.text, s[at + 3]] })).result;
+  if (!state.audioReady) {
+    setStatus("Preparo il sintetizzatore e il SoundFont…");
+    state.audioReady = initAudio();
+  }
+  await state.audioReady;
+  const keep = state.pausedTick;
+  const stop = { beat: end, restore: keep };
+  state.stopAtBeat = stop;
+  await startPlayer(Math.round(start * TICKS_PER_BEAT));
+  setStatus(`Battuta dal battito ${start} al ${end}`);
+  requestAnimationFrame(frame);
+  watchBarEnd(stop);
+}
+
+// Ferma "▶ battuta" alla fine della battuta. Un timer e non il disegno dei
+// fotogrammi (requestAnimationFrame), che si sospende quando la pagina non
+// si vede.
+async function watchBarEnd(stop) {
+  while (state.stopAtBeat === stop && state.playing) {
+    const tick = await state.synth.retrievePlayerCurrentTick();
+    if (state.stopAtBeat !== stop) return;
+    if (tick / TICKS_PER_BEAT >= stop.beat) {
+      state.stopAtBeat = null;
+      await pause();
+      state.pausedTick = stop.restore;
+      clearHighlight();
+      setStatus("Fine della battuta");
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 40));
+  }
+}
+
+function setupMusicBar() {
+  for (const b of document.querySelectorAll(".pages button")) b.onclick = () => setPage(Number(b.dataset.page));
+  // I tasti non prendono il fuoco: il cursore e la tastiera restano nel testo.
+  $("musicbar").addEventListener("pointerdown", (ev) => {
+    if (ev.target.closest("button")) ev.preventDefault();
+  });
+  const pre = $("text");
+  pre.addEventListener("focus", () => document.body.classList.add("editing"));
+  pre.addEventListener("blur", () => setTimeout(() => {
+    if (document.activeElement !== pre) document.body.classList.remove("editing");
+  }, 100));
+  pre.addEventListener("input", scheduleSuggest);
+  document.addEventListener("selectionchange", () => {
+    if (document.activeElement === pre) {
+      scheduleSuggest();
+      if (bar.page === 2) renderKeys();      // gli accordi seguono la tonalita' al cursore
+    }
+  });
+  setPage(0);
+}
+
+function showMusicBar(on) {
+  $("musicbar").hidden = !on;
 }
 
 // ------------------------------------------------------------ brani
@@ -725,6 +1047,7 @@ async function play() {
   const tTap = performance.now();
   const resumed = unlockInGesture();
   if (state.playing) return pause();
+  state.stopAtBeat = null;
   try {
     await resumed;
     if (!state.doc) return;
@@ -972,6 +1295,7 @@ async function main() {
     $("view-brani").prepend(warn);
   }
   setupEditor();
+  setupMusicBar();
   for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => setView(b.dataset.view);
   let view = "brani";
   try {
@@ -1036,6 +1360,7 @@ async function main() {
       discarded: document.wasDiscarded === true, started_hidden: startedHidden,
     });
     $("engineState").textContent = `pronto in ${(t.total_ms / 1000).toFixed(1)} s (${t.versions})`;
+    call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 2) renderKeys(); }).catch(() => {});
     await restored;
     if (!state.doc) {
       setStatus("Scegli un brano");

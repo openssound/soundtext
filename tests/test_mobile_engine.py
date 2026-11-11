@@ -248,3 +248,28 @@ def test_check_colours_like_the_desktop_editor():
     assert colours["4:"] == "state" and colours["c"] == "note" and colours["%A"] == "ref"
     assert colours["Am7"] == "chord" and colours["r"] == "rest" and colours["|"] == "bar"
     assert colours["// fine"] == "comment"
+
+
+def test_completion_bar_and_transforms_for_the_music_bar():
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    text = ("ST: 2.6\nTempo: 100 BPM\nMetrica: 3/4\n\nPattern %Tema:\n  4: c d e |\n\n"
+            "Piano:\n  4: %Tema Cma\n\nDrums:\n  4: hi\n")
+    engine.check_text(text)
+    # come l'editor di SoundText: pattern, qualita' d'accordo, percussioni
+    pos = text.index("Cma") + 3
+    r = engine.complete(text, pos)
+    assert text[r["start"]:r["end"]] == "Cma"
+    assert "Cmaj7" in [i["text"] for i in r["items"]]
+    r = engine.complete(text[:pos - 3] + "%Te" + text[pos:], pos)
+    assert [i["text"] for i in r["items"]] == ["%Tema"]
+    pos = text.index("hi") + 2
+    assert "hihat" in [i["text"] for i in engine.complete(text, pos)["items"]]
+    # la battuta di un battito, in 3/4
+    assert engine.bar_bounds(text, 4.5) == [3.0, 6.0]
+    assert engine.bar_bounds(text, 0) == [0.0, 3.0]
+    calls = [t["call"] for t in engine.transforms()]
+    assert any(c.startswith(".retro") for c in calls) and all(c.startswith(".") for c in calls)

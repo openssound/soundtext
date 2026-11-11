@@ -27,6 +27,7 @@ ENGINE_MODULES = (
     "core.model",
     "core.instruments",
     "core.syntax",
+    "core.completion",
 )
 
 RE_PATTERN_HDR = re.compile(r"^Pattern\s+%([\w.\-]+)\s*:\s*$")
@@ -239,6 +240,7 @@ def check_text(text: str, name: str = "Brano") -> dict:
     except Exception as e:                     # il file intero non si legge
         project = None
         out["error"] = str(e)
+    _last_check.update(text=text, project=project)
     patterns = project.patterns if project else {}
     tracks = [t for t in project.tracks if not t.is_audio] if project else []
     index = {t.name: i for i, t in enumerate(tracks)}
@@ -350,6 +352,84 @@ def check_text(text: str, name: str = "Brano") -> dict:
         pos += len(line) + 1
     out["warnings"].sort(key=lambda w: w["start"])
     return out
+
+
+# Il brano dell'ultimo controllo: il completamento, che si chiede a ogni
+# tasto, usa i suoi pattern e strumenti invece di rileggere il file.
+_last_check = {"text": None, "project": None}
+
+
+def _project_for(text: str):
+    from core.project_io import parse_project_text
+    if _last_check["project"] is None or _last_check["text"] is None:
+        try:
+            _last_check.update(text=text, project=parse_project_text(text, "Brano"))
+        except Exception:
+            return None
+    return _last_check["project"]
+
+
+def _instrument_at(text: str, pos: int, project):
+    """Lo strumento del blocco (box o traccia) in cui sta 'pos', None in un
+    pattern o fuori dalla notazione."""
+    if project is None:
+        return None
+    tracks = {t.name: t for t in project.tracks if not t.is_audio}
+    for b in file_blocks(text):
+        if b["hstart"] <= pos <= b["end"]:
+            m = RE_BOX_HDR.match(b["header"])
+            name = m.group(1) if m else Engine._track_of_header(b["header"], {n: 0 for n in tracks})
+            return tracks[name].instrument if name in tracks else None
+    return None
+
+
+def complete(text: str, pos: int) -> dict:
+    """I suggerimenti per la parola che finisce in 'pos', come l'editor di
+    SoundText (core.completion): {start, end, items: [{text, label}]}; la
+    parola da sostituire e' text[start:end]."""
+    from core.completion import completions_for_word, current_word_bounds
+    start, end = current_word_bounds(text, pos)
+    word = text[start:end]
+    project = _project_for(text)
+    try:
+        items = completions_for_word(word, patterns=project.patterns if project else {},
+                                     instrument=_instrument_at(text, pos, project), text_before=text[:start])
+    except Exception:
+        items = []
+    return {"start": start, "end": end,
+            "items": [{"text": str(c), "label": getattr(c, "label", str(c))} for c in items[:20]]}
+
+
+def transforms() -> list:
+    """Le funzioni sui pattern per la barra musicale: nome nella lingua
+    dell'interfaccia, argomenti e spiegazione."""
+    from core.completion import _italian
+    from st_language.transform import list_transforms
+    italian = _italian()
+    out = []
+    for t in list_transforms():
+        args = [a["name"] for a in t["arguments"] if a["required"]] or [a["name"] for a in t["arguments"]][:1]
+        name = t["alias"] if italian else t["name"]
+        out.append({"call": f".{name}({','.join(args)})" if args else f".{name}", "help": t["help"]})
+    return out
+
+
+def bar_bounds(text: str, beat: float) -> list:
+    """[inizio, fine] in battiti della battuta che contiene 'beat', con la
+    metrica del brano (cambi e levare compresi)."""
+    from st_language.notation import bar_starts
+    project = _project_for(text)
+    if project is None:
+        return [0.0, 4.0]
+    previous = 0.0
+    if project.pickup:
+        previous = 0.0
+    for start in bar_starts(project.time_sig, project.metrica_changes, project.pickup):
+        start = float(start)
+        if start > beat + 1e-9:
+            return [previous, start]
+        previous = start
+    return [previous, previous + 4.0]
 
 
 def flat_spans(spans) -> list:

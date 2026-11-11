@@ -61,3 +61,22 @@ Trovato durante la tappa: una traccia con un nome di strumento sconosciuto (per 
 - **Test**: in `tests/test_mobile_engine.py` (12 test), su avvisi, colori e assenza di falsi avvisi negli esempi; `core.syntax` è fra i moduli controllati per PySide6.
 
 Non fatto: la modifica isolata di un solo blocco (si modifica sempre il file intero; «Vai a» ci porta). Si può aggiungere con la barra musicale della tappa 3, se servirà.
+
+**Tappa 3, fatta (11 novembre 2026), da provare sul telefono.** Provata nel browser del computer, nel formato del telefono:
+
+- **Barra musicale** in fondo alla schermata Testo, sopra la tastiera del telefono; mentre si scrive, la barra delle schermate sparisce per lasciare spazio. I tasti non tolgono il fuoco al testo, così la tastiera resta aperta. Scrivono come la tastiera (`execCommand("insertText")`): l'annulla del telefono e il salvataggio automatico funzionano come per il testo battuto a mano.
+- **Tre pagine:**
+  - **Note:** `c d e f g a b r`; `#`, `♭`, `*3`–`*6` e `~` si attaccano alla nota prima.
+  - **Durate e struttura:** `1:` `2:` `4:` `8:` `16:` `8T:`; i moltiplicatori `2` `3` `4` si attaccano alla nota dopo (`2g`); `|`, `(` `)`, `[` `]`.
+  - **Accordi e pattern:** gli accordi della scala nella tonalità al cursore (l'ultimo `key=` prima, altrimenti `Tonalita:`), la dominante con la settima, i pattern del brano e le funzioni sui pattern (`.retrogrado`, `.inverti(asse)`…).
+- **Spazi:** ogni tasto mette lo spazio giusto prima e dopo; `⌫` cancella il token prima del cursore.
+- **Suggerimenti** sopra i tasti: quelli dell'editor di SoundText (`core/completion.py`), per esempio `Cma` → `Cmaj7`, `%Te` → `%Tema`, `hi` → `hihat`; un tocco sostituisce la parola.
+- **▶ battuta:** suona la battuta del token sotto il cursore e si ferma alla sua fine (circa 10 ms di scarto). Le battute si contano con la metrica del brano (`bar_starts` di st-language, con cambi e levare), poi il lettore torna dove era.
+- **Test:** completamento, battuta e funzioni in `tests/test_mobile_engine.py` (13 test).
+
+Limiti:
+
+- gli stili di voicing (`Am7.drop2`) si suggeriscono solo nei box e nelle tracce, perché in un pattern non c'è uno strumento;
+- con caratteri fuori dal piano di base (emoji) nel testo, le posizioni del cursore mandate al motore possono sfasarsi.
+
+Criterio da verificare: 8 battute scritte in meno di 2 minuti, con 3 persone.

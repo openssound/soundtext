@@ -41,6 +41,18 @@
     <ul id="warnings" class="warnings" hidden></ul>
     <pre id="text" aria-label="Testo del brano" spellcheck="false" autocapitalize="off" autocorrect="off"
          autocomplete="off" translate="no"></pre>
+    <!-- Barra musicale: sopra la tastiera del telefono mentre si scrive -->
+    <div id="musicbar" class="musicbar" role="toolbar" aria-label="Barra musicale" hidden>
+      <div id="suggest" class="suggest" aria-label="Suggerimenti"></div>
+      <div class="barrow">
+        <div class="pages" role="tablist" aria-label="Pagine della barra">
+          <button data-page="0" role="tab" aria-selected="true">Note</button>
+          <button data-page="1" role="tab" aria-selected="false">Durate</button>
+          <button data-page="2" role="tab" aria-selected="false">Accordi</button>
+        </div>
+        <div id="keys" class="keys"></div>
+      </div>
+    </div>
   </section>
 
   <!-- Lettore -->

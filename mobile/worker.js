@@ -263,6 +263,14 @@ _r["categories"] = engine.syntax_categories()
 _json.dumps(_r)
 `);
       post({ type: "checked", id: msg.id, result: JSON.parse(json), ms: ms(t0) });
+    } else if (msg.cmd === "complete" || msg.cmd === "transforms" || msg.cmd === "bar") {
+      // barra musicale: suggerimenti, funzioni sui pattern, battuta sotto il cursore
+      py.globals.set("_args", py.toPy(msg.args || []));
+      const json = py.runPython(`
+import json as _json
+_json.dumps(getattr(engine, ${JSON.stringify(msg.cmd === "bar" ? "bar_bounds" : msg.cmd)})(*_args))
+`);
+      post({ type: msg.cmd, id: msg.id, result: JSON.parse(json) });
     } else if (msg.cmd === "memory") {
       post({ type: "memory", id: msg.id, heap_bytes: wasmHeap() });
     }
