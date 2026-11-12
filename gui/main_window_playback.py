@@ -200,6 +200,7 @@ class PlaybackMixin:
         self.playback_progress.setFormat("00:00 / 00:00")
         self.levels.finish()
         self.track_highlight.clear()
+        self._show_beat_in_score(None)
         self.arrangement_view.set_playhead_beat(None)
         # Riporta i campi Tempo/Metrica al valore "a riposo" del progetto
         # (battuta 1): durante l'esecuzione potevano mostrare un cambio
@@ -287,6 +288,7 @@ class PlaybackMixin:
         )
 
         self.track_highlight.update(elapsed_beats_total)
+        self._show_beat_in_score(elapsed_beats_total)
         self.arrangement_view.set_playhead_beat(elapsed_beats_total)
         self.levels.update()
         self.metronome_engine.resync()
@@ -310,8 +312,16 @@ class PlaybackMixin:
             self.playback_progress.setValue(100)
             self.levels.finish()
             self.track_highlight.clear()
+            self._show_beat_in_score(None)
             self.arrangement_view.set_playhead_beat(None)
             self._sync_playback_fields(self.project.tempo_bpm, self.project.time_sig)
+
+    def _show_beat_in_score(self, beat):
+        """Le note che suonano evidenziate nella vista Partitura, se e' stata
+        aperta (gui.score_view.ScoreDialog.show_playing_beat); None le spegne."""
+        score = getattr(self, "_score_dialog", None)
+        if score is not None:
+            score.show_playing_beat(beat)
 
     # ------------------------------------------------------ salto e loop A-B
 

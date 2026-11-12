@@ -18,7 +18,8 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from bisect import bisect_right
+from typing import List, Optional, Tuple
 
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
@@ -106,6 +107,12 @@ def _get_toolkit():
 
 def render_pages(musicxml: str, scale: int = DEFAULT_SCALE) -> List[str]:
     """Le pagine della partitura come SVG gia' adatti a QtSvg."""
+    return render_pages_with_timing(musicxml, scale)[0]
+
+
+def render_pages_with_timing(musicxml: str, scale: int = DEFAULT_SCALE) -> Tuple[List[str], "NoteTiming"]:
+    """Le pagine (come render_pages) e quali note suonano a ogni beat, per
+    evidenziarle durante l'ascolto."""
     tk = _get_toolkit()
     tk.setOptions({
         "pageWidth": PAGE_WIDTH, "pageHeight": PAGE_HEIGHT, "scale": scale,
@@ -113,7 +120,50 @@ def render_pages(musicxml: str, scale: int = DEFAULT_SCALE) -> List[str]:
     })
     if not tk.loadData(musicxml):
         raise ValueError("Verovio non ha potuto leggere la partitura")
-    return [qt_svg(tk.renderToSVG(n)) for n in range(1, tk.getPageCount() + 1)]
+    pages = [qt_svg(tk.renderToSVG(n)) for n in range(1, tk.getPageCount() + 1)]
+    try:
+        timing = NoteTiming(tk.renderToTimemap({}), pages)
+    except Exception:       # senza tempi la partitura si vede lo stesso
+        timing = NoteTiming([], pages)
+    return pages, timing
+
+
+_NOTE_GROUP = re.compile(r'<g\b[^>]*\bclass="note"[^>]*>')
+_ID_ATTR = re.compile(r'\bid="([^"]+)"')
+
+
+class NoteTiming:
+    """Le note della partitura che suonano a un dato beat. Il qstamp della
+    mappa dei tempi di Verovio conta le semiminime dall'inizio del brano,
+    come i beat di SoundText (anche in 6/8 e con l'anacrusi), cosi' il beat
+    della riproduzione si usa direttamente.
+
+    notes_at(beat) da' le coppie (indice della pagina, id della nota)."""
+
+    def __init__(self, timemap, pages: List[str]):
+        page_of = {}
+        for n, svg in enumerate(pages):
+            for tag in _NOTE_GROUP.findall(svg):
+                found = _ID_ATTR.search(tag)
+                if found:
+                    page_of[found.group(1)] = n
+        self._beats: List[float] = []
+        self._notes: List[Tuple[Tuple[int, str], ...]] = []
+        sounding = set()
+        for event in timemap:
+            sounding.difference_update(event.get("off", ()))
+            sounding.update(event.get("on", ()))
+            beat = float(event.get("qstamp", 0.0))
+            notes = tuple(sorted((page_of[i], i) for i in sounding if i in page_of))
+            if self._beats and self._beats[-1] == beat:
+                self._notes[-1] = notes
+            else:
+                self._beats.append(beat)
+                self._notes.append(notes)
+
+    def notes_at(self, beat: float) -> Tuple[Tuple[int, str], ...]:
+        i = bisect_right(self._beats, beat) - 1
+        return self._notes[i] if i >= 0 else ()
 
 
 def render_snippet(musicxml: str, measures: int = 4, width: int = 1500, scale: int = 40) -> str:
