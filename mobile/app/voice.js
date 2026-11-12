@@ -321,6 +321,26 @@ async function toggleVoice() {
   return startVoice();
 }
 
+// Apre il modello della lingua. L'indirizzo e' assoluto: il worker di Vosk
+// nasce da un blob e risolverebbe un indirizzo relativo sulla radice del sito,
+// non sulla cartella dell'app. Gli errori del worker chiudono l'attesa: da
+// sola Vosk.createModel non li ascolta e resterebbe ferma.
+function loadVoiceModel(lang) {
+  const url = new URL(`vendor/vosk/${lang}.tar.gz`, document.baseURI).href;
+  return new Promise((resolve, reject) => {
+    const model = new Vosk.Model(url);
+    const fail = (message) => {
+      clearTimeout(timer);
+      try { model.terminate(); } catch (e) {}
+      reject(new Error(t("il modello della voce non si è caricato") + (message ? ` (${message})` : "")));
+    };
+    const timer = setTimeout(() => fail(""), VOICE_LOAD_MS);
+    model.on("load", (m) => { if (m.result) { clearTimeout(timer); resolve(model); } else fail(""); });
+    model.on("error", (m) => fail(m.error || ""));
+    if (model.worker) model.worker.onerror = (ev) => fail(ev.message || "");
+  });
+}
+
 async function startVoice() {
   // dentro il tocco: il contesto audio e il permesso del microfono
   unlockInGesture();
@@ -342,11 +362,7 @@ async function startVoice() {
       if (!window.Vosk) await loadScript("vendor/vosk/vosk.js");
       await state.booted;
       if (voice.model) voice.model.terminate();
-      // se il worker di Vosk non parte la promessa non si chiude mai: un limite
-      voice.model = await Promise.race([
-        Vosk.createModel(`vendor/vosk/${lang}.tar.gz`),
-        new Promise((_r, reject) => setTimeout(() => reject(new Error(t("il modello della voce non si è caricato"))), VOICE_LOAD_MS)),
-      ]);
+      voice.model = await loadVoiceModel(lang);
       voice.modelLang = lang;
     }
     const words = (await call("dictation_words", { args: [state.doc.text, lang] })).result;
