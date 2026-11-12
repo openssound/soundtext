@@ -2,7 +2,7 @@
 Vista Partitura: le tracce del progetto su pentagramma, impaginate da
 Verovio (vedi core.score_render) a partire dal MusicXML dell'esportazione,
 aggiornate mentre si scrive; da qui si esporta in PDF e si stampa.
-Durante l'ascolto le note che suonano sono evidenziate e la vista le segue
+Durante l'ascolto le note che suonano diventano rosse e la vista le segue
 (la finestra principale chiama show_playing_beat a ogni scatto della barra
 di avanzamento).
 
@@ -16,7 +16,7 @@ partitura dell'ultima versione valida, con un avviso.
 from typing import Callable, List, Optional
 
 from PySide6.QtCore import QByteArray, QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen
+from PySide6.QtGui import QColor, QImage, QPageLayout, QPageSize, QPainter, QPdfWriter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QMessageBox, QPushButton,
@@ -35,10 +35,8 @@ PAGE_GAP = 16
 ZOOM_STEPS = [50, 67, 80, 100, 125, 150, 200]
 REFRESH_POLL_MS = 500
 REFRESH_DELAY_MS = 400
-# Le note che suonano: riquadro arancione semitrasparente sopra la nota.
-PLAYING_FILL = QColor(255, 140, 0, 90)
-PLAYING_BORDER = QColor(230, 110, 0)
-PLAYING_PAD = 3
+# Le note che suonano si ridisegnano in rosso sopra quelle nere.
+PLAYING_COLOR = QColor(220, 30, 30)
 
 INSTALL_HINT = "pip install verovio"
 
@@ -165,13 +163,34 @@ class ScorePagesWidget(QWidget):
         target = page_rects[page]
         sx, sy = target.width() / view.width(), target.height() / view.height()
         return QRectF(target.x() + (box.x() - view.x()) * sx, target.y() + (box.y() - view.y()) * sy,
-                      box.width() * sx, box.height() * sy).adjusted(-PLAYING_PAD, -PLAYING_PAD,
-                                                                   PLAYING_PAD, PLAYING_PAD)
+                      box.width() * sx, box.height() * sy)
+
+    def _highlight_notes(self):
+        """(pagina, id, riquadro nel widget) delle note evidenziate."""
+        page_rects = self._page_rects()
+        notes = ((page, note_id, self._note_rect(page_rects, page, note_id)) for page, note_id in self._highlight)
+        return [n for n in notes if n[2] is not None]
 
     def _highlight_rects(self) -> List[QRectF]:
-        page_rects = self._page_rects()
-        rects = (self._note_rect(page_rects, page, note_id) for page, note_id in self._highlight)
-        return [r for r in rects if r is not None]
+        return [rect for _page, _id, rect in self._highlight_notes()]
+
+    def _paint_playing_note(self, painter: QPainter, page: int, note_id: str, rect: QRectF):
+        """La nota ridisegnata da sola in rosso: QtSvg non cambia il colore
+        di un elemento, quindi la si disegna in un'immagine trasparente e se
+        ne colora la forma."""
+        ratio = self.devicePixelRatioF()
+        image = QImage(max(1, round(rect.width() * ratio) + 1), max(1, round(rect.height() * ratio) + 1),
+                       QImage.Format_ARGB32_Premultiplied)
+        image.setDevicePixelRatio(ratio)
+        image.fill(Qt.transparent)
+        local = QRectF(0, 0, rect.width(), rect.height())
+        note_painter = QPainter(image)
+        note_painter.setRenderHint(QPainter.Antialiasing)
+        self._renderers[page].render(note_painter, note_id, local)
+        note_painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        note_painter.fillRect(local, PLAYING_COLOR)
+        note_painter.end()
+        painter.drawImage(rect.topLeft(), image)
 
     def set_highlight(self, notes) -> Optional[QRectF]:
         """Evidenzia queste note ((pagina, id), vedi NoteTiming.notes_at);
@@ -182,7 +201,7 @@ class ScorePagesWidget(QWidget):
         self._highlight = tuple(notes)
         new = self._highlight_rects()
         for rect in old + new:
-            self.update(rect.toAlignedRect().adjusted(-2, -2, 2, 2))
+            self.update(rect.toAlignedRect().adjusted(-3, -3, 3, 3))
         if not new:
             return None
         bounds = new[0]
@@ -202,13 +221,9 @@ class ScorePagesWidget(QWidget):
                 continue
             painter.fillRect(rect, QColor("white"))
             renderer.render(painter, rect)
-        if self._highlight:
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.setPen(QPen(PLAYING_BORDER, 1.2))
-            painter.setBrush(PLAYING_FILL)
-            for rect in self._highlight_rects():
-                if rect.intersects(area):
-                    painter.drawRoundedRect(rect, 3, 3)
+        for page, note_id, rect in self._highlight_notes():
+            if rect.intersects(area):
+                self._paint_playing_note(painter, page, note_id, rect)
         painter.end()
 
 
