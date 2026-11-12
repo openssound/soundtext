@@ -431,7 +431,9 @@ def check_text(text: str, name: str = "Brano") -> dict:
             suggestion = suggest_instrument(instrument)
             if suggestion:
                 message += " " + tr("Forse intendevi «{suggestion}»?", suggestion=suggestion)
-            warn(hstart, hend, "ignored", message)
+            # da st-language 2.12.2 lo dice gia' il lettore dei file (avviso "file", qui sotto)
+            if text.count("\n", 0, hstart) + 1 not in {line for line, _m in project.file_warnings}:
+                warn(hstart, hend, "ignored", message)
 
     # parti del file che l'app non suona (restano nel file come sono)
     if project:
@@ -1108,10 +1110,12 @@ def generator_choices(text: str = "") -> dict:
 
 
 def _has_short_header(instrument: str) -> bool:
-    """«Bass:» vale solo per gli strumenti del catalogo; gli altri («Violin»,
-    «Organ») si scrivono «Traccia Nome [Strumento]:»."""
+    """«Bass:» vale per gli strumenti del catalogo e, da st-language 2.12.2,
+    per i nomi General MIDI scritti per intero («Flute:», «Violin:»); gli
+    altri si scrivono «Traccia Nome [Strumento]:»."""
     from core.instruments import all_instruments
-    return instrument in all_instruments()
+    from st_language.instruments import is_instrument_name
+    return instrument in all_instruments() or is_instrument_name(instrument)
 
 
 def add_track(text: str, instrument: str, body: str, name: Optional[str] = None) -> dict:

@@ -139,7 +139,11 @@ def build():
     # le lingue della dettatura: i modelli di Vosk scaricati da scarica_vendor.sh
     vosk = os.path.join(HERE, "vendor", "vosk")
     voice = sorted(f[:-7] for f in os.listdir(vosk) if f.endswith(".tar.gz")) if os.path.isdir(vosk) else []
+    # le wheel che il motore carica (st-language, mido): l'elenco di scarica_vendor.sh
+    wheels_json = os.path.join(HERE, "vendor", "wheels", "wheels.json")
+    wheels = json.load(open(wheels_json, encoding="utf-8")) if os.path.exists(wheels_json) else None
     info = {"core_modules": modules, "examples": EXAMPLES, "languages": languages, "voice": voice,
+            "wheels": wheels,
             "engine_zip_bytes": os.path.getsize(zpath)}
     with open(os.path.join(BUNDLE, "files.json"), "w", encoding="utf-8") as f:
         json.dump(info, f, indent=1)

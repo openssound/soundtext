@@ -76,7 +76,10 @@ async function fetchBuffer(url) {
 // I file del motore: engine.zip in /app, le wheel in site-packages.
 async function fetchFiles() {
   const files = await (await fetch("bundle/files.json")).json();
-  const wheelNames = await (await fetch("vendor/wheels/wheels.json")).json();
+  // L'elenco delle wheel arriva con il bundle (prima la rete): vendor/ resta
+  // in cache per sempre, e un wheels.json vecchio darebbe al motore nuovo
+  // la libreria vecchia.
+  const wheelNames = files.wheels || await (await fetch("vendor/wheels/wheels.json")).json();
   const urls = [...wheelNames.map((w) => "vendor/wheels/" + w), ...EXTRA_WHEELS];
   const [zip, ...wheels] = await Promise.all([fetchBuffer("bundle/engine.zip"), ...urls.map(fetchBuffer)]);
   return { zip, wheels, urls, coreModules: files.core_modules };

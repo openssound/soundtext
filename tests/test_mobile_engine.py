@@ -222,15 +222,19 @@ def _check(text):
 
 
 def test_check_finds_ignored_tracks_errors_and_bar_warnings():
-    text = ("ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  4: c d e |\n\nBasso:\n  4: c d e f |\n\n"
+    text = ("ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  4: c d e |\n\nBassoo:\n  4: c d e f |\n\n"
             "Traccia Lead [Violinoo]:\n  4: c d e f |\n\nPattern %A:\n  4: c d zz |\n")
     _, result = _check(text)
-    kinds = {w["kind"]: w for w in result["warnings"]}
-    assert set(kinds) == {"bar", "ignored", "file", "error"}
-    # la '|' della battuta corta, il blocco "Basso:" saltato, il pattern che non si legge
+    kinds = {w["kind"] for w in result["warnings"]}
+    assert kinds == {"bar", "file", "error"}
+    first = {w["kind"]: w for w in reversed(result["warnings"])}
+    kinds = first
+    # la '|' della battuta corta, il blocco "Bassoo:" saltato (lo dice il lettore
+    # dei file, da st-language 2.12.2: un avviso solo), il pattern che non si legge
     assert text[kinds["bar"]["start"]] == "|"
-    assert text[kinds["ignored"]["start"]:kinds["ignored"]["end"]] == "Basso:"
-    assert "basso" in kinds["ignored"]["message"]
+    files = [w for w in result["warnings"] if w["kind"] == "file"]
+    assert [text[w["start"]:w["end"]] for w in files] == ["Bassoo:", "Traccia Lead [Violinoo]:"]
+    assert "Bassoon" in files[0]["message"]
     assert text[kinds["error"]["start"]:kinds["error"]["end"]] == "Pattern %A:"
     assert {b["label"] for b in result["blocks"]} >= {"Piano", "Lead", "%A"}
 
@@ -490,12 +494,21 @@ def test_dictate_track_adds_an_empty_track_ready_to_dictate():
     assert [t.name for t in parse_project_text(dictated, "x").tracks] == ["Piano", "Bass"]
     again = engine.dictate_track(dictated, "bass", "en")
     assert again["name"] == "Bass 2"
-    # uno strumento fuori dal catalogo non ha la forma breve: «Traccia Violino
-    # [Violin]:» (se un altro test l'ha gia' messo nel catalogo, «Violin:»)
+    # da st-language 2.12.2 anche gli strumenti fuori dal catalogo hanno la forma breve
     violin = engine.dictate_track(source, "violino", "it")
-    assert violin["text"].endswith(("\nTraccia Violino [Violin]:\n  ", "\nViolin:\n  "))
+    assert violin["text"].endswith("\nViolin:\n  ")
     track = parse_project_text(violin["text"] + "4: c d e f\n", "x").tracks[1]
     assert track.name == violin["name"] and track.instrument.resolved and track.instrument.gm_program == 40
     strings = engine.dictate_track(source, "strings", "en")
     assert parse_project_text(strings["text"] + "1: c\n", "x").tracks[1].instrument.gm_program == 48
     assert engine.dictate_track(source, "pippo", "it") is None
+
+
+def test_short_headers_and_odd_meters_of_st_language_2122():
+    """st-language 2.12.2: «Flute:» e «Basso:» sono tracce, e una metrica che
+    il MIDI non sa scrivere (4/6) non ferma l'analisi."""
+    engine, result = _check("ST: 2.6\nTempo: 100 BPM\n\nBasso:\n  4: c d e f |\n\nFlute:\n  4: c d e f |\n")
+    assert result["warnings"] == []
+    assert {b["label"] for b in result["blocks"]} == {"Basso", "Flute"}
+    song = engine.analyze("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/6\n\nFlute:\n  4: c d e f\n", "x")
+    assert [t["instrument"] for t in song["info"]["tracks"]] == ["Flute"]

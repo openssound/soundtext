@@ -41,7 +41,7 @@ jobs:
       # Solo quello che serve a mobile/build.py per trovare i moduli di core/
       # usati dal motore (niente PySide6: il motore non lo usa)
       - name: Dipendenze del motore
-        run: pip install "st-language==2.12.1" "mido==1.3.3" "numpy>=1.24,<2"
+        run: pip install "st-language==2.12.2" "mido==1.3.3" "numpy>=1.24,<2"
 
       # Un .st aperto e salvato senza modifiche resta identico (songs.js)
       - name: Test dell'app (formato dei file)

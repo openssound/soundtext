@@ -201,3 +201,11 @@ Non portato: «Crea pattern» dalla catena (un pattern nuovo con il risultato).
 - **Non provato:** il microfono vero (il browser di prova lo blocca), TalkBack e VoiceOver, la memoria sul telefono con Pyodide e Vosk insieme, l'audio su iPhone mentre il microfono è aperto (`audioSession` passa a `play-and-record`).
 
 Resta per la tappa 6: la prova con 3 persone (almeno il 90% corretto) e i modelli delle altre tre lingue.
+
+**Allineamento a main e a st-language 2.12.2 (12 novembre 2026).** Merge di `origin/main` (commit `16877d1`), poi l'app:
+
+- la wheel che carica il browser è `st_language-2.12.2` (`scarica_vendor.sh`, con la sua somma di controllo; il workflow di Pages usa la stessa versione);
+- l'elenco delle wheel ora arriva con `bundle/files.json` (`wheels`), che si legge prima dalla rete: `vendor/` resta in cache per sempre, e chi aveva già l'app avrebbe dato al motore nuovo la libreria vecchia (provato: con il `wheels.json` vecchio in cache l'app parte con la 2.12.2);
+- «Flute:», «Violin:», «Basso:» sono tracce; una riga «Nome:» sconosciuta dà un solo avviso, quello del lettore dei file (prima l'app ne aggiungeva uno suo);
+- «nuova traccia violino» scrive la forma breve «Violin:»;
+- una metrica che il MIDI non sa scrivere (4/6) non ferma più l'analisi (`core/midi_export.py` di main).
