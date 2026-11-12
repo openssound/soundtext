@@ -24,6 +24,10 @@ class PlaybackMixin:
 
     # ------------------------------------------------------------ playback
 
+    def analyze_levels(self):
+        """Riproduzione -> Analizza livelli (vedi gui.level_monitor)."""
+        self.levels.analyze()
+
     def toggle_play_pause(self):
         """Pulsante/azione unico Play/Pausa (F5, vedi _build_menu/_build_ui):
         in riproduzione mette in pausa (pause()); altrimenti avvia da capo o
@@ -150,8 +154,7 @@ class PlaybackMixin:
         # esatto in cui il processo audio viene avviato.
         self._playback_start_wall = None
 
-        for header in self._track_meter_headers():
-            header.meter.start()
+        self.levels.start()
         self.playback.play(self.project, start_offset_beats=_resume_offset_beats,
                             on_audio_started=self._mark_audio_started,
                             humanize=self.humanize_checkbox.isChecked(),
@@ -198,7 +201,7 @@ class PlaybackMixin:
         self._set_play_pause_button(playing=False)
         self.playback_progress.setValue(0)
         self.playback_progress.setFormat("00:00 / 00:00")
-        self._finish_level_meter()
+        self.levels.finish()
         self._clear_playback_highlight()
         self.arrangement_view.set_playhead_beat(None)
         # Riporta i campi Tempo/Metrica al valore "a riposo" del progetto
@@ -288,7 +291,7 @@ class PlaybackMixin:
 
         self._update_playback_highlight(elapsed_beats_total)
         self.arrangement_view.set_playhead_beat(elapsed_beats_total)
-        self._update_level_meter()
+        self.levels.update()
         self.metronome_engine.resync()
         self._sync_playback_fields(
             value_at_beat(self._playback_tempo_map, elapsed_beats_total),
@@ -308,150 +311,10 @@ class PlaybackMixin:
             self._playback_paused_beat = None
             self._set_play_pause_button(playing=False)
             self.playback_progress.setValue(100)
-            self._finish_level_meter()
+            self.levels.finish()
             self._clear_playback_highlight()
             self.arrangement_view.set_playhead_beat(None)
             self._sync_playback_fields(self.project.tempo_bpm, self.project.time_sig)
-
-    def _update_level_meter(self):
-        """Livello del master nel punto che si sta ascoltando e spia di
-        clipping (vedi core.levels, misurati dal motore prima di suonare)."""
-        seconds = self.playback.position_seconds()
-        self._update_track_meters(seconds)
-        levels = self.playback.master_levels
-        if seconds is None or levels is None:
-            # audio partito ma senza streaming: niente livelli da mostrare
-            self.level_meter.set_available(not (self._playback_start_wall is not None and seconds is None))
-            return
-        self.level_meter.set_available(True)
-        self.level_meter.set_levels(*levels.channel_peak_between(seconds - 0.06, seconds))
-        if levels.clipped_between(seconds - 0.1, seconds):
-            self.level_meter.set_clipped(True, self._clip_detail(levels))
-
-    def _track_meter_headers(self):
-        from .track_header import TrackHeaderWidget
-        return self.findChildren(TrackHeaderWidget)
-
-    def _update_track_meters(self, seconds):
-        """Vu-meter delle tracce nel punto che si sta ascoltando (vedi
-        PlaybackEngine.track_levels)."""
-        levels = self.playback.track_levels
-        for header in self._track_meter_headers():
-            level = None
-            if levels is not None and seconds is not None:
-                level = levels.level(header.track_name, seconds - 0.06, seconds)
-            if level is None:
-                header.meter.silence()
-            else:
-                header.meter.set_level(level)
-
-    def _clip_detail(self, levels) -> str:
-        """'Il master clippa alle battute ...' per i livelli dati (una volta
-        sola per rendering)."""
-        if self._clip_detail_for is not None and self._clip_detail_for[0] is levels:
-            return self._clip_detail_for[1]
-        from core.levels import bars_for_seconds, format_bars
-        bars = bars_for_seconds(self.project, self._playback_tempo_map,
-                                [start for start, _end in levels.clip_regions()])
-        text = tr("Il master clippa alle battute: {bars}", bars=format_bars(bars)) if bars else ""
-        self._clip_detail_for = (levels, text)
-        return text
-
-    def _finish_level_meter(self):
-        """Stop o fine del brano: la barra torna a zero, la spia resta; se il
-        master ha clippato, lo dice anche nella barra di stato."""
-        self.level_meter.silence()
-        for header in self._track_meter_headers():
-            header.meter.silence()
-        if self.level_meter.clipped:
-            levels = self.playback.master_levels
-            detail = self._clip_detail(levels) if levels is not None else ""
-            self.statusBar().showMessage(
-                tr("Attenzione: il master clippa (il suono si rompe). Abbassa il volume del master "
-                   "o delle tracce piu' forti.") + (" " + detail if detail else ""), 15000)
-
-    def _forget_track_peaks(self):
-        """Il brano e' cambiato: i picchi di Analizza livelli non valgono piu'."""
-        if not getattr(self, "_track_peaks", None):
-            return
-        self._track_peaks = {}
-        from .track_header import TrackHeaderWidget
-        for header in self.findChildren(TrackHeaderWidget):
-            header.set_peak(None)
-
-    def analyze_levels(self):
-        """Riproduzione -> Analizza livelli: sintetizza ogni traccia da sola e
-        il mix (in background, annullabile) e mostra i picchi nelle testate
-        delle tracce e un riepilogo (vedi core.levels.analyze_project_levels)."""
-        import copy
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QProgressDialog
-        from core.levels import analyze_project_levels
-        from .worker import Worker
-        if getattr(self, "_levels_worker", None) is not None:
-            return
-        project = copy.deepcopy(self.project)   # il brano puo' cambiare mentre si analizza
-        cancelled = {"value": False}
-        dialog = QProgressDialog(tr("Analisi dei livelli: ogni traccia viene sintetizzata da sola..."),
-                                 tr("Annulla"), 0, 100, self)
-        dialog.setWindowTitle(tr("Analizza livelli"))
-        dialog.setWindowModality(Qt.WindowModal)
-        dialog.setMinimumDuration(0)
-        dialog.canceled.connect(lambda: cancelled.__setitem__("value", True))
-        worker = Worker(analyze_project_levels, project, stop_check=lambda: cancelled["value"])
-        worker.progress.connect(lambda f: dialog.setValue(int(f * 100)))
-
-        def finish() -> bool:
-            """Chiude la finestra di avanzamento; True se l'utente aveva
-            annullato. Lo stato va letto PRIMA di close(): chiudere una
-            QProgressDialog emette canceled, e il risultato si perdeva."""
-            was_cancelled = cancelled["value"]
-            self._levels_worker = None
-            dialog.canceled.disconnect()
-            dialog.close()
-            return was_cancelled
-
-        def done(report):
-            if not finish():
-                self._show_level_report(report)
-
-        def failed(message):
-            if not finish():
-                QMessageBox.warning(self, tr("Analizza livelli"),
-                                    tr("Analisi dei livelli non riuscita:\n{message}", message=message))
-
-        worker.finished_ok.connect(done)
-        worker.finished_error.connect(failed)
-        self._levels_worker = worker
-        worker.start()
-
-    def _show_level_report(self, report):
-        from core.levels import format_bars
-        from .track_header import TrackHeaderWidget
-        self._track_peaks = dict(report.tracks)
-        for header in self.findChildren(TrackHeaderWidget):
-            header.set_peak(self._track_peaks.get(header.track_name))
-        lines = []
-        if report.master_clip_bars:
-            lines.append(tr("Il master clippa per {seconds} s, alle battute {bars}.",
-                            seconds=f"{report.master_clip_seconds:.1f}", bars=format_bars(report.master_clip_bars)))
-        else:
-            lines.append(tr("Il master non clippa (picco {db} dBFS).", db=f"{report.master_peak_db:.1f}"))
-        alone = [(n, p) for n, p in report.tracks.items() if p.clip_bars]
-        if alone:
-            lines.append("")
-            lines.append(tr("Clippano anche da sole:"))
-            lines += [f"  • {n}: " + tr("battute {bars}", bars=format_bars(p.clip_bars, 6)) for n, p in alone]
-        loudest = sorted(report.tracks.items(), key=lambda kv: -kv[1].peak_db)[:5]
-        if loudest:
-            lines.append("")
-            lines.append(tr("Le tracce piu' forti (picco suonate da sole):"))
-            lines += [f"  • {n}: {p.peak_db:.1f} dBFS" for n, p in loudest]
-        if report.master_clip_bars:
-            lines.append("")
-            lines.append(tr("Per rimediare abbassa il volume delle tracce che clippano o di quelle piu' "
-                            "forti, il volume del master, oppure Suoni -> Volume di sintesi (gain)."))
-        QMessageBox.information(self, tr("Analizza livelli"), "\n".join(lines))
 
     def _update_playback_highlight(self, elapsed_beats: float):
         if not self.current_track_name:

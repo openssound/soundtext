@@ -28,6 +28,7 @@ from .main_window_mixer import MixerMixin
 from .main_window_project import ProjectMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
+from .level_monitor import LevelMonitor
 from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
@@ -39,6 +40,7 @@ LISTENING_SPEEDS = (100, 90, 80, 75, 70, 60, 50)
 class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def __init__(self):
         super().__init__()
+        self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
         # Va fatto prima di costruire qualunque testata di traccia (vedi
         # refresh_mixer): quelle testate leggono il tema attivo per colorarsi,
         # non seguono automaticamente lo QSS globale (vedi
@@ -952,8 +954,6 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.master_vol_slider = strip.vol_slider
         self.master_vol_value_label = strip.vol_label
         self.level_meter = strip.meter
-        self._clip_detail_for = None    # (id dei livelli, testo con le battute)
-        self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
         self._bottom_row.addWidget(strip)
 
         self.playback_progress = PlaybackProgress()
@@ -1170,7 +1170,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                 # al giro dopo, come in ArrangementView.on_clip_changed: un box puo'
                 # essere ancora in mezzo alla gestione di un evento
                 QTimer.singleShot(0, self.arrangement_view, self.arrangement_view.refresh)
-        self._forget_track_peaks()
+        self.levels.forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:
             self.history.record(self.project, self.current_track_name, merge_key)

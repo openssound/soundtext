@@ -143,7 +143,8 @@ class TrackHeaderWidget(QFrame):
         outer.addWidget(self.meter)
 
         self.sync_from_track()
-        self.set_peak(getattr(host, "_track_peaks", {}).get(track.name))
+        levels = getattr(host, "levels", None)
+        self.set_peak(levels.peak_for(track.name) if levels is not None else None)
 
     def _small_button(self, text: str, tooltip: str) -> QToolButton:
         b = QToolButton()
