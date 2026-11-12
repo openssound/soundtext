@@ -37,7 +37,7 @@ class PlaybackMixin:
             self.pause()
             return
         resume_beat = self._playback_paused_beat if self._playback_paused_beat is not None else 0.0
-        loop = self._active_loop_beats()
+        loop = self.loop.active()
         if loop is not None and not (loop[0] <= resume_beat < loop[1]):
             resume_beat = loop[0]  # con il loop attivo Play parte da A, non da capo
         self.play(_resume_offset_beats=resume_beat)
@@ -159,7 +159,7 @@ class PlaybackMixin:
                             on_audio_started=self._mark_audio_started,
                             humanize=self.humanize_checkbox.isChecked(),
                             humanize_amount=app_settings.get_humanize_amount(),
-                            loop_beats=self._active_loop_beats())
+                            loop_beats=self.loop.active())
         self._playback_timer.start()
         if self.metronome_checkbox.isChecked():
             # start_immediately=False: come la barra di avanzamento, il primo
@@ -174,7 +174,7 @@ class PlaybackMixin:
         if silent:
             self.statusBar().showMessage(silent, 15000)
         from core.playback import streaming_available
-        if self._active_loop_beats() is not None and not streaming_available():
+        if self.loop.active() is not None and not streaming_available():
             self.statusBar().showMessage(
                 tr("Il loop richiede la libreria FluidSynth e sounddevice: con il motore di "
                 "riproduzione attuale il brano non verra' ripetuto."), 8000)
@@ -275,7 +275,7 @@ class PlaybackMixin:
         elapsed_beats_total = self._current_elapsed_beats()
         total_beats = self._playback_duration_beats
         total_seconds = seconds_for_beats(self._playback_tempo_map, total_beats) if total_beats > 0 else 0.0
-        if total_beats > 0 and self._active_loop_beats() is None:
+        if total_beats > 0 and self.loop.active() is None:
             elapsed_beats_total = min(elapsed_beats_total, total_beats + 0.5)   # la coda dopo la fine: la barra resta li'
         elapsed_seconds_total = min(seconds_for_beats(self._playback_tempo_map, elapsed_beats_total),
                                     total_seconds if total_beats > 0 else float("inf"))
@@ -302,7 +302,7 @@ class PlaybackMixin:
         # manuale, ma solo quando l'audio e' davvero finito (la coda del
         # riverbero suona ancora dopo l'ultima nota: fino ad allora si resta
         # "in riproduzione" e Stop la ferma).
-        if total_beats > 0 and elapsed_beats_total >= total_beats + 0.5 and self._active_loop_beats() is None:
+        if total_beats > 0 and elapsed_beats_total >= total_beats + 0.5 and self.loop.active() is None:
             self.metronome_engine.stop()          # niente click sulla coda
             if self.playback.is_playing():
                 return
@@ -451,63 +451,18 @@ class PlaybackMixin:
         self.arrangement_view.set_playhead_beat(beat)
         self.statusBar().showMessage(tr("Il prossimo Play partira' dal beat {beat:.1f}.", beat=beat), 4000)
 
-    def _active_loop_beats(self):
-        if (self.loop_action.isChecked() and self._loop_a_beat is not None
-                and self._loop_b_beat is not None and self._loop_b_beat > self._loop_a_beat):
-            return (self._loop_a_beat, self._loop_b_beat)
-        return None
-
+    # Menu Riproduzione -> Loop (vedi gui.loop_region)
     def set_loop_start(self, *_):
-        self._loop_a_beat = float(round(self._position_for_markers()))
-        if self._loop_b_beat is not None and self._loop_b_beat <= self._loop_a_beat:
-            self._loop_b_beat = None
-        self._loop_markers_changed()
+        self.loop.set_start(self._position_for_markers())
 
     def set_loop_end(self, *_):
-        self._loop_b_beat = float(round(self._position_for_markers()))
-        if self._loop_a_beat is None:
-            self._loop_a_beat = 0.0
-        if self._loop_b_beat <= self._loop_a_beat:
-            self.statusBar().showMessage(tr("La fine del loop (B) deve venire dopo l'inizio (A)."), 5000)
-            self._loop_b_beat = None
-        elif not self.loop_action.isChecked():
-            self.loop_action.setChecked(True)  # impostare B e' l'intenzione di usare il loop
-        self._loop_markers_changed()
+        self.loop.set_end(self._position_for_markers())
 
     def clear_loop(self, *_):
-        self._loop_a_beat = self._loop_b_beat = None
-        self.loop_action.setChecked(False)
-        self._loop_markers_changed()
+        self.loop.clear()
 
     def toggle_loop(self, *_):
-        self._loop_markers_changed()
-
-    def _loop_markers_changed(self):
-        complete = self._loop_a_beat is not None and self._loop_b_beat is not None
-        self.loop_action.setEnabled(complete)
-        if not complete and self.loop_action.isChecked():
-            self.loop_action.setChecked(False)
-        active = self._active_loop_beats()
-        self.arrangement_view.set_loop_region(
-            (self._loop_a_beat, self._loop_b_beat) if complete else
-            ((self._loop_a_beat, None) if self._loop_a_beat is not None else None),
-            active=active is not None)
-        if self.playback.is_playing():
-            from core.playback import streaming_available
-            if streaming_available():
-                self.playback.set_loop_seconds(None if active is None else (
-                    seconds_for_beats(self._playback_tempo_map, active[0]),
-                    seconds_for_beats(self._playback_tempo_map, active[1])))
-            elif active is not None:
-                self.statusBar().showMessage(
-                    tr("Il loop richiede la libreria FluidSynth e sounddevice: con il motore di "
-                    "riproduzione attuale il brano non verra' ripetuto."), 8000)
-                return
-        if active is not None:
-            self.statusBar().showMessage(tr("Loop attivo: beat {0:.0f} - {1:.0f}.", active[0], active[1]), 5000)
-        elif self._loop_a_beat is not None:
-            b = f"{self._loop_b_beat:.0f}" if self._loop_b_beat is not None else "?"
-            self.statusBar().showMessage(tr("Loop: A = {_loop_a_beat:.0f}, B = {b} (non attivo).", _loop_a_beat=self._loop_a_beat, b=b), 5000)
+        self.loop.changed()
 
     def _clear_playback_highlight(self):
         self.editor.setExtraSelections([])

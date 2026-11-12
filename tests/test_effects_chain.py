@@ -464,18 +464,18 @@ def test_panel_revert_copy_and_undo():
 
 def test_panel_sets_and_restores_the_loop_markers():
     w = _window()
-    w._loop_a_beat, w._loop_b_beat = 4.0, 8.0
+    w.loop.a, w.loop.b = 4.0, 8.0
     w.loop_action.setEnabled(True)
     w.loop_action.setChecked(False)
     panel = w.effects_panel
     w.open_effects_panel("Chitarra")
     assert panel.loop_spin.value() == 10
-    assert w.loop_action.isChecked() and w._loop_a_beat == 0 and w._loop_b_beat == 20   # 10 s a 120 BPM
+    assert w.loop_action.isChecked() and w.loop.a == 0 and w.loop.b == 20   # 10 s a 120 BPM
     panel.loop_spin.setValue(4)
-    assert w._loop_b_beat == 8
+    assert w.loop.b == 8
     assert panel._region == (0.0, 4.0)
     panel.close_panel()
-    assert (w._loop_a_beat, w._loop_b_beat, w.loop_action.isChecked()) == (4.0, 8.0, False)
+    assert (w.loop.a, w.loop.b, w.loop_action.isChecked()) == (4.0, 8.0, False)
     assert not panel.is_open()
 
 
@@ -489,7 +489,7 @@ def test_panel_starts_the_loop_from_the_selected_box():
     w.refresh_mixer()
     w.arrangement_view.select_box("Chitarra", clip)
     w.open_effects_panel("Chitarra")
-    assert w._loop_a_beat == 8.0
+    assert w.loop.a == 8.0
     w.effects_panel.close_panel()
 
 

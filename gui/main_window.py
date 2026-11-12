@@ -29,6 +29,7 @@ from .main_window_project import ProjectMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
+from .loop_region import LoopRegion
 from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
@@ -117,10 +118,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # programma (non e' un'impostazione persistente tra sessioni).
         self.metronome_engine = MetronomeEngine(self)
         self.metronome_engine.set_position_source(self._stream_position_beats)
-        # Sezione in loop (beat di inizio/fine, vedi set_loop_start/set_loop_end
-        # in gui.main_window_playback): None finche' non viene impostata.
-        self._loop_a_beat = None
-        self._loop_b_beat = None
+        self.loop = LoopRegion(self)       # la sezione A-B da ripetere (menu Riproduzione -> Loop)
 
         self._build_ui()
         self._build_menu()

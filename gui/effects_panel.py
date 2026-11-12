@@ -1137,23 +1137,16 @@ class EffectsPanel(QFrame):
                             beat_at_elapsed_seconds(tempo_map, 0.0, start + length))
 
     def _set_main_loop(self, a_beat, b_beat):
-        host = self.host
+        loop = self.host.loop
         if self._saved_loop is None:
-            self._saved_loop = (host._loop_a_beat, host._loop_b_beat, host.loop_action.isChecked())
-        host._loop_a_beat, host._loop_b_beat = a_beat, b_beat
-        host.loop_action.setEnabled(True)
-        host.loop_action.setChecked(True)
-        host._loop_markers_changed()
+            self._saved_loop = loop.snapshot()
+        loop.set_region(a_beat, b_beat)
 
     def _restore_main_loop(self):
         if self._saved_loop is None:
             return
-        host = self.host
-        a, b, checked = self._saved_loop
-        self._saved_loop = None
-        host._loop_a_beat, host._loop_b_beat = a, b
-        host.loop_action.setChecked(bool(checked and a is not None and b is not None))
-        host._loop_markers_changed()
+        saved, self._saved_loop = self._saved_loop, None
+        self.host.loop.restore(saved)
 
     def _on_loop_length(self, _value):
         if self.track is None or self._region is None:

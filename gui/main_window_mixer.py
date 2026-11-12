@@ -801,8 +801,8 @@ class MixerMixin:
         position = self._position_for_markers()
         if position > 0 and preferred_beat is None:
             options.append((tr("Posizione corrente (battuta {0})", bar(position)), float(position)))
-        if getattr(self, "_loop_a_beat", None) is not None:
-            options.append((tr("Inizio del loop A (battuta {0})", bar(self._loop_a_beat)), float(self._loop_a_beat)))
+        if self.loop.a is not None:
+            options.append((tr("Inizio del loop A (battuta {0})", bar(self.loop.a)), float(self.loop.a)))
         options.append((tr("Inizio del brano"), 0.0))
         seen, unique = set(), []
         for label, beat in options:
@@ -845,8 +845,7 @@ class MixerMixin:
 
     def _make_record_dialog(self, track, options, target_dir):
         from .audio_record_dialog import AudioRecordDialog
-        a, b = getattr(self, "_loop_a_beat", None), getattr(self, "_loop_b_beat", None)
-        region = (a, b) if a is not None and b is not None else None
+        region = (self.loop.a, self.loop.b) if self.loop.complete() else None
         return AudioRecordDialog(self, self.project, track, options, target_dir, loop_region=region)
 
     def _ask_overlap_choice(self, track_name: str, count: int) -> str:
