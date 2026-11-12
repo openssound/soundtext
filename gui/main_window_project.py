@@ -1,9 +1,7 @@
 import os
 import re
 
-import time
-
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
 
 from core import disk_cache
@@ -14,7 +12,6 @@ from core.notation import (validate_track_text, rewrite_tokens, map_nested_token
                            RE_ARPEGGIO_SUFFIX, RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
 from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
-from core.autosave import AUTOSAVE_INTERVAL_S, RecoverySession, find_recoverable
 from core.midi_export import export_project_to_midi
 from core.musicxml_export import export_project_to_musicxml
 from core.midi_import import import_midi_file
@@ -163,7 +160,7 @@ class ProjectMixin:
         # sono ancora modifiche da salvare rispetto a questo stato (vedi
         # _mark_dirty/closeEvent).
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         # Loop A-B e punto di ripresa si riferiscono al brano precedente.
         self._playback_paused_beat = None
         self.clear_loop()
@@ -294,7 +291,7 @@ class ProjectMixin:
             QMessageBox.critical(self, tr("Errore di salvataggio"), tr("Impossibile salvare '{current_path}':\n{e}", current_path=self.current_path, e=e))
             return
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         self._update_window_title(os.path.basename(self.current_path))
         self.statusBar().showMessage(tr("Salvato: {current_path}", current_path=self.current_path), 4000)
 
@@ -327,7 +324,7 @@ class ProjectMixin:
         # nome del file: cosi' le esportazioni successive lo propongono.
         self.project.name = os.path.splitext(os.path.basename(path))[0]
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         self._update_window_title(os.path.basename(path))
         self.statusBar().showMessage(tr("Salvato: {path}", path=path), 4000)
 
@@ -1144,37 +1141,7 @@ class ProjectMixin:
 
         worker.start()
 
-    # ------------------------------------------------------------ salvataggio automatico
-
-    def _init_autosave(self):
-        """Mentre ci sono modifiche non salvate, ogni AUTOSAVE_INTERVAL_S
-        secondi ne scrive una copia di recupero (core.autosave), che al
-        prossimo avvio si puo' recuperare se SoundText non si e' chiuso
-        normalmente (vedi offer_recovery). Il file del progetto non viene
-        toccato. _autosave_generation conta le modifiche (vedi _mark_dirty):
-        la copia si riscrive solo se ce ne sono di nuove."""
-        self._recovery = RecoverySession()
-        self._autosave_generation = 0
-        self._autosaved_generation = 0
-        self._autosave_timer = QTimer(self)
-        self._autosave_timer.setInterval(AUTOSAVE_INTERVAL_S * 1000)
-        self._autosave_timer.timeout.connect(self.autosave_now)
-        self._autosave_timer.start()
-
-    def autosave_now(self) -> bool:
-        """Scrive la copia di recupero se ci sono modifiche non salvate nuove
-        rispetto all'ultima copia; True se l'ha scritta."""
-        if not self._dirty or self._autosave_generation == self._autosaved_generation:
-            return False
-        if not self._recovery.save(self.project, self.current_path):
-            return False
-        self._autosaved_generation = self._autosave_generation
-        return True
-
-    def _clear_recovery_copy(self):
-        """Progetto salvato o sostituito: la copia di recupero non serve piu'."""
-        self._recovery.clear()
-        self._autosaved_generation = self._autosave_generation
+    # ------------------------------------------------------------ avvio
 
     def offer_instrument_fixes(self):
         """All'avvio, prima di aprire un brano: gli strumenti che le versioni
@@ -1201,66 +1168,6 @@ class ProjectMixin:
             if accepted:
                 replace_custom_instrument(fresh)
             record_instrument_fix(fresh.name, accepted)
-
-    def offer_recovery(self):
-        """All'avvio: se una sessione precedente si e' chiusa male lasciando
-        modifiche non salvate, propone di recuperarle (la piu' recente; le
-        altre al prossimo avvio). Chiamata da main.py dopo aver mostrato la
-        finestra."""
-        candidates = find_recoverable()
-        if not candidates:
-            return
-        cand = candidates[0]
-        when = time.strftime("%d/%m/%Y %H:%M", time.localtime(cand.saved_at))
-        name = cand.project_name or tr("Nuovo progetto")
-        if cand.original_path:
-            where = tr("File del progetto: {path}", path=cand.original_path)
-        else:
-            where = tr("Il progetto non era mai stato salvato.")
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle(tr("Recupero del progetto"))
-        box.setText(tr("L'ultima volta SoundText non si è chiuso normalmente."))
-        box.setInformativeText(
-            tr("C'è una copia di recupero del progetto «{name}» con le modifiche non salvate "
-               "(salvata automaticamente il {when}).\n{where}\n\nVuoi recuperarla?",
-               name=name, when=when, where=where))
-        recover_btn = box.addButton(tr("Recupera"), QMessageBox.AcceptRole)
-        discard_btn = box.addButton(tr("Elimina la copia"), QMessageBox.DestructiveRole)
-        box.addButton(tr("Decidi dopo"), QMessageBox.RejectRole)
-        box.setDefaultButton(recover_btn)
-        box.exec()
-        clicked = box.clickedButton()
-        if clicked is discard_btn:
-            cand.discard()
-        elif clicked is recover_btn:
-            self.recover_project(cand)
-
-    def recover_project(self, cand) -> bool:
-        """Apre la copia di recupero cand al posto del progetto corrente,
-        come progetto con modifiche non salvate (Salva scrive sul file
-        originale, se c'era)."""
-        if not self._confirm_discard_unsaved():
-            return False
-        try:
-            project = cand.load()
-        except Exception as e:
-            QMessageBox.critical(self, tr("Recupero del progetto"),
-                                 tr("La copia di recupero non si può aprire:\n{e}", e=e))
-            return False
-        original = cand.original_path if cand.original_path and os.path.isdir(
-            os.path.dirname(cand.original_path)) else None
-        title = os.path.basename(original) if original else (project.name or tr("Nuovo progetto"))
-        self._replace_project(project, path=original, title=tr("{title} (recuperato)", title=title),
-                              status_msg=tr("Progetto recuperato: salvalo per conservare le modifiche."),
-                              status_timeout=10000)
-        cand.discard()
-        # Recuperato ma non ancora salvato: resta "modificato", e la copia
-        # passa subito a questa sessione (se si chiudesse male di nuovo).
-        self._dirty = True
-        self._autosave_generation += 1
-        self.autosave_now()
-        return True
 
     # ------------------------------------------------------------ chiusura finestra
 
@@ -1297,8 +1204,7 @@ class ProjectMixin:
 
         # Chiusura normale: la copia di recupero non serve piu' (sia che le
         # modifiche siano state salvate sia che si sia scelto di scartarle).
-        self._autosave_timer.stop()
-        self._recovery.close()
+        self.autosave.close()
         super().closeEvent(event)
 
     def manage_disk_cache(self):

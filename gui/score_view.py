@@ -135,7 +135,7 @@ class ScorePagesWidget(QWidget):
 
 class ScoreDialog(QDialog):
     """host: la finestra principale (project, current_track_name e il
-    contatore delle modifiche _autosave_generation)."""
+    contatore delle modifiche autosave.generation)."""
 
     def __init__(self, host):
         super().__init__(host)
@@ -199,7 +199,7 @@ class ScoreDialog(QDialog):
 
     def _key(self):
         only_current = bool(self.tracks_combo.currentData())
-        return (getattr(self.host, "_autosave_generation", 0), only_current,
+        return (self.host.autosave.generation, only_current,
                 self.host.current_track_name if only_current else None)
 
     def _check_changes(self):

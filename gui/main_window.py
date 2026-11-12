@@ -31,6 +31,7 @@ from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
 from .loop_region import LoopRegion
 from .play_highlight import TrackPlayHighlight
+from .project_autosave import ProjectAutosave
 from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
@@ -60,8 +61,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # riposo") e da save_project/save_project_as.
         self._dirty = False
         # Copia di recupero delle modifiche non salvate (vedi
-        # gui.main_window_project._init_autosave e core.autosave).
-        self._init_autosave()
+        # gui.project_autosave e core.autosave).
+        self.autosave = ProjectAutosave(self)
         self.playback = PlaybackEngine()
         # Cronologia di Annulla/Ripeti dell'intero progetto (vedi _mark_dirty)
         self.history = ProjectHistory()
@@ -1158,7 +1159,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         le modifiche a raffica dello stesso tipo (digitazione in una
         traccia, trascinamento di uno slider)."""
         self._dirty = True
-        self._autosave_generation += 1
+        self.autosave.changed()
         if not self._restoring_history:
             # le clip audio che seguono il tempo del brano si riadattano
             # (time-stretch) prima che la modifica entri nella cronologia
