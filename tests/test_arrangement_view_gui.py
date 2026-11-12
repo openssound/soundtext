@@ -588,7 +588,7 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     with scripted_menus("Esporta come WAV..."):
         av.show_box_menu(item, av.mapToGlobal(av.rect().center()))
     deadline = time.time() + 10
-    while not os.path.exists(out) or w._export_wav_worker is not None:
+    while not os.path.exists(out) or w.wav_export.worker is not None:
         app.processEvents()
         time.sleep(0.02)
         assert time.time() < deadline

@@ -1718,8 +1718,8 @@ class ArrangementView(AudioClipActions, QWidget):
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
-            if hasattr(self.host, "add_freeze_action"):
-                self.host.add_freeze_action(menu, track_name)
+            if hasattr(self.host, "wav_export"):
+                self.host.wav_export.add_freeze_action(menu, track_name)
             export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
             export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
             menu.addSeparator()
@@ -1738,9 +1738,9 @@ class ArrangementView(AudioClipActions, QWidget):
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:
-                self.host.export_track_wav(track_name)
+                self.host.wav_export.track(track_name)
             elif chosen is export_dry_action:
-                self.host.export_track_wav(track_name, dry=True)
+                self.host.wav_export.track(track_name, dry=True)
             elif chosen is remove_action:
                 self._remove_track(track_name)
             return
@@ -1778,8 +1778,8 @@ class ArrangementView(AudioClipActions, QWidget):
         octave_action = menu.addAction(tr("Ottava della traccia..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
         synth_params_action = menu.addAction(tr("Parametri dello strumento plugin...")) if track.synth else None
-        if hasattr(self.host, "add_freeze_action"):
-            self.host.add_freeze_action(menu, track_name)
+        if hasattr(self.host, "wav_export"):
+            self.host.wav_export.add_freeze_action(menu, track_name)
         export_action = menu.addAction(tr("Esporta MIDI (solo questa)..."))
         export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
         export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
@@ -1845,9 +1845,9 @@ class ArrangementView(AudioClipActions, QWidget):
             self.host.select_track(track_name)
             self.host.export_selected_track_midi()
         elif chosen is export_wav_action:
-            self.host.export_track_wav(track_name)
+            self.host.wav_export.track(track_name)
         elif chosen is export_dry_action:
-            self.host.export_track_wav(track_name, dry=True)
+            self.host.wav_export.track(track_name, dry=True)
         elif convert_action is not None and chosen is convert_action:
             self._convert_to_free_text(track_name)
         elif free_text_action is not None and chosen is free_text_action:
@@ -2445,10 +2445,10 @@ class ArrangementView(AudioClipActions, QWidget):
                                     start_beat=clip.start_beat, meter=host.meter())
         safe_name = re.sub(r'[\\/:*?"<>|]', "_", f"{track.name}_{clip.name}").strip() or "box"
         start_dir = os.path.dirname(self.host._default_export_path(".wav"))
-        self.host._export_wav(tr("Esporta il box come WAV"), os.path.join(start_dir, safe_name + ".wav"), None,
-                              tr("Box '{name}' esportato", name=clip.name), project=preview,
-                              skip_seconds=lead_seconds,
-                              length_seconds=seconds_for_beats(tempo_map, lead + beats) - lead_seconds)
+        self.host.wav_export.render(tr("Esporta il box come WAV"), os.path.join(start_dir, safe_name + ".wav"),
+                                     None, tr("Box '{name}' esportato", name=clip.name), project=preview,
+                                     skip_seconds=lead_seconds,
+                                     length_seconds=seconds_for_beats(tempo_map, lead + beats) - lead_seconds)
 
     def _import_clip(self, track_name: str, beat: float):
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa box"), ensure_songs_dir(), tr("Box (*.box)"),

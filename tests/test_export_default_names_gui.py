@@ -39,7 +39,7 @@ def test_new_project_proposes_generic_name(monkeypatch):
     w = MainWindow()
     assert os.path.basename(_proposed(monkeypatch, w.save_project_as)) == "progetto.st"
     assert os.path.basename(_proposed(monkeypatch, w.export_midi)) == "progetto.mid"
-    assert os.path.basename(_proposed(monkeypatch, w.export_mix_wav)) == "progetto.wav"
+    assert os.path.basename(_proposed(monkeypatch, w.wav_export.mix)) == "progetto.wav"
 
 
 def test_after_save_as_exports_propose_the_file_name(tmp_path, monkeypatch):
@@ -51,7 +51,7 @@ def test_after_save_as_exports_propose_the_file_name(tmp_path, monkeypatch):
 
     assert _proposed(monkeypatch, w.save_project_as) == target
     assert _proposed(monkeypatch, w.export_midi) == str(tmp_path / "La mia canzone.mid")
-    assert _proposed(monkeypatch, w.export_mix_wav) == str(tmp_path / "La mia canzone.wav")
+    assert _proposed(monkeypatch, w.wav_export.mix) == str(tmp_path / "La mia canzone.wav")
 
 
 def test_track_midi_export_proposes_track_name_in_project_folder(tmp_path, monkeypatch):

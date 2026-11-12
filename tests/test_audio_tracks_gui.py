@@ -358,8 +358,8 @@ def test_export_track_wav_renders_only_that_track(tmp_path, monkeypatch):
         return str(tmp_path / "out"), ""
 
     monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(fake_dialog))
-    w.export_track_wav("Chitarra")
-    w._export_wav_worker.wait()
+    w.wav_export.track("Chitarra")
+    w.wav_export.worker.wait()
     _app.processEvents()
     assert proposed["path"] == str(tmp_path / "Chitarra.wav")
     from core.audio_tracks import read_wav_info
@@ -893,9 +893,9 @@ def test_export_stems_from_the_file_menu(tmp_path, monkeypatch):
         next(b for b in box.buttons() if b.text() == "Asciutte").click()
     monkeypatch.setattr(QMessageBox, "exec", press)
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(tmp_path / "esportate"))
-    w.export_stems()
+    w.wav_export.stems()
     deadline = time.time() + 20
-    while w._export_wav_worker is not None and time.time() < deadline:
+    while w.wav_export.worker is not None and time.time() < deadline:
         _app.processEvents()
         time.sleep(0.01)
     folder = next((tmp_path / "esportate").iterdir())
@@ -908,18 +908,18 @@ def test_freeze_and_unfreeze_from_the_track_menu(tmp_path):
     from PySide6.QtWidgets import QMenu
     w, t, clip, _item = _window_with_clip(tmp_path)
     menu = QMenu()
-    action = w.add_freeze_action(menu, "Voce")
+    action = w.wav_export.add_freeze_action(menu, "Voce")
     assert action.text() == "Congela in audio"
     action.trigger()
     deadline = time.time() + 20
-    while getattr(w, "_freeze_worker", None) is not None and time.time() < deadline:
+    while w.wav_export.freeze_worker is not None and time.time() < deadline:
         _app.processEvents()
         time.sleep(0.01)
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
     assert t.mute and t.frozen == "Voce (congelata)"
-    assert w.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela
-    assert w.add_freeze_action(QMenu(), "Voce").text().startswith("Scongela")
-    w.toggle_freeze("Voce")
+    assert w.wav_export.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela
+    assert w.wav_export.add_freeze_action(QMenu(), "Voce").text().startswith("Scongela")
+    w.wav_export.toggle_freeze("Voce")
     assert [x.name for x in w.project.tracks] == ["Voce"] and not t.mute
     w.undo()
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
