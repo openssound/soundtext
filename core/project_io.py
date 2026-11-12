@@ -422,344 +422,283 @@ def _audio_clip_body_text(clip: AudioClip, base_dir: Optional[str]) -> str:
 def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Optional[str] = None) -> Project:
     """base_dir e' la cartella del file .st: i percorsi (relativi) dei file
     delle clip audio vengono risolti rispetto a essa."""
-    # Un file di prima della 2.12 riscritto per la regola nuova dei pattern:
-    # suona come prima (questo lettore non passa da st_language.read_song).
-    upgraded = upgrade_song_text(text)
-    added_lines = upgraded.count("\n") - text.count("\n")   # la riga ST: di un file che non l'aveva
-    declared = next((m for m in map(RE_ST_VERSION.match, map(str.strip, text.splitlines())) if m), None)
-    text = upgraded
-    # Passo 1: registra automaticamente gli strumenti personalizzati incorporati
-    # nel file (cosi' che siano gia' disponibili quando si incontrano le tracce
-    # che li usano, indipendentemente dall'ordine dei blocchi).
-    _prepare_embedded_instruments(text)
+    return _SongReader(text, project_name, base_dir).read()
 
-    # Passo 2: raccoglie i blocchi 'Mixer <TrackName>:' (volume/pan/mute/solo
-    # per traccia).
-    track_mixer_overrides = {
-        name: _parse_mixer_body(body)
-        for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR)
-    }
-    for name, body in _extract_named_blocks(text.splitlines(), RE_MIXER_HDR):
-        frozen = RE_MIXER_FROZEN.search(body)
-        if frozen and name in track_mixer_overrides:
-            track_mixer_overrides[name]["frozen"] = frozen.group(1)
-    track_effects = {
-        name: _parse_effects_body(body, base_dir)
-        for name, body in _extract_named_blocks(text.splitlines(), RE_EFFECTS_HDR)
-    }
 
-    track_synths = {
-        name: _parse_plugin_items(body)
-        for name, body in _extract_named_blocks(text.splitlines(), RE_SYNTH_HDR)
-    }
+def _set_tempo_list(project: Project, m) -> None:
+    project.tempo_changes = _parse_bar_value_list(m.group(1), is_metrica=False)
+    bar1 = next((v for b, v in project.tempo_changes if b == 1), None)
+    project.tempo_bpm = bar1 if bar1 is not None else project.tempo_changes[0][1]
 
-    master_chain = [effect for _name, body in _extract_named_blocks(text.splitlines(), RE_MASTER_CHAIN_HDR)
-                    for effect in _parse_effects_body(body, base_dir)]
 
-    project = Project(name=project_name)
-    project.master_effects = master_chain
-    # Gli strumenti definiti nel file valgono per le tracce di questo brano,
-    # anche se in locale c'e' gia' uno strumento con lo stesso nome definito
-    # diversamente (per esempio da un altro brano aperto prima).
-    project.instruments = {
-        name: _parse_instrument_body(name, body)
-        for name, body in instrument_blocks(text.splitlines())
-    }
-    # I brani salvati prima della 2.11 di st-language incorporano anche gli
-    # strumenti che allora finivano nel pianoforte (o nel fagotto): per i nomi
-    # che l'utente ha gia' fatto correggere (vedi offer_instrument_fixes nella
-    # finestra principale) vale il profilo nuovo anche qui.
-    accepted = get_accepted_instrument_fixes()
-    for name, profile in list(project.instruments.items()):
-        fresh = legacy_instrument_fix(profile) if name in accepted else None
-        if fresh is not None:
-            project.instruments[name] = fresh
-    lines = text.splitlines()
+def _set_metrica_list(project: Project, m) -> None:
+    project.metrica_changes = _parse_bar_value_list(m.group(1), is_metrica=True)
+    bar1 = next((v for b, v in project.metrica_changes if b == 1), None)
+    project.time_sig = bar1 if bar1 is not None else project.metrica_changes[0][1]
 
-    mode = None            # None | "pattern" | "instrument" | "mixer" | "track" | "unrecognized"
-    unrecognized_line = 0  # la riga di un "Nome:" che non e' uno strumento noto
-    current_name = None
-    current_instrument = None
-    buffer = []
 
-    def flush():
-        nonlocal mode, current_name, current_instrument, buffer
+def _set_key_list(project: Project, m) -> None:
+    project.key_changes = parse_key_list(m.group(1))
+    first = next((k for b, k in project.key_changes if b == 1), None)
+    project.key = first if first is not None else project.key_changes[0][1]
+
+
+def _set_room(project: Project, m) -> None:
+    room = m.group(1).lower()
+    project.reverb_room = room if room in REVERB_ROOMS else DEFAULT_REVERB_ROOM
+
+
+# Le righe di intestazione del brano (una riga, un valore), nell'ordine in cui
+# si provano: chiudono il blocco aperto e impostano il progetto.
+_SONG_LINES = (
+    (RE_PICKUP, lambda project, m: setattr(project, "pickup", parse_pickup(m.group(1)))),
+    (RE_TEMPO_LIST_HDR, _set_tempo_list),
+    (RE_TEMPO, lambda project, m: setattr(project, "tempo_bpm", parse_bpm(m.group(1)))),  # 96, o 101.4 dalla 2.9
+    (RE_METRICA_LIST_HDR, _set_metrica_list),
+    (RE_METRICA, lambda project, m: setattr(project, "time_sig", m.group(1))),
+    (RE_MASTER, lambda project, m: setattr(project, "master_volume", _convert_volume(m.group(1)))),
+    (RE_KEY_LIST_HDR, _set_key_list),
+    (RE_KEY, lambda project, m: setattr(project, "key", m.group(1).strip())),
+    (RE_TITLE, lambda project, m: setattr(project, "title", m.group(1).strip())),
+    (RE_COMPOSER, lambda project, m: setattr(project, "composer", m.group(1).strip())),
+    (RE_LYRICIST, lambda project, m: setattr(project, "lyricist", m.group(1).strip())),
+    (RE_AMBIENTE, _set_room),
+)
+
+# Le intestazioni di blocco che non sono tracce: il modo in cui si leggono le
+# righe che seguono e se il nome del blocco conta.
+_BLOCK_HEADERS = (
+    (RE_PATTERN_HDR, "pattern", True),
+    (RE_INSTRUMENT_HDR, "instrument", True),
+    (RE_MIXER_HDR, "mixer", True),
+    # gia' letti nella pre-scansione (_read_side_blocks)
+    (RE_EFFECTS_HDR, "effects", True),
+    (RE_MASTER_CHAIN_HDR, "effects", True),
+    (RE_SYNTH_HDR, "effects", True),
+    # letto a parte, vedi _read_conversions
+    (RE_CONVERSION_HDR, "effects", True),
+    # Box e clip audio: il contenuto e' raccolto a parte (_attach_boxes); qui
+    # basta saltare il blocco senza farlo confluire nel corpo di quello prima.
+    (RE_BOX_HDR, "box", False),
+    (RE_AUDIO_HDR, "box", False),
+)
+
+_MIXER_FIELDS = ("volume", "pan", "mute", "solo", "reverb", "chorus")
+
+
+class _SongReader:
+    """La lettura di un brano .st (vedi parse_project_text), in passi:
+
+    1. gli strumenti personalizzati incorporati nel file si registrano
+       subito, cosi' sono disponibili quando si incontrano le tracce che li
+       usano, indipendentemente dall'ordine dei blocchi;
+    2. i blocchi Mixer/Effetti/Synth/Master si leggono in una pre-scansione;
+    3. le righe del file, una alla volta (read): intestazioni del brano,
+       intestazioni di blocco e corpi di tracce e pattern;
+    4. i box e le clip audio vanno alle loro tracce (_attach_boxes)."""
+
+    def __init__(self, text: str, project_name: str, base_dir: Optional[str]):
+        # Un file di prima della 2.12 riscritto per la regola nuova dei pattern:
+        # suona come prima (questo lettore non passa da st_language.read_song).
+        upgraded = upgrade_song_text(text)
+        self.added_lines = upgraded.count("\n") - text.count("\n")   # la riga ST: di un file che non l'aveva
+        self.declared = next((m for m in map(RE_ST_VERSION.match, map(str.strip, text.splitlines())) if m), None)
+        self.text = upgraded
+        self.base_dir = base_dir
+        self.lines = upgraded.splitlines()
+        _prepare_embedded_instruments(upgraded)
+        self.project = Project(name=project_name)
+        self._read_side_blocks()
+        self._read_instruments()
+        # il blocco aperto
+        self.mode = None            # None | "pattern" | "instrument" | "mixer" | "effects" | "box" | "track" | "unrecognized"
+        self.unrecognized_line = 0  # la riga di un "Nome:" che non e' uno strumento noto
+        self.current_name = None
+        self.current_instrument = None
+        self.buffer = []
+
+    def _read_side_blocks(self) -> None:
+        """I blocchi 'Mixer <Traccia>:' (volume/pan/mute/solo per traccia),
+        gli effetti, gli strumenti plugin e la catena del master."""
+        lines, base_dir = self.lines, self.base_dir
+        self.mixer = {}
+        for name, body in _extract_named_blocks(lines, RE_MIXER_HDR):
+            self.mixer[name] = _parse_mixer_body(body)
+        for name, body in _extract_named_blocks(lines, RE_MIXER_HDR):
+            frozen = RE_MIXER_FROZEN.search(body)
+            if frozen:
+                self.mixer[name]["frozen"] = frozen.group(1)
+        self.effects = {name: _parse_effects_body(body, base_dir)
+                        for name, body in _extract_named_blocks(lines, RE_EFFECTS_HDR)}
+        self.synths = {name: _parse_plugin_items(body)
+                       for name, body in _extract_named_blocks(lines, RE_SYNTH_HDR)}
+        self.project.master_effects = [effect for _name, body in _extract_named_blocks(lines, RE_MASTER_CHAIN_HDR)
+                                       for effect in _parse_effects_body(body, base_dir)]
+
+    def _read_instruments(self) -> None:
+        project = self.project
+        # Gli strumenti definiti nel file valgono per le tracce di questo brano,
+        # anche se in locale c'e' gia' uno strumento con lo stesso nome definito
+        # diversamente (per esempio da un altro brano aperto prima).
+        project.instruments = {name: _parse_instrument_body(name, body)
+                               for name, body in instrument_blocks(self.lines)}
+        # I brani salvati prima della 2.11 di st-language incorporano anche gli
+        # strumenti che allora finivano nel pianoforte (o nel fagotto): per i nomi
+        # che l'utente ha gia' fatto correggere (vedi offer_instrument_fixes nella
+        # finestra principale) vale il profilo nuovo anche qui.
+        accepted = get_accepted_instrument_fixes()
+        for name, profile in list(project.instruments.items()):
+            fresh = legacy_instrument_fix(profile) if name in accepted else None
+            if fresh is not None:
+                project.instruments[name] = fresh
+
+    # ------------------------------------------------------------ righe
+
+    def read(self) -> Project:
+        for line_number, raw_line in enumerate(self.lines, start=1):
+            self._read_line(raw_line.strip(), line_number)
+        self._close_block()
+        self._attach_boxes()
+        _read_conversions(self.project, self.lines)
+        return self.project
+
+    def _read_line(self, line: str, line_number: int) -> None:
+        if line == "":
+            self._close_block()
+            return
+        if RE_ST_VERSION.match(line):
+            self._close_block()
+            # quella scritta nel file, come st_language.read_song: non la 2.12 della conversione
+            declared = self.declared
+            self.project.st_version = (int(declared.group(1)), int(declared.group(2))) if declared else None
+            return
+        for rx, apply in _SONG_LINES:
+            m = rx.match(line)
+            if m:
+                self._close_block()
+                apply(self.project, m)
+                return
+        for rx, mode, named in _BLOCK_HEADERS:
+            m = rx.match(line)
+            if m:
+                self._open_block(mode, m.group(1) if named else None)
+                return
+        if self._read_track_header(line, line_number):
+            return
+        # Una riga "Nome:" che non e' uno strumento noto, solo dove comincia
+        # un blocco: dentro un corpo resta li', e la segnala l'errore di grammatica.
+        unknown = None if self.mode else unrecognized_track_header(line, list_instrument_names())
+        if unknown:
+            self.current_name, self.mode = unknown, "unrecognized"
+            self.unrecognized_line = line_number - self.added_lines
+            return
+        # riga di corpo (token della traccia/pattern corrente, o parametri
+        # strumento/mixer); fuori da un blocco le righe non riconosciute si
+        # ignorano (commenti liberi / righe descrittive del documento)
+        if self.mode:
+            self.buffer.append(line)
+
+    def _read_track_header(self, line: str, line_number: int) -> bool:
+        m = RE_TRACK_HDR_EXPLICIT.match(line)
+        if m:
+            instrument = m.group(2)
+            if instrument != AUDIO_INSTRUMENT_NAME:
+                self._register_instrument(instrument, line_number)
+            self._open_block("track", m.group(1).strip(), instrument)
+            return True
+        header = short_track_header(line, list_instrument_names())
+        if header:
+            self._close_block()
+            instrument, idx = header
+            # Dalla 2.12.2 l'intestazione corta vale anche per i nomi General
+            # MIDI e gli alias scritti per intero ("Flute:", "Flauto:"): lo
+            # strumento si registra come con "Traccia X [Flute]:".
+            self._register_instrument(instrument, line_number)
+            self._open_block("track", f"{instrument} {idx}".strip() if idx else instrument, instrument)
+            return True
+        return False
+
+    def _register_instrument(self, name: str, line_number: int) -> None:
+        """Lo strumento di una traccia che non e' fra quelli noti ne' fra
+        quelli del file. Si registra solo uno strumento che la libreria
+        riconosce: uno sconosciuto suona come pianoforte per questa sessione,
+        senza finire in instruments.json, cosi' l'avviso torna a ogni apertura."""
+        if name in list_instrument_names() or name in self.project.instruments:
+            return
+        profile = resolve_instrument_type(name, name)
+        if profile.resolved:
+            ensure_instrument_available(profile)
+        else:
+            register_unresolved_instrument(profile)
+            self.project.file_warnings.append((line_number - self.added_lines, unknown_instrument_message(name)))
+
+    # ------------------------------------------------------------ blocchi
+
+    def _open_block(self, mode: str, name: Optional[str], instrument: Optional[str] = None) -> None:
+        self._close_block()
+        self.mode, self.current_name, self.current_instrument = mode, name, instrument
+
+    def _close_block(self) -> None:
+        mode, name = self.mode, self.current_name
+        if not mode:
+            return
         # Le righe del testo di una traccia restano righe: un commento '//'
         # arriva fino a fine riga, unite con uno spazio si mangerebbe il resto.
-        body = ("\n" if mode in ("track", "pattern") else " ").join(buffer).strip()
+        body = ("\n" if mode in ("track", "pattern") else " ").join(self.buffer).strip()
         if mode in ("track", "pattern"):
             body = upgrade_midi_refs(body)      # &Nome delle versioni prima della 2.6
         if mode == "unrecognized" and body:
             # "Pianoo:" con un corpo sotto: non e' una traccia, lo si dice
-            project.file_warnings.append((unrecognized_line, unrecognized_header_message(current_name)))
-        elif mode == "pattern" and current_name:
-            project.add_pattern(current_name, body)
-        elif mode == "track" and current_name:
-            if current_instrument == AUDIO_INSTRUMENT_NAME:
-                track = project.add_audio_track(current_name)
-                m_in, m_ch = RE_AUDIO_INPUT.search(body), RE_AUDIO_CHANNELS.search(body)
-                track.input_profile = m_in.group(1) if m_in else ""
-                track.input_channels = m_ch.group(1) if m_ch else ""
-            else:
-                track = project.add_track(current_name, current_instrument, body)
-            if current_name in track_mixer_overrides:
-                overrides = track_mixer_overrides[current_name]
-                if "volume" in overrides:
-                    track.volume = overrides["volume"]
-                if "pan" in overrides:
-                    track.pan = overrides["pan"]
-                if "mute" in overrides:
-                    track.mute = overrides["mute"]
-                if "solo" in overrides:
-                    track.solo = overrides["solo"]
-                if "reverb" in overrides:
-                    track.reverb = overrides["reverb"]
-                if "chorus" in overrides:
-                    track.chorus = overrides["chorus"]
-                track.frozen = overrides.get("frozen", "")
-            if current_name in track_effects:
-                track.effects = track_effects[current_name]
-            if current_name in track_synths and track_synths[current_name][0]:
-                track.synth, track.synth_params, track.synth_state = track_synths[current_name]
-        # mode == "instrument"/"mixer": nessuna azione qui, gia' applicati sopra
-        mode, current_name, current_instrument, buffer = None, None, None, []
+            self.project.file_warnings.append((self.unrecognized_line, unrecognized_header_message(name)))
+        elif mode == "pattern" and name:
+            self.project.add_pattern(name, body)
+        elif mode == "track" and name:
+            self._add_track(name, self.current_instrument, body)
+        # gli altri blocchi sono gia' stati letti nella pre-scansione
+        self.mode, self.current_name, self.current_instrument, self.buffer = None, None, None, []
 
-    for line_number, raw_line in enumerate(lines, start=1):
-        line = raw_line.strip()
+    def _add_track(self, name: str, instrument: str, body: str) -> None:
+        project = self.project
+        if instrument == AUDIO_INSTRUMENT_NAME:
+            track = project.add_audio_track(name)
+            m_in, m_ch = RE_AUDIO_INPUT.search(body), RE_AUDIO_CHANNELS.search(body)
+            track.input_profile = m_in.group(1) if m_in else ""
+            track.input_channels = m_ch.group(1) if m_ch else ""
+        else:
+            track = project.add_track(name, instrument, body)
+        if name in self.mixer:
+            overrides = self.mixer[name]
+            for field in _MIXER_FIELDS:
+                if field in overrides:
+                    setattr(track, field, overrides[field])
+            track.frozen = overrides.get("frozen", "")
+        if name in self.effects:
+            track.effects = self.effects[name]
+        if name in self.synths and self.synths[name][0]:
+            track.synth, track.synth_params, track.synth_state = self.synths[name]
 
-        if line == "":
-            if mode:
-                flush()
-            continue
-
-        m = RE_ST_VERSION.match(line)
-        if m:
-            if mode:
-                flush()
-            # quella scritta nel file, come st_language.read_song: non la 2.12 della conversione
-            project.st_version = (int(declared.group(1)), int(declared.group(2))) if declared else None
-            continue
-
-        m = RE_PICKUP.match(line)
-        if m:
-            if mode:
-                flush()
-            project.pickup = parse_pickup(m.group(1))
-            continue
-
-        m = RE_TEMPO_LIST_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            project.tempo_changes = _parse_bar_value_list(m.group(1), is_metrica=False)
-            bar1 = next((v for b, v in project.tempo_changes if b == 1), None)
-            project.tempo_bpm = bar1 if bar1 is not None else project.tempo_changes[0][1]
-            continue
-
-        m = RE_TEMPO.match(line)
-        if m:
-            if mode:
-                flush()
-            project.tempo_bpm = parse_bpm(m.group(1))     # 96, o 101.4 dalla 2.9
-            continue
-
-        m = RE_METRICA_LIST_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            project.metrica_changes = _parse_bar_value_list(m.group(1), is_metrica=True)
-            bar1 = next((v for b, v in project.metrica_changes if b == 1), None)
-            project.time_sig = bar1 if bar1 is not None else project.metrica_changes[0][1]
-            continue
-
-        m = RE_METRICA.match(line)
-        if m:
-            if mode:
-                flush()
-            project.time_sig = m.group(1)
-            continue
-
-        m = RE_MASTER.match(line)
-        if m:
-            if mode:
-                flush()
-            project.master_volume = _convert_volume(m.group(1))
-            continue
-
-        m = RE_KEY_LIST_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            project.key_changes = parse_key_list(m.group(1))
-            first = next((k for b, k in project.key_changes if b == 1), None)
-            project.key = first if first is not None else project.key_changes[0][1]
-            continue
-
-        m = RE_KEY.match(line)
-        if m:
-            if mode:
-                flush()
-            project.key = m.group(1).strip()
-            continue
-
-        found = None
-        for rx, attr in ((RE_TITLE, "title"), (RE_COMPOSER, "composer"), (RE_LYRICIST, "lyricist")):
-            m = rx.match(line)
-            if m:
-                found = (attr, m.group(1).strip())
-                break
-        if found:
-            if mode:
-                flush()
-            setattr(project, *found)
-            continue
-
-        m = RE_AMBIENTE.match(line)
-        if m:
-            if mode:
-                flush()
-            room = m.group(1).lower()
-            project.reverb_room = room if room in REVERB_ROOMS else DEFAULT_REVERB_ROOM
-            continue
-
-        m = RE_PATTERN_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            mode, current_name = "pattern", m.group(1)
-            continue
-
-        m = RE_INSTRUMENT_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            mode, current_name = "instrument", m.group(1)
-            continue
-
-        m = RE_MIXER_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            mode, current_name = "mixer", m.group(1)
-            continue
-
-        m = RE_EFFECTS_HDR.match(line) or RE_MASTER_CHAIN_HDR.match(line) or RE_SYNTH_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            mode, current_name = "effects", m.group(1)   # gia' letto nella pre-scansione
-            continue
-
-        m = RE_CONVERSION_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            mode, current_name = "effects", m.group(1)   # letto a parte, vedi _read_conversions
-            continue
-
-        m = RE_BOX_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            # Il contenuto e' gia' raccolto da _extract_box_blocks: qui basta
-            # saltare il blocco senza farlo confluire nel body della traccia
-            # o del pattern precedente.
-            mode, current_name = "box", None
-            continue
-
-        m = RE_AUDIO_HDR.match(line)
-        if m:
-            if mode:
-                flush()
-            # Come per i Box: il contenuto e' raccolto a parte (vedi Passo 3).
-            mode, current_name = "box", None
-            continue
-
-        m = RE_TRACK_HDR_EXPLICIT.match(line)
-        if m:
-            instr_name = m.group(2)
-            if instr_name != AUDIO_INSTRUMENT_NAME and instr_name not in list_instrument_names() \
-                    and instr_name not in project.instruments:
-                # Si registra solo uno strumento che la libreria riconosce: uno
-                # sconosciuto suona come pianoforte per questa sessione, senza
-                # finire in instruments.json, cosi' l'avviso torna a ogni apertura.
-                profile = resolve_instrument_type(instr_name, instr_name)
-                if profile.resolved:
-                    ensure_instrument_available(profile)
-                else:
-                    register_unresolved_instrument(profile)
-                    project.file_warnings.append((line_number - added_lines, unknown_instrument_message(instr_name)))
-            if mode:
-                flush()
-            current_name = m.group(1).strip()
-            current_instrument = instr_name
-            mode = "track"
-            continue
-
-        header = short_track_header(line, list_instrument_names())
-        if header:
-            if mode:
-                flush()
-            instr, idx = header
-            if instr not in list_instrument_names() and instr not in project.instruments:
-                # Dalla 2.12.2 l'intestazione corta vale anche per i nomi
-                # General MIDI e gli alias scritti per intero ("Flute:",
-                # "Flauto:"): lo strumento si registra come con "Traccia X [Flute]:".
-                profile = resolve_instrument_type(instr, instr)
-                if profile.resolved:
-                    ensure_instrument_available(profile)
-                else:
-                    register_unresolved_instrument(profile)
-                    project.file_warnings.append((line_number - added_lines, unknown_instrument_message(instr)))
-            current_name = f"{instr} {idx}".strip() if idx else instr
-            current_instrument = instr
-            mode = "track"
-            continue
-
-        # Una riga "Nome:" che non e' uno strumento noto, solo dove comincia
-        # un blocco: dentro un corpo resta li', e la segnala l'errore di grammatica.
-        unknown = None if mode else unrecognized_track_header(line, list_instrument_names())
-        if unknown:
-            current_name, mode = unknown, "unrecognized"
-            unrecognized_line = line_number - added_lines
-            continue
-
-        # riga di corpo (token della traccia/pattern corrente, o parametri strumento/mixer)
-        if mode:
-            buffer.append(line)
-        # righe non riconosciute al di fuori di un blocco vengono ignorate
-        # (commenti liberi / righe descrittive del documento)
-
-    if mode:
-        flush()
-
-    # Passo 3: assegna alle rispettive tracce i box della vista Struttura
-    # brano (pre-scansionati sopra, indipendenti dall'ordine nel file) e
-    # ricalcola il testo derivato di ogni traccia che ne ha (vedi
-    # core.arrangement.flatten_clips_to_text - nessun'altra parte della
-    # pipeline va toccata, legge semplicemente Track.text come sempre).
-    for track_name, box_name, start_beat, body in _extract_box_blocks(lines):
-        try:
-            track = project.get_track(track_name)
-        except KeyError:
-            continue
-        if not track.is_audio:
-            track.clips.append(Clip(name=box_name, text=upgrade_midi_refs(body), start_beat=start_beat))
-    for track_name, clip_name, start_beat, body in _extract_box_blocks(lines, RE_AUDIO_HDR):
-        try:
-            track = project.get_track(track_name)
-        except KeyError:
-            continue
-        clip = _parse_audio_clip_body(clip_name, start_beat, body, base_dir)
-        if track.is_audio and clip is not None:
-            track.audio_clips.append(clip)
-    for t in project.tracks:
-        if t.clips:
-            t.text = flatten_clips_to_text(t.clips, project.patterns, t.instrument.default_octave,
-                                           meter=project.meter())
-    _read_conversions(project, lines)
-
-    return project
+    def _attach_boxes(self) -> None:
+        """Assegna alle rispettive tracce i box della vista Struttura brano
+        (indipendenti dall'ordine nel file) e ricalcola il testo derivato di
+        ogni traccia che ne ha (vedi core.arrangement.flatten_clips_to_text -
+        nessun'altra parte della pipeline va toccata, legge semplicemente
+        Track.text come sempre)."""
+        project, lines = self.project, self.lines
+        for track_name, box_name, start_beat, body in _extract_box_blocks(lines):
+            track = project.find_track(track_name)
+            if track is not None and not track.is_audio:
+                track.clips.append(Clip(name=box_name, text=upgrade_midi_refs(body), start_beat=start_beat))
+        for track_name, clip_name, start_beat, body in _extract_box_blocks(lines, RE_AUDIO_HDR):
+            track = project.find_track(track_name)
+            if track is None:
+                continue
+            clip = _parse_audio_clip_body(clip_name, start_beat, body, self.base_dir)
+            if track.is_audio and clip is not None:
+                track.audio_clips.append(clip)
+        for t in project.tracks:
+            if t.clips:
+                t.text = flatten_clips_to_text(t.clips, project.patterns, t.instrument.default_octave,
+                                               meter=project.meter())
 
 
 def _read_conversions(project: Project, lines) -> None:
