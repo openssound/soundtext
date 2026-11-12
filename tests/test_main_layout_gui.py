@@ -855,12 +855,12 @@ def test_expanded_patterns_highlight_the_playing_note():
     w.refresh_mixer()
     w.select_track("Con pattern")
     w.expand_patterns_check.setChecked(True)
-    w._update_playback_highlight(1.5)           # la seconda nota: e*4 del primo giro
+    w.track_highlight.update(1.5)           # la seconda nota: e*4 del primo giro
     selections = w.expanded_editor.extraSelections()
     assert len(selections) == 1 and selections[0].cursor.selectedText() == "e*4"
     assert w.editor.extraSelections() == []
     w.expand_patterns_check.setChecked(False)
-    w._update_playback_highlight(1.5)
+    w.track_highlight.update(1.5)
     assert w.editor.extraSelections()[0].cursor.selectedText() == "2%Giro"
     assert w.expanded_editor.extraSelections() == []
     w.close()

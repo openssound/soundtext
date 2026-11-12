@@ -24,7 +24,7 @@ WHITE_KEY_COLOR = QColor("#f5f2ea")
 BLACK_KEY_COLOR = QColor("#1c1c1a")
 KEY_BORDER_COLOR = QColor("#30302c")
 # Stesso colore usato per evidenziare il token in esecuzione nell'editor
-# durante la riproduzione (vedi gui.main_window_playback.TEXT_DIM_INVERT_BG):
+# durante la riproduzione (vedi gui.play_highlight.TEXT_DIM_INVERT_BG):
 # un solo colore di evidenziazione in tutta l'app per lo stesso concetto
 # ("questo sta suonando ORA").
 HIGHLIGHT_COLOR = QColor("#e8c96d")

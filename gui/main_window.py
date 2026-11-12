@@ -30,6 +30,7 @@ from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
 from .loop_region import LoopRegion
+from .play_highlight import TrackPlayHighlight
 from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
@@ -79,9 +80,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._playback_timer = QTimer(self)
         self._playback_timer.setInterval(100)
         self._playback_timer.timeout.connect(self._update_playback_progress)
-        # (chiave, span) dell'ultima traccia evidenziata durante la
-        # riproduzione, vedi _update_playback_highlight.
-        self._highlight_spans_cache = None
+        self.track_highlight = TrackPlayHighlight(self)   # il token che si sta ascoltando nell'editor
         # Debounce del riavvio playback su modifica Mute/Solo/Volume/Pan/Master:
         # ogni modifica riarma questo timer invece di riavviare subito, cosi'
         # un trascinamento rapido di uno slider (molti valueChanged ravvicinati)

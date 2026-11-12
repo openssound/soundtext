@@ -1,9 +1,9 @@
 """
-Evidenziazione, in un editor di testo, del token che si sta ascoltando
-mentre un PlaybackEngine riproduce quel testo (anteprime dei dialoghi di
-generazione, del box, della tastiera e della conversione audio). Stesso aspetto e stessa
-tecnica di scorrimento dell'editor principale
-(gui.main_window_playback._update_playback_highlight).
+Evidenziazione, in un editor di testo, del token che si sta ascoltando:
+nell'editor della finestra principale (TrackPlayHighlight, durante
+l'ascolto del brano) e nei dialoghi (PlayHighlighter: anteprime di
+generazione, del box, della tastiera e della conversione audio), con lo
+stesso aspetto e la stessa tecnica di scorrimento (show_playing_token).
 
 La posizione si legge dal clock del driver audio quando la riproduzione
 passa da core.audio_stream (PlaybackEngine.position_seconds), altrimenti da
@@ -23,9 +23,95 @@ from PySide6.QtWidgets import QTextEdit
 from core.notation import compute_token_spans, find_span_at_beat
 from core.tempo_map import beat_at_elapsed_seconds, build_tempo_beat_map
 
-from .main_window_playback import TEXT_DIM_INVERT_BG
-
+TEXT_DIM_INVERT_BG = "#e8c96d"  # colore di sfondo per il token in esecuzione durante la riproduzione
 PLAY_HIGHLIGHT_INTERVAL_MS = 100
+
+
+def show_playing_token(editor, char_start: int, char_end: int, scroll_editor=None):
+    """Evidenzia in 'editor' il token [char_start, char_end) che si sta
+    ascoltando (colori invertiti rispetto al tema: sfondo chiaro, testo
+    scuro) e fa scorrere scroll_editor (di solito lo stesso editor) solo se
+    il token non e' gia' visibile.
+
+    Lo scorrimento non sposta il cursore di modifica dell'utente: si sposta
+    temporaneamente sul cursore del token per calcolare lo scroll
+    necessario, poi si ripristina il cursore originale. setTextCursor() in Qt
+    scorre sempre alla posizione del cursore appena impostato (anche quando
+    si ripristina quello salvato), quindi la sola sequenza "sposta ->
+    scrolla -> ripristina" annullerebbe lo scroll appena fatto: si cattura
+    percio' la posizione calcolata e la si riapplica dopo il ripristino."""
+    cursor = editor.textCursor()
+    cursor.setPosition(char_start)
+    cursor.setPosition(char_end, QTextCursor.KeepAnchor)
+    fmt = QTextCharFormat()
+    fmt.setBackground(QColor(TEXT_DIM_INVERT_BG))
+    fmt.setForeground(QColor("#101010"))
+    selection = QTextEdit.ExtraSelection()
+    selection.cursor = cursor
+    selection.format = fmt
+    editor.setExtraSelections([selection])
+
+    scroll_editor = scroll_editor or editor
+    scrollbar = scroll_editor.verticalScrollBar()
+    saved_cursor = scroll_editor.textCursor()
+    scroll_editor.setTextCursor(cursor)
+    scroll_editor.ensureCursorVisible()
+    target_scroll = scrollbar.value()
+    scroll_editor.setTextCursor(saved_cursor)
+    scrollbar.setValue(target_scroll)
+
+
+class TrackPlayHighlight:
+    """Il token della traccia selezionata che si sta ascoltando, evidenziato
+    nell'editor della finestra principale (o in quello con i pattern espansi,
+    se Espandi i pattern e' acceso: ha lo stesso tempo del testo della
+    traccia, vedi _sync_expanded_patterns). La finestra lo possiede
+    (MainWindow.track_highlight) e lo chiama a ogni scatto della barra di
+    avanzamento."""
+
+    def __init__(self, window):
+        self.window = window
+        # (chiave, span) dell'ultimo testo evidenziato: gli span dipendono solo
+        # dal testo della traccia e dai pattern, quindi si ricalcolano solo
+        # quando cambiano, invece di ritokenizzare/espandere/parsare l'intera
+        # traccia 10 volte al secondo per tutta la riproduzione.
+        self._spans_cache = None
+
+    def update(self, elapsed_beats: float):
+        window = self.window
+        if not window.current_track_name:
+            return
+        project = window.project
+        track = project.find_track(window.current_track_name)
+        if track is None:
+            return
+        expanded = window.expand_patterns_check.isChecked()
+        editor = window.expanded_editor if expanded else window.editor
+        text = editor.toPlainText() if expanded else track.text
+        default_octave = track.instrument.default_octave
+        cache_key = (text, default_octave,
+                     tuple((name, tuple(p.tokens)) for name, p in project.patterns.items()))
+        cached = self._spans_cache
+        if cached is not None and cached[0] == cache_key:
+            spans = cached[1]
+        else:
+            try:
+                spans = compute_token_spans(text, project.patterns,
+                                            default_octave=default_octave, meter=project.meter())
+            except Exception:
+                return
+            self._spans_cache = (cache_key, spans)
+        span = find_span_at_beat(spans, elapsed_beats)
+        if span is None:
+            self.clear()
+            return
+        char_start, char_end, _, _ = span
+        (window.editor if expanded else window.expanded_editor).setExtraSelections([])
+        show_playing_token(editor, char_start, char_end, scroll_editor=window.editor)
+
+    def clear(self):
+        self.window.editor.setExtraSelections([])
+        self.window.expanded_editor.setExtraSelections([])
 
 
 class PlayHighlighter(QObject):
@@ -139,23 +225,4 @@ class PlayHighlighter(QObject):
             return
 
         char_start, char_end, _, _ = span
-        cursor = self.editor.textCursor()
-        cursor.setPosition(char_start)
-        cursor.setPosition(char_end, QTextCursor.KeepAnchor)
-        fmt = QTextCharFormat()
-        fmt.setBackground(QColor(TEXT_DIM_INVERT_BG))
-        fmt.setForeground(QColor("#101010"))
-        selection = QTextEdit.ExtraSelection()
-        selection.cursor = cursor
-        selection.format = fmt
-        self.editor.setExtraSelections([selection])
-
-        # Scorre solo se il token non e' gia' visibile, senza spostare il
-        # cursore dell'utente (vedi gui.box_edit_dialog._update_play_highlight).
-        scrollbar = self.editor.verticalScrollBar()
-        saved_cursor = self.editor.textCursor()
-        self.editor.setTextCursor(cursor)
-        self.editor.ensureCursorVisible()
-        target_scroll = scrollbar.value()
-        self.editor.setTextCursor(saved_cursor)
-        scrollbar.setValue(target_scroll)
+        show_playing_token(self.editor, char_start, char_end)
