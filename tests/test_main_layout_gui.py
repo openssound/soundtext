@@ -777,7 +777,7 @@ def test_menus_group_import_and_export_in_submenus(monkeypatch):
 
     # Traccia → Esporta questa traccia: MIDI, WAV e WAV asciutto della traccia selezionata
     exported = []
-    monkeypatch.setattr(w, "export_track_wav", lambda name, dry=False: exported.append((name, dry)))
+    monkeypatch.setattr(w.wav_export, "track", lambda name, dry=False: exported.append((name, dry)))
     w.current_track_name = "Voce"
     commands[("Traccia › Esporta questa traccia", "WAV...")].trigger()
     commands[("Traccia › Esporta questa traccia", "WAV asciutto (per il re-amping)...")].trigger()

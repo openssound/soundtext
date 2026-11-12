@@ -29,6 +29,7 @@ from .main_window_project import ProjectMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
+from .wav_export import WavExport
 from .loop_region import LoopRegion
 from .play_highlight import TrackPlayHighlight
 from .project_autosave import ProjectAutosave
@@ -44,6 +45,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def __init__(self):
         super().__init__()
         self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
+        self.wav_export = WavExport(self)  # mix, tracce e stem in WAV, congelamento
         # Va fatto prima di costruire qualunque testata di traccia (vedi
         # refresh_mixer): quelle testate leggono il tema attivo per colorarsi,
         # non seguono automaticamente lo QSS globale (vedi
@@ -379,11 +381,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                                "con i tempi in quarti): una traccia per canale, come un MIDI.")))
         export_menu = file_menu.addMenu(tr("Esporta"))
         export_menu.addAction(self._action(
-            tr("Mix audio (WAV)..."), self.export_mix_wav,
+            tr("Mix audio (WAV)..."), self.wav_export.mix,
             tooltip=tr("Esporta il brano come si sente (tracce udibili, comprese le tracce audio) "
             "in un file WAV 48 kHz / 24 bit.")))
         export_menu.addAction(self._action(
-            tr("Tutte le tracce, una per file (stem)..."), self.export_stems,
+            tr("Tutte le tracce, una per file (stem)..."), self.wav_export.stems,
             tooltip=tr("Un WAV per traccia (quelle non silenziate), tutti dall'inizio del brano e lunghi "
                        "uguale: per mixare in un altro programma o mandare le parti a un altro musicista.")))
         export_menu.addAction(self._action(tr("MIDI..."), self.export_midi, "Ctrl+Shift+E",

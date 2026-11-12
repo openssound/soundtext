@@ -834,7 +834,7 @@ def test_dry_export_leaves_out_effects_sends_pan_and_master(tmp_path):
 def test_dry_export_is_offered_in_the_track_menus(monkeypatch):
     w = _window()
     calls = []
-    monkeypatch.setattr(w, "export_track_wav", lambda name, dry=False: calls.append((name, dry)))
+    monkeypatch.setattr(w.wav_export, "track", lambda name, dry=False: calls.append((name, dry)))
     from PySide6.QtCore import QPoint
     from PySide6.QtWidgets import QMenu
     import gui.arrangement_view as view_module

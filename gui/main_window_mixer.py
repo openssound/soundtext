@@ -772,11 +772,11 @@ class MixerMixin:
             if self.project.get_track(track_name).synth:
                 actions[menu.addAction(tr("Parametri dello strumento plugin..."))] = \
                     lambda: self.edit_track_synth(track_name)
-        self.add_freeze_action(menu, track_name)
+        self.wav_export.add_freeze_action(menu, track_name)
         actions[menu.addAction(tr("Esporta MIDI (solo questa)..."))] = self.export_selected_track_midi
-        actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.export_track_wav(track_name)
+        actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.wav_export.track(track_name)
         actions[menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))] = \
-            lambda: self.export_track_wav(track_name, dry=True)
+            lambda: self.wav_export.track(track_name, dry=True)
         menu.addSeparator()
         actions[menu.addAction(tr("Rimuovi traccia"))] = self.remove_track
         chosen = menu.exec(global_pos)
@@ -1120,7 +1120,7 @@ class MixerMixin:
         if not self.current_track_name:
             QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia da esportare."))
             return
-        self.export_track_wav(self.current_track_name, dry=dry)
+        self.wav_export.track(self.current_track_name, dry=dry)
 
     def _pick_midi_channel_tokens(self):
         """Punto in comune fra 'Importa MIDI (in questa/o)' e 'Importa MIDI
