@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>SoundText Mobile</title>
 <meta name="theme-color" content="#1e1f22">
+<!-- Tutto resta sul dispositivo: script, worker, audio e dati solo da questo
+     sito (niente richieste ad altri siti: nemmeno l'audio della dettatura
+     puo' uscire). 'wasm-unsafe-eval' serve a Pyodide, FluidSynth e verovio;
+     'unsafe-eval' a Vosk (il suo codice generato da Emscripten crea funzioni da testo). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -83,7 +88,7 @@
       <button role="tab" data-gen="comping" aria-selected="false" aria-controls="genForm" data-i18n>Accompagnamento</button>
     </div>
     <div class="genbody">
-      <form id="genForm" class="genform" role="tabpanel" onsubmit="return false"></form>
+      <form id="genForm" class="genform" role="tabpanel"></form>
       <pre id="genText" class="gentext" aria-label="Parte generata" translate="no"></pre>
       <p id="genStatus" class="hint" role="status"></p>
     </div>
@@ -211,6 +216,15 @@
 <script src="i18n.js"></script>
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
-<script src="app.js"></script>
+<script src="app/base.js"></script>
+<script src="app/text-edits.js"></script>
+<script src="app/editor.js"></script>
+<script src="app/voice.js"></script>
+<script src="app/songs-view.js"></script>
+<script src="app/create.js"></script>
+<script src="app/structure.js"></script>
+<script src="app/player.js"></script>
+<script src="app/score.js"></script>
+<script src="app/main.js"></script>
 </body>
 </html>

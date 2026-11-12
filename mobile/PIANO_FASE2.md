@@ -209,3 +209,12 @@ Resta per la tappa 6: la prova con 3 persone (almeno il 90% corretto) e i modell
 - «Flute:», «Violin:», «Basso:» sono tracce; una riga «Nome:» sconosciuta dà un solo avviso, quello del lettore dei file (prima l'app ne aggiungeva uno suo);
 - «nuova traccia violino» scrive la forma breve «Violin:»;
 - una metrica che il MIDI non sa scrivere (4/6) non ferma più l'analisi (`core/midi_export.py` di main).
+
+**Dopo la revisione del codice (12 novembre 2026).** Modifiche all'app:
+
+- `app.js` (3.000 righe) è diviso in `mobile/app/`: `base.js`, `text-edits.js`, `editor.js`, `voice.js`, `songs-view.js`, `create.js`, `structure.js`, `player.js`, `score.js`, `main.js`. Sono script normali caricati in ordine da `index.html`, con le stesse variabili globali di prima.
+- Le modifiche del testo della dettatura (inserimento, tempo, «ripeti») sono funzioni pure in `app/text-edits.js`, con i test in `mobile/tests/text-edits.test.cjs`.
+- La dettatura prende l'audio con un AudioWorklet (`voice-worklet.js`); `ScriptProcessor` resta come ripiego.
+- Il modello della voce non sta più anche nella cache del service worker: Vosk lo conserva già nel suo archivio e non lo richiede più (verificato: 2,2 s per riaprirlo senza la copia).
+- La pagina ha una Content-Security-Policy: script, worker, audio e richieste solo da questo sito. Serve `'unsafe-eval'` per Vosk.
+- Le etichette degli stili dei generatori stanno in `core/generate_labels.py`, usate sia dalle finestre «Genera …» sia dal motore dell'app.
