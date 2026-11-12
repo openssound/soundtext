@@ -59,7 +59,7 @@ from .audio_import_dialog import AudioImportDialog
 from .box_edit_dialog import BoxEditDialog
 from .box_transpose_dialog import BoxTransposeDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
-from .main_window_playback import TEXT_DIM_INVERT_BG
+from .play_highlight import TEXT_DIM_INVERT_BG
 from .rhythm_generate_dialog import (
     BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, chord_source_tracks,
     last_box_key,

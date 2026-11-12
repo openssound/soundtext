@@ -2,8 +2,7 @@ import os
 import time
 
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor
-from PySide6.QtWidgets import QMessageBox, QFileDialog, QTextEdit
+from PySide6.QtWidgets import QMessageBox, QFileDialog
 
 from core.notation import validate_track_text
 from core import settings as app_settings
@@ -14,8 +13,6 @@ from core.tempo_map import (
 from core.i18n import tr
 from .file_dialogs import file_dialog_options
 from .tempo_spin import tempo_value
-
-TEXT_DIM_INVERT_BG = "#e8c96d"  # colore di sfondo per il token in esecuzione durante la riproduzione
 
 
 class PlaybackMixin:
@@ -202,7 +199,8 @@ class PlaybackMixin:
         self.playback_progress.setValue(0)
         self.playback_progress.setFormat("00:00 / 00:00")
         self.levels.finish()
-        self._clear_playback_highlight()
+        self.track_highlight.clear()
+        self._show_beat_in_score(None)
         self.arrangement_view.set_playhead_beat(None)
         # Riporta i campi Tempo/Metrica al valore "a riposo" del progetto
         # (battuta 1): durante l'esecuzione potevano mostrare un cambio
@@ -289,7 +287,8 @@ class PlaybackMixin:
             f"{self._format_mmss(elapsed_seconds_total)} / {self._format_mmss(total_seconds)}"
         )
 
-        self._update_playback_highlight(elapsed_beats_total)
+        self.track_highlight.update(elapsed_beats_total)
+        self._show_beat_in_score(elapsed_beats_total)
         self.arrangement_view.set_playhead_beat(elapsed_beats_total)
         self.levels.update()
         self.metronome_engine.resync()
@@ -312,79 +311,17 @@ class PlaybackMixin:
             self._set_play_pause_button(playing=False)
             self.playback_progress.setValue(100)
             self.levels.finish()
-            self._clear_playback_highlight()
+            self.track_highlight.clear()
+            self._show_beat_in_score(None)
             self.arrangement_view.set_playhead_beat(None)
             self._sync_playback_fields(self.project.tempo_bpm, self.project.time_sig)
 
-    def _update_playback_highlight(self, elapsed_beats: float):
-        if not self.current_track_name:
-            return
-        try:
-            track = self.project.get_track(self.current_track_name)
-        except KeyError:
-            return
-        from core.notation import compute_token_spans, find_span_at_beat
-
-        # Richiamata ad ogni tick del timer (100 ms): gli span dipendono solo
-        # dal testo della traccia e dai pattern, quindi si ricalcolano solo
-        # quando cambiano, invece di ritokenizzare/espandere/parsare l'intera
-        # traccia 10 volte al secondo per tutta la riproduzione.
-        # Con Espandi i pattern si evidenzia nell'editor espanso, che ha lo
-        # stesso tempo del testo della traccia (vedi _sync_expanded_patterns).
-        expanded = self.expand_patterns_check.isChecked()
-        editor = self.expanded_editor if expanded else self.editor
-        text = editor.toPlainText() if expanded else track.text
-        default_octave = track.instrument.default_octave
-        cache_key = (text, default_octave,
-                     tuple((name, tuple(p.tokens)) for name, p in self.project.patterns.items()))
-        cached = self._highlight_spans_cache
-        if cached is not None and cached[0] == cache_key:
-            spans = cached[1]
-        else:
-            try:
-                spans = compute_token_spans(text, self.project.patterns,
-                                             default_octave=default_octave, meter=self.project.meter())
-            except Exception:
-                return
-            self._highlight_spans_cache = (cache_key, spans)
-        span = find_span_at_beat(spans, elapsed_beats)
-        if span is None:
-            self._clear_playback_highlight()
-            return
-
-        char_start, char_end, _, _ = span
-        cursor = editor.textCursor()
-        cursor.setPosition(char_start)
-        cursor.setPosition(char_end, QTextCursor.KeepAnchor)
-
-        fmt = QTextCharFormat()
-        # Colori invertiti rispetto al tema: sfondo chiaro, testo scuro.
-        fmt.setBackground(QColor(TEXT_DIM_INVERT_BG))
-        fmt.setForeground(QColor("#101010"))
-
-        selection = QTextEdit.ExtraSelection()
-        selection.cursor = cursor
-        selection.format = fmt
-        (self.editor if expanded else self.expanded_editor).setExtraSelections([])
-        editor.setExtraSelections([selection])
-
-        # Scorre l'editor solo se il token evidenziato non e' gia' visibile
-        # (ensureCursorVisible e' un no-op altrimenti), senza spostare il
-        # cursore di modifica reale dell'utente: si sposta temporaneamente
-        # sul cursore del token per calcolare lo scroll necessario, poi si
-        # ripristina il cursore originale. NOTA: setTextCursor() in Qt
-        # scorre sempre alla posizione del cursore appena impostato (anche
-        # quando si ripristina quello salvato!), quindi la sola sequenza
-        # "sposta -> scrolla -> ripristina" annullerebbe lo scroll appena
-        # fatto; si cattura percio' la posizione di scroll calcolata e la
-        # si riapplica dopo il ripristino del cursore.
-        scrollbar = self.editor.verticalScrollBar()
-        saved_cursor = self.editor.textCursor()
-        self.editor.setTextCursor(cursor)
-        self.editor.ensureCursorVisible()
-        target_scroll = scrollbar.value()
-        self.editor.setTextCursor(saved_cursor)
-        scrollbar.setValue(target_scroll)
+    def _show_beat_in_score(self, beat):
+        """Le note che suonano evidenziate nella vista Partitura, se e' stata
+        aperta (gui.score_view.ScoreDialog.show_playing_beat); None le spegne."""
+        score = getattr(self, "_score_dialog", None)
+        if score is not None:
+            score.show_playing_beat(beat)
 
     # ------------------------------------------------------ salto e loop A-B
 
@@ -463,10 +400,6 @@ class PlaybackMixin:
 
     def toggle_loop(self, *_):
         self.loop.changed()
-
-    def _clear_playback_highlight(self):
-        self.editor.setExtraSelections([])
-        self.expanded_editor.setExtraSelections([])
 
     def _on_mixer_changed(self, track_name):
         """Mute/Solo/Volume/Pan/Master modificati dall'utente: se e' in corso

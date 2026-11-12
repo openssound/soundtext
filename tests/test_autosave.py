@@ -144,34 +144,34 @@ def _close_discarding(w, monkeypatch):
 
 def test_window_writes_the_copy_only_with_new_changes(tmp_path, monkeypatch):
     w = _window()
-    assert not w.autosave_now()                               # niente da salvare
+    assert not w.autosave.save_now()                               # niente da salvare
     w.project.tracks[0].text = "4: d*4"
     w._mark_dirty()
-    assert w.autosave_now()
-    assert not w.autosave_now()                               # nessuna modifica nuova
-    assert os.path.exists(w._recovery._st)
+    assert w.autosave.save_now()
+    assert not w.autosave.save_now()                               # nessuna modifica nuova
+    assert os.path.exists(w.autosave.session._st)
     w.current_path = str(tmp_path / "salvato.st")
     w.save_project()
-    assert not os.path.exists(w._recovery._st)                # salvato: copia tolta
+    assert not os.path.exists(w.autosave.session._st)                # salvato: copia tolta
     w.project.tracks[0].text = "4: e*4"
     w._mark_dirty()
-    assert w.autosave_now()
+    assert w.autosave.save_now()
     _close_discarding(w, monkeypatch)
-    assert not os.path.exists(w._recovery._st)                # chiusura normale: copia tolta
+    assert not os.path.exists(w.autosave.session._st)                # chiusura normale: copia tolta
     assert autosave.find_recoverable() == []
 
 
 def test_new_project_removes_the_copy(monkeypatch):
     w = _window()
     w._mark_dirty()
-    assert w.autosave_now()
+    assert w.autosave.save_now()
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Discard)
     w.new_project()
-    assert not os.path.exists(w._recovery._st)
+    assert not os.path.exists(w.autosave.session._st)
     w.close()
 
 
-def test_recover_project_opens_it_as_modified(tmp_path, monkeypatch):
+def test_recover_opens_it_as_modified(tmp_path, monkeypatch):
     original = str(tmp_path / "canzone.st")
     save_project_file(_project(), original)
     crashed = _project()
@@ -179,12 +179,12 @@ def test_recover_project_opens_it_as_modified(tmp_path, monkeypatch):
     _crash_session(crashed, original)
     w = _window()
     [cand] = autosave.find_recoverable()
-    assert w.recover_project(cand)
+    assert w.autosave.recover(cand)
     assert w.project.tracks[0].text == "4: a*4 b*4"
     assert w.current_path == original                          # Salva scrive sul file originale
     assert w._dirty and "(recuperato)" in w.windowTitle()
     assert autosave.find_recoverable() == []                   # la vecchia copia e' tolta...
-    assert os.path.exists(w._recovery._st)                     # ...e la nuova e' di questa sessione
+    assert os.path.exists(w.autosave.session._st)                     # ...e la nuova e' di questa sessione
     w.save_project()
     assert load_project_file(original).tracks[0].text == "4: a*4 b*4"
     _close_discarding(w, monkeypatch)
@@ -198,7 +198,7 @@ def test_offer_recovery_buttons(choice, left, monkeypatch):
     monkeypatch.setattr(QMessageBox, "exec", lambda self: shown.append(self.informativeText()) or 0)
     monkeypatch.setattr(QMessageBox, "clickedButton",
                         lambda self: next(b for b in self.buttons() if b.text() == choice))
-    w.offer_recovery()
+    w.autosave.offer_recovery()
     assert "Da decidere" in shown[0] and "mai stato salvato" in shown[0]
     assert len(autosave.find_recoverable()) == left
     assert w.project.tracks[0].text == "4: c*4"                # progetto corrente non toccato
@@ -211,7 +211,7 @@ def test_offer_recovery_recovers(monkeypatch):
     monkeypatch.setattr(QMessageBox, "exec", lambda self: 0)
     monkeypatch.setattr(QMessageBox, "clickedButton",
                         lambda self: next(b for b in self.buttons() if b.text() == "Recupera"))
-    w.offer_recovery()
+    w.autosave.offer_recovery()
     assert w.project.tracks[0].text == "4: c*4 e*4 g*4 c*5"
     assert w.current_path is None and w._dirty
     _close_discarding(w, monkeypatch)
@@ -220,5 +220,5 @@ def test_offer_recovery_recovers(monkeypatch):
 def test_nothing_to_offer_shows_nothing(monkeypatch):
     w = _window()
     monkeypatch.setattr(QMessageBox, "exec", lambda self: pytest.fail("nessun dialogo atteso"))
-    w.offer_recovery()
+    w.autosave.offer_recovery()
     _close_discarding(w, monkeypatch)
