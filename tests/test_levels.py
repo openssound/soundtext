@@ -116,10 +116,10 @@ def test_main_window_shows_clipping_during_playback_and_after_stop():
     w.playback.master_levels = analyze_int16(_int16(x), RATE)
     position = {"s": 1.0}
     w.playback.position_seconds = lambda: position["s"]
-    w._update_level_meter()
+    w.levels.update()
     assert not w.level_meter.clipped
     position["s"] = 4.2
-    w._update_level_meter()
+    w.levels.update()
     assert w.level_meter.clipped and "3" in w.level_meter.toolTip()
     w.stop()
     assert "clippa" in w.statusBar().currentMessage()
@@ -156,7 +156,7 @@ def test_level_report_marks_track_headers_until_the_song_changes():
     original = QMessageBox.information
     QMessageBox.information = staticmethod(lambda *a, **k: shown.append(a[2]))
     try:
-        w._show_level_report(LevelReport({"Piano": TrackPeak(0.0, [3, 4]), "Basso": TrackPeak(-9.0, [])},
+        w.levels.show_report(LevelReport({"Piano": TrackPeak(0.0, [3, 4]), "Basso": TrackPeak(-9.0, [])},
                                          0.0, [3, 4], 1.5))
     finally:
         QMessageBox.information = original
@@ -192,7 +192,7 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
         app.processEvents()
         time.sleep(0.01)
     assert shown and "-6.0" in shown[0]
-    assert w._track_peaks["Piano"].peak_db == -6.0
+    assert w.levels.track_peaks["Piano"].peak_db == -6.0
     w._dirty = False
     w.close()
 
@@ -275,11 +275,11 @@ def test_track_meters_follow_playback():
     block = 0.02
     w.playback.track_levels = TrackLevels(block, {"Piano": np.full(200, 0.5, np.float32),
                                                   "Basso": np.full(200, 1.2, np.float32)})
-    w._update_track_meters(1.0)
+    w.levels.update_tracks(1.0)
     meters = {h.track_name: h.meter for h in w.findChildren(TrackHeaderWidget)}
     assert -6.5 < meters["Piano"]._db < -5.5 and not meters["Piano"].over
     assert meters["Basso"].over                      # oltre il fondo scala: cima rossa
-    w._update_track_meters(None)                     # fermo: barre a zero, la spia resta
+    w.levels.update_tracks(None)                     # fermo: barre a zero, la spia resta
     assert meters["Piano"]._db < -40 and meters["Basso"].over
     w.close()
 
@@ -304,7 +304,7 @@ def test_master_meter_shows_two_channels():
     x[:, 1] *= 0.1
     w.playback.master_levels = analyze_int16(_int16(x), RATE)
     w.playback.position_seconds = lambda: 1.0
-    w._update_level_meter()
+    w.levels.update()
     left_db, right_db = w.level_meter.levels_db()
     assert abs(left_db - right_db - 20.0) < 0.5
     w.level_meter.grab()                               # si disegna senza errori
