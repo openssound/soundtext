@@ -233,6 +233,15 @@ def meter_beats(meter: str) -> float:
     return num * 4.0 / den
 
 
+def project_bar_beats(project) -> float:
+    """Durata in beat di una battuta nella metrica iniziale del progetto (4
+    se la metrica non e' leggibile)."""
+    try:
+        return meter_beats(project.time_sig)
+    except ValueError:
+        return 4.0
+
+
 def _normalize_meter(meter: str) -> str:
     return meter.replace(" ", "")
 

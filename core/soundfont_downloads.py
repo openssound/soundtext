@@ -70,6 +70,7 @@ SOUNDFONTS: List[SoundFontSource] = [
         "MIT, ~38 MB: General MIDI completo, l'evoluzione del FluidR3 di SoundText",
         "https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3",
         "MuseScore_General.sf3",
+        sha256="5b85b6c2c61d10b2b91cddd41efcce7b25cd31c8271d511c73afafbef20b6fa3",
         license_url="https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General_License.md"),
     SoundFontSource(
         "sf-timgm6mb", "TimGM6mb",
@@ -80,12 +81,14 @@ SOUNDFONTS: List[SoundFontSource] = [
                      "Copyright 2004 Tim Brechbill <https://www.timbrechbill.com>\n"
                      "          2010 David Bolton <davidkbolton@gmail.com>\n\n"
                      "Licenza: GNU General Public License versione 2 (https://www.gnu.org/licenses/gpl-2.0.html).\n"
-                     "Fonte: pacchetto Debian timgm6mb-soundfont, dal repository di MuseScore.\n"),
+                     "Fonte: pacchetto Debian timgm6mb-soundfont, dal repository di MuseScore.\n",
+        sha256="c5378b62028c920cb11e4803327983fee2f2cdff5dc89c708e39da417e51c854"),
     SoundFontSource(
         "sf-freepats-drums", "FreePats GM, percussioni",
         "GPL-3.0 con eccezione per l'uso musicale, ~15 MB: kit di batteria General MIDI (43 suoni su 47)",
         "https://freepats.zenvoid.org/SoundSets/GM-PercussionSet/FreePatsGM-Percussion-SF2-20200822.tar.xz",
-        "FreePatsGM-Percussion-20200822.sf2", general_midi=False),
+        "FreePatsGM-Percussion-20200822.sf2", general_midi=False,
+        sha256="c39363ca6d9c386bbc6b0f5d70b2cbf3cb1a471f6ddbaa9e44574905bd7f4de9"),
 ]
 
 

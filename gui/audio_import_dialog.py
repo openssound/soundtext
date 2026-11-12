@@ -5,6 +5,7 @@ Dialogo di importazione audio: registrazione da microfono o file
 prima dell'inserimento nella traccia corrente (vedi core.audio_import).
 """
 
+import logging
 import os
 import re
 
@@ -793,7 +794,8 @@ class AudioImportDialog(QDialog):
             try:
                 self._mic_files.append(self.recorder.stop())
             except Exception:
-                pass
+                # la registrazione appena fatta si perde: almeno resta scritto perche'
+                logging.getLogger(__name__).warning("Registrazione dal microfono non salvata", exc_info=True)
         if self._worker is not None:
             self._cancelled = True
             self._worker.wait()

@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import shutil
@@ -28,6 +29,7 @@ def _reset_custom_instruments():
     if os.path.exists(CUSTOM_INSTRUMENTS_FILE):
         os.remove(CUSTOM_INSTRUMENTS_FILE)
     im._custom_cache = None
+    im._opened_instruments.clear()      # quelli arrivati aprendo un brano (solo sessione)
 
 
 def test_add_and_use_custom_instrument():
@@ -2008,3 +2010,46 @@ if __name__ == "__main__":
         passed += 1
         print(f"OK  {t.__name__}")
     print(f"\n{passed}/{len(tests)} test superati.")
+
+
+def test_opening_a_song_does_not_write_the_instruments_file():
+    """Aprire un brano non cambia la configurazione: gli strumenti che porta
+    (definiti nel file o riconosciuti dalla libreria) valgono per la sessione
+    e non finiscono in instruments.json; quelli salvati dall'utente si'."""
+    from core.project_io import parse_project_text
+    _reset_custom_instruments()
+    text = ("Strumento MioSax:\n  program=66 percussione=no ottava=4 range=49-81 poly=no voicing=monophonic\n\n"
+            "Tempo: 82 BPM\n\nTraccia Sax [MioSax]:\n  16: c*4 d*4\n\nTraccia Arco [Violin]:\n  4: c d e f\n")
+    try:
+        project = parse_project_text(text)
+        assert [t.instrument_name for t in project.tracks] == ["MioSax", "Violin"]
+        assert {"MioSax", "Violin"} <= set(list_instrument_names())
+        assert get_instrument("MioSax").gm_program == 66
+        assert not os.path.exists(CUSTOM_INSTRUMENTS_FILE)
+        # lo strumento salvato dall'utente vince su quello arrivato da un brano
+        add_custom_instrument(InstrumentProfile(name="MioSax", gm_program=10))
+        assert get_instrument("MioSax").gm_program == 10
+        with open(CUSTOM_INSTRUMENTS_FILE, encoding="utf-8") as f:
+            assert list(json.load(f)) == ["MioSax"]
+        remove_custom_instrument("MioSax")
+        assert "MioSax" not in list_instrument_names()
+    finally:
+        _reset_custom_instruments()
+
+
+def test_configuration_files_are_written_atomically(tmp_path):
+    """settings.json e instruments.json: file temporaneo e os.replace, cosi'
+    un'interruzione a meta' scrittura lascia il file di prima."""
+    from core.settings import write_json_atomic
+    path = str(tmp_path / "conf.json")
+    write_json_atomic(path, {"a": 1})
+
+    class Broken:
+        pass
+
+    with pytest.raises(TypeError):
+        write_json_atomic(path, {"a": Broken()})       # non si puo' scrivere: il file resta
+    with open(path, encoding="utf-8") as f:
+        assert json.load(f) == {"a": 1}
+    assert os.listdir(tmp_path) == ["conf.json"]       # nessun file temporaneo rimasto
+

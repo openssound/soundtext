@@ -1,0 +1,15 @@
+# Versioni esatte con cui girano i test su GitHub (pip install -c constraints.txt ...).
+# requirements.txt resta il requisito minimo per chi installa SoundText; qui
+# si fissa quello che i test hanno davvero provato, cosi' una versione nuova
+# di una libreria non rompe i test da un giorno all'altro: si aggiorna questa
+# riga, si rilanciano i test, e la modifica resta nella storia.
+PySide6==6.11.2
+st-language==2.12.2
+mido==1.3.3
+python-rtmidi==1.5.8
+sounddevice==0.5.6
+numpy==1.26.4
+pedalboard==0.9.26
+verovio==6.3.0
+pytest==9.1.1
+pytest-xdist==3.8.0

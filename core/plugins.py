@@ -128,7 +128,8 @@ class _Host:
                     break
                 replies.put(pickle.loads(data))
         except Exception:
-            pass
+            # il lettore delle risposte si ferma: chi aspetta va in timeout, il perche' e' qui
+            log.warning("Lettura delle risposte del processo dei plugin interrotta", exc_info=True)
         replies.put(("died", None))
 
     def stop(self):

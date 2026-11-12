@@ -23,6 +23,10 @@ def _reset_global_state():
     if i18n._language != "it" or st_language.language() != "it":
         i18n.set_language("it")
     clear_memory_caches()
+    # gli strumenti arrivati aprendo un brano in un test precedente (valgono
+    # per la sessione, vedi core.instruments._opened_instruments)
+    from core import instruments
+    instruments._opened_instruments.clear()
     yield
 
 

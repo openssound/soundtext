@@ -277,12 +277,10 @@ class ProjectMixin:
         if newly_loaded:
             msg = (tr("Progetto caricato: {path}  —  strumenti personalizzati caricati automaticamente: {0}", ', '.join(newly_loaded), path=path))
             self.statusBar().showMessage(msg, 8000)
-            QMessageBox.information(
-                self, tr("Strumenti caricati automaticamente"),
-                tr("Questo progetto usa strumenti personalizzati non ancora presenti "
-                "sul tuo sistema. Sono stati registrati automaticamente dalla "
-                "definizione incorporata nel file:\n\n") + "\n".join(f"• {n}" for n in newly_loaded)
-            )
+            # Solo nella barra di stato: gli strumenti arrivati con un brano
+            # valgono per la sessione e non cambiano piu' la configurazione
+            # (core.instruments._opened_instruments), quindi una finestra a ogni
+            # apertura sarebbe solo un intralcio.
         else:
             self.statusBar().showMessage(tr("Progetto caricato: {path}", path=path), 4000)
 

@@ -44,10 +44,26 @@ def _load() -> dict:
     return data
 
 
+def write_json_atomic(path: str, data) -> None:
+    """Scrive un file di configurazione senza mai lasciarlo a meta': prima
+    un file temporaneo nella stessa cartella, poi os.replace (come i brani,
+    vedi core.project_io). Se il programma si chiude mentre scrive, resta il
+    file di prima."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
 def _save():
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(_cache, f, indent=2, ensure_ascii=False)
+    write_json_atomic(SETTINGS_FILE, _cache)
 
 
 def get_soundfont_path() -> Optional[str]:

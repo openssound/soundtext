@@ -198,11 +198,29 @@ def test_soundfont_is_extracted_with_its_license(tmp_path, monkeypatch):
 def test_plain_soundfont_gets_its_license_file(tmp_path, monkeypatch):
     from core import soundfont_downloads as sf
     monkeypatch.setattr(sf, "ensure_soundfonts_dir", lambda: str(tmp_path))
-    source = sf.find("sf-musescore")
-    files = {source.url: b"sfbk finto", source.license_url: b"MIT"}
-    sf.download(source, fetch=lambda url, dest: open(dest, "wb").write(files[url]), log=lambda s: None)
+    import dataclasses
+    import hashlib
+    real = sf.find("sf-musescore")
+    files = {real.url: b"sfbk finto", real.license_url: b"MIT"}
+    fetch = lambda url, dest: open(dest, "wb").write(files[url])  # noqa: E731
+    # il file finto del test, con la sua somma di controllo
+    source = dataclasses.replace(real, sha256=hashlib.sha256(b"sfbk finto").hexdigest())
+    sf.download(source, fetch=fetch, log=lambda s: None)
     assert (tmp_path / "MuseScore_General.sf3").read_bytes() == b"sfbk finto"
     assert (tmp_path / "MuseScore_General-LICENSE.md").read_bytes() == b"MIT"
+
+
+def test_soundfont_with_a_wrong_checksum_is_not_installed(tmp_path, monkeypatch):
+    """Ogni SoundFont del catalogo ha la sua SHA-256: un file diverso da
+    quello atteso non si installa."""
+    from core import soundfont_downloads as sf
+    monkeypatch.setattr(sf, "ensure_soundfonts_dir", lambda: str(tmp_path))
+    assert all(len(s.sha256) == 64 for s in sf.SOUNDFONTS)
+    source = sf.find("sf-musescore")
+    files = {source.url: b"un altro file", source.license_url: b"MIT"}
+    with pytest.raises(RuntimeError):
+        sf.download(source, fetch=lambda url, dest: open(dest, "wb").write(files[url]), log=lambda s: None)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_soundfonts_are_in_the_catalog():

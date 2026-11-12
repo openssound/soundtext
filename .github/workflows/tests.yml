@@ -77,7 +77,7 @@ jobs:
       - name: Installa dipendenze Python
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -c constraints.txt -r requirements.txt -r requirements-dev.txt
 
       - name: Controlla i componenti audio
         run: >
