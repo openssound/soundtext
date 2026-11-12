@@ -9,7 +9,8 @@
 #   - verovio 6.3.0 (incisione della partitura in WebAssembly, LGPL 3.0), la
 #     stessa versione della vista Partitura di SoundText;
 #   - vosk-browser 0.0.8 (riconoscimento vocale Kaldi/Vosk in WebAssembly,
-#     Apache 2.0) e il modello piccolo italiano di Alphacephei (Apache 2.0),
+#     Apache 2.0) e i modelli piccoli di Alphacephei (Apache 2.0) per italiano,
+#     inglese, francese e spagnolo,
 #     per la dettatura senza rete; il modello si riconfeziona in .tar.gz,
 #     il formato che legge vosk-browser.
 # Poi: venv/bin/python mobile/build.py
@@ -92,5 +93,11 @@ model() {  # nome-del-modello lingua md5 sha256
 }
 model vosk-model-small-it-0.22 it fbd8f9c72cbb8c3dfa3e4581bd3585f4 \
       9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267
+model vosk-model-small-en-us-0.15 en 09ab50ccd62b674cbaa231b825f9c1cb \
+      30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498
+model vosk-model-small-fr-0.22 fr 8873b1234503f6edd55f54bfff31cf3e \
+      cabf6180e177eb9b3a9a9d43a437bd5e549f3a7d09525e5d69a3fed787be12ad
+model vosk-model-small-es-0.42 es 2d5c94f9859a84881a0ef744738ebd31 \
+      09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f
 
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"

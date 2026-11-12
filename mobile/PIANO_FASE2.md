@@ -218,3 +218,5 @@ Resta per la tappa 6: la prova con 3 persone (almeno il 90% corretto) e i modell
 - Il modello della voce non sta più anche nella cache del service worker: Vosk lo conserva già nel suo archivio e non lo richiede più (verificato: 2,2 s per riaprirlo senza la copia).
 - La pagina ha una Content-Security-Policy: script, worker, audio e richieste solo da questo sito. Serve `'unsafe-eval'` per Vosk.
 - Le etichette degli stili dei generatori stanno in `core/generate_labels.py`, usate sia dalle finestre «Genera …» sia dal motore dell'app.
+
+**Modelli vocali di tutte e quattro le lingue (12 novembre 2026).** `scarica_vendor.sh` scarica anche i modelli piccoli di inglese (`vosk-model-small-en-us-0.15`), francese (`vosk-model-small-fr-0.22`) e spagnolo (`vosk-model-small-es-0.42`), ognuno con MD5 pubblicato da Alphacephei e SHA-256. Nell'app si aprono in circa 4 secondi con la grammatica della lingua. Non provati con una voce vera; con un suono continuo al posto della voce il riconoscitore può «sentire» una parola della grammatica (in spagnolo «bajo»): da tenere d'occhio nelle prove.
