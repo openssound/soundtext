@@ -27,6 +27,7 @@ from .instruments import (
     list_instrument_names, is_custom_instrument,
     ensure_instrument_available, resolve_instrument_type, InstrumentProfile,
     register_unresolved_instrument, unknown_instrument_message, legacy_instrument_fix,
+    unrecognized_header_message,
 )
 from .settings import get_accepted_instrument_fixes
 from .version import get_app_root, pick_writable_dir, USER_DATA_ROOT
@@ -38,6 +39,7 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
     RE_EFFECTS_HDR, RE_MASTER_CHAIN_HDR, RE_EFFECT_ITEM, RE_SYNTH_HDR, RE_BOX_HDR, RE_AUDIO_HDR,
     RE_AUDIO_FILE, RE_AUDIO_TRIM, RE_AUDIO_GAIN, RE_AUDIO_INPUT, RE_AUDIO_CHANNELS,
     RE_TRACK_HDR, RE_TRACK_HDR_EXPLICIT, RE_KV_EQUALS, RE_KV_COLON, short_track_header,
+    unrecognized_track_header,
     _TRACK_HDR_PATTERNS, VOLUME_MAX, _parse_bar_value_list, _si, _parse_kv_body,
     _convert_pan_to_0_127, _pan_0_127_to_normalized, _convert_volume, _parse_instrument_body,
     _parse_mixer_body, _notation_body_lines, _extract_named_blocks, _extract_box_blocks,
@@ -474,7 +476,8 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
             project.instruments[name] = fresh
     lines = text.splitlines()
 
-    mode = None            # None | "pattern" | "instrument" | "mixer" | "track"
+    mode = None            # None | "pattern" | "instrument" | "mixer" | "track" | "unrecognized"
+    unrecognized_line = 0  # la riga di un "Nome:" che non e' uno strumento noto
     current_name = None
     current_instrument = None
     buffer = []
@@ -486,7 +489,10 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
         body = ("\n" if mode in ("track", "pattern") else " ").join(buffer).strip()
         if mode in ("track", "pattern"):
             body = upgrade_midi_refs(body)      # &Nome delle versioni prima della 2.6
-        if mode == "pattern" and current_name:
+        if mode == "unrecognized" and body:
+            # "Pianoo:" con un corpo sotto: non e' una traccia, lo si dice
+            project.file_warnings.append((unrecognized_line, unrecognized_header_message(current_name)))
+        elif mode == "pattern" and current_name:
             project.add_pattern(current_name, body)
         elif mode == "track" and current_name:
             if current_instrument == AUDIO_INSTRUMENT_NAME:
@@ -695,9 +701,27 @@ def parse_project_text(text: str, project_name: str = "Progetto", base_dir: Opti
             if mode:
                 flush()
             instr, idx = header
+            if instr not in list_instrument_names() and instr not in project.instruments:
+                # Dalla 2.12.2 l'intestazione corta vale anche per i nomi
+                # General MIDI e gli alias scritti per intero ("Flute:",
+                # "Flauto:"): lo strumento si registra come con "Traccia X [Flute]:".
+                profile = resolve_instrument_type(instr, instr)
+                if profile.resolved:
+                    ensure_instrument_available(profile)
+                else:
+                    register_unresolved_instrument(profile)
+                    project.file_warnings.append((line_number - added_lines, unknown_instrument_message(instr)))
             current_name = f"{instr} {idx}".strip() if idx else instr
             current_instrument = instr
             mode = "track"
+            continue
+
+        # Una riga "Nome:" che non e' uno strumento noto, solo dove comincia
+        # un blocco: dentro un corpo resta li', e la segnala l'errore di grammatica.
+        unknown = None if mode else unrecognized_track_header(line, list_instrument_names())
+        if unknown:
+            current_name, mode = unknown, "unrecognized"
+            unrecognized_line = line_number - added_lines
             continue
 
         # riga di corpo (token della traccia/pattern corrente, o parametri strumento/mixer)
