@@ -33,7 +33,7 @@ from core.rhythm_generate import (
     DRUM_STYLES, BASS_STYLES, COMPING_STYLES, RIFF_STYLES, PROGRESSION_STYLES, generate_drum_pattern,
     section_end_bars, track_end_beat, kick_beats_of_track, fit_register, part_registers,
     extract_chords_from_track, generate_bass_from_chords, generate_melodic_line,
-    generate_chord_progression, parse_key, drum_styles_for_meter, meter_beats, INTENSITIES,
+    generate_chord_progression, parse_key, drum_styles_for_meter, INTENSITIES,
     Variability, splice_bars, MELODY_STYLES,
 )
 from core import user_styles

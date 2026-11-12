@@ -9,7 +9,6 @@ Esecuzione:
 
 import _config_isolation  # noqa: F401  (isola la configurazione: prima di importare core)
 
-import os
 
 import mido
 import numpy as np

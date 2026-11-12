@@ -4,3 +4,4 @@
 #   pip install -c constraints.txt -r requirements.txt -r requirements-dev.txt
 pytest
 pytest-xdist        # pytest -n auto --dist loadfile: i test in parallelo
+ruff                # ruff check . (controllo statico, vedi ruff.toml)

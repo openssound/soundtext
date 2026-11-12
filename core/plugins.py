@@ -45,7 +45,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from . import plugin_worker
-from .plugin_worker import au_only_on_macos, is_pedalboard_format, parse_ref
+from .plugin_worker import is_pedalboard_format, parse_ref
 from .i18n import tr
 
 log = logging.getLogger(__name__)

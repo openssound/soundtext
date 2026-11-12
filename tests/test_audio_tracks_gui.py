@@ -964,7 +964,6 @@ def test_gain_curve_points_on_the_box(tmp_path):
     assert clip.gain_points[0][0] == pytest.approx(1.0, abs=0.02)
     assert clip.gain_points[0][1] == pytest.approx(-20.0, abs=1.0)
     item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
-    import gui.arrangement_view as av
     renamed = []
     w.arrangement_view._rename_clip = lambda *a: renamed.append(a)     # mai una finestra modale nei test
     QTest.mouseDClick(vp, Qt.LeftButton, Qt.NoModifier, low)

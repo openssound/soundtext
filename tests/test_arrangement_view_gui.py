@@ -34,7 +34,7 @@ import sys
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6.QtCore import QPoint, QPointF, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
@@ -558,7 +558,6 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     import time
     import numpy as np
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PySide6.QtCore import Qt, QTimer
     from PySide6.QtWidgets import QApplication, QFileDialog
     app = QApplication.instance() or QApplication([])
     import core.playback as pb
@@ -584,7 +583,6 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     av = w.arrangement_view
     av.refresh()
     item = next(i for i in av.canvas._scene.items() if isinstance(i, BoxItem) and i.clip is track.clips[1])
-    from PySide6.QtTest import QTest
 
     from _menus import scripted_menus
     with scripted_menus("Esporta come WAV..."):

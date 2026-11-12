@@ -682,7 +682,6 @@ class ProjectMixin:
     def export_stems(self):
         """Tutte le tracce, un WAV per traccia (core.playback.render_stems_to_dir),
         in una cartella scelta; con o senza effetti."""
-        from PySide6.QtWidgets import QDialog
         from core.playback import render_stems_to_dir, stem_tracks
         if not self._check_tracks_syntax():
             return

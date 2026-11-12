@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 from core import audio_tracks
 from core.i18n import tr
 
-from .theme import ACCENT, dim, text_dim
+from .theme import dim, text_dim
 
 MIN_VISIBLE_SAMPLES = 64        # zoom massimo: tanti campioni su tutta la larghezza
 CURVE_TOP_DB, CURVE_BOTTOM_DB = 6.0, -40.0

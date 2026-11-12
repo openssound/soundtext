@@ -722,6 +722,7 @@ def dictate_track(text: str, spoken: str, lang: Optional[str] = None) -> Optiona
     """«nuova traccia basso»: il brano con una traccia nuova in fondo, vuota,
     pronta per dettare: {text, name}. None se lo strumento non si conosce."""
     from core.dictation import instrument_name
+    from core.i18n import current_language
     instrument = instrument_name(spoken, lang or current_language())
     if not instrument:
         return None
@@ -1173,7 +1174,6 @@ def _insert_after_track_boxes(text: str, track: str, block: str) -> Tuple[str, i
 def _song_end_bar_beat(text: str) -> float:
     """L'inizio della battuta dopo la fine del brano (dove si accoda una
     sezione duplicata)."""
-    from core.project_io import parse_project_text
     info = structure(text)
     bars = info["bars"]
     end = info["end"]

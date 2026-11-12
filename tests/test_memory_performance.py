@@ -262,7 +262,6 @@ def test_a_file_in_use_does_not_make_prune_remove_the_newer_ones(tmp_path, monke
 
 def test_stale_library_copies_are_removed(tmp_path, monkeypatch):
     import sys
-    import tempfile
     from core import sfz_engine
     if sys.platform == "win32":
         pytest.skip("su Windows si prova a cancellare, il pid non si controlla")

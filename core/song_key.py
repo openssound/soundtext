@@ -13,7 +13,7 @@ controlla sempre: ogni nota deve essere quella di prima, N semitoni piu' su.
 
 import copy
 import re
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from st_language.chords import midi_to_token, note_name_to_pc, pitch_to_midi
 from st_language.midi import resolve_event_notes

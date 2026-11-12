@@ -13,3 +13,4 @@ pedalboard==0.9.26
 verovio==6.3.0
 pytest==9.1.1
 pytest-xdist==3.8.0
+ruff==0.17.4

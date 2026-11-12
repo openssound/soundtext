@@ -780,9 +780,9 @@ def build_story():
                                          "with reverb, chorus and room. On the right, “+ Effect” builds the "
                                          "chain.")),
         *section(T("Invio rapido (solo tracce di note)", "Quick send (note tracks only)")),
-        P(T(f"<b>Riverbero</b> e <b>Chorus</b> del synth, da 0 a 100%, e l'<b>Ambiente</b> del riverbero, uno per "
-            f"tutto il brano. Nella <b>Stanza piccola</b> predefinita il riverbero si sente appena: per il nostro "
-            f"brano scegli <b>Sala</b> e dai il 20–30% di riverbero agli accordi.",
+        P(T("<b>Riverbero</b> e <b>Chorus</b> del synth, da 0 a 100%, e l'<b>Ambiente</b> del riverbero, uno per "
+            "tutto il brano. Nella <b>Stanza piccola</b> predefinita il riverbero si sente appena: per il nostro "
+            "brano scegli <b>Sala</b> e dai il 20–30% di riverbero agli accordi.",
             f"Synth <b>{ui('Riverbero')}</b> and <b>{ui('Chorus')}</b>, 0 to 100%, and the reverb "
             f"<b>{ui('Ambiente')}</b>, one for the whole song. In the default <b>{ui('Stanza piccola')}</b> the "
             f"reverb is barely audible: for our song choose <b>{ui('Sala')}</b> and give the chords 20–30% "

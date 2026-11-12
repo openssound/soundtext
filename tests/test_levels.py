@@ -206,7 +206,6 @@ def _fluid_ready():
 def test_per_channel_synthesis_sounds_like_the_plain_mix(tmp_path):
     """Le uscite per canale sommate danno lo stesso audio di write_s16 (a
     parte il dither: al massimo pochi passi su 32767)."""
-    import os
     import pytest
     if not _fluid_ready():
         pytest.skip("serve la libreria FluidSynth con fluid_synth_process e un SoundFont")

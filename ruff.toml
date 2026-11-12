@@ -1,0 +1,9 @@
+# Controllo statico nei test su GitHub (workflow Tests): solo gli errori veri
+# di Pyflakes (nomi non definiti, import e variabili non usati) e gli errori
+# di sintassi. Niente regole di stile: il codice resta scritto com'e'.
+#   ruff check .
+exclude = ["venv", "mobile/vendor", "mobile/bundle", "build", "dist"]
+line-length = 130
+
+[lint]
+select = ["E9", "F"]

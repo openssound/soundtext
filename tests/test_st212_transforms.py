@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox, QPlainTex
 
 from core.i18n import set_language
 from core.midi_export import export_project_to_midi
-from core.notation import Pattern, notation_warnings, tokenize
+from core.notation import notation_warnings
 from core.project_io import parse_project_text, project_to_text
 from core.reorganize import expand_patterns_for_project, extract_patterns_for_project
 from core.transform_preview import (arp_region, arpeggiable, expansion, freeze_all, freeze_span, reference_at,

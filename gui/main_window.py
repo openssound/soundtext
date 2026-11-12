@@ -5,8 +5,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QFont, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QScrollArea, QSlider, QSpinBox, QToolBar, QStatusBar, QProgressBar,
-    QComboBox, QApplication, QStackedWidget, QMessageBox, QToolButton, QButtonGroup, QFrame,
+    QLabel, QPushButton, QScrollArea, QToolBar, QStatusBar, QComboBox, QApplication, QStackedWidget, QMessageBox, QToolButton, QButtonGroup, QFrame,
     QSizePolicy, QMenu, QDialog, QDoubleSpinBox, QCheckBox,
 )
 from core.i18n import tr

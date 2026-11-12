@@ -79,6 +79,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -c constraints.txt -r requirements.txt -r requirements-dev.txt
 
+      # Errori veri (nomi non definiti, import non usati): vedi ruff.toml
+      - name: Controllo statico (ruff)
+        run: ruff check .
+
       - name: Controlla i componenti audio
         run: >
           python -c "from core import fluid, audio_decode;

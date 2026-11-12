@@ -157,7 +157,6 @@ def catalog() -> List[Item]:
     script = load_script()
     items: List[Item] = []
     if script is not None:
-        sfz = script.DEST / "sfz"
         for groups, category in ((script.GRUPPI, CATEGORY_SFZ), (script.ORCHESTRA, CATEGORY_ORCHESTRA),
                                  (script.EXTRA, CATEGORY_SFZ_EXTRA)):
             for name, desc, _url, sub in groups:

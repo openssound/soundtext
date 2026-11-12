@@ -206,7 +206,6 @@ def hit_velocity(window, samplerate: int) -> int:
 
 
 def _classify_band(window, samplerate: int, beatbox: bool = False, noise_spectrum=None):
-    import numpy as np
 
     if len(window) == 0:
         return "snare", 60
