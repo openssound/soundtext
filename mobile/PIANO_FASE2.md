@@ -121,3 +121,54 @@ Non fatto:
   - la prova del bundle ha trovato che mancava `core.transform_preview` (24 moduli ora).
 
 Non portato: «Crea pattern» dalla catena (un pattern nuovo con il risultato).
+
+**Tappa 5, fatta (11 novembre 2026).** L'interprete della dettatura, `core/dictation.py`: modulo Python puro (niente Qt, niente numpy), quindi lo può usare anche SoundText sul computer.
+
+- **`interpret(frase, lingua, mode, patterns)`**: la frase riconosciuta diventa testo ST, pezzo per pezzo, in italiano, inglese, francese e spagnolo, con i nomi delle note di ogni lingua (do re mi / C D E, «ut» in francese).
+- **La tabella del progetto, tutta:**
+  - note e alterazioni;
+  - ottave («do ottava cinque» `c*5`; «ottava sopra» e «ottava sotto» `*+` e `*-`, che valgono in `rel:`);
+  - griglie («ottavi», «terzine di ottavi», anche «crome» e «semicrome»);
+  - valori di nota («re semiminima puntata» `d'4.`, «pausa di minima» `r'2`, in inglese «half rest»);
+  - pause con il numero («due pause» `2r`);
+  - stanghette;
+  - accordi con le qualità di SoundText («re minore sette bemolle cinque» `Dm7b5`, «settima maggiore», «semidiminuito», «sus quattro», «do su mi» `C/E`);
+  - «ripeti due volte»: racchiude quello che si è dettato dopo l'ultima stanghetta, oppure diventa un comando per l'ultima battuta o la selezione;
+  - pattern con le loro funzioni («Tema invertito» `%Tema.invert`, «retrogrado», «con le terze», «un'ottava sopra»).
+- **Note o accordi:**
+  - in modo automatico, se nella frase c'è un accordo con la sua qualità, anche i nomi soli diventano accordi: «la minore, fa, do, sol» dà `Am F C G`;
+  - l'app potrà fissare il modo secondo la riga del cursore;
+  - un accordo già scritto come simbolo dal riconoscimento («G7», «F#m») passa così com'è.
+- **Comandi** nelle quattro lingue: cancella, annulla, suona la battuta, suona da capo, stop, tempo, trasponi su o giù, vai alla battuta, nuova traccia, fine dettatura.
+  - Comandi e musica possono stare nella stessa frase.
+  - I numeri si possono dire a parole, anche composti («centoventi», «quatre-vingt-dix», «ciento veinte»), o in cifre.
+- **Errori tipici del riconoscimento:**
+  - «re» capito come «e», «si» come «sì», «la» come «là», «sol» come «sole» o «so», «do» come «dò»;
+  - in inglese «see», «bee», «gee»; in francese «raie», «saule», «scie»; in spagnolo «sí», «rey».
+  - Le parole corrette diventano la nota giusta ma restano segnalate come incerte, con la parola capita.
+  - Fra gli accordi «e», «and», «et» e «y» sono la congiunzione.
+  - Le parole che l'interprete non capisce non diventano note: restano nell'elenco, segnalate.
+- **Ogni pezzo porta le parole dette**, per la lettura con TalkBack e VoiceOver nella tappa 6 («inserito: la minore, fa, do, sol»).
+- **Nel motore dell'app:**
+  - `engine.dictate(testo, frase, lingua, mode)` riconosce per nome i pattern del brano e usa la lingua dell'interfaccia se non se ne indica una;
+  - nel worker c'è il comando `dictate`; in Pyodide risponde in 2–19 ms;
+  - il bundle ha 25 moduli di `core/`.
+- **Test, `tests/test_dictation.py` (152 casi):**
+  - ogni riga della tabella in ognuna delle quattro lingue, più qualità, valori e griglie in più;
+  - gli errori tipici, con le parole segnalate;
+  - tutti i comandi in tutte le lingue;
+  - il giro di 8 accordi e la melodia di 2 battute del criterio di accettazione;
+  - 1600 frasi a caso con le parole del lessico.
+  - Il testo prodotto deve sempre leggersi in SoundText (`validate_track_text`).
+  - In `tests/test_mobile_engine.py` c'è un test per `engine.dictate` con i pattern di `14_trasformazioni.st`.
+
+**Riconoscimento vocale: Vosk, senza rete (prova, 12 novembre 2026).** Scelto il modello locale invece della Web Speech API: l'audio non esce dal telefono e funziona offline.
+
+- vosk-browser 0.0.8 (Apache 2.0) e il modello piccolo italiano di Alphacephei (`vosk-model-small-it-0.22`, 50 MB), scaricati da `scarica_vendor.sh` con le somme di controllo in `vendor/vosk/` (non versionati). Il modello si carica una volta e resta nel browser (IndexedDB): 7,4 s la prima volta, 5,1 s le successive.
+- **Vocabolario limitato:** `grammar(lingua, patterns)` in `core/dictation.py` (nel motore `engine.dictation_words`, nel worker `dictation_words`) dà al riconoscitore solo le parole dell'interprete, i nomi dei pattern del brano e circa 300 frasi tipiche (in italiano 1006 voci). Il rumore non produce testo.
+  - Nel vocabolario di Vosk mancano le parole composte («semiminima», «biscroma», «semidiminuito»): l'interprete accetta anche «semi minima», «bis croma».
+  - Un test controlla che ogni parola delle frasi della tabella e dei comandi sia nella grammatica.
+- **Pagina di prova:** `mobile/prova_voce.html` (microfono o file audio, con la grammatica attivabile, confidenza per parola e latenza). Non ancora provata con una voce vera.
+- Da scaricare, se la prova va bene: i modelli piccoli inglese, francese e spagnolo (circa 120 MB in tutto).
+
+Resta per la tappa 6: microfono nell'app, trascrizione, conferma, comandi applicati al brano, lettura a voce.

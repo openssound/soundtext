@@ -81,6 +81,8 @@ with open(os.path.join(root, "examples", "didattici", "14_trasformazioni.st"), e
 at = source.index("  %Tema") + 3
 engine.transform_preview(source, at, "%Tema.retro.invert(e*4)")
 engine.transform_apply(source, at, "%Tema.retro", True)
+# dettatura (fase 2)
+engine.dictate(source, "ottavi do re mi fa ripeti due volte, la minore, Tema invertito, tempo novanta", "it")
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

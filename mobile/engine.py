@@ -32,6 +32,7 @@ ENGINE_MODULES = (
     "core.musicxml_export",
     "core.rhythm_generate",
     "core.performance_style",
+    "core.dictation",
 )
 
 RE_PATTERN_HDR = re.compile(r"^Pattern\s+%([\w.\-]+)\s*:\s*$")
@@ -695,6 +696,36 @@ def transform_apply(text: str, pos: int, token: str, freeze: bool = False) -> di
         new = new[:block["start"]] + frozen + new[block["end"]:]
         end = block["end"] + len(frozen) - len(body)
     return {"text": new, "start": ref["start"], "end": end}
+
+
+# ------------------------------------------------------------ dettatura (fase 2)
+
+def dictate(text: str, phrase: str, lang: Optional[str] = None, mode: str = "auto") -> dict:
+    """La frase riconosciuta dalla dettatura -> testo ST, pezzi e comandi
+    (core.dictation.interpret), nella lingua data o in quella
+    dell'interfaccia; i pattern del brano si riconoscono per nome («Tema
+    invertito»)."""
+    from core.dictation import interpret
+    from core.i18n import current_language
+    from core.project_io import parse_project_text
+    try:
+        patterns = list(parse_project_text(text, "Brano").patterns)
+    except Exception:                                  # il file non si legge: niente pattern
+        patterns = []
+    return interpret(phrase, lang or current_language(), mode, patterns)
+
+
+def dictation_words(text: str, lang: Optional[str] = None) -> list:
+    """La grammatica del riconoscimento locale (core.dictation.grammar): le
+    parole e le frasi della dettatura, con i nomi dei pattern del brano."""
+    from core.dictation import grammar
+    from core.i18n import current_language
+    from core.project_io import parse_project_text
+    try:
+        patterns = list(parse_project_text(text, "Brano").patterns)
+    except Exception:
+        patterns = []
+    return grammar(lang or current_language(), patterns)
 
 
 def _dedent(body: str, positions: List[int]) -> Tuple[str, List[int]]:

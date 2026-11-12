@@ -455,3 +455,19 @@ def test_transform_preview_sounds_like_the_song_after_replacing(token):
     assert notes(engine.analyze(frozen, "x")["midi"]) == notes(engine.analyze(applied, "x")["midi"])
     added = [line for line in frozen.split("\n") if line not in text.split("\n")]
     assert added and all(line.startswith("  ") for line in added)   # il rientro del file resta
+
+
+def test_dictate_knows_the_patterns_of_the_song():
+    """La dettatura nel motore (fase 2): i pattern del brano si riconoscono
+    per nome, la lingua e' quella data o quella dell'interfaccia."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    with open(os.path.join(ROOT, "examples", "didattici", "14_trasformazioni.st"), encoding="utf-8") as f:
+        source = f.read()
+    result = engine.dictate(source, "motivo retrogrado, giro, la minore", "it")
+    assert result["text"] == "%Motivo.retro %Giro Am"
+    assert engine.dictate(source, "Motivo inverted", "en")["text"] == "%Motivo.invert"
+    assert engine.dictate("non si legge {", "do re mi")["text"] == "c d e"

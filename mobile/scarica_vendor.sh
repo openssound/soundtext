@@ -7,7 +7,11 @@
 #   - il SoundFont TimGM6mb (GPL 2), dallo stesso pacchetto Debian di
 #     core/soundfont_downloads.py;
 #   - verovio 6.3.0 (incisione della partitura in WebAssembly, LGPL 3.0), la
-#     stessa versione della vista Partitura di SoundText.
+#     stessa versione della vista Partitura di SoundText;
+#   - vosk-browser 0.0.8 (riconoscimento vocale Kaldi/Vosk in WebAssembly,
+#     Apache 2.0) e il modello piccolo italiano di Alphacephei (Apache 2.0),
+#     per la dettatura senza rete; il modello si riconfeziona in .tar.gz,
+#     il formato che legge vosk-browser.
 # Poi: venv/bin/python mobile/build.py
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -69,5 +73,23 @@ test "$(openssl dgst -sha512 -binary "$TMP/verovio.tgz" | base64 -w0)" = \
 tar xzf "$TMP/verovio.tgz" -C "$TMP" package/dist/verovio-toolkit-wasm.js
 cp "$TMP/package/dist/verovio-toolkit-wasm.js" $V/verovio/
 echo "d794119cd5ea83a3e835849945f0289c91ac2bac427f4aa312c7010a800b46bd  $V/verovio/verovio-toolkit-wasm.js" | sha256sum -c --quiet
+
+mkdir -p $V/vosk
+curl -fsSL https://registry.npmjs.org/vosk-browser/-/vosk-browser-0.0.8.tgz -o "$TMP/vosk.tgz"
+test "$(openssl dgst -sha512 -binary "$TMP/vosk.tgz" | base64 -w0)" = \
+     "df9MuChirUGKxP/+4k8tBV6hJOic8IRdJXv64+ET0Ue5CddOzLZINiHOWCka765gBzHJWNtQKgaYakS0FXZIJA=="
+tar xzf "$TMP/vosk.tgz" -C "$TMP" package/dist/vosk.js package/README.md
+cp "$TMP/package/dist/vosk.js" $V/vosk/
+echo "29504515526e974f4cb053cf08811c4de5fb2a74007c0a5a957db50eaa8d5d0c  $V/vosk/vosk.js" | sha256sum -c --quiet
+# il modello: MD5 pubblicato da Alphacephei (model-list.json) e SHA-256
+model() {  # nome-del-modello lingua md5 sha256
+  get https://alphacephei.com/vosk/models/$1.zip "$TMP/$1.zip" $4
+  echo "$3  $TMP/$1.zip" | md5sum -c --quiet
+  ( cd "$TMP" && unzip -q "$1.zip" && \
+    tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=2022-07-12 -cf - "$1" | gzip -n -9 > "$1.tar.gz" )
+  mv "$TMP/$1.tar.gz" $V/vosk/$2.tar.gz
+}
+model vosk-model-small-it-0.22 it fbd8f9c72cbb8c3dfa3e4581bd3585f4 \
+      9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267
 
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"

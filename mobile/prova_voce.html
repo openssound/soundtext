@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SoundText Prova voce</title>
+<meta name="theme-color" content="#1e1f22">
+<link rel="stylesheet" href="style.css">
+<style>
+  .voce { padding: 12px 16px; max-width: 720px; }
+  .voce p { margin: 10px 0; }
+  .voce button, .voce select { font-size: 16px; padding: 10px 14px; margin: 4px 4px 4px 0; }
+  #mic[aria-pressed="true"] { background: #b3261e; color: #fff; }
+  #partial { min-height: 1.4em; opacity: .7; font-style: italic; }
+  #log { list-style: none; padding: 0; }
+  #log li { border-top: 1px solid #444; padding: 8px 0; }
+  #log .st { font-family: monospace; font-size: 18px; }
+  #log .incerto { background: #6b5200; }
+  #log .ignoto { text-decoration: underline wavy #e57373; }
+  #log small { opacity: .7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Prova voce <span>dettatura senza rete (Vosk)</span></h1>
+  <a href="./" class="link">Torna al brano</a>
+</header>
+<main class="voce">
+  <p>Il riconoscimento gira tutto nel browser: l'audio non esce dal computer. Il modello (50 MB) si scarica una volta
+    e resta nel browser.</p>
+  <p>
+    <label>Lingua <select id="lang"><option value="it">italiano</option></select></label>
+    <label><input type="checkbox" id="grammar" checked> Solo le parole attese (grammatica)</label>
+  </p>
+  <p>
+    <button id="load">Carica il modello</button>
+    <button id="mic" aria-pressed="false" disabled>🎤 Detta</button>
+    <label>oppure un file audio <input type="file" id="file" accept="audio/*" disabled></label>
+  </p>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p id="partial" aria-hidden="true"></p>
+  <ol id="log" aria-live="polite"></ol>
+</main>
+<script src="vendor/vosk/vosk.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const status = (text) => { $("status").textContent = text; };
+const SONG = "ST: 2.6\nTempo: 100 BPM\n\nPattern %Tema:\n  8: c d e g 2e 2c\n\nPiano:\n  %Tema\n";
+
+// il motore di SoundText (Pyodide), per l'interprete della dettatura
+const engine = new Worker("worker.js", { type: "module" });
+let nextId = 1;
+const pending = new Map();
+engine.onmessage = (ev) => {
+  const msg = ev.data;
+  if (msg.type === "booted") return pending.get("boot")?.(msg);
+  const done = pending.get(msg.id);
+  if (!done) return;
+  pending.delete(msg.id);
+  done(msg);
+};
+const call = (cmd, args) => new Promise((resolve) => { const id = nextId++; pending.set(id, resolve); engine.postMessage({ cmd, id, args }); });
+const booted = new Promise((resolve) => { pending.set("boot", resolve); engine.postMessage({ cmd: "boot", language: "it" }); });
+
+let model = null, recognizer = null, audio = null;
+let spokenAt = 0;
+
+async function makeRecognizer(sampleRate) {
+  if (recognizer) recognizer.remove();
+  let grammar;
+  if ($("grammar").checked) {
+    const words = (await call("dictation_words", [SONG, $("lang").value])).result;
+    grammar = JSON.stringify(words);
+  }
+  recognizer = new model.KaldiRecognizer(sampleRate, grammar);
+  recognizer.on("partialresult", (m) => {
+    if (m.result.partial && !spokenAt) spokenAt = performance.now();
+    $("partial").textContent = m.result.partial;
+  });
+  recognizer.on("result", (m) => { if (m.result.text) show(m.result); });
+}
+
+async function show(result) {
+  const heardAt = performance.now();
+  $("partial").textContent = "";
+  const r = (await call("dictate", [SONG, result.text, $("lang").value])).result;
+  const li = document.createElement("li");
+  const conf = result.result ? result.result.map((w) => `${w.word} ${Math.round(w.conf * 100)}%`).join(", ") : "";
+  const st = document.createElement("div");
+  st.className = "st";
+  for (const it of r.items) {
+    const span = document.createElement("span");
+    span.textContent = (it.st || `«${it.said}»`) + " ";
+    if (it.kind === "unknown") span.className = "ignoto";
+    else if (it.uncertain) span.className = "incerto";
+    if (it.kind === "command") span.textContent = `[${it.command}${it.value != null ? " " + it.value : ""}] `;
+    st.append(span);
+  }
+  li.append(`«${result.text}»`, st);
+  const small = document.createElement("small");
+  small.textContent = `${conf}${spokenAt ? ` — ${Math.round(heardAt - spokenAt)} ms dall'inizio della frase` : ""}`;
+  li.append(small);
+  $("log").prepend(li);
+  spokenAt = 0;
+}
+
+$("load").onclick = async () => {
+  $("load").disabled = true;
+  const t0 = performance.now();
+  status("Carico il motore e il modello…");
+  await booted;
+  model = await Vosk.createModel(`vendor/vosk/${$("lang").value}.tar.gz`);
+  status(`Modello pronto in ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
+  $("mic").disabled = false;
+  $("file").disabled = false;
+};
+
+$("grammar").onchange = () => { if (audio) makeRecognizer(audio.ctx.sampleRate); };
+
+$("mic").onclick = async () => {
+  if (audio) {                                   // ferma
+    audio.stream.getTracks().forEach((t) => t.stop());
+    recognizer.retrieveFinalResult();
+    await audio.ctx.close();
+    audio = null;
+    $("mic").setAttribute("aria-pressed", "false");
+    $("mic").textContent = "🎤 Detta";
+    status("Microfono spento.");
+    return;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+  const ctx = new AudioContext();
+  await makeRecognizer(ctx.sampleRate);
+  const node = ctx.createScriptProcessor(4096, 1, 1);
+  node.onaudioprocess = (ev) => { try { recognizer.acceptWaveform(ev.inputBuffer); } catch (e) { console.error(e); } };
+  ctx.createMediaStreamSource(stream).connect(node);
+  node.connect(ctx.destination);
+  audio = { stream, ctx, node };
+  $("mic").setAttribute("aria-pressed", "true");
+  $("mic").textContent = "■ Basta";
+  status("Ti ascolto: detta una frase e fai una pausa.");
+};
+
+$("file").onchange = async () => {
+  const file = $("file").files[0];
+  if (!file) return;
+  const ctx = new OfflineAudioContext(1, 16000, 16000);
+  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  await makeRecognizer(buffer.sampleRate);
+  const data = buffer.getChannelData(0);
+  status(`Riconosco ${file.name} (${buffer.duration.toFixed(1)} s)…`);
+  for (let i = 0; i < data.length; i += 4096) recognizer.acceptWaveformFloat(data.slice(i, i + 4096), buffer.sampleRate);
+  recognizer.retrieveFinalResult();
+};
+</script>
+</body>
+</html>
