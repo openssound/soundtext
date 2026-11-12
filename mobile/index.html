@@ -48,8 +48,22 @@
          autocomplete="off" translate="no"></pre>
     <!-- Barra musicale: sopra la tastiera del telefono mentre si scrive -->
     <div id="musicbar" class="musicbar" role="toolbar" aria-label="Barra musicale" hidden>
+      <!-- Dettatura: la frase capita, il testo ST e l'esito (letto dallo screen reader) -->
+      <div id="voice" class="voice" role="group" aria-label="Dettatura" hidden>
+        <p id="voiceHeard" class="voice-heard" aria-hidden="true"></p>
+        <p id="voicePieces" class="voice-pieces" aria-hidden="true" translate="no"></p>
+        <p id="voiceStatus" class="voice-status" role="status" aria-live="polite"></p>
+        <div class="voice-actions">
+          <span id="voiceConfirm" hidden>
+            <button id="voiceInsert" class="primary" data-i18n>Inserisci</button>
+            <button id="voiceDiscard" data-i18n>Scarta</button>
+          </span>
+          <button id="voiceAsk" aria-pressed="false" data-i18n>Chiedi sempre conferma</button>
+        </div>
+      </div>
       <div id="suggest" class="suggest" role="group" aria-label="Suggerimenti"></div>
       <div class="barrow">
+        <button id="mic" class="mic" aria-pressed="false" aria-label="Detta"><span aria-hidden="true">🎤</span></button>
         <div class="pages" role="tablist" aria-label="Pagine della barra">
           <button data-page="0" role="tab" aria-selected="true" aria-controls="keys" data-i18n>Note</button>
           <button data-page="1" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Durate</button>
@@ -172,6 +186,18 @@
     <button id="tfFreeze" data-i18n>Scrivi le note</button>
     <button id="tfClose" data-i18n>Chiudi</button>
   </div>
+</dialog>
+
+<!-- Dettatura: avviso prima del primo uso -->
+<dialog id="voiceIntro" class="sheet" aria-labelledby="voiceIntroTitle">
+  <h2 id="voiceIntroTitle" data-i18n>Dettatura</h2>
+  <p data-i18n>La voce si riconosce sul telefono: l'audio non viene registrato e non esce dal dispositivo.</p>
+  <p data-i18n>La prima volta l'app scarica il modello della lingua (circa 50 MB); poi la dettatura funziona anche senza rete.</p>
+  <p data-i18n>Detta una frase e fai una pausa. Per esempio: «la minore, fa, do, sol», «ottavi do re mi fa», «suona la battuta», «cancella», «fine dettatura».</p>
+  <div class="sheet-actions">
+    <button id="voiceIntroStart" class="primary" data-i18n>Scarica e inizia</button>
+  </div>
+  <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
 <!-- Azioni su un box o una sezione (Struttura) -->

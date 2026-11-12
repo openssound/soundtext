@@ -83,6 +83,7 @@ engine.transform_preview(source, at, "%Tema.retro.invert(e*4)")
 engine.transform_apply(source, at, "%Tema.retro", True)
 # dettatura (fase 2)
 engine.dictate(source, "ottavi do re mi fa ripeti due volte, la minore, Tema invertito, tempo novanta", "it")
+engine.dictate_track(source, "basso", "it")
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 
@@ -135,7 +136,10 @@ def build():
         with open(example_path(name), "rb") as src, \
                 open(os.path.join(BUNDLE, "examples", name), "wb") as dst:
             dst.write(src.read())
-    info = {"core_modules": modules, "examples": EXAMPLES, "languages": languages,
+    # le lingue della dettatura: i modelli di Vosk scaricati da scarica_vendor.sh
+    vosk = os.path.join(HERE, "vendor", "vosk")
+    voice = sorted(f[:-7] for f in os.listdir(vosk) if f.endswith(".tar.gz")) if os.path.isdir(vosk) else []
+    info = {"core_modules": modules, "examples": EXAMPLES, "languages": languages, "voice": voice,
             "engine_zip_bytes": os.path.getsize(zpath)}
     with open(os.path.join(BUNDLE, "files.json"), "w", encoding="utf-8") as f:
         json.dump(info, f, indent=1)

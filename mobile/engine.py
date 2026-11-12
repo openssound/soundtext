@@ -715,6 +715,19 @@ def dictate(text: str, phrase: str, lang: Optional[str] = None, mode: str = "aut
     return interpret(phrase, lang or current_language(), mode, patterns)
 
 
+def dictate_track(text: str, spoken: str, lang: Optional[str] = None) -> Optional[dict]:
+    """«nuova traccia basso»: il brano con una traccia nuova in fondo, vuota,
+    pronta per dettare: {text, name}. None se lo strumento non si conosce."""
+    from core.dictation import instrument_name
+    instrument = instrument_name(spoken, lang or current_language())
+    if not instrument:
+        return None
+    # il nome della traccia: lo strumento, o la parola detta («Violino»)
+    name = None if _has_short_header(instrument) else (spoken.strip().split() or [instrument])[-1].capitalize()
+    r = add_track(text, instrument, "", name)
+    return {"text": r["text"].rstrip("\n") + "\n  ", "name": r["name"]}
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""
@@ -1094,6 +1107,13 @@ def generator_choices(text: str = "") -> dict:
     }
 
 
+def _has_short_header(instrument: str) -> bool:
+    """«Bass:» vale solo per gli strumenti del catalogo; gli altri («Violin»,
+    «Organ») si scrivono «Traccia Nome [Strumento]:»."""
+    from core.instruments import all_instruments
+    return instrument in all_instruments()
+
+
 def add_track(text: str, instrument: str, body: str, name: Optional[str] = None) -> dict:
     """Il brano con una traccia nuova in fondo: {text, name, start}.
 
@@ -1110,7 +1130,7 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None)
     candidate, n = base, 2
     while candidate in taken:
         candidate, n = f"{base} {n}", n + 1
-    if candidate == instrument and re.match(r"^[A-Za-z]\w*$", candidate):
+    if candidate == instrument and re.match(r"^[A-Za-z]\w*$", candidate) and _has_short_header(instrument):
         header = f"{candidate}:"
     else:
         header = f"Traccia {candidate} [{instrument}]:"

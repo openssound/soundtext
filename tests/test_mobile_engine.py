@@ -471,3 +471,31 @@ def test_dictate_knows_the_patterns_of_the_song():
     assert result["text"] == "%Motivo.retro %Giro Am"
     assert engine.dictate(source, "Motivo inverted", "en")["text"] == "%Motivo.invert"
     assert engine.dictate("non si legge {", "do re mi")["text"] == "c d e"
+
+
+def test_dictate_track_adds_an_empty_track_ready_to_dictate():
+    """«nuova traccia basso» (fase 2, tappa 6): la traccia in fondo al brano,
+    con la riga rientrata dove continua la dettatura; il brano resta valido."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    from core.project_io import parse_project_text
+    source = "ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  1: C | F |\n"
+    r = engine.dictate_track(source, "basso", "it")
+    assert r["name"] == "Bass"
+    assert r["text"] == source + "\nBass:\n  "
+    dictated = r["text"] + engine.dictate(r["text"], "quarti do mi sol mi", "it")["text"] + "\n"
+    assert [t.name for t in parse_project_text(dictated, "x").tracks] == ["Piano", "Bass"]
+    again = engine.dictate_track(dictated, "bass", "en")
+    assert again["name"] == "Bass 2"
+    # uno strumento fuori dal catalogo non ha la forma breve: «Traccia Violino
+    # [Violin]:» (se un altro test l'ha gia' messo nel catalogo, «Violin:»)
+    violin = engine.dictate_track(source, "violino", "it")
+    assert violin["text"].endswith(("\nTraccia Violino [Violin]:\n  ", "\nViolin:\n  "))
+    track = parse_project_text(violin["text"] + "4: c d e f\n", "x").tracks[1]
+    assert track.name == violin["name"] and track.instrument.resolved and track.instrument.gm_program == 40
+    strings = engine.dictate_track(source, "strings", "en")
+    assert parse_project_text(strings["text"] + "1: c\n", "x").tracks[1].instrument.gm_program == 48
+    assert engine.dictate_track(source, "pippo", "it") is None

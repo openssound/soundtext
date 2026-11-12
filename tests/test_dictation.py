@@ -195,6 +195,24 @@ def test_symbols_from_the_recognizer():
 
 COMMANDS = [
     ("it", "cancella", "delete_last", None),
+    ("it", "conferma", "confirm", None),
+    ("it", "va bene", "confirm", None),
+    ("it", "suona", "play", None),
+    ("it", "suona tutto", "play_from_start", None),
+    ("it", "inserisci nuova traccia flauto", "new_track", "flauto"),
+    ("it", "aggiungi una traccia di flauto", "new_track", "di flauto"),
+    ("it", "traccia nuova basso", "new_track", "basso"),
+    ("it", "metti il tempo a novanta", "tempo", 90),
+    ("it", "cancella l'ultima", "delete_last", None),
+    ("en", "add a new track flute", "new_track", "flute"),
+    ("en", "play", "play", None),
+    ("fr", "ajoute une nouvelle piste flûte", "new_track", "flûte"),
+    ("fr", "tempo à 90", "tempo", 90),
+    ("es", "añade una nueva pista flauta", "new_track", "flauta"),
+    ("es", "toca", "play", None),
+    ("en", "confirm", "confirm", None),
+    ("fr", "confirme", "confirm", None),
+    ("es", "confirma", "confirm", None),
     ("it", "annulla", "undo", None),
     ("it", "suona la battuta", "play_bar", None),
     ("it", "suona da capo", "play_from_start", None),
@@ -338,3 +356,38 @@ def test_grammar_for_the_offline_recognizer(lang):
         for word in re.split(r"[\s,'\-]+", phrase.lower()):
             if word and not word.isdigit() and not re.fullmatch(r"[a-g][#b]?\d*|[a-g]m\d*", word):
                 assert word in words, (phrase, word)
+
+
+def test_instruments_for_a_new_track():
+    """«nuova traccia basso»: ogni strumento che il riconoscitore conosce ha
+    il suo strumento di SoundText, che fa una traccia valida."""
+    from core.dictation import _INSTRUMENT_WORDS, instrument_name
+    from core.project_io import parse_project_text
+    for lang, words in _INSTRUMENT_WORDS.items():
+        for word in words:
+            name = instrument_name(word, lang)
+            assert name, (lang, word)
+            project = parse_project_text(f"ST: 2.6\nTempo: 100 BPM\n\nTraccia X [{name}]:\n  4: c d e f\n", "x")
+            assert project.tracks[0].instrument.resolved, (lang, word, name)
+    assert instrument_name("pianoforte", "it") == instrument_name("piano", "it") == "Piano"
+    assert instrument_name("basso", "it") == "Bass"
+    assert instrument_name("batería", "es") == "Drums"
+    assert instrument_name("la flûte", "fr") == "Flute"
+    assert instrument_name("pippo", "it") is None
+    assert instrument_name("", "en") is None
+
+
+def test_asking_words_around_the_music_are_ignored():
+    """«inserisci», «aggiungi», «scrivi», «per favore»: si puo' chiedere con
+    parole proprie, senza che diventino note o parole non capite."""
+    for lang, phrase, text in [
+        ("it", "inserisci la minore fa do sol", "Am F C G"),
+        ("it", "scrivi do re mi per favore", "c d e"),
+        ("it", "aggiungi ottavi do re mi fa", "8: c d e f"),
+        ("en", "insert A minor", "Am"),
+        ("en", "write C D E please", "c d e"),
+        ("fr", "ajoute la mineur", "Am"),
+        ("es", "añade la menor por favor", "Am"),
+    ]:
+        r = interpret(phrase, lang)
+        assert (r["text"], r["commands"], r["unknown"]) == (text, [], []), (lang, phrase, r)

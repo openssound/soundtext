@@ -224,7 +224,9 @@ _LEXICON = {
                   "un ottava sotto": ".octave(-1)", "aumentato": ".augment(2)", "diminuito": ".diminish(2)"},
         "conj": {"e": "", "ed": ""},
         "filler": {"poi": "", "virgola": "", "un": "", "una": "", "uno": "", "l": "", "di": "", "nota": "",
-                   "accordo": "", "accordi": "", "note": ""},
+                   "accordo": "", "accordi": "", "note": "",
+                   "inserisci": "", "aggiungi": "", "metti": "", "scrivi": "", "crea": "", "fai": "", "il": "",
+                   "per": "", "favore": ""},
     },
     "en": {
         "note": {"c": "c", "d": "d", "e": "e", "f": "f", "g": "g", "a": "a", "b": "b"},
@@ -266,7 +268,8 @@ _LEXICON = {
                   "an octave down": ".octave(-1)", "augmented": ".augment(2)", "diminished": ".diminish(2)"},
         "conj": {"and": ""},
         "filler": {"then": "", "comma": "", "an": "", "the": "", "note": "", "chord": "", "chords": "",
-                   "notes": ""},
+                   "notes": "", "insert": "", "add": "", "write": "", "create": "", "put": "", "make": "",
+                   "please": ""},
     },
     "fr": {
         "note": {"do": "c", "ut": "c", "ré": "d", "mi": "e", "fa": "f", "sol": "g", "la": "a", "si": "b"},
@@ -303,7 +306,8 @@ _LEXICON = {
                   "augmenté": ".augment(2)", "diminué": ".diminish(2)"},
         "conj": {"et": ""},
         "filler": {"puis": "", "ensuite": "", "virgule": "", "une": "", "un": "", "l": "", "de": "", "le": "",
-                   "note": "", "accord": "", "accords": "", "notes": ""},
+                   "note": "", "accord": "", "accords": "", "notes": "",
+                   "insère": "", "insérer": "", "ajoute": "", "ajouter": "", "écris": "", "crée": "", "mets": ""},
     },
     "es": {
         "note": {"do": "c", "re": "d", "mi": "e", "fa": "f", "sol": "g", "la": "a", "si": "b"},
@@ -339,7 +343,9 @@ _LEXICON = {
                   "una octava abajo": ".octave(-1)", "aumentado": ".augment(2)", "disminuido": ".diminish(2)"},
         "conj": {"y": "", "e": ""},
         "filler": {"luego": "", "después": "", "coma": "", "un": "", "una": "", "el": "", "de": "", "nota": "",
-                   "acorde": "", "acordes": "", "notas": ""},
+                   "acorde": "", "acordes": "", "notas": "",
+                   "inserta": "", "insertar": "", "añade": "", "agrega": "", "escribe": "", "crea": "", "pon": "",
+                   "por": "", "favor": ""},
     },
 }
 
@@ -381,26 +387,33 @@ _NUMBERS = {"it": _it_numbers(), "en": _en_numbers(), "fr": _fr_numbers(), "es":
 # «*» il resto della frase. Vince lo schema che copre piu' parole.
 _COMMANDS = {
     "it": [
-        ("delete_last", "cancella|cancellalo|togli", 1),
+        ("delete_last", "cancella|cancellalo|togli l? ultima|ultimo?", 1),
         ("undo", "annulla", 1),
         ("play_bar", "suona la? battuta", 1),
         ("play_from_start", "suona da|dal|dall capo|inizio|principio", 1),
+        ("play_from_start", "suona tutto", 1),
+        ("play_from_start", "suona il brano", 1),
+        ("play", "suona|riproduci", 1),
         ("stop", "stop|ferma|fermati|basta", 1),
-        ("tempo", "tempo #", 1),
+        ("tempo", "tempo a|à? #", 1),
         ("transpose", "trasponi|trasporta di? più|piu? # semitoni?", 1),
         ("transpose", "trasponi|trasporta su|sopra di # semitoni?", 1),
         ("transpose", "trasponi|trasporta su|sopra # semitoni?", 1),
         ("transpose", "trasponi|trasporta giù|giu|sotto di? # semitoni?", -1),
         ("transpose", "trasponi|trasporta di? meno # semitoni?", -1),
         ("goto_bar", "vai|va|torna alla|a battuta #", 1),
-        ("new_track", "nuova traccia *", 1),
+        ("new_track", "nuova? traccia nuova? *", 1),
         ("end", "fine della? dettatura", 1),
+        ("confirm", "conferma|confermo|ok|okay", 1),
+        ("confirm", "va bene", 1),
     ],
     "en": [
         ("delete_last", "delete|erase|scratch that?", 1),
         ("undo", "undo", 1),
         ("play_bar", "play the|this? bar|measure", 1),
         ("play_from_start", "play from the? start|beginning|top", 1),
+        ("play_from_start", "play everything|all", 1),
+        ("play", "play", 1),
         ("stop", "stop", 1),
         ("tempo", "set? tempo|bpm to? #", 1),
         ("transpose", "transpose by? plus? # semitones?", 1),
@@ -408,38 +421,45 @@ _COMMANDS = {
         ("transpose", "transpose down by? # semitones?", -1),
         ("transpose", "transpose by? minus # semitones?", -1),
         ("goto_bar", "go to bar|measure #", 1),
-        ("new_track", "new track *", 1),
+        ("new_track", "a? new? track *", 1),
         ("end", "end|stop|finish dictation", 1),
+        ("confirm", "confirm|ok|okay|yes", 1),
     ],
     "fr": [
         ("delete_last", "efface|effacer|supprime|supprimer", 1),
         ("undo", "annule|annuler", 1),
         ("play_bar", "joue|jouer la|cette mesure", 1),
         ("play_from_start", "joue|jouer depuis|du|au le? début|commencement", 1),
+        ("play_from_start", "joue|jouer tout", 1),
+        ("play", "joue|jouer|lecture", 1),
         ("stop", "stop|arrête|arrete", 1),
-        ("tempo", "tempo #", 1),
+        ("tempo", "tempo a|à? #", 1),
         ("transpose", "transpose|transposer de? # demi? tons?", 1),
         ("transpose", "transpose|transposer plus de? # demi? tons?", 1),
         ("transpose", "transpose|transposer de? # demi? tons? vers le haut", 1),
         ("transpose", "transpose|transposer moins de? # demi? tons?", -1),
         ("transpose", "transpose|transposer de? # demi? tons? vers le bas", -1),
         ("goto_bar", "va|aller|allez à|a la mesure #", 1),
-        ("new_track", "nouvelle piste *", 1),
+        ("new_track", "nouvelle? piste *", 1),
         ("end", "fin de la? dictée", 1),
+        ("confirm", "confirme|confirmer|ok|okay|oui", 1),
     ],
     "es": [
         ("delete_last", "borra|borrar|bórralo", 1),
         ("undo", "deshaz|deshacer", 1),
         ("play_bar", "toca|tocar el|este? compás", 1),
         ("play_from_start", "toca|tocar desde el? principio|inicio|comienzo", 1),
+        ("play_from_start", "toca|tocar todo", 1),
+        ("play", "toca|tocar|reproduce", 1),
         ("stop", "para|parar|detén|detente|stop", 1),
-        ("tempo", "tempo #", 1),
+        ("tempo", "tempo a|à? #", 1),
         ("transpose", "transpón|transpon|transporta|transponer más|mas|arriba? # semitonos? arriba?", 1),
         ("transpose", "transpón|transpon|transporta|transponer # semitonos? abajo", -1),
         ("transpose", "transpón|transpon|transporta|transponer menos|abajo # semitonos? abajo?", -1),
         ("goto_bar", "ve|ir|vete|vamos al compás #", 1),
-        ("new_track", "nueva pista *", 1),
+        ("new_track", "nueva? pista *", 1),
         ("end", "fin del dictado", 1),
+        ("confirm", "confirma|confirmar|ok|okay|vale", 1),
         ("end", "termina|terminar el dictado", 1),
     ],
 }
@@ -970,6 +990,24 @@ _INSTRUMENT_WORDS = {
     "es": ["piano", "guitarra", "bajo", "batería", "cuerdas", "violín", "violonchelo", "flauta", "trompeta",
            "saxofón", "órgano", "voz", "clarinete"],
 }
+
+# Lo strumento di SoundText per ogni parola di _INSTRUMENT_WORDS (nell'ordine
+# dell'inglese; in italiano «pianoforte» e «piano» sono lo stesso).
+_INSTRUMENT_NAMES = ["Piano", "Guitar", "Bass", "Drums", "Strings", "Violin", "Cello", "Flute", "Trumpet",
+                     "Sax", "Organ", "Voice", "Clarinet"]
+
+
+def instrument_name(spoken: str, lang: str = "it") -> Optional[str]:
+    """«nuova traccia basso»: lo strumento di SoundText («Bass») per la parola
+    detta, o None se non e' uno strumento che la dettatura conosce."""
+    language = _language(lang)
+    names = [_strip_accents(w) for w in _INSTRUMENT_WORDS[language.lang]]
+    canon = _INSTRUMENT_NAMES if len(names) == len(_INSTRUMENT_NAMES) else _INSTRUMENT_NAMES[:1] + _INSTRUMENT_NAMES
+    for word in _words(spoken or ""):
+        word = _strip_accents(word)
+        if word in names:
+            return canon[names.index(word)]
+    return None
 
 
 def grammar(lang: str = "it", patterns: Iterable[str] = ()) -> List[str]:

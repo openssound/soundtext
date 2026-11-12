@@ -171,4 +171,33 @@ Non portato: «Crea pattern» dalla catena (un pattern nuovo con il risultato).
 - **Pagina di prova:** `mobile/prova_voce.html` (microfono o file audio, con la grammatica attivabile, confidenza per parola e latenza). Non ancora provata con una voce vera.
 - Da scaricare, se la prova va bene: i modelli piccoli inglese, francese e spagnolo (circa 120 MB in tutto).
 
-Resta per la tappa 6: microfono nell'app, trascrizione, conferma, comandi applicati al brano, lettura a voce.
+**Tappa 6, scritta (12 novembre 2026); manca la prova a voce.** La dettatura nell'app, nella schermata Testo.
+
+- **Microfono 🎤 nella barra musicale**, a sinistra delle pagine. Il primo tocco apre l'avviso: la voce si riconosce sul telefono, l'audio non viene registrato e non esce dal dispositivo, la prima volta si scaricano circa 50 MB; con qualche frase di esempio.
+- **Riconoscimento:** Vosk, caricato solo al primo uso (`vendor/vosk/vosk.js` e il modello della lingua dell'interfaccia). `bundle/files.json` elenca le lingue che hanno un modello (`voice`); per ora solo l'italiano, nelle altre l'app dice che la dettatura non è ancora disponibile. Il riconoscitore riceve la grammatica del brano aperto (`dictation_words`, con i nomi dei suoi pattern).
+- **Pannello sopra la barra:** la frase capita, il testo ST (pezzi incerti evidenziati, parole non capite sottolineate) e una riga di stato `role="status"` che TalkBack e VoiceOver leggono («Inserito: la minore, fa, do, sol»).
+- **Conferma:**
+  - una frase capita tutta entra subito al cursore (o in fondo all'ultima riga, se il cursore non è nel testo);
+  - con parole incerte, non capite, saltate in mezzo alla frase o con confidenza sotto il 40% aspetta: «conferma» o «cancella» a voce, oppure i tasti «Inserisci» e «Scarta»; ridire la frase la sostituisce;
+  - «Chiedi sempre conferma» fa aspettare ogni frase.
+- **Comandi a voce:**
+  - «cancella» e «annulla» tolgono l'ultima modifica fatta a voce;
+  - «suona la battuta», «suona da capo», «stop»;
+  - «tempo novanta» cambia la riga `Tempo:` (o la aggiunge);
+  - «trasponi su di due» sposta la trasposizione del lettore (fra −6 e +6);
+  - «vai alla battuta cinque» porta il cursore sulla prima nota della battuta, nella traccia del cursore;
+  - «nuova traccia basso» aggiunge la traccia in fondo e ci porta il cursore (`engine.dictate_track`; gli strumenti fuori dal catalogo diventano «Traccia Violino [Violin]:»);
+  - «ripeti due volte» da solo racchiude l'ultima battuta della riga in `2( … )`;
+  - «fine dettatura» spegne il microfono.
+  - Nell'interprete c'è il comando nuovo «conferma» (confirm, confirme, confirma).
+- **Frasi dette con parole proprie** (dopo la prima prova a voce, 12 novembre):
+  - le parole con cui si chiede sono ignorate: «inserisci», «aggiungi», «scrivi», «metti», «crea», «per favore» («inserisci nuova traccia flauto», «metti il tempo a novanta»);
+  - «traccia» basta per la traccia nuova («aggiungi una traccia di flauto», «traccia nuova basso»); «suona» da solo fa partire il brano, «suona tutto» lo fa partire da capo; «va bene» e «ok» confermano («inserisci» non è più una conferma);
+  - una pausa in mezzo alla frase la spezza in più risultati: se un pezzo non si capisce da solo, l'app lo riprova unito al successivo (entro 6 secondi).
+- **Mentre il brano suona** il microfono sente la musica: valgono solo i comandi («stop»).
+- La dettatura si ferma cambiando schermata o brano e con l'app in background.
+- Le modifiche a voce passano da `replaceDocText`, come Crea e Struttura: si annullano a voce, non con l'annulla della tastiera.
+- **Provato:** nel browser del computer, con frasi date all'app al posto del riconoscitore (inserimento, conferma, tutti i comandi) e con l'avvio vero di Vosk dentro l'app (modello pronto in 5,2 s, riavvio immediato). I test: comando «conferma» e strumenti in `tests/test_dictation.py`, `dictate_track` in `tests/test_mobile_engine.py`.
+- **Non provato:** il microfono vero (il browser di prova lo blocca), TalkBack e VoiceOver, la memoria sul telefono con Pyodide e Vosk insieme, l'audio su iPhone mentre il microfono è aperto (`audioSession` passa a `play-and-record`).
+
+Resta per la tappa 6: la prova con 3 persone (almeno il 90% corretto) e i modelli delle altre tre lingue.

@@ -159,6 +159,23 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .suggest button { flex: none; font: 13px ui-monospace, Menlo, Consolas, monospace; min-height: 32px; padding: 4px 10px;
                   border-radius: 16px; background: var(--bg); }
 .barrow { display: flex; align-items: stretch; }
+.mic { flex: none; width: 48px; border: none; border-right: 1px solid var(--line); border-radius: 0; background: none; font-size: 20px; }
+.mic[aria-pressed="true"] { background: var(--danger); }
+.mic.busy { opacity: .5; }
+.voice { padding: 6px 8px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.voice p { margin: 0 0 2px; }
+.voice-heard:empty, .voice-pieces:empty { display: none; }
+.voice-status { min-height: 1.3em; }
+.voice-heard { color: var(--dim); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-pieces { font: 16px ui-monospace, Menlo, Consolas, monospace; }
+.voice-pieces .uncertain { background: #6b5200; color: #fff; border-radius: 3px; padding: 0 2px; }
+.voice-pieces .unknown { text-decoration: underline wavy var(--danger); }
+.voice-status.error { color: var(--danger); }
+.voice-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.voice-actions button { min-height: 36px; padding: 4px 12px; font-size: 13px; }
+#voiceAsk { margin-left: auto; color: var(--dim); }
+#voiceAsk[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+#voiceIntro p { margin: 0 0 10px; font-size: 14px; }
 .pages { display: flex; flex-direction: column; border-right: 1px solid var(--line); }
 .pages button { flex: 1; border: none; border-radius: 0; background: none; font-size: 11px; min-height: 0;
                 padding: 2px 8px; color: var(--dim); }
