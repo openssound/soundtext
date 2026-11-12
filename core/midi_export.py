@@ -18,7 +18,7 @@ from st_language.midi import (  # noqa: F401  (note e articolazioni: nella libre
     SLIDE_PITCH_BEND_RANGE_SEMITONES, _ARTICULATION_DURATION_FACTOR, _apply_articulation, _resolve_event_notes,
     _assign_channels, midi_ports_needed, MIDI_CHANNELS, control_points, PITCH_BEND, TUNE, tune_controls,
     effective_articulation, sounding_span, shift_ticks, needs_bend_range, decorated_velocity, ornament_spans,
-    sounding_events,
+    sounding_events, midi_time_signature,
 )
 
 TICKS_PER_BEAT = 480
@@ -261,9 +261,13 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
     tempo_track_events = []
     for beat, sig in _shift_beat_map(build_metrica_beat_map(project), start_offset_beats):
         m = RE_METRICA_VALUE.match(sig or "")
-        if m:
+        # Il MIDI scrive solo denominatori potenza di 2: 3/3 diventa 4/4,
+        # 4/6 diventa 5/8, e una metrica senza battuta (4/0) non si scrive.
+        signature = midi_time_signature(int(m.group(1)), int(m.group(2))) if m else None
+        if signature:
+            numerator, exponent = signature
             tempo_track_events.append((max(0, round(beat * TICKS_PER_BEAT)), 0, mido.MetaMessage(
-                "time_signature", numerator=int(m.group(1)), denominator=int(m.group(2)))))
+                "time_signature", numerator=numerator, denominator=2 ** exponent)))
     for tick, bpm in tempo_map:
         tempo_track_events.append((tick, 1, mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm))))
     last_tempo_tick = 0
