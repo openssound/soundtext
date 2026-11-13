@@ -1,4 +1,4 @@
-# Maintainer: Sergio Scolaro <INDIRIZZO_DA_METTERE_PRIMA_DI_PUBBLICARE>
+# Maintainer: openssound <https://github.com/openssound/soundtext/issues>
 #
 # SoundText dal pacchetto portable delle release (eseguibile PyInstaller con
 # Python, Qt e FluidSynth dentro): niente da compilare. Prima di pubblicare

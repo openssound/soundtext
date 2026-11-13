@@ -7,6 +7,19 @@ Non compila niente.
 
 File: `PKGBUILD`, `.SRCINFO` (generato dal PKGBUILD) e `soundtext.desktop`.
 
+## Installarlo dal repository, senza AUR
+
+Il pacchetto non e' ancora su AUR. Chi usa Arch puo' costruirlo e
+installarlo da qui: il risultato e' lo stesso pacchetto, gestito da pacman.
+
+```bash
+git clone https://github.com/openssound/soundtext.git
+cd soundtext/packaging/aur
+makepkg -si
+```
+
+Per toglierlo: `sudo pacman -R soundtext-bin`.
+
 ## Provarlo prima di pubblicare (su Arch)
 
 ```bash
@@ -22,9 +35,9 @@ provato.
 ## Pubblicarlo la prima volta
 
 1. Crea un account su <https://aur.archlinux.org> e aggiungi la tua chiave
-   SSH pubblica nel profilo.
-2. Metti il tuo indirizzo nella riga `# Maintainer:` del PKGBUILD.
-3. Clona il repository vuoto del pacchetto e copiaci i tre file:
+   SSH pubblica nel profilo. (A novembre 2026 le registrazioni erano
+   chiuse: si pubblica quando riaprono.)
+2. Clona il repository vuoto del pacchetto e copiaci i tre file:
 
    ```bash
    git clone ssh://aur@aur.archlinux.org/soundtext-bin.git
