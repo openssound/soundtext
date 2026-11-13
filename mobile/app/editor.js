@@ -7,7 +7,11 @@
 const editor = {
   plaintextOnly: false,
   saveTimer: null,
+  // annulla e ripeti dell'app: {doc, items: [{text, caret}], at, stamp}
+  history: { doc: null, items: [], at: -1, stamp: 0 },
 };
+const HISTORY_MAX = 200;
+const HISTORY_JOIN_MS = 700;      // i tasti battuti di seguito sono un passo solo
 
 function setupEditor() {
   const pre = $("text");
@@ -25,15 +29,89 @@ function setEditable(on) {
   pre.classList.toggle("empty", !on);
 }
 
+// Il testo dell'editor. Invio lascia nel <pre> un <br> (anche con
+// plaintext-only): si legge come un a capo, e i blocchi di una tastiera
+// che ne crea (div, p) come righe.
+function domText(node) {
+  let out = "";
+  for (const child of node.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) out += child.data;
+    else if (child.nodeName === "BR") out += "\n";
+    else if (child.nodeType === Node.ELEMENT_NODE) {
+      const inner = domText(child);
+      out += /^(DIV|P)$/.test(child.nodeName) && !inner.endsWith("\n") ? inner + "\n" : inner;
+    }
+  }
+  return out;
+}
+
 function editorText() {
+  return domText($("text"));
+}
+
+// La posizione nel testo di un punto del DOM dell'editor (nodo, offset)
+function domOffset(root, node, offset) {
+  let total = 0, found = false;
+  const walk = (el) => {
+    const kids = el.childNodes;
+    for (let i = 0; i < kids.length && !found; i++) {
+      if (el === node && i === offset) { found = true; return; }
+      const child = kids[i];
+      if (child.nodeType === Node.TEXT_NODE) {
+        if (child === node) { total += offset; found = true; return; }
+        total += child.data.length;
+      } else if (child.nodeName === "BR") {
+        if (child === node) { found = true; return; }
+        total += 1;
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        walk(child);
+        if (!found && /^(DIV|P)$/.test(child.nodeName) && !domText(child).endsWith("\n")) total += 1;
+      }
+    }
+    if (el === node && !found) found = true;      // dopo l'ultimo figlio
+  };
+  walk(root);
+  return total;
+}
+
+// Dopo un Invio l'editor torna un solo nodo di testo (le posizioni del
+// cursore, i colori e l'evidenziazione contano su questo), col cursore dov'era.
+function flattenEditor() {
   const pre = $("text");
-  return editor.plaintextOnly ? pre.textContent : pre.innerText;
+  if (!pre.firstElementChild) return;
+  const sel = getSelection();
+  const caret = sel.rangeCount && pre.contains(sel.anchorNode) ? domOffset(pre, sel.anchorNode, sel.anchorOffset) : null;
+  let text = domText(pre);
+  if (!text.endsWith("\n")) text += "\n";      // l'ultima riga vuota si vede solo se il testo finisce con un a capo
+  const top = pre.scrollTop;
+  pre.textContent = text;
+  pre.scrollTop = top;
+  if (caret !== null && document.activeElement === pre) selectRange(Math.min(caret, text.length), Math.min(caret, text.length));
+}
+
+// Un passo nella storia di annulla/ripeti (vedi historyStep)
+function rememberEdit(doc, before) {
+  const h = editor.history;
+  if (h.doc !== doc) Object.assign(h, { doc, items: [{ text: before, caret: null }], at: 0, stamp: 0 });
+  const caret = document.activeElement === $("text") ? caretPos() : null;
+  const now = Date.now();
+  const top = h.items[h.at];
+  if (top && top.text === doc.text) { top.caret = caret ?? top.caret; return; }
+  h.items.length = h.at + 1;                    // una modifica nuova chiude il «ripeti»
+  if (top && h.at > 0 && now - h.stamp < HISTORY_JOIN_MS) h.items[h.at] = { text: doc.text, caret };
+  else h.items.push({ text: doc.text, caret });
+  if (h.items.length > HISTORY_MAX) h.items.shift();
+  h.at = h.items.length - 1;
+  h.stamp = now;
 }
 
 async function onEdit() {
   const doc = state.doc;
   if (!doc) return;
+  flattenEditor();
+  const before = doc.text;
   doc.text = editorText();
+  rememberEdit(doc, before);
   clearHighlight();
   scheduleCheck();
   if (doc.kind === "example" && !doc.copying) {
@@ -228,6 +306,24 @@ function renderBlocks(blocks) {
     for (const b of items) og.append(new Option(b.label, String(b.start)));
     sel.append(og);
   }
+  sel.add(new Option("＋ " + t("Nuova traccia…"), "new"));
+}
+
+// «Nuova traccia…»: si sceglie lo strumento e la traccia nasce in fondo al
+// brano, con il cursore pronto sulla sua prima riga.
+async function chooseNewTrack() {
+  if (!state.doc) return;
+  await state.booted;
+  const names = (await call("track_instruments")).result;
+  sheet(t("Nuova traccia: scegli lo strumento"), names.map((name) => [name, () => addNewTrack(name)]), true);
+}
+
+async function addNewTrack(instrument) {
+  const r = (await call("new_track", { args: [state.doc.text, instrument] })).result;
+  await replaceDocText(r.text);
+  setView("testo");
+  goTo(r.text.length);
+  setStatus(t("Nuova traccia: {name}", { name: r.name }));
 }
 
 // Porta il cursore (e la vista) a una posizione del testo.
@@ -549,13 +645,22 @@ async function playBarAtCaret(before = false) {
   requestAnimationFrame(frame);
 }
 
-// Annulla e ripeti: la storia e' quella del browser, la stessa della tastiera
-// (i tasti scrivono con execCommand, vedi insertToken).
-function historyStep(command) {
-  if (!state.doc) return;
+// Annulla e ripeti: una storia dell'app (editor.history), perche' quella
+// del browser si perde ogni volta che il testo torna un solo nodo (Invio,
+// Crea, Struttura, dettatura).
+async function historyStep(command) {
+  const h = editor.history;
+  if (!state.doc || h.doc !== state.doc) return false;
+  const at = h.at + (command === "redo" ? 1 : -1);
+  if (at < 0 || at >= h.items.length) return false;
+  h.at = at;
+  h.stamp = 0;                                   // il prossimo tasto e' un passo nuovo
+  const { text, caret } = h.items[at];
   const pre = $("text");
-  if (document.activeElement !== pre) pre.focus();
-  document.execCommand(command);
+  const focused = document.activeElement === pre;
+  await replaceDocText(text);
+  if (focused && caret !== null && caret !== undefined) selectRange(Math.min(caret, text.length), Math.min(caret, text.length));
+  return true;
 }
 
 // A capo automatico: le battute lunghe restano nello schermo
@@ -576,6 +681,7 @@ function setupMusicBar() {
   let wrap = false;
   try { wrap = localStorage.getItem(WRAP_KEY) === "1"; } catch (e) {}
   setWrap(wrap);
+  $("newTrack").onclick = () => chooseNewTrack().catch(showError);
   $("wrapToggle").onclick = () => setWrap(!$("text").classList.contains("wrap"));
   // I tasti non prendono il fuoco: il cursore e la tastiera restano nel testo.
   $("musicbar").addEventListener("pointerdown", (ev) => {

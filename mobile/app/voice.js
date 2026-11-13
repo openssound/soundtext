@@ -73,8 +73,7 @@ function voiceSetCaret(caret, focused = document.activeElement === $("text")) {
 async function voiceUndo() {
   const last = voice.history[voice.history.length - 1];
   if (!last || last.after !== state.doc.text) {
-    if (document.activeElement === $("text")) { document.execCommand("undo"); return true; }
-    return false;
+    return historyStep("undo");
   }
   voice.history.pop();
   const focused = document.activeElement === $("text");

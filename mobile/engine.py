@@ -735,6 +735,20 @@ def dictate_track(text: str, spoken: str, lang: Optional[str] = None) -> Optiona
     return {"text": r["text"].rstrip("\n") + "\n  ", "name": r["name"]}
 
 
+def track_instruments() -> list:
+    """Gli strumenti proposti da «Nuova traccia»: quelli che la dettatura
+    conosce (core.dictation), con l'intestazione corta («Flute:»)."""
+    from core.dictation import _INSTRUMENT_NAMES
+    return list(_INSTRUMENT_NAMES)
+
+
+def new_track(text: str, instrument: str) -> dict:
+    """Il brano con una traccia vuota di quello strumento in fondo, pronta
+    per scrivere: {text, name}."""
+    r = add_track(text, instrument, "")
+    return {"text": r["text"].rstrip("\n") + "\n  ", "name": r["name"]}
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""

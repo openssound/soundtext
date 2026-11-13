@@ -301,6 +301,24 @@ def test_hum_says_when_there_is_nothing_to_recognize():
     assert "error" in engine.hum_to_text(HUM_SONG, b"\x00" * 400, 16000, {"track": "Flute"})
 
 
+def test_new_track_adds_an_empty_track_of_each_proposed_instrument():
+    """«Nuova traccia»: ogni strumento proposto da' una traccia che il brano riconosce."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    song = "ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  1: C | F |\n"
+    names = engine.track_instruments()
+    assert "Guitar" in names and "Flute" in names
+    for instrument in names:
+        r = engine.new_track(song, instrument)
+        assert r["text"].endswith("\n  ")                  # il cursore va sulla prima riga della traccia
+        tracks = [b["label"] for b in engine.check_text(r["text"] + "4: c d e f |\n")["blocks"]]
+        assert tracks[0] == "Piano" and tracks[-1] == r["name"] and len(tracks) == 2, instrument
+    assert engine.new_track(song, "Piano")["name"] == "Piano 2"
+
+
 def test_every_example_opens_plays_and_has_a_score():
     """Criterio della fase 1: tutti gli esempi di examples/ e
     examples/didattici/ (quelli dell'app, mobile/build.py) si aprono, si

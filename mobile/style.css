@@ -325,6 +325,8 @@ summary:focus-visible, .button:focus-within {
 .sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .sheet h2 { margin: 0 0 8px; text-transform: none; font-size: 15px; color: var(--text); letter-spacing: 0; }
 .sheet-actions { display: grid; gap: 6px; }
+.sheet-actions.columns { grid-template-columns: 1fr 1fr 1fr; }
+.sheet-actions.columns button { text-align: center; padding: 0 4px; }
 .sheet-actions button, .sheet-close { min-height: 44px; text-align: left; padding: 0 12px; width: 100%; }
 .sheet-actions button.danger { color: var(--danger); }
 .sheet-close { margin-top: 10px; text-align: center; }

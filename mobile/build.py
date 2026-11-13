@@ -84,6 +84,7 @@ engine.transform_apply(source, at, "%Tema.retro", True)
 # dettatura (fase 2)
 engine.dictate(source, "ottavi do re mi fa ripeti due volte, la minore, Tema invertito, tempo novanta", "it")
 engine.dictate_track(source, "basso", "it")
+engine.new_track(source, engine.track_instruments()[0])
 # canta (fase 2): mezzo secondo di una nota tenuta
 import math, struct
 pcm = struct.pack("<8000f", *(0.3 * math.sin(2 * math.pi * 220 * i / 16000) for i in range(8000)))

@@ -95,8 +95,10 @@ async function main() {
   $("loopOn").onclick = () => { state.loop.on = !state.loop.on; renderLoop(); };
   $("metronome").onchange = (ev) => { state.metronome = ev.target.checked; renderMidi().catch(showError); };
   $("goto").onchange = (ev) => {
-    if (ev.target.value !== "") goTo(Number(ev.target.value));
+    const value = ev.target.value;
     ev.target.value = "";
+    if (value === "new") chooseNewTrack().catch(showError);
+    else if (value !== "") goTo(Number(value));
   };
   $("warnButton").onclick = () => {
     const list = $("warnings");

@@ -2827,5 +2827,7 @@
  "Anteprima della melodia cantata": "Preview of the sung melody",
  "Melodia inserita nella traccia «{name}»": "Melody inserted into the track “{name}”",
  "La registrazione è troppo corta.": "The recording is too short.",
- "Non ho riconosciuto note: canta più vicino al microfono, una sillaba per nota.": "No notes recognized: sing closer to the microphone, one syllable per note."
+ "Non ho riconosciuto note: canta più vicino al microfono, una sillaba per nota.": "No notes recognized: sing closer to the microphone, one syllable per note.",
+ "Nuova traccia…": "New track…",
+ "Nuova traccia: scegli lo strumento": "New track: choose the instrument"
 }

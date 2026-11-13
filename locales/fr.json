@@ -2827,5 +2827,7 @@
  "Anteprima della melodia cantata": "Aperçu de la mélodie chantée",
  "Melodia inserita nella traccia «{name}»": "Mélodie insérée dans la piste « {name} »",
  "La registrazione è troppo corta.": "L'enregistrement est trop court.",
- "Non ho riconosciuto note: canta più vicino al microfono, una sillaba per nota.": "Aucune note reconnue : chantez plus près du micro, une syllabe par note."
+ "Non ho riconosciuto note: canta più vicino al microfono, una sillaba per nota.": "Aucune note reconnue : chantez plus près du micro, une syllabe par note.",
+ "Nuova traccia…": "Nouvelle piste…",
+ "Nuova traccia: scegli lo strumento": "Nouvelle piste : choisissez l'instrument"
 }

@@ -104,10 +104,11 @@ function renderStructure() {
 }
 
 // Il foglio delle azioni (in basso, come sul telefono)
-function sheet(title, actions) {
+function sheet(title, actions, columns = false) {
   const dlg = $("sheet");
   $("sheetTitle").textContent = title;
   const list = $("sheetActions");
+  list.classList.toggle("columns", columns);
   list.replaceChildren();
   for (const [label, run, cls] of actions) {
     const b = document.createElement("button");

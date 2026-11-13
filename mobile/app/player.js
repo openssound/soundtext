@@ -8,6 +8,7 @@ function setView(name) {
   if (name !== "testo") stopVoice();
   document.body.className = "view-" + name;
   if (name === "partitura") showScore().catch(showError);
+  if (name === "lettore" && state.doc) analyze().catch(() => {});     // le tracce del brano com'e' adesso
   if (name === "crea") showCrea().catch(showError);
   if (name === "struttura") showStructure().catch(showError);
   for (const b of document.querySelectorAll(".tabs button")) {
