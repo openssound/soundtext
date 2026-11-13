@@ -43,6 +43,7 @@ async function main() {
   setupEditor();
   setupMusicBar();
   setupVoice();
+  setupHum();
   setupCrea();
   setupStructure();
   setupTransform();

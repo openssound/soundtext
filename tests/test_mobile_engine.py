@@ -257,6 +257,50 @@ def test_check_marks_percussion_blocks():
     assert {b["label"]: b["percussion"] for b in result["blocks"]} == {"Piano": False, "Drums": True}
 
 
+def _sung(notes, rate=16000, beat=0.6):
+    """Una voce finta: una nota per quarto a 100 BPM, con due armoniche."""
+    import numpy as np
+    parts = [np.zeros(int(0.3 * rate))]
+    for midi in notes:
+        f = 440.0 * 2 ** ((midi - 69) / 12)
+        n = int((beat - 0.06) * rate)
+        t = np.arange(n) / rate
+        env = np.minimum(1, np.minimum(t / 0.03, (t[-1] - t) / 0.05))
+        parts += [0.3 * env * (np.sin(2 * np.pi * f * t) + 0.5 * np.sin(4 * np.pi * f * t)), np.zeros(int(0.06 * rate))]
+    return np.concatenate(parts).astype("<f4").tobytes()
+
+
+HUM_SONG = "ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nFlute:\n  4: c d e f |\n\nBass:\n  4: c*2 c*2 |\n"
+
+
+def test_hum_writes_the_melody_in_the_octave_of_the_track():
+    """«Canta»: do re mi fa cantati all'ottava 3 vanno nell'ottava dello strumento."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    pcm = _sung((48, 50, 52, 53))
+    bass = engine.hum_to_text(HUM_SONG, pcm, 16000, {"track": "Bass", "grid": "8"})
+    assert bass["text"].split()[-4:] == ["2c*2", "2d*2", "2e*2", "2f*2"] and bass["notes"] == 4
+    flute = engine.hum_to_text(HUM_SONG, pcm, 16000, {"track": "Flute", "grid": "4"})
+    assert flute["text"].split()[-4:] == ["c*5", "d*5", "e*5", "f*5"]
+    # l'anteprima e' un brano che si apre, con la sola parte cantata
+    e = engine.Engine()
+    assert [t["name"] for t in e.load(flute["preview"], "Anteprima")["tracks"]] == ["Flute"]
+
+
+def test_hum_says_when_there_is_nothing_to_recognize():
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    silent = engine.hum_to_text(HUM_SONG, b"\x00" * (4 * 32000), 16000, {"track": "Flute"})
+    assert "error" in silent and "text" not in silent
+    assert "error" in engine.hum_to_text(HUM_SONG, b"\x00" * 400, 16000, {"track": "Flute"})
+
+
 def test_every_example_opens_plays_and_has_a_score():
     """Criterio della fase 1: tutti gli esempi di examples/ e
     examples/didattici/ (quelli dell'app, mobile/build.py) si aprono, si

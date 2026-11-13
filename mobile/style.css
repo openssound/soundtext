@@ -87,7 +87,14 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 
 .textbar { display: flex; gap: 8px; padding: 0 16px 6px; }
 .textbar select { flex: 1; min-width: 0; }
-.wrap-toggle { flex: none; min-width: 44px; font-size: 18px; padding: 0; }
+.wrap-toggle, .hum-open { flex: none; min-width: 44px; font-size: 18px; padding: 0; }
+.hum-grid { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 8px 0; }
+.hum-grid select { flex: 1; min-height: 40px; }
+.hum-status { min-height: 1.4em; margin: 8px 0; font-size: 14px; }
+.hum-status.error { color: var(--danger); }
+#humText:empty { display: none; }
+#humText { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 10px; }
+#humRecord[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); color: #fff; }
 .wrap-toggle[aria-pressed="true"] { color: var(--on-accent); }
 #text.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
 .warn-button { color: #1c1c1c; background: #f0b854; border-color: #f0b854; font-weight: 600; }

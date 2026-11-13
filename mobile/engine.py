@@ -1048,6 +1048,75 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None)
     return {"text": new, "name": candidate, "start": len(head) + (2 if head else 0)}
 
 
+# ------------------------------------------------------------ canta (fase 2)
+#
+# Una melodia canticchiata (o un ritmo fatto con la bocca, in una traccia di
+# percussioni) diventa testo ST con la stessa conversione di «Importa audio»
+# di SoundText (core.audio_import): altezze con YIN, attacchi, griglia.
+
+HUM_GRIDS = {"8": (8, False), "16": (16, False), "8T": (8, True), "4": (4, False)}
+HUM_MAX_SECONDS = 60.0
+
+
+def hum_to_text(text: str, pcm: bytes, rate: int, options: Optional[dict] = None) -> dict:
+    """La registrazione (campioni float32 mono, little endian) come riga di
+    notazione per la traccia options["track"]: {text, preview, notes, seconds}
+    o {error}. preview e' un brano di sola quella parte, per ascoltarla.
+
+    options: track (nome della traccia: decide ottava e percussioni), grid
+    ("8", "16", "8T", "4"). La melodia parte dalla prima nota e va
+    nell'ottava dello strumento."""
+    import os
+    import tempfile
+    import wave
+    import numpy as np
+    from core import audio_import as ai
+    from core.i18n import tr
+    from core.project_io import parse_project_text
+    opts = options or {}
+    grid, ternary = HUM_GRIDS.get(str(opts.get("grid", "8")), (8, False))
+    try:
+        project = parse_project_text(text, "Brano")
+    except Exception:
+        project = None
+    track = next((t for t in project.tracks if t.name == opts.get("track")), None) if project else None
+    percussion = bool(track and track.instrument.is_percussion)
+    instrument = track.instrument_name if track else "Piano"
+    octave = track.instrument.default_octave if track else 4
+    tempo = float(project.tempo_bpm) if project else 120.0
+    samples = np.frombuffer(pcm, dtype="<f4")
+    if len(samples) < rate // 4:
+        return {"error": tr("La registrazione è troppo corta.")}
+    samples = samples[: int(HUM_MAX_SECONDS * rate)]
+    fd, path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    try:
+        with wave.open(path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(int(rate))
+            w.writeframes((np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2").tobytes())
+        try:
+            body = ai.convert_audio_to_track_text(
+                path, percussion, tempo, grid, ternary, project.patterns if project else {}, octave,
+                already_wav=True, voice_source=True, align_to_first_note=True,
+                beats_per_bar=_bar_beats(project) if project else 4.0,
+                fit_octave=None if percussion else octave)
+        except ai.SilentAudio as e:
+            return {"error": str(e)}
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
+    body = body.strip()
+    notes = len([tok for tok in re.sub(r"\b\d+T?:", " ", body).split() if tok not in ("|", "r") and not tok.endswith("@")])
+    if not body or not notes:
+        return {"error": tr("Non ho riconosciuto note: canta più vicino al microfono, una sillaba per nota.")}
+    head = f"ST: 2.6\nTempo: {tempo:g} BPM\nMetrica: {project.time_sig if project else '4/4'}\n"
+    preview = add_track(head, instrument, body)["text"]
+    return {"text": body, "preview": preview, "notes": notes, "seconds": round(len(samples) / float(rate), 2),
+            "percussion": percussion}
+
+
 # ------------------------------------------------------------ struttura (fase 2)
 #
 # La schermata Struttura: le sezioni del brano (core.arrangement.song_sections,

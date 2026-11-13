@@ -45,6 +45,7 @@
   <section id="view-testo" class="view" aria-label="Testo">
     <div class="textbar">
       <select id="goto" aria-label="Vai a un blocco"><option value="" data-i18n>Vai a…</option></select>
+      <button id="humOpen" class="hum-open" aria-label="Canta una melodia" title="Canta una melodia"><span aria-hidden="true">♪</span></button>
       <button id="wrapToggle" class="wrap-toggle" aria-pressed="false" aria-label="A capo automatico" title="A capo automatico"><span aria-hidden="true">↵</span></button>
       <button id="warnButton" class="warn-button" aria-expanded="false" aria-controls="warnings" hidden><span aria-hidden="true">⚠ </span><span id="warnCount">0</span></button>
     </div>
@@ -216,6 +217,29 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- Canta: una melodia canticchiata diventa testo nella traccia del cursore -->
+<dialog id="humDialog" class="sheet" aria-labelledby="humTitle">
+  <h2 id="humTitle"></h2>
+  <p id="humHelp" class="hint"></p>
+  <p class="hint" data-i18n>L'audio non viene salvato e non esce dal telefono. Con le cuffie il conteggio non entra nel microfono.</p>
+  <label class="hum-grid"><span data-i18n>Nota più corta:</span>
+    <select id="humGrid">
+      <option value="4" data-i18n>quarti</option>
+      <option value="8" data-i18n>ottavi</option>
+      <option value="16" data-i18n>sedicesimi</option>
+      <option value="8T" data-i18n>terzine di ottavi</option>
+    </select>
+  </label>
+  <p id="humStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <pre id="humText" class="gentext" aria-label="Melodia riconosciuta" translate="no"></pre>
+  <div class="sheet-actions">
+    <button id="humRecord" class="primary" aria-pressed="false"></button>
+    <button id="humListen" disabled><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+    <button id="humInsert" disabled data-i18n>Inserisci nel testo</button>
+  </div>
+  <button id="humClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Azioni su un box o una sezione (Struttura) -->
 <dialog id="sheet" class="sheet" aria-labelledby="sheetTitle">
   <h2 id="sheetTitle"></h2>
@@ -231,6 +255,7 @@
 <script src="app/text-edits.js"></script>
 <script src="app/editor.js"></script>
 <script src="app/voice.js"></script>
+<script src="app/hum.js"></script>
 <script src="app/songs-view.js"></script>
 <script src="app/create.js"></script>
 <script src="app/structure.js"></script>

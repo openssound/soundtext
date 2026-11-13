@@ -371,15 +371,26 @@ const SEP = { sep: true };
 const DRUM_KEYS = ["kick", "snare", "hihat", "hihat_open", "tom1", "tom2", "floor", "crash", "ride",
                    "rimshot", "clap", "hihat_pedal", "cowbell", "tambourine"];
 
-// Il cursore e' in una traccia (o in un box) di percussioni?
-function drumsAtCaret() {
-  if (!state.doc || !checks.last) return false;
+// Il blocco di musica (traccia, box o pattern) in cui sta il cursore, con
+// la posizione del cursore; null fuori da ogni blocco, per esempio nel Mixer.
+function musicBlockAtCaret() {
+  if (!state.doc || !checks.last) return null;
   const pos = caretPos() ?? (voice.caretDoc === state.doc ? voice.caret : null);
-  if (pos === null || pos === undefined) return false;
+  if (pos === null || pos === undefined) return null;
   let here = null;
   for (const b of checks.last.blocks) {
     if (b.start <= pos && (!here || b.start > here.start)) here = b;
   }
+  if (!here) return null;
+  // un'altra intestazione fra il blocco e il cursore: si e' in un blocco che non e' musica
+  const lines = state.doc.text.slice(here.start, pos).split("\n").slice(1);
+  if (lines.some((line) => /^[^\s/].*:\s*$/.test(line))) return null;
+  return { ...here, pos };
+}
+
+// Il cursore e' in una traccia (o in un box) di percussioni?
+function drumsAtCaret() {
+  const here = musicBlockAtCaret();
   return !!(here && here.percussion);
 }
 

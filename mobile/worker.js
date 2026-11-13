@@ -319,6 +319,21 @@ import json as _json
 _json.dumps(engine.${CALLS[msg.cmd]}(*_json.loads(_args_json)))
 `);
       post({ type: msg.cmd, id: msg.id, result: JSON.parse(json), ms: ms(t0) });
+    } else if (msg.cmd === "hum") {
+      // una melodia canticchiata -> testo ST (engine.hum_to_text); serve
+      // numpy, che di solito e' gia' arrivato in background
+      const t0 = performance.now();
+      numpyStarted = true;
+      await py.loadPackage(["numpy"], { messageCallback: () => {} });
+      py.globals.set("_hum_pcm", new Uint8Array(msg.samples.buffer, msg.samples.byteOffset, msg.samples.byteLength));
+      py.globals.set("_hum_args", JSON.stringify([msg.text, msg.rate, msg.options || {}]));
+      const json = py.runPython(`
+import json as _json
+_text, _rate, _opts = _json.loads(_hum_args)
+_json.dumps(engine.hum_to_text(_text, _hum_pcm.to_bytes(), int(_rate), _opts))
+`);
+      py.globals.delete("_hum_pcm");
+      post({ type: "hum", id: msg.id, result: JSON.parse(json), ms: ms(t0) });
     } else if (msg.cmd === "memory") {
       post({ type: "memory", id: msg.id, heap_bytes: wasmHeap() });
     }
