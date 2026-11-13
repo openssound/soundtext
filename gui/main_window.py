@@ -30,6 +30,7 @@ from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
 from .wav_export import WavExport
+from .soundfont_menu import SoundFontMenu
 from .loop_region import LoopRegion
 from .play_highlight import TrackPlayHighlight
 from .project_autosave import ProjectAutosave
@@ -46,6 +47,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         super().__init__()
         self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
         self.wav_export = WavExport(self)  # mix, tracce e stem in WAV, congelamento
+        self.soundfont = SoundFontMenu(self)   # menu Suoni -> SoundFont
         # Va fatto prima di costruire qualunque testata di traccia (vedi
         # refresh_mixer): quelle testate leggono il tema attivo per colorarsi,
         # non seguono automaticamente lo QSS globale (vedi
@@ -664,9 +666,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         sounds_menu.addAction(self._action(tr("Gestisci strumenti..."), self.manage_instruments,
                                            tooltip=tr("Crea o rimuovi strumenti personalizzati.")))
         soundfont_menu = sounds_menu.addMenu(tr("SoundFont"))
-        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2/.sf3)..."), self.choose_soundfont))
-        soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.reset_soundfont))
-        soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.show_soundfont_info))
+        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2/.sf3)..."), self.soundfont.choose))
+        soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.soundfont.reset))
+        soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.soundfont.show_info))
         sounds_menu.addAction(self._action(
             tr("Volume di sintesi (gain)..."), self.show_playback_gain_settings,
             tooltip=tr("Regola il guadagno del sintetizzatore: troppo alto puo' causare "
