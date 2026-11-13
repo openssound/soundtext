@@ -19,6 +19,7 @@ async function showStructure() {
   }
   const text = state.doc.text;
   if (struct.infoFor !== text) {
+    if (!struct.info) $("structure").replaceChildren(hint(t("Carico…")));
     await state.booted;
     try {
       struct.info = (await call("structure", { args: [text] })).result;

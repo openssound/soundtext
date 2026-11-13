@@ -46,6 +46,7 @@
   <section id="view-testo" class="view" aria-label="Testo">
     <div class="textbar">
       <select id="goto" aria-label="Vai a un blocco"><option value="" data-i18n>Vai a…</option></select>
+      <button id="wrapToggle" class="wrap-toggle" aria-pressed="false" aria-label="A capo automatico" title="A capo automatico"><span aria-hidden="true">↵</span></button>
       <button id="warnButton" class="warn-button" aria-expanded="false" aria-controls="warnings" hidden><span aria-hidden="true">⚠ </span><span id="warnCount">0</span></button>
     </div>
     <ul id="warnings" class="warnings" aria-label="Avvisi nel testo" hidden></ul>
@@ -67,14 +68,24 @@
         </div>
       </div>
       <div id="suggest" class="suggest" role="group" aria-label="Suggerimenti"></div>
-      <div class="barrow">
-        <button id="mic" class="mic" aria-pressed="false" aria-label="Detta"><span aria-hidden="true">🎤</span></button>
+      <div class="pagerow">
         <div class="pages" role="tablist" aria-label="Pagine della barra">
           <button data-page="0" role="tab" aria-selected="true" aria-controls="keys" data-i18n>Note</button>
           <button data-page="1" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Durate</button>
           <button data-page="2" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Accordi</button>
+          <button data-page="3" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Pattern</button>
         </div>
+        <button id="undoKey" aria-label="Annulla l'ultima modifica" title="Annulla l'ultima modifica"><span aria-hidden="true">↶</span></button>
+        <button id="redoKey" aria-label="Ripeti la modifica annullata" title="Ripeti la modifica annullata"><span aria-hidden="true">↷</span></button>
+      </div>
+      <div class="barrow">
+        <button id="mic" class="mic" aria-pressed="false" aria-label="Detta"><span aria-hidden="true">🎤</span></button>
         <div id="keys" class="keys" role="tabpanel"></div>
+        <!-- sempre a portata: non scorrono con gli altri tasti -->
+        <div class="keys keys-fixed">
+          <button id="deleteKey" aria-label="Cancella il token" title="Cancella il token"><span aria-hidden="true">⌫</span></button>
+          <button id="playBarKey" class="play-bar" aria-label="Suona la battuta del cursore" title="Suona la battuta del cursore"><span aria-hidden="true">▶</span></button>
+        </div>
       </div>
     </div>
   </section>

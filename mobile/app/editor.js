@@ -106,7 +106,7 @@ async function runCheck() {
     const r = await call("check", { text });
     if (state.doc === doc && doc.text === text) {
       checks.last = { text, ...r.result };
-      if (bar.page === 0 && drumsAtCaret() !== bar.drums) renderKeys();
+      if (bar.page === 3 || (bar.page === 0 && drumsAtCaret() !== bar.drums)) renderKeys();
       applyCheck();
       Metrics.record("controllo", { song: doc.name, ms: r.ms, warnings: r.result.warnings.length });
     }
@@ -384,13 +384,10 @@ function drumsAtCaret() {
 }
 
 function pageKeys(page) {
-  const common = [SEP, K("⌫", deleteToken, "wide", t("Cancella il token")),
-                  K("▶ " + t("battuta"), playBarAtCaret, "wide play-bar", t("Suona la battuta del cursore"))];
   if (page === 0 && bar.drums) {
     return [
       ...DRUM_KEYS.map((n) => K(n, () => insertToken(n), "", t("batteria: {name}", { name: n }))),
       K("r", () => insertToken("r"), "", t("pausa")),
-      ...common,
     ];
   }
   if (page === 0) {
@@ -401,7 +398,6 @@ function pageKeys(page) {
       K("#", () => attach("#"), "", t("diesis")), K("♭", () => attach("b"), "", t("bemolle")),
       ...[3, 4, 5, 6].map((o) => K("*" + o, () => attach("*" + o), "", t("ottava {n}", { n: o }))),
       K("~", () => attach("~"), "", t("legatura")),
-      ...common,
     ];
   }
   if (page === 1) {
@@ -414,20 +410,19 @@ function pageKeys(page) {
       K("|", () => insertToken("|"), "", t("stanghetta")),
       K("(", () => insertToken("(", false), "", t("apri gruppo")), K(")", () => attach(")"), "", t("chiudi gruppo")),
       K("[", () => insertToken("[", false), "", t("apri blocco")), K("]", () => attach("]"), "", t("chiudi blocco")),
-      ...common,
     ];
   }
-  const text = state.doc ? state.doc.text : "";
-  const pos = caretPos() ?? text.length;
+  if (page === 2) {
+    const text = state.doc ? state.doc.text : "";
+    const pos = caretPos() ?? text.length;
+    return diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c), "", t("accordo {name}", { name: c })));
+  }
   const patterns = (checks.last ? checks.last.blocks : []).filter((b) => b.kind === "pattern").map((b) => b.label);
   return [
-    ...diatonicChords(keyAt(text, pos)).map((c) => K(c, () => insertToken(c), "", t("accordo {name}", { name: c }))),
-    SEP,
     K("✦ " + t("Trasforma"), openTransform, "wide", t("Trasforma il richiamo di pattern sotto il cursore")),
     ...patterns.map((p) => K(p, () => insertToken(p), "", t("pattern {name}", { name: p }))),
     ...(patterns.length ? [SEP] : []),
     ...bar.transforms.map((f) => K(f.call, () => attach(f.call), "", f.help)),
-    ...common,
   ];
 }
 
@@ -543,8 +538,34 @@ async function playBarAtCaret(before = false) {
   requestAnimationFrame(frame);
 }
 
+// Annulla e ripeti: la storia e' quella del browser, la stessa della tastiera
+// (i tasti scrivono con execCommand, vedi insertToken).
+function historyStep(command) {
+  if (!state.doc) return;
+  const pre = $("text");
+  if (document.activeElement !== pre) pre.focus();
+  document.execCommand(command);
+}
+
+// A capo automatico: le battute lunghe restano nello schermo
+const WRAP_KEY = "stmobile.wrap";
+function setWrap(on) {
+  $("text").classList.toggle("wrap", on);
+  $("wrapToggle").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem(WRAP_KEY, on ? "1" : "0"); } catch (e) {}
+}
+
 function setupMusicBar() {
   for (const b of document.querySelectorAll(".pages button")) b.onclick = () => setPage(Number(b.dataset.page));
+  const run = (f) => () => Promise.resolve(f()).catch(showError);
+  $("deleteKey").onclick = run(deleteToken);
+  $("playBarKey").onclick = run(playBarAtCaret);
+  $("undoKey").onclick = run(() => historyStep("undo"));
+  $("redoKey").onclick = run(() => historyStep("redo"));
+  let wrap = false;
+  try { wrap = localStorage.getItem(WRAP_KEY) === "1"; } catch (e) {}
+  setWrap(wrap);
+  $("wrapToggle").onclick = () => setWrap(!$("text").classList.contains("wrap"));
   // I tasti non prendono il fuoco: il cursore e la tastiera restano nel testo.
   $("musicbar").addEventListener("pointerdown", (ev) => {
     if (ev.target.closest("button")) ev.preventDefault();

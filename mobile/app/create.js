@@ -98,12 +98,15 @@ async function loadGenChoices() {
 
 async function showCrea() {
   if (!document.body.classList.contains("view-crea")) return;
+  const first = !gen.choices;
+  if (first) $("genStatus").textContent = t("Carico…");
   try {
     await loadGenChoices();
   } catch (e) {
     $("genStatus").textContent = shortError(e);
     return;
   }
+  if (first) $("genStatus").textContent = "";
   renderGenForm();
   scheduleGenerate(0);
 }

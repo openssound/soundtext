@@ -85,6 +85,9 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 
 .textbar { display: flex; gap: 8px; padding: 0 16px 6px; }
 .textbar select { flex: 1; min-width: 0; }
+.wrap-toggle { flex: none; min-width: 44px; font-size: 18px; padding: 0; }
+.wrap-toggle[aria-pressed="true"] { color: #fff; }
+#text.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
 .warn-button { color: #1c1c1c; background: #f0b854; border-color: #f0b854; font-weight: 600; }
 .warnings { list-style: none; margin: 0 16px 6px; padding: 0; max-height: 30vh; overflow-y: auto;
             border: 1px solid var(--line); border-radius: 8px; }
@@ -176,11 +179,15 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 #voiceAsk { margin-left: auto; color: var(--dim); }
 #voiceAsk[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 #voiceIntro p { margin: 0 0 10px; font-size: 14px; }
-.pages { display: flex; flex-direction: column; border-right: 1px solid var(--line); }
-.pages button { flex: 1; border: none; border-radius: 0; background: none; font-size: 11px; min-height: 0;
-                padding: 2px 8px; color: var(--dim); }
-.pages button[aria-selected="true"] { color: var(--accent); font-weight: 600; }
-.keys { flex: 1; display: flex; gap: 4px; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+.pagerow { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+.pagerow > button { flex: none; width: 44px; min-height: 40px; border: none; border-left: 1px solid var(--line);
+                    border-radius: 0; background: none; font-size: 20px; padding: 0; }
+.pages { flex: 1; display: flex; min-width: 0; }
+.pages button { flex: 1; border: none; border-radius: 0; background: none; font-size: 13px; min-height: 40px;
+                padding: 2px 4px; color: var(--dim); border-bottom: 2px solid transparent; }
+.pages button[aria-selected="true"] { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.keys { flex: 1; min-width: 0; display: flex; gap: 4px; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+.keys-fixed { flex: none; overflow: visible; border-left: 1px solid var(--line); }
 .keys button { flex: none; min-width: 42px; min-height: 44px; padding: 4px 8px;
                font: 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .keys button.wide { min-width: 64px; font-family: system-ui, sans-serif; font-size: 13px; }

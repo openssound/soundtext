@@ -132,7 +132,7 @@ async function main() {
     });
     $("engineState").textContent = t("pronto in {s} s ({versions})",
                                      { s: (boot.total_ms / 1000).toLocaleString(I18n.locale, { maximumFractionDigits: 1 }), versions: boot.versions });
-    call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 2) renderKeys(); }).catch(() => {});
+    call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 3) renderKeys(); }).catch(() => {});
     setTimeout(prefetchForOffline, 5000);
     await restored;
     if (!state.doc) {

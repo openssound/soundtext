@@ -2794,5 +2794,9 @@
  "Ti ascolto: detta una frase e fai una pausa.": "Te escucho: dicta una frase y haz una pausa.",
  "Trasposizione: {n} semitoni": "Transposición: {n} semitonos",
  "il modello della voce non si è caricato": "el modelo de voz no se ha cargado",
- "batteria: {name}": "batería: {name}"
+ "batteria: {name}": "batería: {name}",
+ "A capo automatico": "Ajuste de línea automático",
+ "Annulla l'ultima modifica": "Deshacer el último cambio",
+ "Ripeti la modifica annullata": "Rehacer el cambio deshecho",
+ "Carico…": "Cargando…"
 }

@@ -2794,5 +2794,9 @@
  "Ti ascolto: detta una frase e fai una pausa.": "Listening: dictate a phrase, then pause.",
  "Trasposizione: {n} semitoni": "Transposition: {n} semitones",
  "il modello della voce non si è caricato": "the voice model did not load",
- "batteria: {name}": "drums: {name}"
+ "batteria: {name}": "drums: {name}",
+ "A capo automatico": "Automatic line wrap",
+ "Annulla l'ultima modifica": "Undo the last change",
+ "Ripeti la modifica annullata": "Redo the undone change",
+ "Carico…": "Loading…"
 }
