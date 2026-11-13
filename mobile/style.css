@@ -5,6 +5,7 @@
   --text: #e6e6e6;
   --dim: #9a9ca3;
   --accent: #5aa9ff;
+  --on-accent: #0a1a2e;      /* testo sopra l'azzurro: scuro nel tema scuro */
   --note-bg: #f2f2f2;
   --note-fg: #101010;
   --box-bg: #3d4a5c;
@@ -19,6 +20,7 @@
     --text: #1c1c1c;
     --dim: #5d5f66;
     --accent: #0b62c4;
+    --on-accent: #ffffff;
     --note-bg: #1c1c1c;
     --note-fg: #ffffff;
     --box-bg: #cfdcee;
@@ -67,7 +69,7 @@ button, select, .button {
 }
 .button { display: inline-flex; align-items: center; }
 .button input { display: none; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .hint { color: var(--dim); font-size: 13px; }
 
@@ -86,7 +88,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .textbar { display: flex; gap: 8px; padding: 0 16px 6px; }
 .textbar select { flex: 1; min-width: 0; }
 .wrap-toggle { flex: none; min-width: 44px; font-size: 18px; padding: 0; }
-.wrap-toggle[aria-pressed="true"] { color: #fff; }
+.wrap-toggle[aria-pressed="true"] { color: var(--on-accent); }
 #text.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
 .warn-button { color: #1c1c1c; background: #f0b854; border-color: #f0b854; font-weight: 600; }
 .warnings { list-style: none; margin: 0 16px 6px; padding: 0; max-height: 30vh; overflow-y: auto;
@@ -191,7 +193,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .keys button { flex: none; min-width: 42px; min-height: 44px; padding: 4px 8px;
                font: 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .keys button.wide { min-width: 64px; font-family: system-ui, sans-serif; font-size: 13px; }
-.keys button.play-bar { background: var(--accent); border-color: var(--accent); color: #fff; }
+.keys button.play-bar { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .keys .sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
 /* Mentre si scrive si nasconde la barra delle schermate: piu' spazio sopra la tastiera */
 body.editing .tabs { display: none; }
@@ -204,7 +206,7 @@ body.editing .play { width: 40px; height: 40px; font-size: 17px; }
 }
 .play {
   width: 52px; height: 52px; border-radius: 50%; border: none; flex: none; padding: 0;
-  background: var(--accent); color: #fff; font-size: 22px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent); font-size: 22px; cursor: pointer;
 }
 .play:disabled { opacity: .4; }
 .now { flex: 1; min-width: 0; }
@@ -216,17 +218,17 @@ body.editing .play { width: 40px; height: 40px; font-size: 17px; }
 .controls { display: grid; gap: 12px; }
 .controls label { display: grid; grid-template-columns: auto 1fr; font-size: 14px; color: var(--dim); gap: 4px; }
 .controls label.inline { grid-template-columns: 1fr; }
-.controls input { grid-column: 1 / -1; width: 100%; min-height: 28px; }
+.controls input { grid-column: 1 / -1; width: 100%; min-height: 40px; accent-color: var(--accent); }
 .controls output { justify-self: end; color: var(--text); }
-.seek { flex: 1 0 100%; margin: 0; min-height: 28px; accent-color: var(--accent); }
+.seek { flex: 1 0 100%; margin: 0; min-height: 36px; accent-color: var(--accent); }
 body.editing .seek { min-height: 20px; }
 .loop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .loop button { min-width: 48px; min-height: 44px; white-space: nowrap; }
 .loop button:disabled { opacity: .4; }
 .loop-out { flex: 1; font-size: 14px; color: var(--dim); font-variant-numeric: tabular-nums; }
-button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .check { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 15px; min-height: 44px; }
-.check input { width: 22px; height: 22px; }
+.check input { width: 26px; height: 26px; accent-color: var(--accent); }
 .mixer { list-style: none; margin: 0; padding: 0; }
 .mixer li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .mixer .tname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -243,7 +245,12 @@ button[aria-pressed="true"] { background: var(--accent); border-color: var(--acc
 .score g.note { cursor: pointer; }
 .hint.error { color: var(--danger); }
 .opts { font-size: 13px; color: var(--dim); }
-.opts label { display: block; margin: 4px 0; }
+.opts summary { padding: 13px 0; cursor: pointer; }
+.opts label { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 4px 0; }
+.opts label input { flex: none; width: 22px; height: 22px; accent-color: var(--accent); }
+.opts .hint a { display: inline-block; padding: 12px 0; }
+/* Mentre si scrive il nome del brano e' gia' nella barra del lettore */
+body.editing header { display: none; }
 
 .tabs {
   display: flex; border-top: 1px solid var(--line); background: var(--panel);

@@ -2798,5 +2798,10 @@
  "A capo automatico": "Automatic line wrap",
  "Annulla l'ultima modifica": "Undo the last change",
  "Ripeti la modifica annullata": "Redo the undone change",
- "Carico…": "Loading…"
+ "Carico…": "Loading…",
+ "Tracce: {n}": "Tracks: {n}",
+ "Partitura: 1 pagina": "Score: 1 page",
+ "Partitura: {n} pagine": "Score: {n} pages",
+ "Battute (0 = un giro):": "Bars (0 = one pass):",
+ "Avanzate": "Advanced"
 }

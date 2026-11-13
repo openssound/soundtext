@@ -39,7 +39,6 @@
     <label class="language"><span data-i18n>Lingua</span>
       <select id="language"></select>
     </label>
-    <p class="hint"><a href="diagnostica.html" data-i18n>Diagnostica</a> · <span data-i18n>motore:</span> <span id="engineState"></span></p>
   </section>
 
   <!-- Testo -->
@@ -154,9 +153,10 @@
     <h2 id="mixerTitle" data-i18n>Tracce</h2>
     <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
     <details class="opts">
-      <summary data-i18n>Opzioni audio (prove su iPhone)</summary>
+      <summary data-i18n>Avanzate</summary>
       <label><input id="unlockAudio" type="checkbox" checked> <span data-i18n>elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</span></label>
       <label><input id="audioSession" type="checkbox" checked> navigator.audioSession.type = "playback" (Safari 17+)</label>
+      <p class="hint"><a href="diagnostica.html" data-i18n>Diagnostica</a> · <span data-i18n>motore:</span> <span id="engineState"></span></p>
     </details>
   </section>
 </main>

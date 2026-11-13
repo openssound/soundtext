@@ -242,7 +242,7 @@ async function analyze() {
       parse_ms: Math.round(tm.parse_s * 1000), midi_ms: Math.round(tm.midi_s * 1000),
       worker_total_ms: tm.total_ms, roundtrip_ms: roundtrip,
     });
-    setStatus(t("Tracce: {n}, pronto in {ms} ms", { n: r.info.tracks.length, ms: roundtrip }));
+    setStatus(t("Tracce: {n}", { n: r.info.tracks.length }));
     if (document.body.classList.contains("view-partitura")) setTimeout(() => showScore().catch(showError), 0);
     // La mappa per l'evidenziazione arriva dopo: si puo' gia' suonare.
     song.spansReady = call("spans").then((m) => {

@@ -116,7 +116,7 @@ async function renderScore(key) {
   score.timemap = r.timemap;
   score.index = -1;
   score.active.clear();
-  if (!state.playing) setStatus(t("Partitura: {n} pagine in {ms} ms", { n: r.pages.length, ms: ms(t0) }));
+  if (!state.playing) setStatus(r.pages.length === 1 ? t("Partitura: 1 pagina") : t("Partitura: {n} pagine", { n: r.pages.length }));
   Metrics.record("partitura", {
     song: song.name, tracks: tracks ? tracks.length : song.info.tracks.length, pages: r.pages.length,
     musicxml_ms: xml.ms, verovio_boot_ms: r.boot_ms, render_ms: r.render_ms, total_ms: ms(t0), verovio: r.version,

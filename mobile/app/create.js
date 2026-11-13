@@ -36,7 +36,7 @@ function genFields(kind) {
       ["key", "select", t("Tonalità:"), c.keys.map((k) => [k, k])],
       ["style", "select", t("Stile:"), opts(c.progression.filter((p) => p.mode === mode))],
       ["chord_bars", "select", t("Durata di ogni accordo:"), opts(c.chord_durations)],
-      bars, ["instrument", "select", t("Strumento:"), instruments("progression")], variability,
+      ["bars", "number", t("Battute (0 = un giro):")], ["instrument", "select", t("Strumento:"), instruments("progression")], variability,
       ["ending", "check", t("Cadenza finale")],
     ];
   }

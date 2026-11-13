@@ -2798,5 +2798,10 @@
  "A capo automatico": "Retour à la ligne automatique",
  "Annulla l'ultima modifica": "Annuler la dernière modification",
  "Ripeti la modifica annullata": "Rétablir la modification annulée",
- "Carico…": "Chargement…"
+ "Carico…": "Chargement…",
+ "Tracce: {n}": "Pistes : {n}",
+ "Partitura: 1 pagina": "Partition : 1 page",
+ "Partitura: {n} pagine": "Partition : {n} pages",
+ "Battute (0 = un giro):": "Mesures (0 = un tour) :",
+ "Avanzate": "Avancé"
 }
