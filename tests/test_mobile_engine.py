@@ -249,6 +249,14 @@ def _example_names():
 
 
 @pytest.mark.slow
+def test_check_marks_percussion_blocks():
+    """La fila di tasti mostra i pezzi della batteria nelle tracce di percussioni."""
+    text = ("ST: 2.6\nTempo: 100 BPM\n\nPiano:\n  4: c d e f |\n\n"
+            "Drums:\n  8: kick hihat snare hihat kick hihat snare hihat |\n")
+    _, result = _check(text)
+    assert {b["label"]: b["percussion"] for b in result["blocks"]} == {"Piano": False, "Drums": True}
+
+
 def test_every_example_opens_plays_and_has_a_score():
     """Criterio della fase 1: tutti gli esempi di examples/ e
     examples/didattici/ (quelli dell'app, mobile/build.py) si aprono, si

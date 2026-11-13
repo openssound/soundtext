@@ -2793,5 +2793,6 @@
  "Tempo {n}": "Tempo {n}",
  "Ti ascolto: detta una frase e fai una pausa.": "Je t'écoute : dicte une phrase et fais une pause.",
  "Trasposizione: {n} semitoni": "Transposition : {n} demi-tons",
- "il modello della voce non si è caricato": "le modèle vocal ne s'est pas chargé"
+ "il modello della voce non si è caricato": "le modèle vocal ne s'est pas chargé",
+ "batteria: {name}": "batterie : {name}"
 }

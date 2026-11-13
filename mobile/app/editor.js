@@ -106,6 +106,7 @@ async function runCheck() {
     const r = await call("check", { text });
     if (state.doc === doc && doc.text === text) {
       checks.last = { text, ...r.result };
+      if (bar.page === 0 && drumsAtCaret() !== bar.drums) renderKeys();
       applyCheck();
       Metrics.record("controllo", { song: doc.name, ms: r.ms, warnings: r.result.warnings.length });
     }
@@ -366,9 +367,32 @@ function K(label, run, cls = "", aria = "") {
 }
 const SEP = { sep: true };
 
+// I pezzi della batteria, nell'ordine di st-language (PERCUSSION_MAP)
+const DRUM_KEYS = ["kick", "snare", "hihat", "hihat_open", "tom1", "tom2", "floor", "crash", "ride",
+                   "rimshot", "clap", "hihat_pedal", "cowbell", "tambourine"];
+
+// Il cursore e' in una traccia (o in un box) di percussioni?
+function drumsAtCaret() {
+  if (!state.doc || !checks.last) return false;
+  const pos = caretPos() ?? (voice.caretDoc === state.doc ? voice.caret : null);
+  if (pos === null || pos === undefined) return false;
+  let here = null;
+  for (const b of checks.last.blocks) {
+    if (b.start <= pos && (!here || b.start > here.start)) here = b;
+  }
+  return !!(here && here.percussion);
+}
+
 function pageKeys(page) {
   const common = [SEP, K("⌫", deleteToken, "wide", t("Cancella il token")),
                   K("▶ " + t("battuta"), playBarAtCaret, "wide play-bar", t("Suona la battuta del cursore"))];
+  if (page === 0 && bar.drums) {
+    return [
+      ...DRUM_KEYS.map((n) => K(n, () => insertToken(n), "", t("batteria: {name}", { name: n }))),
+      K("r", () => insertToken("r"), "", t("pausa")),
+      ...common,
+    ];
+  }
   if (page === 0) {
     return [
       ..."cdefgab".split("").map((n) => K(n, () => insertToken(n), "", t("nota {n}", { n: n.toUpperCase() }))),
@@ -408,6 +432,7 @@ function pageKeys(page) {
 }
 
 function renderKeys() {
+  bar.drums = drumsAtCaret();
   const box = $("keys");
   box.innerHTML = "";
   for (const k of pageKeys(bar.page)) {
@@ -533,7 +558,8 @@ function setupMusicBar() {
   document.addEventListener("selectionchange", () => {
     if (document.activeElement === pre) {
       scheduleSuggest();
-      if (bar.page === 2) renderKeys();      // gli accordi seguono la tonalita' al cursore
+      // gli accordi seguono la tonalita' al cursore, le note la traccia (batteria o no)
+      if (bar.page === 2 || (bar.page === 0 && drumsAtCaret() !== bar.drums)) renderKeys();
     }
   });
   setPage(0);

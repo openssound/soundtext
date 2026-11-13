@@ -2793,5 +2793,6 @@
  "Tempo {n}": "Tempo {n}",
  "Ti ascolto: detta una frase e fai una pausa.": "Listening: dictate a phrase, then pause.",
  "Trasposizione: {n} semitoni": "Transposition: {n} semitones",
- "il modello della voce non si è caricato": "the voice model did not load"
+ "il modello della voce non si è caricato": "the voice model did not load",
+ "batteria: {name}": "drums: {name}"
 }

@@ -368,7 +368,8 @@ def check_text(text: str, name: str = "Brano") -> dict:
       "lyric"... (core.notation.notation_warnings, come SoundText),
       "ignored" (blocco "Nome:" di uno strumento sconosciuto, che il
       lettore dei file salta senza dirlo), "file" (Project.file_warnings);
-    - blocks: tracce, box e pattern per il menu "Vai a" {start, label, kind}.
+    - blocks: tracce, box e pattern per il menu "Vai a" {start, label, kind};
+      tracce e box dicono anche se sono di percussioni (percussion).
     Le posizioni sono indici di carattere nel testo."""
     import st_language.stfile as stfile
     from core.i18n import tr
@@ -412,7 +413,8 @@ def check_text(text: str, name: str = "Brano") -> dict:
             notation.append((b, track, track.instrument.default_octave if track else 4, float(m.group(2)),
                              track is not None))
             out["blocks"].append({"start": hstart, "label": f"{track_name} · {title.group(1) if title else ''}",
-                                  "kind": "box"})
+                                  "kind": "box",
+                                  "percussion": bool(track and track.instrument.is_percussion)})
             if track is None and project:
                 warn(hstart, hend, "ignored",
                      tr("Il box è della traccia «{track}», che nel brano non c'è.", track=track_name))
@@ -423,7 +425,8 @@ def check_text(text: str, name: str = "Brano") -> dict:
         if track_name is not None:
             track = tracks[index[track_name]]
             notation.append((b, track, track.instrument.default_octave, 0.0, True))
-            out["blocks"].append({"start": hstart, "label": track_name, "kind": "track"})
+            out["blocks"].append({"start": hstart, "label": track_name, "kind": "track",
+                                  "percussion": bool(track.instrument.is_percussion)})
         elif project and stfile.RE_TRACK_HDR.match(header) and not stfile.RE_TRACK_HDR_EXPLICIT.match(header):
             # "Basso:": una traccia di uno strumento che non si conosce
             instrument = stfile.RE_TRACK_HDR.match(header).group(1)
