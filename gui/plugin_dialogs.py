@@ -158,10 +158,17 @@ class PluginPickerDialog(QDialog):
         self.hide_twins.setToolTip(tr("Il VST3 rende il brano portabile su Linux e Windows"))
         self.hide_twins.toggled.connect(lambda *_: self._fill())
         self.hide_twins.setVisible(MACOS)
+        # lo stesso per i CLAP: il VST3 ha anche la sua interfaccia grafica
+        self.hide_clap_twins = QCheckBox(tr("Nascondi i CLAP che esistono anche in VST3"))
+        self.hide_clap_twins.setChecked(True)
+        self.hide_clap_twins.setToolTip(tr("Del VST3 SoundText apre anche l'interfaccia grafica"))
+        self.hide_clap_twins.toggled.connect(lambda *_: self._fill())
+        self.hide_clap_twins.setVisible(False)       # compare se ci sono plugin CLAP (vedi _fill)
         self.dirs_btn.clicked.connect(self._edit_dirs)
         row.addWidget(self.rescan_btn)
         row.addWidget(self.dirs_btn)
         row.addWidget(self.hide_twins)
+        row.addWidget(self.hide_clap_twins)
         row.addStretch(1)
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self._accept_if_usable)
@@ -245,12 +252,13 @@ class PluginPickerDialog(QDialog):
         # quelli che non si possono usare in fondo, disattivati (in grigio)
         grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
         twins = plugins.vst3_twins(self.infos)
-        hide_twins = self.hide_twins.isChecked()
+        hide_twins = {"au": self.hide_twins.isChecked(), "clap": self.hide_clap_twins.isChecked()}
+        self.hide_clap_twins.setVisible(any(i.format == "clap" for i in self.infos))
         for info in sorted(self.infos, key=lambda i: not i.usable):
             text = f"{info.name} {info.vendor} {info.category}".lower()
             if query and query not in text:
                 continue
-            if info.ref in twins and hide_twins and info.ref != self.current_ref:
+            if info.ref in twins and hide_twins.get(info.format) and info.ref != self.current_ref:
                 continue
             item = QTreeWidgetItem([info.name, info.format_label, info.vendor, info.category])
             item.setData(0, Qt.UserRole, info.ref)

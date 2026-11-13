@@ -7,6 +7,8 @@ mido>=1.3
 # backend di mido per le tastiere MIDI esterne ("Suona con la tastiera"): facoltativo
 python-rtmidi>=1.5
 sounddevice>=0.4
+# uscita su JACK (Suoni -> Uscita audio): facoltativo, usa la libjack del sistema
+JACK-Client>=0.5; sys_platform == "linux"
 # numpy 1.x non esiste per Python 3.13 e successivi: li' serve numpy 2
 numpy>=1.24,<2; python_version < "3.13"
 numpy>=2.1; python_version >= "3.13"

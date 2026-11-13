@@ -1,0 +1,89 @@
+# Flatpak di SoundText (bozza: non ancora costruita, vedi README.md).
+#
+# I moduli audio comuni vengono da flathub/shared-modules, da aggiungere
+# come sottomodulo git accanto a questo file:
+#   git submodule add https://github.com/flathub/shared-modules.git
+# I pacchetti Python sono in python-deps.json (genera_dipendenze.py).
+app-id: io.github.openssound.SoundText
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: soundtext
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # audio: PulseAudio/PipeWire; il socket di PipeWire anche per l'uscita su JACK
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/pipewire-0
+  # tastiere MIDI (sequencer ALSA) e schede audio
+  - --device=all
+  # Suoni > Scarica e installa (SoundFont, strumenti SFZ, profili NAM)
+  - --share=network
+  # brani, SoundFont e strumenti dell'utente
+  - --filesystem=xdg-documents
+  - --filesystem=xdg-music
+  # i plugin installati come estensioni Flatpak (sotto)
+  - --env=LV2_PATH=/app/extensions/Plugins/lv2
+  - --env=VST3_PATH=/app/extensions/Plugins/vst3
+  - --env=CLAP_PATH=/app/extensions/Plugins/clap
+
+# I plugin del sistema non si vedono dentro un Flatpak: si usano quelli
+# pubblicati come estensioni (org.freedesktop.LinuxAudio.Plugins.*: LSP,
+# Surge XT, Dragonfly Reverb, x42, ZamPlugins...).
+add-extensions:
+  org.freedesktop.LinuxAudio.Plugins:
+    directory: extensions/Plugins
+    version: '24.08'
+    add-ld-path: lib
+    merge-dirs: lv2;vst3;clap
+    subdirectories: true
+    no-autodownload: true
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/man
+  - '*.a'
+  - '*.la'
+
+modules:
+  - shared-modules/linux-audio/fluidsynth2.json
+  - shared-modules/linux-audio/lv2.json
+  - shared-modules/linux-audio/lilv.json
+
+  - name: portaudio
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DPA_USE_JACK=OFF
+    sources:
+      - type: git
+        url: https://github.com/PortAudio/portaudio.git
+        tag: v19.7.0
+        commit: 147dd722548358763a8b649b3e4b41dfffbcfbb6
+
+  - python-deps.json
+
+  - name: soundtext
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/soundtext /app/extensions/Plugins
+      - cp -a main.py core gui assets docs locales examples licenses scarica_strumenti.py LICENSE THIRD_PARTY_NOTICES.md /app/share/soundtext/
+      - rm -rf /app/share/soundtext/docs/guida_brano
+      - python3 -m compileall -q /app/share/soundtext
+      - install -Dm755 packaging/flatpak/soundtext.sh /app/bin/soundtext
+      - install -Dm644 packaging/flatpak/io.github.openssound.SoundText.desktop -t /app/share/applications
+      - install -Dm644 packaging/flatpak/io.github.openssound.SoundText.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/io.github.openssound.SoundText.png
+      - install -Dm644 assets/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.openssound.SoundText.svg
+    sources:
+      # dalla versione che contiene packaging/flatpak: tag e commit vanno
+      # aggiornati a ogni release
+      - type: git
+        url: https://github.com/openssound/soundtext.git
+        tag: v1.19.0
+        commit: 3517b91cceccd1856246f7293bc8ec463e5bd3dd

@@ -21,6 +21,7 @@ La guía está dividida en seis partes; un clic en un título lleva a la secció
   - [3.2 Cambios en el mezclador durante la reproducción](#3.2)
   - [3.3 Metrónomo](#3.3)
   - [3.4 Humanizar](#3.4)
+  - [3.5 Salida de audio por JACK](#3.5)
 
 **Parte 2 — Escribir la música**
 
@@ -461,6 +462,35 @@ sonarán idénticas, igual que dos interpretaciones en directo del mismo
 músico. Solo afecta a la reproducción/exportación MIDI (el render final en
 ticks absolutos): el texto de la pista y la línea de tiempo «de rejilla» del
 editor se quedan como están escritos, sin cambios.
+
+### 3.5 Salida de audio por JACK
+
+En Linux SoundText puede sonar por **JACK** en lugar del dispositivo del
+sistema: **Sonidos → Salida de audio → JACK**. SoundText se convierte
+entonces en un cliente JACK llamado **SoundText**, con los puertos `out_1`
+y `out_2`, conectados automáticamente a las dos primeras salidas de la
+tarjeta; desde ahí los conectas donde quieras con qjackctl, Carla, Ardour o
+el grafo de PipeWire (por ejemplo para grabar la salida de SoundText en una
+DAW). Vale desde la siguiente reproducción.
+
+- **Qué pasa por JACK**: la reproducción de la canción (con el bucle A-B, la
+  barra de avance y el metrónomo sujetos al reloj de JACK), el clic del
+  metrónomo (cliente `SoundText-click`), el teclado en vivo (cliente
+  `SoundText-keys`) y la escucha en vivo de los instrumentos plugin (cliente
+  `SoundText-live`).
+- **Qué no pasa por JACK**: la grabación de las pistas de audio, que sigue
+  usando los dispositivos de entrada del sistema, y el transporte de JACK
+  (Play en otro programa no arranca SoundText).
+- **Frecuencia de muestreo**: la decide el servidor JACK. Si es distinta de
+  la de la canción, SoundText remuestrea solo.
+- **Hace falta un servidor JACK en marcha**: `jackd`, o PipeWire con
+  `pipewire-jack`, que en las distribuciones recientes ya está. Si ningún
+  servidor responde, SoundText lo dice y sigue usando el dispositivo del
+  sistema. **Dispositivo del sistema** es la opción predeterminada.
+- **Qué hace falta en el ordenador**: la biblioteca Python `JACK-Client` (ya
+  está en la AppImage y en el paquete portable; `install.sh` la instala con
+  las demás) y la `libjack` del sistema. Sin ellas, el menú **Salida de
+  audio** no aparece.
 
 ---
 
@@ -3279,6 +3309,25 @@ SoundFont.
   archivo para cada uno, que remite al efecto del sistema: no se instala
   nada.
 
+- **CLAP**: en Linux, Windows y macOS. SoundText los busca en las carpetas
+  estándar (`~/.clap` y `/usr/lib/clap` en Linux, `Common Files\CLAP` en
+  Windows, `/Library/Audio/Plug-Ins/CLAP` en macOS), en las de la variable
+  `CLAP_PATH` y en las añadidas en **Sonidos → Carpetas de plugins
+  VST3...**. En la lista llevan la etiqueta **CLAP**; un archivo `.clap`
+  puede contener muchos plugins (LSP tiene más de cien) y cada uno aparece
+  con su nombre. Funcionan efectos e instrumentos, con sus parámetros en la
+  ventana **Parámetros…** y la latencia del plugin compensada. En el archivo
+  la referencia empieza por `clap:` y termina con el identificador del
+  plugin (por ejemplo
+  `ref="clap:/usr/lib/clap/ZamComp.clap|com.zamaudio.ZamComp"`).
+
+  **La ventana del plugin no se abre** y sus presets internos no se guardan:
+  de un CLAP SoundText recuerda los valores de los parámetros. Por eso,
+  **cuando un plugin existe también en VST3 conviene el VST3**: la opción
+  **Ocultar los CLAP que también existen en VST3** (activa) deja en la lista
+  solo el VST3. Un plugin que se usa solo desde su ventana (el de Tone3000,
+  por ejemplo, donde se elige el sonido) se carga como VST3 o LV2.
+
 - **LV2**: solo en Linux, y hace falta la biblioteca del sistema `lilv` (en
   Debian/Ubuntu el paquete `liblilv-0-0`, ya presente si están instalados
   Ardour, Carla o Guitarix). Los plugins LV2 se encuentran solos. Por
@@ -3304,7 +3353,7 @@ SoundFont.
   ```bash
   sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
   ```
-- Los formatos **CLAP** y **VST2** no son compatibles.
+- El formato **VST2** no es compatible.
 
 **Un plugin como efecto**: en el panel Efectos (19) **+ Efecto → Plugin
 (VST3/LV2)** abre la lista de los plugins de efecto instalados, con

@@ -1081,21 +1081,29 @@ class LiveSynth:
                 # in ambienti offscreen/CI. Come si traduce in buffer dipende
                 # dal driver, vedi _live_buffer_settings.
                 level = get_live_period_size()
-                driver = _preferred_live_audio_driver()
-                period_size, periods = _live_buffer_settings(driver, level)
-                self._synth.setting('audio.period-size', period_size)
-                self._synth.setting('audio.periods', periods)
-                if driver == "wasapi":
-                    self._timer_resolution_raised = _raise_windows_timer_resolution()
-                self._synth.start_audio(driver)
-                fallback = _fallback_live_audio_driver()
-                if not self._synth.audio_driver and fallback is not None:
-                    # driver non disponibile: si riprova con quello di ripiego
-                    log.warning("Driver audio %r non disponibile, provo %r", driver, fallback)
-                    period_size, periods = _live_buffer_settings(fallback, level)
+                # Con l'uscita su JACK (Suoni > Uscita audio) anche la
+                # tastiera dal vivo e' un client JACK, "SoundText-keys",
+                # collegato alle uscite fisiche; se non si apre si prosegue
+                # con i driver di sempre.
+                from . import jack_output
+                drivers = [jack_output.fluidsynth_jack_driver(), _preferred_live_audio_driver(),
+                           _fallback_live_audio_driver()]
+                drivers = [d for i, d in enumerate(drivers) if i == 1 or (d is not None and d not in drivers[:i])]
+                for attempt, driver in enumerate(drivers):
+                    if attempt:
+                        # driver non disponibile: si riprova con il successivo
+                        log.warning("Driver audio %r non disponibile, provo %r", drivers[attempt - 1], driver)
+                    period_size, periods = _live_buffer_settings(driver, level)
                     self._synth.setting('audio.period-size', period_size)
                     self._synth.setting('audio.periods', periods)
-                    self._synth.start_audio(fallback)
+                    if driver == "jack":
+                        self._synth.setting('audio.jack.id', jack_output.CLIENT_NAME + "-keys")
+                        self._synth.setting('audio.jack.autoconnect', 1)
+                    if driver == "wasapi":
+                        self._timer_resolution_raised = _raise_windows_timer_resolution()
+                    self._synth.start_audio(driver)
+                    if self._synth.audio_driver:
+                        break
                 if not self._synth.audio_driver:
                     raise RuntimeError(tr("impossibile aprire un driver audio in tempo reale"))
                 self.driver_name = self._synth.get_setting('audio.driver')

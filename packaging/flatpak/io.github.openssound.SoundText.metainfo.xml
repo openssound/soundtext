@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.openssound.SoundText</id>
+  <name>SoundText</name>
+  <summary>Write music as text, then hear, arrange and mix it</summary>
+  <summary xml:lang="it">Scrivi la musica come testo, poi ascoltala, arrangiala e mixala</summary>
+  <summary xml:lang="fr">Écrire la musique en texte, puis l'écouter, l'arranger et la mixer</summary>
+  <summary xml:lang="es">Escribir música como texto, y luego escucharla, arreglarla y mezclarla</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.openssound">
+    <name>Sergio Scolaro</name>
+  </developer>
+  <description>
+    <p>SoundText is a music editor where music is written as plain text: notes, chords, dynamics
+      and form in a small notation language. The note being played lights up in the text, and the
+      same song can be seen as a score.</p>
+    <p>Features:</p>
+    <ul>
+      <li>A notation checked bar by bar while you type, with patterns and transformations</li>
+      <li>An arranger that writes drums, bass and comping from a chord track</li>
+      <li>A structure view where each section of the song is a box of text</li>
+      <li>SoundFont and SFZ instruments, LV2, VST3 and CLAP plugins, NAM amplifier profiles</li>
+      <li>Audio tracks, and converting a recording into notation</li>
+      <li>Export to WAV, MIDI, MusicXML and PDF</li>
+    </ul>
+    <p>Songs are plain text files in the open ST-language format, which also has a standalone
+      Python library and command-line tools.</p>
+  </description>
+  <launchable type="desktop-id">io.github.openssound.SoundText.desktop</launchable>
+  <url type="homepage">https://github.com/openssound/soundtext</url>
+  <url type="bugtracker">https://github.com/openssound/soundtext/issues</url>
+  <url type="vcs-browser">https://github.com/openssound/soundtext</url>
+  <url type="help">https://github.com/openssound/soundtext/blob/main/docs/HELP.en.md</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A song in the structure view, with the mixer</caption>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.19.0/assets/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Music</category>
+  </categories>
+  <keywords>
+    <keyword>music</keyword>
+    <keyword>notation</keyword>
+    <keyword>midi</keyword>
+    <keyword>composition</keyword>
+  </keywords>
+  <provides>
+    <binary>soundtext</binary>
+  </provides>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.19.0" date="2026-11-10">
+      <description>
+        <p>Audio Unit plugins and a ready-made app for macOS.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -37,6 +37,7 @@ indicati qui sotto, a quelle versioni.
 | [mido](https://github.com/mido/mido) 1.3 | Ole Martin Bjørndalen | MIT | `licenses/mido.txt` | sì |
 | [python-rtmidi](https://github.com/SpotlightKid/python-rtmidi) 1.5 (con [RtMidi](https://github.com/thestk/rtmidi) di Gary P. Scavone) | Christopher Arndt; Gary P. Scavone | MIT (RtMidi: licenza in stile MIT) | `licenses/python-rtmidi.md` | sì |
 | [sounddevice](https://github.com/spatialaudio/python-sounddevice) 0.5 | Matthias Geier | MIT | `licenses/sounddevice.txt` | sì |
+| [JACK-Client](https://github.com/spatialaudio/jackclient-python) 0.5 (uscita su JACK, solo Linux; usa la libjack del sistema, che non e' inclusa) | Matthias Geier | MIT | `licenses/JACK-Client.txt` | sì su Linux |
 | [PortAudio](http://www.portaudio.com) (incluso in sounddevice su Windows e macOS; di sistema su Linux) | Ross Bencina, Phil Burk e altri | MIT | `licenses/PortAudio.txt` | sì su Windows e macOS |
 | [Verovio](https://www.verovio.org) 6 (vista Partitura ed esportazione PDF) | RISM Digital Center, Laurent Pugin e altri contributori | LGPL-3.0 (i caratteri musicali inclusi: SIL Open Font License 1.1) | `licenses/LGPL-3.0.txt`, `licenses/OFL-1.1.txt` | sì, come libreria separata e sostituibile |
 | [pedalboard](https://github.com/spotify/pedalboard) 0.9 | Spotify AB | GPL-3.0 | `LICENSE`, `licenses/pedalboard-NOTICE.txt` | sì |

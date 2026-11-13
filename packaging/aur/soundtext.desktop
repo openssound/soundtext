@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=SoundText
+GenericName=Text-based music editor
+GenericName[it]=Editor di notazione musicale
+GenericName[fr]=Éditeur de musique en texte
+GenericName[es]=Editor de música en texto
+Comment=Write music as text, then hear, arrange and mix it
+Comment[it]=Notazione musicale testuale con playback MIDI/SoundFont
+Comment[fr]=Écrire la musique en texte, puis l'écouter, l'arranger et la mixer
+Comment[es]=Escribir música como texto, y luego escucharla, arreglarla y mezclarla
+Exec=soundtext %f
+Icon=soundtext
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+Keywords=music;notation;midi;composition;
+StartupWMClass=SoundText

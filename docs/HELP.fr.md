@@ -21,6 +21,7 @@ Le guide est divisé en six parties ; un clic sur un titre mène à la section.
   - [3.2 Modifications de la table de mixage pendant la lecture](#3.2)
   - [3.3 Métronome](#3.3)
   - [3.4 Humaniser](#3.4)
+  - [3.5 Sortie audio sur JACK](#3.5)
 
 **Partie 2 — Écrire la musique**
 
@@ -473,6 +474,35 @@ jamais de façon identique, exactement comme deux exécutions en direct du
 même musicien. Cela ne concerne que la lecture/l'export MIDI (le rendu
 final en ticks absolus) : le texte de la piste et la timeline « de grille »
 dans l'éditeur restent tels qu'ils ont été écrits, inchangés.
+
+### 3.5 Sortie audio sur JACK
+
+Sous Linux, SoundText peut sortir sur **JACK** au lieu du périphérique du
+système : **Sons → Sortie audio → JACK**. SoundText devient alors un client
+JACK nommé **SoundText**, avec les ports `out_1` et `out_2`, reliés
+automatiquement aux deux premières sorties de la carte son ; de là, vous les
+reliez où vous voulez avec qjackctl, Carla, Ardour ou le graphe de PipeWire
+(par exemple pour enregistrer la sortie de SoundText dans une DAW). Le choix
+vaut dès la lecture suivante.
+
+- **Ce qui passe par JACK** : la lecture du morceau (avec la boucle A-B, la
+  barre de progression et le métronome calés sur l'horloge de JACK), le clic
+  du métronome (client `SoundText-click`), le clavier en direct (client
+  `SoundText-keys`) et l'écoute en direct des instruments plugin (client
+  `SoundText-live`).
+- **Ce qui ne passe pas par JACK** : l'enregistrement des pistes audio, qui
+  utilise encore les périphériques d'entrée du système, et le transport de
+  JACK (Lecture dans un autre programme ne lance pas SoundText).
+- **Fréquence d'échantillonnage** : c'est le serveur JACK qui la décide. Si
+  elle diffère de celle du morceau, SoundText rééchantillonne tout seul.
+- **Il faut un serveur JACK en marche** : `jackd`, ou PipeWire avec
+  `pipewire-jack`, déjà présent sur les distributions récentes. Si aucun
+  serveur ne répond, SoundText le dit et continue d'utiliser le périphérique
+  du système. **Périphérique du système** est le choix par défaut.
+- **Ce qu'il faut sur l'ordinateur** : la bibliothèque Python `JACK-Client`
+  (déjà dans l'AppImage et le paquet portable ; `install.sh` l'installe avec
+  les autres) et la `libjack` du système. Sans elles, le menu **Sortie
+  audio** n'apparaît pas.
 
 ---
 
@@ -3345,6 +3375,26 @@ SoundFont.
   petit fichier pour chacun, qui renvoie à l'effet système : rien n'est
   installé.
 
+- **CLAP** : sous Linux, Windows et macOS. SoundText les cherche dans les
+  dossiers standard (`~/.clap` et `/usr/lib/clap` sous Linux, `Common
+  Files\CLAP` sous Windows, `/Library/Audio/Plug-Ins/CLAP` sous macOS), dans
+  ceux de la variable `CLAP_PATH` et dans ceux ajoutés dans **Sons →
+  Dossiers des plugins VST3...**. Dans la liste, ils portent l'étiquette
+  **CLAP** ; un fichier `.clap` peut contenir de nombreux plugins (LSP en a
+  plus de cent) et chacun apparaît sous son nom. Les effets et les
+  instruments fonctionnent, avec leurs paramètres dans la fenêtre
+  **Paramètres…** et la latence du plugin compensée. Dans le fichier, la
+  référence commence par `clap:` et se termine par l'identifiant du plugin
+  (par exemple `ref="clap:/usr/lib/clap/ZamComp.clap|com.zamaudio.ZamComp"`).
+
+  **La fenêtre du plugin ne s'ouvre pas** et ses préréglages internes ne
+  sont pas enregistrés : d'un CLAP, SoundText retient les valeurs des
+  paramètres. C'est pourquoi, **quand un plugin existe aussi en VST3, mieux
+  vaut le VST3** : l'option **Masquer les CLAP qui existent aussi en VST3**
+  (active) ne laisse que le VST3 dans la liste. Un plugin qui ne s'utilise
+  que par sa fenêtre (celui de Tone3000, par exemple, où l'on choisit le
+  son) se charge en VST3 ou en LV2.
+
 - **LV2** : seulement sous Linux, et il faut la bibliothèque système `lilv`
   (sous Debian/Ubuntu le paquet `liblilv-0-0`, déjà présent si Ardour,
   Carla ou Guitarix sont installés). Les plugins LV2 sont trouvés
@@ -3370,7 +3420,7 @@ SoundFont.
   ```bash
   sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
   ```
-- Les formats **CLAP** et **VST2** ne sont pas pris en charge.
+- Le format **VST2** n'est pas pris en charge.
 
 **Un plugin comme effet** : dans le panneau Effets (19) **+ Effet → Plugin
 (VST3/LV2)** ouvre la liste des plugins d'effet installés, avec une

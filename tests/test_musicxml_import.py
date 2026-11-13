@@ -247,3 +247,20 @@ def test_jumps_written_only_as_text(tmp_path):
     score = parse_score(_write(tmp_path, "dc.musicxml",
                                _score(part, '<score-part id="P1"><part-name>Piano</part-name></score-part>')))
     assert [n[2] for n in score.notes["P1"]] == [60, 62, 64, 60, 62]
+
+
+# ------------------------------------------------- metriche che il MIDI non sa scrivere
+
+@pytest.mark.parametrize("beats, beat_type, duration", [(3, 3, 1), (4, 6, 1), (6, 12, 1)])
+def test_time_signature_with_a_denominator_that_is_not_a_power_of_two(tmp_path, beats, beat_type, duration):
+    """Una metrica come 3/3 non ferma l'importazione: il passaggio dal MIDI
+    scrive la metrica piu' vicina con il denominatore potenza di 2."""
+    attributes = (f'<attributes><divisions>1</divisions><key><fifths>0</fifths></key>'
+                  f'<time><beats>{beats}</beats><beat-type>{beat_type}</beat-type></time>'
+                  f'<clef><sign>G</sign><line>2</line></clef></attributes>')
+    part = (f'<part id="P1"><measure number="1">{attributes}' +
+            "".join(_note(step, 4, duration) for step in "CDEF") + '</measure></part>')
+    xml = _score(part, '<score-part id="P1"><part-name>Flauto</part-name></score-part>')
+    project = import_musicxml_file(_write(tmp_path, "metrica.musicxml", xml))
+    track = project.tracks[0]
+    assert all(note in track.text for note in ("c*4", "d*4", "e*4", "f*4"))

@@ -1,0 +1,55 @@
+# Maintainer: Sergio Scolaro <INDIRIZZO_DA_METTERE_PRIMA_DI_PUBBLICARE>
+#
+# SoundText dal pacchetto portable delle release (eseguibile PyInstaller con
+# Python, Qt e FluidSynth dentro): niente da compilare. Prima di pubblicare
+# una versione nuova: pkgver, sha256sums (updpkgsums) e .SRCINFO
+# (makepkg --printsrcinfo > .SRCINFO). Vedi README.md in questa cartella.
+
+pkgname=soundtext-bin
+pkgver=1.19.0
+pkgrel=1
+pkgdesc="Text-based music composition: write notes and chords as plain text, hear, arrange and mix them"
+arch=('x86_64')
+url="https://github.com/openssound/soundtext"
+license=('GPL-3.0-or-later')
+depends=('portaudio' 'xcb-util-cursor' 'libxkbcommon-x11' 'libglvnd' 'xcb-util-wm' 'xcb-util-image'
+         'xcb-util-keysyms' 'xcb-util-renderutil' 'hicolor-icon-theme')
+optdepends=('lilv: LV2 plugins'
+            'jack2: audio output as a JACK client'
+            'pipewire-jack: audio output as a JACK client, on PipeWire'
+            'guitarix: amplifiers and pedals as LV2 plugins'
+            'lsp-plugins-lv2: studio effects as LV2 plugins')
+provides=('soundtext')
+conflicts=('soundtext')
+options=('!strip' '!debug')
+source=("SoundText-linux-portable-v${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/SoundText-linux-portable-v${pkgver}.tar.gz"
+        "soundtext.desktop")
+sha256sums=('cc341202567cb2a162a7d22f575c8b5b0d934a491c87f97ad23c16ab3801f1c6'
+            '75cecdc88f355c1c0f1c43a9adf44bf57498ea0916391a496661705f99ace46d')
+
+package() {
+    # Il programma intero in /opt/soundtext: brani, SoundFont e strumenti
+    # dell'utente non stanno qui (la cartella non e' scrivibile, SoundText
+    # usa quelle dell'utente).
+    install -d "${pkgdir}/opt"
+    cp -a "${srcdir}/SoundText" "${pkgdir}/opt/soundtext"
+    # script che servono solo al pacchetto scompattato a mano
+    rm -f "${pkgdir}/opt/soundtext/setup-portable-linux.sh"
+    chmod 755 "${pkgdir}/opt/soundtext/SoundText"
+
+    # non un collegamento: il lanciatore del pacchetto cerca le sue librerie
+    # nella cartella da cui e' stato chiamato
+    install -d "${pkgdir}/usr/bin"
+    printf '#!/bin/sh\nexec /opt/soundtext/SoundText "$@"\n' > "${pkgdir}/usr/bin/soundtext"
+    chmod 755 "${pkgdir}/usr/bin/soundtext"
+
+    install -Dm644 "${srcdir}/soundtext.desktop" "${pkgdir}/usr/share/applications/soundtext.desktop"
+    install -Dm644 "${srcdir}/SoundText/assets/icon.png" \
+        "${pkgdir}/usr/share/icons/hicolor/256x256/apps/soundtext.png"
+    install -Dm644 "${srcdir}/SoundText/assets/icon.svg" \
+        "${pkgdir}/usr/share/icons/hicolor/scalable/apps/soundtext.svg"
+
+    install -Dm644 "${srcdir}/SoundText/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${srcdir}/SoundText/THIRD_PARTY_NOTICES.md" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/THIRD_PARTY_NOTICES.md"
+}

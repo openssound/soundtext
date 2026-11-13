@@ -139,7 +139,9 @@ def _view_selection(editor: QPlainTextEdit, patterns: Dict[str, Pattern], instru
     from .score_view import show_selection_score
     project = _preview_project(tempo_bpm, host_project)
     project.patterns = patterns
-    copy_synth(project.add_track("Anteprima", instrument_name, combined), synth_track)
+    # Il nome della traccia e' quello scritto accanto al pentagramma: lo
+    # strumento, non "Anteprima" (che restava in italiano in ogni lingua).
+    copy_synth(project.add_track(instrument_name or "Anteprima", instrument_name, combined), synth_track)
     show_selection_score(editor, project)
 
 

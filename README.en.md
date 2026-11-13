@@ -8,6 +8,8 @@
 
 ▶ **All 13 video tutorials**, from installation to exporting: https://www.youtube.com/playlist?list=PLbVfXEqrD3P4
 
+▶ **Learn the notation with the three ST-Language courses** (subtitles in Italian, French and Spanish): [for beginners](https://youtu.be/0iHSWe9qKrg) (12 min), [for musicians](https://youtu.be/a9ZX_ZVFX0g) (14 min) and [for composers](https://youtu.be/R6Ot2KcTKUU) (17 min).
+
 **SoundText** is a program for writing music as text. Notes, chords and
 rhythms are written in a simple language, the **SoundText Language**;
 SoundText plays them, shows them as a score and mixes them with effects,

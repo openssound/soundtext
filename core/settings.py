@@ -411,6 +411,19 @@ def set_midi_input_port(value: str):
     _save()
 
 
+def get_audio_output() -> str:
+    """Dove esce l'audio: "system" (PortAudio, il dispositivo del sistema) o
+    "jack" (SoundText come client JACK, vedi core.jack_output)."""
+    value = _load().get("audio_output", "system")
+    return value if value in ("system", "jack") else "system"
+
+
+def set_audio_output(value: str):
+    _load()
+    _cache["audio_output"] = value if value in ("system", "jack") else "system"
+    _save()
+
+
 def get_plugin_dirs() -> List[str]:
     """Cartelle in piu' in cui cercare i plugin VST3 (oltre a quelle
     standard del sistema, vedi core.plugins.vst3_dirs)."""

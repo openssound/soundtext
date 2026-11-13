@@ -8,6 +8,8 @@
 
 ▶ **Tutti i 13 video tutorial**, dall'installazione all'esportazione: https://www.youtube.com/playlist?list=PLbVfXEqrD3P4
 
+▶ **Impara la notazione con i tre corsi su ST-Language** (in inglese, sottotitoli in italiano): [per principianti](https://youtu.be/0iHSWe9qKrg) (12 min), [per musicisti](https://youtu.be/a9ZX_ZVFX0g) (14 min) e [per compositori](https://youtu.be/R6Ot2KcTKUU) (17 min).
+
 **SoundText** è un programma per scrivere musica come testo. Note, accordi
 e ritmi si scrivono in un linguaggio semplice, il **SoundText Language**;
 SoundText li suona, li mostra in partitura e li mixa con effetti,

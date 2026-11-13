@@ -311,9 +311,38 @@ def au_dirs() -> List[str]:
     return _unique_dirs(default_au_dirs() + get_plugin_dirs())
 
 
+def clap_dirs() -> List[str]:
+    """Le cartelle in cui cercare i plugin CLAP: quelle standard del
+    sistema e le stesse aggiunte in Opzioni per i VST3."""
+    from .clap_host import default_clap_dirs
+    from .settings import get_plugin_dirs
+    return _unique_dirs(default_clap_dirs() + get_plugin_dirs())
+
+
 def plugin_dirs() -> List[str]:
-    """Tutte le cartelle dei plugin di questo sistema (VST3 e AU)."""
-    return _unique_dirs(vst3_dirs() + au_dirs())
+    """Tutte le cartelle dei plugin di questo sistema (VST3, AU e CLAP)."""
+    return _unique_dirs(vst3_dirs() + au_dirs() + clap_dirs())
+
+
+def find_clap_bundles(dirs: Optional[List[str]] = None) -> List[str]:
+    """I file .clap (su macOS bundle) delle cartelle dei plugin CLAP."""
+    from .clap_host import find_clap_files
+    unique = {}
+    for path in find_clap_files(dirs if dirs is not None else clap_dirs()):
+        unique.setdefault(_same_path_key(path), os.path.normpath(path))
+    return sorted(unique.values())
+
+
+def _describe_clap_bundle(bundle: str) -> List[dict]:
+    """I plugin di un file .clap (possono essere centinaia: LSP), letti dai
+    descrittori senza crearne nessuno."""
+    fallback = os.path.splitext(os.path.basename(bundle))[0]
+    try:
+        infos = list(_call("ui", None, ("list_clap", bundle), DESCRIBE_TIMEOUT))
+    except PluginError as e:
+        return [{"ref": "clap:" + bundle, "format": "clap", "name": fallback, "problem": str(e)}]
+    return infos or [{"ref": "clap:" + bundle, "format": "clap", "name": fallback,
+                      "problem": tr("il file CLAP non contiene plugin")}]
 
 
 def find_vst3_bundles(dirs: Optional[List[str]] = None) -> List[str]:
@@ -405,7 +434,7 @@ class PluginInfo:
         return FORMAT_LABELS.get(self.format, self.format.upper())
 
 
-FORMAT_LABELS = {"vst3": "VST3", "au": "AU", "lv2": "LV2", "sfz": "SFZ"}
+FORMAT_LABELS = {"vst3": "VST3", "au": "AU", "lv2": "LV2", "sfz": "SFZ", "clap": "CLAP"}
 
 
 def _info_from_dict(d: dict) -> PluginInfo:
@@ -615,7 +644,8 @@ def _scan(refresh: bool, progress, quick: bool) -> Tuple[List[PluginInfo], int]:
         log.warning("Elenco dei plugin LV2 non disponibile: %s", e)
     cache = _load_scan_cache()
     new_cache = {}
-    bundles = [(b, "vst3") for b in find_vst3_bundles()] + [(b, "au") for b in find_au_bundles()]
+    bundles = [(b, "vst3") for b in find_vst3_bundles()] + [(b, "au") for b in find_au_bundles()] + \
+        [(b, "clap") for b in find_clap_bundles()]
     for bundle, fmt in bundles:
         stamp = _bundle_stamp(bundle)
         entry = cache.get(bundle)
@@ -632,7 +662,8 @@ def _scan(refresh: bool, progress, quick: bool) -> Tuple[List[PluginInfo], int]:
             if progress:
                 progress(os.path.basename(bundle))
             retried = bool(entry) and entry.get("mtime") == stamp and not refresh
-            describe_bundle = _describe_bundle if fmt == "vst3" else _describe_au_bundle
+            describe_bundle = {"vst3": _describe_bundle, "au": _describe_au_bundle,
+                               "clap": _describe_clap_bundle}[fmt]
             entry = {"mtime": stamp, "infos": listed or describe_bundle(bundle)}
             if retried:
                 entry["retried"] = True       # bloccato di nuovo: non si riprova piu' da solo
@@ -653,7 +684,7 @@ def _scan(refresh: bool, progress, quick: bool) -> Tuple[List[PluginInfo], int]:
     return out, pending
 
 
-_FORMAT_ORDER = {"vst3": 0, "au": 1}
+_FORMAT_ORDER = {"vst3": 0, "au": 1, "clap": 2}
 
 
 def _duplicate_key(info: PluginInfo) -> str:
@@ -670,7 +701,7 @@ def vst3_twins(infos: List[PluginInfo]) -> set:
             vst3.setdefault(_duplicate_key(info), []).append(info.vendor.strip().lower())
     twins = set()
     for info in infos:
-        if info.format != "au":
+        if info.format not in ("au", "clap"):
             continue
         vendors = vst3.get(_duplicate_key(info))
         if vendors is None:
@@ -714,7 +745,7 @@ def _check_allowed(ref: str) -> None:
     fmt, path, _name = parse_ref(ref)
     if fmt == "au" and not plugin_worker.running_on_macos():
         raise PluginError(au_elsewhere_reason())
-    if is_pedalboard_format(fmt) and os.path.exists(path) and not in_plugin_dirs(path):
+    if (is_pedalboard_format(fmt) or fmt == "clap") and os.path.exists(path) and not in_plugin_dirs(path):
         raise PluginError(tr("Il plugin '{path}' non e' in una cartella dei plugin: per usarlo aggiungi "
                              "la sua cartella in Suoni → Cartelle dei plugin VST3", path=path))
 
@@ -739,12 +770,12 @@ def resolve_ref(ref: str) -> str:
     non c'e' piu' nel percorso salvato (progetto aperto su un altro
     computer) si cerca per nome del file nelle cartelle dei plugin."""
     fmt, path, name = parse_ref(ref)
-    if not is_pedalboard_format(fmt) or (os.path.exists(path) and in_plugin_dirs(path)):
+    if not (is_pedalboard_format(fmt) or fmt == "clap") or (os.path.exists(path) and in_plugin_dirs(path)):
         return ref
     if fmt == "au" and not plugin_worker.running_on_macos():
         return ref                # resta com'e' nel file: su un Mac torna
     base = os.path.basename(path.rstrip("/\\")).lower()
-    for bundle in (find_vst3_bundles() if fmt == "vst3" else find_au_bundles()):
+    for bundle in {"vst3": find_vst3_bundles, "au": find_au_bundles, "clap": find_clap_bundles}[fmt]():
         if os.path.basename(bundle).lower() == base:
             return f"{fmt}:" + bundle + (f"|{name}" if name else "")
     return ref
@@ -779,7 +810,7 @@ def display_name(ref: str) -> str:
     apple = _apple_name(ref)
     if apple:
         return apple
-    if fmt in ("vst3", "au", "sfz"):
+    if fmt in ("vst3", "au", "sfz", "clap"):
         return os.path.splitext(os.path.basename(target.rstrip("/\\")))[0]
     return target.rstrip("/#").rsplit("/", 1)[-1].rsplit("#", 1)[-1].rsplit(":", 1)[-1]
 
@@ -803,7 +834,7 @@ def signature(ref: str, params: dict, state: str) -> tuple:
     configurazione (e dal file del plugin, se cambia su disco)."""
     ref = resolve_ref(ref)
     fmt, target, _name = parse_ref(ref)
-    if fmt in ("vst3", "au", "sfz"):
+    if fmt in ("vst3", "au", "sfz", "clap"):
         stamp = _bundle_stamp(target)
     else:       # LV2: i file scelti (es. l'SFZ di sfizz) se cambiano su disco
         from .lv2_host import decode_state

@@ -33,7 +33,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 OUTPUT = {"it": "SoundText_Guida_dal_primo_accordo_al_WAV.pdf",
           "en": "SoundText_Guide_from_first_chord_to_WAV.pdf"}
-VERSION = "1.14"
+sys.path.insert(0, ROOT)
+from core.version import APP_VERSION  # noqa: E402
+
+VERSION = ".".join(APP_VERSION.split(".")[:2])      # la versione del programma che la guida descrive
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 pdfmetrics.registerFont(TTFont("DV", os.path.join(FONT_DIR, "DejaVuSans.ttf")))
@@ -1171,11 +1174,11 @@ def build_story():
         P(T("Oltre agli effetti interni e ai SoundFont, SoundText usa i <b>plugin audio installati sul computer</b>: "
             "strumenti virtuali che suonano le note di una traccia al posto del SoundFont, ed effetti da mettere "
             "nella catena di una traccia o del master. Funzionano i plugin <b>VST3</b> (Linux, Windows, macOS), su macOS "
-            "gli <b>Audio Unit</b> (AU) e su Linux gli <b>LV2</b>, ciascuno in un processo separato. CLAP e VST2 non sono supportati.",
+            "gli <b>Audio Unit</b> (AU) e su Linux gli <b>LV2</b>, ciascuno in un processo separato. Si caricano anche i plugin <b>CLAP</b>, senza la loro finestra grafica (i parametri si regolano da SoundText): quando un plugin esiste anche in VST3 conviene il VST3. VST2 non è supportato.",
             "Besides the built-in effects and SoundFonts, SoundText uses the <b>audio plugins installed on your "
             "computer</b>: virtual instruments that play a track's notes instead of the SoundFont, and effects for "
             "a track's or the master's chain. <b>VST3</b> plugins work (Linux, Windows, macOS), on macOS "
-            "<b>Audio Units</b> (AU) and on Linux <b>LV2</b>, each in its own process. CLAP and VST2 are not supported.")),
+            "<b>Audio Units</b> (AU) and on Linux <b>LV2</b>, each in its own process. <b>CLAP</b> plugins load too, without their own window (you set the parameters from SoundText): when a plugin also exists as VST3, prefer the VST3. VST2 is not supported.")),
         P(T(f"Per cominciare, {path('Suoni', 'Scarica e installa...')} → <b>Plugin e programmi gratuiti</b> installa "
             "una scelta di plugin gratuiti nella cartella dell'utente: Surge XT, Dexed, Dragonfly Reverb, "
             "Airwindows Consolidated, OB-Xf e altri, secondo il sistema.",
@@ -1275,8 +1278,10 @@ def build_story():
                                      f"Play, Stop, A-B loop, listening speed, humanize, "
                                      f"{ui('Analizza livelli...')}.")],
                [b("Suoni"), T(f"{ui('Gestisci strumenti...')}, SoundFont, volume di sintesi, cartelle dei plugin "
-                              f"VST3, {ui('Scarica e installa...')}",
+                              f"VST3, {ui('Uscita audio')} (dispositivo del sistema o JACK, su Linux), "
+                              f"{ui('Scarica e installa...')}",
                               f"{ui('Gestisci strumenti...')}, SoundFont, synth volume, VST3 plugin folders, "
+                              f"{ui('Uscita audio')} (system device or JACK, on Linux), "
                               f"{ui('Scarica e installa...')}")],
                [b("Opzioni"), T("Metronomo, umanizza, sorgenti dei download, import MIDI e audio, tema, lingua.",
                                 "Metronome, humanize, download sources, MIDI and audio import, theme, language.")],
@@ -1290,6 +1295,12 @@ def build_story():
             "sottotitoli in italiano, francese e spagnolo): youtube.com/playlist?list=PLbVfXEqrD3P4",
             "Each chapter of this guide has a matching episode in the YouTube series (English, with subtitles in "
             "Italian, French and Spanish): youtube.com/playlist?list=PLbVfXEqrD3P4")),
+        P(T("Per la notazione ci sono tre corsi a parte, ognuno in un solo video: «ST-Language for Beginners» "
+            "(12 minuti, youtu.be/0iHSWe9qKrg), «ST-Language for Musicians» (14 minuti, youtu.be/a9ZX_ZVFX0g) e "
+            "«ST-Language for Composers» (17 minuti, youtu.be/R6Ot2KcTKUU).",
+            "For the notation there are three separate courses, each one a single video: “ST-Language for "
+            "Beginners” (12 minutes, youtu.be/0iHSWe9qKrg), “ST-Language for Musicians” (14 minutes, "
+            "youtu.be/a9ZX_ZVFX0g) and “ST-Language for Composers” (17 minutes, youtu.be/R6Ot2KcTKUU).")),
         table([[T("Episodio", "Episode"), T("Argomento", "Topic"), T("Capitoli", "Chapters")],
                ["1", T("Installare SoundText", "Installing SoundText"), "2"],
                ["2", T("Scaricare suoni e plugin", "Getting the sounds"), "2, 14"],

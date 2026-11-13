@@ -21,6 +21,7 @@ The guide is divided into six parts; click a title to go to that section.
   - [3.2 Mixer changes during playback](#3.2)
   - [3.3 Metronome](#3.3)
   - [3.4 Humanize](#3.4)
+  - [3.5 Audio output on JACK](#3.5)
 
 **Part 2 — Writing music**
 
@@ -439,6 +440,34 @@ consecutive playbacks with the same settings will never sound identical,
 just like two live performances by the same musician. It only concerns
 playback/MIDI export (the final rendering in absolute ticks): the track's
 text and the "grid" timeline in the editor stay as written, unchanged.
+
+### 3.5 Audio output on JACK
+
+On Linux SoundText can play to **JACK** instead of the system device:
+**Sounds → Audio output → JACK**. SoundText then becomes a JACK client
+named **SoundText**, with the ports `out_1` and `out_2`, connected
+automatically to the first two outputs of the sound card; from there you
+connect them wherever you like with qjackctl, Carla, Ardour or the PipeWire
+graph (for example to record SoundText's output in a DAW). It applies from
+the next playback.
+
+- **What goes through JACK**: song playback (with the A-B loop, progress
+  bar and metronome locked to JACK's clock), the metronome click (client
+  `SoundText-click`), the live keyboard (client `SoundText-keys`) and live
+  listening to plugin instruments (client `SoundText-live`).
+- **What does not go through JACK**: recording audio tracks, which still
+  uses the system's input devices, and JACK transport (pressing Play in
+  another program does not start SoundText).
+- **Sample rate**: the JACK server decides it. If it differs from the
+  song's, SoundText resamples by itself.
+- **A running JACK server is needed**: `jackd`, or PipeWire with
+  `pipewire-jack`, already there on recent distributions. If no server
+  answers, SoundText says so and keeps using the system device. **System
+  device** is the default choice.
+- **What the computer needs**: the `JACK-Client` Python library (already in
+  the AppImage and the portable package; `install.sh` installs it with the
+  others) and the system's `libjack`. Without them the **Audio output**
+  menu does not appear.
 
 ---
 
@@ -3130,6 +3159,25 @@ instruments** that play the notes of a track instead of the SoundFont.
   folder (`Apple AU`) that points to the system effect: nothing is
   installed.
 
+- **CLAP**: on Linux, Windows and macOS. SoundText looks for them in the
+  standard folders (`~/.clap` and `/usr/lib/clap` on Linux, `Common
+  Files\CLAP` on Windows, `/Library/Audio/Plug-Ins/CLAP` on macOS), in those
+  of the `CLAP_PATH` variable and in the ones added in **Sounds → VST3
+  plugin folders...**. In the plugin list they are labelled **CLAP**; one
+  `.clap` file can hold many plugins (LSP has more than a hundred) and each
+  appears under its own name. Effects and instruments work, with their
+  parameters in the **Parameters…** window and the plugin's latency
+  compensated. In the file the reference starts with `clap:` and ends with
+  the plugin's identifier (for example
+  `ref="clap:/usr/lib/clap/ZamComp.clap|com.zamaudio.ZamComp"`).
+
+  **The plugin's own window does not open** and its internal presets are not
+  saved: for a CLAP, SoundText remembers the parameter values. That is why,
+  **when a plugin also exists as VST3, prefer the VST3**: the **Hide CLAPs
+  that also exist as VST3** option (on by default) keeps only the VST3 in
+  the list. A plugin that is used only through its own window (Tone3000's,
+  for example, where you pick the sound) should be loaded as VST3 or LV2.
+
 - **LV2**: on Linux only, and it needs the `lilv` system library (on
   Debian/Ubuntu the `liblilv-0-0` package, already present if Ardour, Carla
   or Guitarix are installed). LV2 plugins are found automatically. For
@@ -3154,7 +3202,7 @@ instruments** that play the notes of a track instead of the SoundFont.
   ```bash
   sudo apt install dragonfly-reverb-lv2 guitarix-lv2 calf-plugins lsp-plugins-lv2 x42-plugins setbfree
   ```
-- The **CLAP** and **VST2** formats are not supported.
+- The **VST2** format is not supported.
 
 **A plugin as an effect**: in the Effects panel (19) **+ Effect → Plugin
 (VST3/LV2)** opens the list of installed effect plugins, with search by

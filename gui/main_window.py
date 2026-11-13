@@ -678,6 +678,27 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Cartelle dei plugin VST3 e AU...") if sys.platform == "darwin" else tr("Cartelle dei plugin VST3..."),
             self.show_plugin_dirs,
             tooltip=tr("Le cartelle in cui cercare i plugin VST3, oltre a quelle standard del sistema.")))
+        from core import jack_output
+        if jack_output.jack_supported():
+            # Uscita audio: il dispositivo del sistema (PortAudio) o SoundText
+            # come client JACK, con le sue porte (vedi core.jack_output).
+            output_menu = sounds_menu.addMenu(tr("Uscita audio"))
+            output_group = QActionGroup(self)
+            output_group.setExclusive(True)
+            current_output = app_settings.get_audio_output()
+            for value, label, tip in (
+                    (jack_output.OUTPUT_SYSTEM, tr("Dispositivo del sistema"),
+                     tr("L'audio esce dal dispositivo predefinito del sistema (PipeWire, PulseAudio o ALSA).")),
+                    (jack_output.OUTPUT_JACK, tr("JACK"),
+                     tr("SoundText diventa un client JACK con le sue porte, da collegare con "
+                        "qjackctl, Carla o Ardour. Serve un server JACK in funzione."))):
+                act = QAction(label, self, checkable=True)
+                act.setChecked(current_output == value)
+                act.setToolTip(tip)
+                act.triggered.connect(lambda _checked=False, v=value: self.set_audio_output(v))
+                output_group.addAction(act)
+                output_menu.addAction(act)
+            output_menu.setToolTipsVisible(True)
         sounds_menu.addSeparator()
         sounds_menu.addAction(self._action(
             tr("Scarica e installa..."), self.open_download_dialog,
@@ -1194,6 +1215,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             self._restart_requested = True
             if not self.close():          # chiusura annullata (modifiche da salvare)
                 self._restart_requested = False
+
+    def set_audio_output(self, value: str):
+        """Suoni > Uscita audio: vale dalla prossima riproduzione."""
+        from core import jack_output
+        app_settings.set_audio_output(value)
+        if value == jack_output.OUTPUT_JACK and not jack_output.jack_available():
+            QMessageBox.information(
+                self, tr("Uscita audio"),
+                tr("Nessun server JACK risponde: finche' non ne parte uno (jackd, o PipeWire con "
+                   "pipewire-jack) l'audio continua a uscire dal dispositivo del sistema."))
+            return
+        self.statusBar().showMessage(
+            tr("Uscita audio su JACK: client «SoundText», dalla prossima riproduzione.")
+            if value == jack_output.OUTPUT_JACK
+            else tr("Uscita audio sul dispositivo del sistema, dalla prossima riproduzione."), 5000)
 
     def show_plugin_dirs(self, *_):
         from .plugin_dialogs import PluginDirsDialog

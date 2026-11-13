@@ -148,9 +148,10 @@ def parse_ref(ref: str):
     """'vst3:/percorso/X.vst3' o 'vst3:/percorso/X.vst3|Nome' (bundle con piu'
     plugin), 'au:/percorso/X.component[|Nome]' (Audio Unit, macOS),
     'sfz:/percorso/file.sfz', 'lv2:uri' -> (formato, percorso o uri, nome o
-    None). Un percorso che comincia con "~" e' nella cartella dell'utente."""
+    None); 'clap:/percorso/X.clap|id.del.plugin' -> ("clap", percorso, id).
+    Un percorso che comincia con "~" e' nella cartella dell'utente."""
     fmt, _, rest = ref.partition(":")
-    if is_pedalboard_format(fmt):
+    if is_pedalboard_format(fmt) or fmt == "clap":
         path, _, name = rest.partition("|")
         return fmt, _expand_home(path), name or None
     if fmt == "sfz":
@@ -298,6 +299,18 @@ class _Live:
             outdata.fill(0)
 
     def start(self, blocksize: int) -> dict:
+        from core import jack_output, settings
+        settings._cache = None          # la scelta dell'uscita puo' essere cambiata dopo l'avvio del processo
+        if jack_output.use_jack():
+            try:
+                self.stream = jack_output.JackOutputStream(
+                    samplerate=self.rate, channels=2, dtype="float32", blocksize=int(blocksize),
+                    latency=4 * int(blocksize) / self.rate, callback=self._callback,
+                    client_name=jack_output.CLIENT_NAME + "-live")
+                self.stream.start()
+                return {"hostapi": "JACK", "latency_ms": round(self.stream.latency * 1000)}
+            except Exception:
+                self.stream = None      # JACK non apribile: PortAudio, come sempre
         import sounddevice as sd
         self.stream = sd.OutputStream(samplerate=self.rate, channels=2, dtype="float32",
                                       blocksize=int(blocksize), latency=4 * int(blocksize) / self.rate,
@@ -367,6 +380,9 @@ class _Worker:
             elif fmt == "lv2":
                 from core.lv2_host import LV2Instance
                 self.instances[key] = LV2Instance(target, int(rate))
+            elif fmt == "clap":
+                from core.clap_host import ClapInstance
+                self.instances[key] = ClapInstance(f"{target}|{_name}" if _name else target, int(rate))
             elif fmt == "sfz":
                 from core.sfz_engine import SfzInstance
                 self.instances[key] = SfzInstance(target, int(rate))
@@ -421,6 +437,8 @@ class _Worker:
                 inst = self.instance(ref, rate)
             inst.set_values(params or {})
             inst.set_files(files)
+        elif fmt == "clap":
+            inst.set_values(params or {})
         return inst
 
     # -- descrizione -----------------------------------------------------
@@ -432,6 +450,8 @@ class _Worker:
             if info is None:
                 raise RuntimeError(tr("plugin LV2 non trovato: {target}", target=target))
             return _lv2_descriptor(info)
+        if fmt == "clap":
+            return _clap_descriptor(self.instance(ref, 48000))
         if fmt == "sfz":
             self.instance(ref, 48000)      # un file che non si carica si scopre qui
             return {"ref": ref, "format": "sfz", "name": os.path.splitext(os.path.basename(target))[0],
@@ -575,6 +595,9 @@ class _Worker:
         if op == "list_lv2":
             from core.lv2_host import list_lv2_plugins
             return [_lv2_descriptor(i, with_params=False) for i in list_lv2_plugins()]
+        if op == "list_clap":
+            from core.clap_host import list_clap_plugins
+            return [_clap_info_dict(i) for i in list_clap_plugins(request[1])]
         if op == "describe":
             return self.describe(request[1])
         if op == "au_names":
@@ -609,6 +632,21 @@ def _lv2_descriptor(info, with_params: bool = True) -> dict:
                           "toggled": p.toggled, "integer": p.integer, "logarithmic": p.logarithmic,
                           "choices": p.choices} for p in info.params]
         out["files"] = [{"key": f.uri, "label": f.label} for f in info.files]
+    return out
+
+
+def _clap_info_dict(info) -> dict:
+    return {"ref": info.ref, "format": "clap", "name": info.name, "vendor": info.vendor,
+            "category": info.category, "instrument": info.instrument, "problem": info.problem,
+            "params": [], "state": ""}
+
+
+def _clap_descriptor(inst) -> dict:
+    out = _clap_info_dict(inst.info)
+    out["params"] = [{"key": p.key, "label": p.name, "minimum": p.minimum, "maximum": p.maximum,
+                      "default": p.default, "raw": False, "text": "", "units": "",
+                      "toggled": p.toggled, "integer": p.integer, "logarithmic": False,
+                      "choices": p.choices} for p in inst.params]
     return out
 
 

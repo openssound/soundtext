@@ -23,15 +23,28 @@ from typing import Optional, Tuple
 
 import numpy as np
 
+from . import jack_output
+
 try:
     import sounddevice as _sd
 except Exception:  # ImportError, o PortAudio assente (OSError)
     _sd = None
 
 
+class _CallbackStop(Exception):
+    """Fine del materiale quando sounddevice non c'e' (solo JACK): il
+    flusso JACK riconosce l'eccezione dal nome, come quella di sounddevice."""
+
+
+_CallbackStop.__name__ = "CallbackStop"
+
+
 def is_available() -> bool:
     """True se sounddevice/PortAudio sono utilizzabili e c'e' un dispositivo
-    di uscita: altrimenti core.playback ripiega sul player esterno."""
+    di uscita (o se l'uscita scelta e' JACK e il server risponde):
+    altrimenti core.playback ripiega sul player esterno."""
+    if jack_output.use_jack():
+        return True
     if _sd is None:
         return False
     try:
@@ -123,8 +136,8 @@ class PcmPlayer:
     def _open_stream(self):
         generation = self._generation
         self._last_callback = time.monotonic()
-        self._stream = _sd.OutputStream(
-            samplerate=self._samplerate, channels=self._samples.shape[1], dtype="int16",
+        self._stream = jack_output.open_output_stream(
+            sd=_sd, samplerate=self._samplerate, channels=self._samples.shape[1], dtype="int16",
             # Buffer ampio, nessuna fretta di riempirlo (i campioni sono gia'
             # pronti): massima robustezza contro i crepitii. 'high' su ALSA/
             # PipeWire da' appena ~35 ms, che un ridisegno dell'interfaccia
@@ -240,7 +253,7 @@ class PcmPlayer:
                         continue
                     outdata[written:] = 0
                     self._reached_end = True
-                    raise _sd.CallbackStop
+                    raise (_sd.CallbackStop if _sd is not None else _CallbackStop)
 
     def position_frames(self) -> int:
         """Frame che si sta ascoltando in questo istante (compensata la
@@ -314,7 +327,7 @@ class ClickPlayer:
         il flusso avviene fuori dal lock: stop() aspetta la fine del
         callback, che a sua volta prende il lock."""
         import time
-        if _sd is None:
+        if _sd is None and not jack_output.use_jack():
             return False
         now = time.monotonic()
         with self._lock:
@@ -327,8 +340,9 @@ class ClickPlayer:
             _stop_quietly(old)
         if need_stream:
             try:
-                stream = _sd.OutputStream(samplerate=self.samplerate, channels=2, dtype="float32",
-                                          latency="low", callback=self._callback)
+                stream = jack_output.open_output_stream(
+                    sd=_sd, samplerate=self.samplerate, channels=2, dtype="float32", latency="low",
+                    callback=self._callback, client_name=jack_output.CLIENT_NAME + "-click")
                 stream.start()
             except Exception:
                 logging.getLogger(__name__).warning("Flusso audio dei click non apribile", exc_info=True)

@@ -103,3 +103,14 @@ def pytest_sessionfinish(session, exitstatus):
     if len(alive) >= 10:
         import warnings
         warnings.warn(f"{len(alive)} finestre principali ancora vive a fine test")
+
+
+@pytest.fixture(autouse=True)
+def _no_system_clap_plugins(monkeypatch):
+    """I test non caricano i plugin CLAP installati nel computer (sono codice
+    di altri, e cambiano da una macchina all'altra): le cartelle standard
+    risultano vuote, e anche CLAP_PATH. tests/test_clap_host.py indica la
+    cartella del suo plugin di prova."""
+    from core import clap_host
+    monkeypatch.delenv("CLAP_PATH", raising=False)
+    monkeypatch.setattr(clap_host, "default_clap_dirs", lambda: [])
