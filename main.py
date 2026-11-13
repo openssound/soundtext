@@ -205,7 +205,7 @@ def main():
     # si chiede quando la finestra e' gia' visibile.
     QTimer.singleShot(0, window, window.autosave.offer_recovery)
     # SoundText non include un SoundFont: senza nessuno propone di scaricarlo
-    QTimer.singleShot(0, window, window.offer_soundfont_download)
+    QTimer.singleShot(0, window, window.soundfont.offer_download)
     # Il SoundFont si carica in sottofondo: il primo Play non lo aspetta
     from core.playback import preload_soundfont
     QTimer.singleShot(500, window, preload_soundfont)

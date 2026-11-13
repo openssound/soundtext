@@ -2,7 +2,7 @@ import os
 import time
 
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtWidgets import QMessageBox, QFileDialog
+from PySide6.QtWidgets import QMessageBox
 
 from core.notation import validate_track_text
 from core import settings as app_settings
@@ -11,7 +11,6 @@ from core.tempo_map import (
     seconds_for_beats, value_at_beat,
 )
 from core.i18n import tr
-from .file_dialogs import file_dialog_options
 from .tempo_spin import tempo_value
 
 
@@ -432,51 +431,6 @@ class PlaybackMixin:
             return  # il brano e' comunque finito, non serve riavviare
         self.playback.stop()
         self.play(_resume_offset_beats=elapsed_beats)
-
-    def choose_soundfont(self):
-        from core.project_io import ensure_soundfonts_dir
-        path, _ = QFileDialog.getOpenFileName(self, tr("Scegli file SoundFont"), ensure_soundfonts_dir(),
-                                              tr("SoundFont (*.sf2 *.sf3)"),
-                                              options=file_dialog_options())
-        if not path:
-            return
-        app_settings.set_soundfont_path(path)
-        self.statusBar().showMessage(tr("SoundFont impostato: {path}", path=path), 6000)
-        QMessageBox.information(self, tr("SoundFont impostato"),
-                                 tr("Verra' usato per la riproduzione:\n{path}", path=path))
-
-    def reset_soundfont(self):
-        app_settings.clear_soundfont_path()
-        self.statusBar().showMessage(tr("Rilevamento automatico del SoundFont ripristinato."), 4000)
-
-    def show_soundfont_info(self):
-        from core.playback import get_active_soundfont_info, describe_playback_engine
-        path, is_manual = get_active_soundfont_info()
-        if path:
-            origin = tr("impostato manualmente") if is_manual else tr("rilevato automaticamente")
-            QMessageBox.information(
-                self, tr("SoundFont in uso"),
-                tr("{path}\n({origin})\n\nMotore di riproduzione: {0}", describe_playback_engine(), path=path, origin=origin)
-            )
-        else:
-            self._offer_soundfont_download()
-
-    def offer_soundfont_download(self):
-        """All'avvio (main.py): SoundText non include un SoundFont, e senza
-        nessuno non suona; se non ne trova, propone di scaricarlo."""
-        from core.playback import _find_soundfont
-        if not _find_soundfont():
-            self._offer_soundfont_download()
-
-    def _offer_soundfont_download(self):
-        answer = QMessageBox.question(
-            self, tr("Nessun SoundFont trovato"),
-            tr("Per suonare, SoundText ha bisogno di un SoundFont General MIDI (.sf2 o .sf3), e non ne "
-               "ha trovato nessuno.\n\nVuoi scaricare FluidR3 GM (gratuito, licenza MIT, circa 150 MB)? "
-               "Si apre \"Scarica e installa\", dove ci sono anche altri SoundFont.\n\n"
-               "Se ne hai gia' uno, indicalo con Suoni → SoundFont → Scegli SoundFont (.sf2/.sf3)..."))
-        if answer == QMessageBox.Yes:
-            self.open_download_dialog(preselect=["sf-fluidr3"])
 
     # -------------------------------------------------------- campi Tempo/Metrica
 

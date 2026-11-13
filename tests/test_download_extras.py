@@ -362,10 +362,10 @@ def test_startup_offers_the_soundfont_only_when_there_is_none(monkeypatch):
     monkeypatch.setattr(w, "open_download_dialog", lambda preselect=None: opened.append(preselect))
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a[2]) or QMessageBox.Yes)
     monkeypatch.setattr(playback, "_find_soundfont", lambda: "/qualcosa/FluidR3_GM.sf2")
-    w.offer_soundfont_download()
+    w.soundfont.offer_download()
     assert asked == [] and opened == []
     monkeypatch.setattr(playback, "_find_soundfont", lambda: None)
-    w.offer_soundfont_download()
+    w.soundfont.offer_download()
     assert "FluidR3" in asked[0] and opened == [["sf-fluidr3"]]
     w.close()
 
@@ -376,6 +376,6 @@ def test_soundfont_choosers_accept_sf3(monkeypatch):
     filters = []
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (filters.append(a[3]), ("", ""))[1])
     w = MainWindow()
-    w.choose_soundfont()
+    w.soundfont.choose()
     assert "*.sf2" in filters[0] and "*.sf3" in filters[0]
     w.close()
