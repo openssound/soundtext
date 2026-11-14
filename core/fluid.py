@@ -284,9 +284,12 @@ class Synth:
         riverbero, che continua da un render all'altro: lo stesso brano
         suonava ogni volta un po' diverso. Reimpostare la frequenza di
         campionamento (la stessa) li ricrea; False se la libreria non lo
-        permette."""
+        permette. Dalla 2.4 fluid_synth_set_sample_rate() esiste ancora ma
+        non fa niente e scrive un errore a ogni chiamata: li' non c'e' modo
+        di azzerare gli effetti, e due render dello stesso brano differiscono
+        nella coda del riverbero."""
         f = getattr(self._lib, "fluid_synth_set_sample_rate", None)
-        if f is None:
+        if f is None or version() >= (2, 4, 0):
             return False
         f.restype = None
         f.argtypes = [c_void_p, c_float]

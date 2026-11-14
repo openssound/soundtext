@@ -10,12 +10,24 @@ a Flathub:
 | `io.github.openssound.SoundText.metainfo.xml` | la scheda dell'applicazione per gli store (AppStream) |
 | `io.github.openssound.SoundText.desktop`, `soundtext.sh` | voce di menu e comando |
 
-**Stato: la build locale funziona** (novembre 2026, runtime 25.08, sorgenti
-del ramo main). Controllato dentro il Flatpak: il programma parte e apre la
-finestra principale, vede le schede audio, il sequencer ALSA per le tastiere
-MIDI, un server JACK e i plugin LV2 installati come estensioni. Non ancora
-provati: l'ascolto vero e proprio, il download dei suoni, la build con il
-tag di una release e i controlli di Flathub (`flatpak-builder-lint`).
+**Stato: la build locale funziona** (novembre 2026, runtime 25.08), sia dai
+sorgenti locali sia da un commit del ramo main su GitHub. Controllato dentro
+il Flatpak:
+
+- il programma parte e apre la finestra principale;
+- un brano d'esempio si esporta in WAV con un SoundFont General MIDI;
+- si aprono l'uscita audio del sistema e quella su JACK (via PipeWire);
+- si vedono il sequencer ALSA per le tastiere MIDI e i plugin LV2 installati
+  come estensioni.
+
+Controlli di Flathub (`flatpak-builder-lint`): il manifest passa, con il solo
+avviso che esiste il runtime 26.08. Sulla build locale restano due errori
+sulle schermate (`appstream-external-screenshot-url`,
+`appstream-screenshots-not-mirrored-in-ostree`): sono attesi fuori da
+Flathub, che le copia sui suoi server durante la sua build.
+
+Non ancora provati: l'ascolto dalle casse, il download dei suoni dal
+programma, la registrazione e la build con il tag di una release.
 
 ## Costruirlo in locale
 
@@ -61,6 +73,13 @@ flatpak run io.github.openssound.SoundText
 - **Python.** Il runtime 25.08 ha Python 3.13: se cambi runtime, cambia
   `PYTHON` in `genera_dipendenze.py` e rigenera `python-deps.json`. Lo
   stesso quando cambia `requirements.txt`.
+- **FluidSynth 2.3, non 2.5.** Il manifest compila la 2.3.7 invece del
+  modulo di `shared-modules` (2.5): dalla 2.4 SoundText non riesce più a
+  riportare il riverbero allo stato iniziale a ogni render, e la coda del
+  riverbero cambia da un'esportazione all'altra. I revisori di Flathub
+  potrebbero chiedere il modulo condiviso: prima va risolto nel programma.
+- **Runtime 26.08.** Esiste già, con Python 3.14: i pacchetti Python ci
+  sono, ma SoundText lì non è stato provato.
 - **Moduli compilati.** Tre cose non arrivano pronte e le compila il
   manifest: `krb5` (lo chiede QtMultimedia di PySide6), PortAudio e
   `python-rtmidi`, che su PyPI non ha il pacchetto per Python 3.13.

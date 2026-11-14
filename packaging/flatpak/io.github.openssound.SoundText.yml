@@ -14,7 +14,6 @@ finish-args:
   - --share=ipc
   - --socket=wayland
   - --socket=fallback-x11
-  - --device=dri
   # audio: PulseAudio/PipeWire; il socket di PipeWire anche per l'uscita su JACK
   - --socket=pulseaudio
   - --filesystem=xdg-run/pipewire-0
@@ -51,7 +50,23 @@ cleanup:
   - '*.la'
 
 modules:
-  - shared-modules/linux-audio/fluidsynth2.json
+  # FluidSynth 2.3, non quello di shared-modules (2.5): dalla 2.4
+  # fluid_synth_set_sample_rate() non fa piu' niente, e SoundText la usa per
+  # riportare il riverbero allo stato iniziale a ogni render (vedi
+  # core/fluid.py, reset_effects): con la 2.5 lo stesso brano esportato due
+  # volte non da' lo stesso audio
+  - name: fluidsynth
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    cleanup:
+      - /bin
+      - '*.so'
+    sources:
+      - type: archive
+        url: https://github.com/FluidSynth/fluidsynth/archive/v2.3.7.tar.gz
+        sha256: 38d1d910783ab67c07a4d859d1aa95525979ff352b927e25b1ae894c774bb4c4
   - shared-modules/linux-audio/lv2.json
   - shared-modules/linux-audio/lilv.json
 
