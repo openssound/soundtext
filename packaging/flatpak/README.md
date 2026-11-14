@@ -73,11 +73,10 @@ flatpak run io.github.openssound.SoundText
 - **Python.** Il runtime 25.08 ha Python 3.13: se cambi runtime, cambia
   `PYTHON` in `genera_dipendenze.py` e rigenera `python-deps.json`. Lo
   stesso quando cambia `requirements.txt`.
-- **FluidSynth 2.3, non 2.5.** Il manifest compila la 2.3.7 invece del
-  modulo di `shared-modules` (2.5): dalla 2.4 SoundText non riesce più a
-  riportare il riverbero allo stato iniziale a ogni render, e la coda del
-  riverbero cambia da un'esportazione all'altra. I revisori di Flathub
-  potrebbero chiedere il modulo condiviso: prima va risolto nel programma.
+- **FluidSynth.** È il 2.5 di `shared-modules`. Dalla 2.4 gli effetti non
+  si possono più ricreare a ogni render: SoundText li riallinea (vedi
+  `reset_effects` in `core/fluid.py`), e nel Flatpak due esportazioni dello
+  stesso brano differiscono quanto con FluidSynth 2.3 sul sistema.
 - **Runtime 26.08.** Esiste già, con Python 3.14: i pacchetti Python ci
   sono, ma SoundText lì non è stato provato.
 - **Moduli compilati.** Tre cose non arrivano pronte e le compila il
