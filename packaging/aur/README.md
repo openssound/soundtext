@@ -45,7 +45,7 @@ provato.
    cd soundtext-bin
    makepkg --printsrcinfo > .SRCINFO
    git add PKGBUILD .SRCINFO soundtext.desktop
-   git commit -m "soundtext-bin 1.19.0"
+   git commit -m "soundtext-bin 1.20.0"
    git push
    ```
 

@@ -6,7 +6,7 @@
 # (makepkg --printsrcinfo > .SRCINFO). Vedi README.md in questa cartella.
 
 pkgname=soundtext-bin
-pkgver=1.19.0
+pkgver=1.20.0
 pkgrel=1
 pkgdesc="Text-based music composition: write notes and chords as plain text, hear, arrange and mix them"
 arch=('x86_64')
@@ -24,7 +24,7 @@ conflicts=('soundtext')
 options=('!strip' '!debug')
 source=("SoundText-linux-portable-v${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/SoundText-linux-portable-v${pkgver}.tar.gz"
         "soundtext.desktop")
-sha256sums=('cc341202567cb2a162a7d22f575c8b5b0d934a491c87f97ad23c16ab3801f1c6'
+sha256sums=('23191f9ca1b154435e3eb78d51ef4ed6026f37b285ec91c80e3b5677202fcd36'
             '75cecdc88f355c1c0f1c43a9adf44bf57498ea0916391a496661705f99ace46d')
 
 package() {
