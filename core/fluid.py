@@ -20,6 +20,7 @@ ripiega sul programma 'fluidsynth' da riga di comando, se c'e'.
 import ctypes
 import ctypes.util
 import glob
+import math
 import os
 import sys
 from ctypes import POINTER, byref, c_char_p, c_double, c_float, c_int, c_void_p
@@ -212,6 +213,11 @@ class Synth:
             self.settings = None
             raise RuntimeError("new_fluid_synth fallita")
         self.audio_driver = None
+        # per reset_effects: campioni chiesti in tutto, e quelli resi con
+        # riverbero e chorus accesi (solo allora la loro modulazione avanza)
+        self._frames = 0
+        self._fx_frames = 0
+        self._fx_on = bool(self.get_setting("synth.reverb.active"))
 
     # ------------------------------------------------------------ impostazioni
 
@@ -280,21 +286,69 @@ class Synth:
 
     def reset_effects(self) -> bool:
         """Riporta riverbero e chorus allo stato iniziale. system_reset()
-        ne svuota i buffer ma non la modulazione delle linee di ritardo del
-        riverbero, che continua da un render all'altro: lo stesso brano
-        suonava ogni volta un po' diverso. Reimpostare la frequenza di
-        campionamento (la stessa) li ricrea; False se la libreria non lo
-        permette. Dalla 2.4 fluid_synth_set_sample_rate() esiste ancora ma
-        non fa niente e scrive un errore a ogni chiamata: li' non c'e' modo
-        di azzerare gli effetti, e due render dello stesso brano differiscono
-        nella coda del riverbero."""
+        ne svuota i buffer ma non la modulazione delle linee di ritardo, che
+        continua da un render all'altro: lo stesso brano suonava ogni volta
+        un po' diverso. Va chiamata a synth muto (dopo system_reset());
+        False se non si puo' fare.
+
+        Fino a FluidSynth 2.3 basta reimpostare la frequenza di
+        campionamento (la stessa), che ricrea gli effetti. Dalla 2.4
+        fluid_synth_set_sample_rate() esiste ancora ma non fa niente e scrive
+        un errore: li' si sfrutta il fatto che la modulazione e' periodica
+        (vedi _realign_effects)."""
         f = getattr(self._lib, "fluid_synth_set_sample_rate", None)
         if f is None or version() >= (2, 4, 0):
-            return False
+            return self._realign_effects()
+        self._pad((-self._frames) % 64)       # niente campioni avanzati dal render di prima
         f.restype = None
         f.argtypes = [c_void_p, c_float]
         f(self.synth, float(self.samplerate))
         return True
+
+    def _realign_effects(self) -> bool:
+        """reset_effects senza ricreare gli effetti. Il riverbero di
+        FluidSynth modula le sue linee di ritardo con oscillatori a 1 Hz, che
+        avanzano solo mentre il riverbero elabora: dopo un numero intero di
+        secondi resi con gli effetti accesi sono di nuovo al punto di
+        partenza. Qui si rende il silenzio che manca per arrivarci (meno di
+        un secondo a 48 kHz, pochi millisecondi di calcolo). Il chorus, che
+        ha un periodo piu' lungo, si ricrea da solo quando cambia la sua
+        velocita': la si sposta e la si rimette.
+
+        False con il driver audio in tempo reale (i campioni li chiede il
+        suo thread, non si contano) o con una frequenza per cui il conto
+        non torna."""
+        if self.audio_driver or self.samplerate != int(self.samplerate) or int(self.samplerate) % 50:
+            return False
+        was_on = self._fx_on
+        self._pad((-self._frames) % 64)       # niente campioni avanzati dal render di prima
+        period = math.lcm(int(self.samplerate), 64)
+        if not was_on:
+            self.set_effects_on(True)
+        self._pad((-self._fx_frames) % period)
+        if not was_on:
+            self.set_effects_on(False)
+        speed = self.get_setting("synth.chorus.speed")
+        if speed:
+            self.setting("synth.chorus.speed", float(speed) * (1.05 if speed < 2 else 0.95))
+            self.setting("synth.chorus.speed", float(speed))
+        return True
+
+    def _pad(self, frames: int):
+        while frames > 0:
+            n = min(frames, 32768)
+            self.get_samples(n)
+            frames -= n
+
+    def _count(self, frames: int):
+        """FluidSynth elabora a blocchi di 64 campioni e tiene da parte
+        quelli non ancora chiesti: gli effetti avanzano di un blocco intero
+        ogni volta che ne serve uno nuovo, nello stato (accesi o spenti) di
+        quel momento."""
+        blocks = -(-(self._frames + frames) // 64) - -(-self._frames // 64)
+        self._frames += frames
+        if self._fx_on:
+            self._fx_frames += 64 * blocks
 
     def set_gain(self, value: float):
         """Guadagno di un synth gia' creato: a differenza dell'impostazione
@@ -329,12 +383,14 @@ class Synth:
             elif hasattr(lib, f"fluid_synth_set_{name}_on"):
                 getattr(lib, f"fluid_synth_set_{name}_on")(self.synth, int(on))
             self.setting(f"synth.{name}.active", int(on))
+        self._fx_on = bool(on)
 
     def get_samples(self, frames: int) -> np.ndarray:
         """frames campioni stereo a 16 bit, alternati (sinistro, destro)."""
         buf = np.empty(2 * frames, dtype=np.int16)
         ptr = c_void_p(buf.ctypes.data)
         self._lib.fluid_synth_write_s16(self.synth, frames, ptr, 0, 2, ptr, 1, 2)
+        self._count(frames)
         return buf
 
     @property
@@ -368,6 +424,7 @@ class Synth:
         dry[:] = 0                  # fluid_synth_process somma nei buffer
         fx[:] = 0
         self._lib.fluid_synth_process(self.synth, frames, 4, fx_ptrs, 2 * groups, dry_ptrs)
+        self._count(frames)
         mix = np.empty((frames, 2), np.float32)
         mix[:, 0] = dry[0::2].sum(axis=0) + fx[0::2].sum(axis=0)
         mix[:, 1] = dry[1::2].sum(axis=0) + fx[1::2].sum(axis=0)

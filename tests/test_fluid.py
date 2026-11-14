@@ -154,3 +154,64 @@ def test_midi_player_renders_a_file(synth, tmp_path):
 
 def _hz(midi):
     return 440.0 * 2 ** ((midi - 69) / 12)
+
+
+# ------------------------------------------------- stesso render, stesso audio
+
+def _same_note_three_times(rate, reset, chorus=0):
+    """La stessa nota resa tre volte dallo stesso synth, con code di
+    lunghezza diversa fra una e l'altra e un tratto senza effetti in mezzo:
+    (differenza massima fra i render, picco)."""
+    s = fluid.Synth(gain=0.5, samplerate=rate)
+    try:
+        sfid = s.sfload(SF)
+        outs = []
+        for i in range(3):
+            s.system_reset()
+            assert reset(s)
+            s.set_reverb(0.8, 0.2, 0.9, 0.9)
+            s.set_effects_on(True)
+            s.program_select(0, sfid, 0, 0)
+            s.cc(0, 93, chorus)
+            s.noteon(0, 72, 100)
+            head = s.get_samples(64 * 300)
+            s.noteoff(0, 72)
+            tail = s.get_samples(64 * 400 + 1000 * i + 7)       # non multipla di 64
+            outs.append(np.concatenate([head, tail[:64 * 400 * 2]]).astype(np.float64))
+            s.set_effects_on(False)
+            s.get_samples(3000 * (i + 1))                        # render asciutto: gli effetti non avanzano
+        peak = float(np.abs(outs[0]).max())
+        return max(float(np.abs(outs[0] - o).max()) for o in outs[1:]), peak
+    finally:
+        s.delete()
+
+
+@needs_sf
+@pytest.mark.parametrize("rate", [48000, 44100])
+@pytest.mark.parametrize("chorus", [0, 127])
+def test_reset_effects_gives_the_same_audio(rate, chorus):
+    """Con reset_effects lo stesso render da' lo stesso audio (a meno del
+    dither), qualunque FluidSynth ci sia: fino alla 2.3 ricreando gli
+    effetti, dalla 2.4 riallineandoli."""
+    diff, peak = _same_note_three_times(rate, lambda s: s.reset_effects(), chorus)
+    assert peak > 1000
+    assert diff <= peak * 0.03
+
+
+@needs_sf
+@pytest.mark.parametrize("rate", [48000, 44100])
+def test_realign_effects_works_on_every_version(rate):
+    """La strada di FluidSynth 2.4+ (_realign_effects) provata anche dove
+    c'e' una versione piu' vecchia; senza, i render differiscono molto di piu'."""
+    aligned, peak = _same_note_three_times(rate, lambda s: s._realign_effects(), 127)
+    free, _ = _same_note_three_times(rate, lambda s: True, 127)
+    assert aligned <= peak * 0.03
+    assert free > aligned * 3
+
+
+def test_realign_effects_refuses_what_it_cannot_count(synth):
+    synth.audio_driver = object()                 # driver in tempo reale: i campioni non si contano
+    try:
+        assert synth._realign_effects() is False
+    finally:
+        synth.audio_driver = None
