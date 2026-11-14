@@ -102,6 +102,43 @@ def test_instrument_from_midi_events(clap_file):
     inst.close()
 
 
+def _gain_state(gain, mode, trim):
+    import struct
+    return b"STG1" + struct.pack("<3d", gain, mode, trim)
+
+
+def test_state_is_saved_and_loaded(clap_file):
+    inst = clap_host.ClapInstance(clap_file + "|test.soundtext.gain", RATE)
+    x = _sine(0.1)
+    assert inst.save_state() == _gain_state(1.0, 0.0, 1.0)
+    inst.set_values({"100": 0.5})
+    inst.process(x)                                     # i valori arrivano al plugin col primo blocco
+    assert inst.save_state() == _gain_state(0.5, 0.0, 1.0)
+    # "trim" non e' un parametro: cambia solo con lo stato
+    inst.load_state(_gain_state(2.0, 1.0, 0.25))
+    inst.set_values({})                                 # nessun parametro nominato: restano quelli dello stato
+    assert np.allclose(inst.process(x), -0.5 * x, atol=1e-6)
+    inst.set_values({"100": 1.0})                       # un parametro sopra lo stato
+    assert np.allclose(inst.process(x), -0.25 * x, atol=1e-6)
+    inst.set_values({})                                 # e torna al valore dello stato, non al predefinito
+    assert np.allclose(inst.process(x), -0.5 * x, atol=1e-6)
+    inst.reset()
+    assert np.allclose(inst.process(x), -0.5 * x, atol=1e-6)
+    with pytest.raises(clap_host.ClapError):
+        inst.load_state(b"non e' uno stato")
+    with pytest.raises(clap_host.ClapError):
+        inst.load_state(_gain_state(1.0, 0.0, 1.0)[:9])  # troncato
+    inst.close()
+
+
+def test_plugin_without_state(clap_file):
+    inst = clap_host.ClapInstance(clap_file + "|test.soundtext.sine", RATE)
+    assert inst.save_state() == b""
+    with pytest.raises(clap_host.ClapError):
+        inst.load_state(b"qualcosa")
+    inst.close()
+
+
 def test_missing_file_and_missing_plugin(clap_file, tmp_path):
     with pytest.raises(clap_host.ClapError):
         clap_host.ClapInstance(str(tmp_path / "niente.clap"), RATE)
@@ -135,6 +172,13 @@ def test_through_the_plugin_process(clap_file, monkeypatch):
         y = plugins.render_events(sine.ref, {}, "", [(0.0, bytes([0x90, 60, 90])), (0.2, bytes([0x80, 60, 0]))],
                                   0.3, RATE)
         assert y.shape == (int(0.3 * RATE), 2) and np.max(np.abs(y)) == pytest.approx(0.25, abs=0.01)
+        # lo stato del brano arriva al plugin, e senza stato si torna a un plugin nuovo
+        state = plugins.encode_state(_gain_state(1.0, 0.0, 0.5))
+        assert np.allclose(plugins.process_audio(gain.ref, {}, state, x, RATE), 0.5 * x, atol=1e-6)
+        assert np.allclose(plugins.process_audio(gain.ref, {"100": 2.0}, state, x, RATE), x, atol=1e-6)
+        assert np.allclose(plugins.process_audio(gain.ref, {}, "", x, RATE), x, atol=1e-6)
+        bad = plugins.encode_state(b"stato di un altro plugin")
+        assert np.allclose(plugins.process_audio(gain.ref, {"100": 0.5}, bad, x, RATE), 0.5 * x, atol=1e-6)
         assert plugins.display_name(gain.ref) == "Test Gain"
         assert plugins.signature(gain.ref, {"100": 0.5}, "")[1] > 0
     finally:

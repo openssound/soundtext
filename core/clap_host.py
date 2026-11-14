@@ -8,10 +8,10 @@ in mezzo.
 Supporta cio' che serve a un effetto o a uno strumento senza la sua
 finestra grafica: porte audio (la principale in ingresso e in uscita; le
 altre ricevono silenzio), note in MIDI o come eventi CLAP, i parametri
-(clap.params, impostati con eventi PARAM_VALUE) e la latenza dichiarata
-dal plugin (clap.latency), che si compensa. L'interfaccia grafica del
-plugin (clap.gui) e lo stato (clap.state) non sono gestiti: del plugin si
-salvano i valori dei parametri.
+(clap.params, impostati con eventi PARAM_VALUE), la latenza dichiarata
+dal plugin (clap.latency), che si compensa, e lo stato interno (clap.state:
+save_state/load_state, un blocco di byte che il plugin scrive e rilegge).
+L'interfaccia grafica del plugin (clap.gui) non e' gestita.
 
 Un riferimento e' 'clap:/percorso/Nome.clap|id.del.plugin': un file .clap
 puo' contenere molti plugin (LSP ne ha centinaia), distinti dall'id.
@@ -182,6 +182,21 @@ class _PluginNotePorts(ctypes.Structure):
 
 class _PluginLatency(ctypes.Structure):
     _fields_ = [("get", ctypes.CFUNCTYPE(u32, c_void))]
+
+
+class _Stream(ctypes.Structure):
+    """clap_istream / clap_ostream: read(stream, buffer, size) o
+    write(stream, buffer, size), che restituiscono i byte letti o scritti
+    (0 a fine dati, -1 per un errore)."""
+
+
+_Stream._fields_ = [("ctx", c_void),
+                    ("transfer", ctypes.CFUNCTYPE(ctypes.c_int64, ctypes.POINTER(_Stream), c_void, ctypes.c_uint64))]
+
+
+class _PluginState(ctypes.Structure):
+    _fields_ = [("save", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(_Stream))),
+                ("load", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(_Stream)))]
 
 
 # --- estensioni dell'host ----------------------------------------------------
@@ -403,6 +418,7 @@ class ClapInstance:
         self._active = False
         self._pending_values: Dict[int, float] = {}
         self._values: Dict[str, float] = {}
+        self._baseline: Dict[str, float] = {}  # valori dello stato caricato (load_state), al posto dei predefiniti
         self._touched = False                  # un valore diverso dal predefinito e' stato mandato
         self._needs_main_thread = False
         self._keep = []                        # callback e strutture che il plugin puo' richiamare
@@ -563,7 +579,7 @@ class ClapInstance:
             # i valori vanno ridetti tutti: riattivato, il plugin tiene quelli
             # di prima, anche quando nel frattempo sono tornati al predefinito
             if self._touched:
-                self._pending_values = {p.id: self._values.get(p.key, p.default) for p in self.params}
+                self._pending_values = {p.id: self._values.get(p.key, self._start_value(p)) for p in self.params}
 
     def close(self):
         if self._plugin is not None:
@@ -579,19 +595,73 @@ class ClapInstance:
         except Exception:
             pass
 
+    # -- stato -----------------------------------------------------------------
+    def save_state(self) -> bytes:
+        """Lo stato interno del plugin (clap.state), b"" se non ne ha."""
+        ext = self._extension(b"clap.state", _PluginState)
+        if ext is None:
+            return b""
+        chunks = []
+
+        def write(_stream, buffer, size):
+            chunks.append(ctypes.string_at(buffer, size))
+            return size
+
+        stream = _Stream(None, _Stream._fields_[1][1](write))
+        if not ext.save(self._pointer, ctypes.byref(stream)):
+            raise ClapError(tr("il plugin CLAP non salva il suo stato"))
+        return b"".join(chunks)
+
+    def load_state(self, data: bytes):
+        """Rimette lo stato salvato da save_state. I valori dei parametri che
+        ne risultano diventano quelli di partenza: set_values riporta li' (e
+        non al predefinito) i parametri che non nomina."""
+        ext = self._extension(b"clap.state", _PluginState)
+        if ext is None:
+            raise ClapError(tr("il plugin CLAP non ha uno stato da caricare"))
+        data = bytes(data)
+        position = [0]
+
+        def read(_stream, buffer, size):
+            chunk = data[position[0]:position[0] + size]
+            ctypes.memmove(buffer, chunk, len(chunk))
+            position[0] += len(chunk)
+            return len(chunk)
+
+        stream = _Stream(None, _Stream._fields_[1][1](read))
+        if not ext.load(self._pointer, ctypes.byref(stream)):
+            raise ClapError(tr("il plugin CLAP rifiuta lo stato salvato"))
+        self._pending_values = {}
+        if self._active:
+            # alcuni plugin (Surge XT) applicano lo stato al blocco audio che
+            # segue: prima di rileggere i valori se ne elabora uno di silenzio
+            self._feed(None, BLOCK)
+            self._run(BLOCK, [])
+        self._baseline = {}
+        if self._params_ext is not None:
+            value = ctypes.c_double()
+            for p in self.params:
+                if self._params_ext.get_value(self._pointer, p.id, ctypes.byref(value)):
+                    self._baseline[p.key] = min(p.maximum, max(p.minimum, float(value.value)))
+        self._values = dict(self._baseline)
+
+    def _start_value(self, param: "ClapParam") -> float:
+        return self._baseline.get(param.key, param.default)
+
     # -- parametri -------------------------------------------------------------
     def set_values(self, values: Dict[str, float]):
         """Valori dei parametri (chiave = id del parametro): arrivano al
         plugin come eventi all'inizio del prossimo blocco. Quelli non
-        nominati tornano al valore predefinito."""
+        nominati tornano al valore predefinito (o a quello dello stato
+        caricato con load_state)."""
         known = {p.key: p for p in self.params}
-        wanted = {key: p.default for key, p in known.items()}
+        wanted = {key: self._start_value(p) for key, p in known.items()}
         for key, value in (values or {}).items():
             if str(key) in known:
                 p = known[str(key)]
                 wanted[str(key)] = min(p.maximum, max(p.minimum, float(value)))
         for key, value in wanted.items():
-            if self._values.get(key, known[key].default) != value:
+            if self._values.get(key, self._start_value(known[key])) != value:
                 self._pending_values[known[key].id] = value
                 self._touched = True
         self._values = wanted

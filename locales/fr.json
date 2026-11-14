@@ -2848,6 +2848,9 @@
  "plugin CLAP non trovato nel file: {id}": "plugin CLAP introuvable dans le fichier : {id}",
  "il plugin CLAP non si crea": "le plugin CLAP ne peut pas être créé",
  "il plugin CLAP non si attiva": "le plugin CLAP ne s'active pas",
+ "il plugin CLAP non salva il suo stato": "le plugin CLAP n'enregistre pas son état",
+ "il plugin CLAP non ha uno stato da caricare": "le plugin CLAP n'a pas d'état à charger",
+ "il plugin CLAP rifiuta lo stato salvato": "le plugin CLAP refuse l'état enregistré",
  "il plugin CLAP ha dato un errore durante l'elaborazione": "le plugin CLAP a signalé une erreur pendant le traitement",
  "il plugin CLAP ha prodotto valori non validi (NaN)": "le plugin CLAP a produit des valeurs invalides (NaN)"
 }

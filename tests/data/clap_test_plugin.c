@@ -6,7 +6,10 @@
  *   test.soundtext.gain  effetto stereo con due parametri: "Gain" (0..2,
  *                        predefinito 1) e "Mode" (elenco: Normal, Invert).
  *                        Dichiara una latenza di 32 frame e ritarda davvero
- *                        l'audio di 32 frame.
+ *                        l'audio di 32 frame. Ha uno stato (clap.state):
+ *                        "STG1" + gain, mode e trim (double), dove trim e'
+ *                        un guadagno interno che non e' un parametro e si
+ *                        cambia solo caricando uno stato.
  *   test.soundtext.sine  strumento: una sinusoide per ogni nota tenuta, con
  *                        le note ricevute come eventi MIDI.
  *
@@ -112,6 +115,21 @@ typedef struct {
 
 typedef struct { uint32_t (*get)(const clap_plugin_t *); } clap_plugin_latency_t;
 
+typedef struct clap_istream {
+    void *ctx;
+    int64_t (*read)(const struct clap_istream *, void *, uint64_t);
+} clap_istream_t;
+
+typedef struct clap_ostream {
+    void *ctx;
+    int64_t (*write)(const struct clap_ostream *, const void *, uint64_t);
+} clap_ostream_t;
+
+typedef struct {
+    bool (*save)(const clap_plugin_t *, const clap_ostream_t *);
+    bool (*load)(const clap_plugin_t *, const clap_istream_t *);
+} clap_plugin_state_t;
+
 typedef struct {
     uint32_t (*get_plugin_count)(const void *);
     const clap_plugin_descriptor_t *(*get_plugin_descriptor)(const void *, uint32_t);
@@ -133,7 +151,7 @@ typedef struct {
 typedef struct {
     clap_plugin_t plugin;
     bool is_sine;
-    double rate, gain, mode;
+    double rate, gain, mode, trim;
     float delay[2][LATENCY];
     uint32_t delay_pos;
     bool held[128];
@@ -245,6 +263,43 @@ static uint32_t latency_get(const clap_plugin_t *p) { return state_of(p)->is_sin
 
 static const clap_plugin_latency_t latency_ext = {latency_get};
 
+/* Lo stato si scrive e si legge a pezzi di 5 byte: l'host deve reggere le
+ * chiamate ripetute, e una lettura puo' dare meno byte di quelli chiesti. */
+#define STATE_SIZE (4 + 3 * sizeof(double))
+
+static bool state_save(const clap_plugin_t *p, const clap_ostream_t *stream) {
+    state_t *s = state_of(p);
+    char data[STATE_SIZE];
+    double values[3] = {s->gain, s->mode, s->trim};
+    memcpy(data, "STG1", 4);
+    memcpy(data + 4, values, sizeof values);
+    for (uint64_t done = 0; done < STATE_SIZE;) {
+        uint64_t chunk = STATE_SIZE - done < 5 ? STATE_SIZE - done : 5;
+        int64_t written = stream->write(stream, data + done, chunk);
+        if (written <= 0) return false;
+        done += (uint64_t)written;
+    }
+    return true;
+}
+
+static bool state_load(const clap_plugin_t *p, const clap_istream_t *stream) {
+    state_t *s = state_of(p);
+    char data[STATE_SIZE];
+    double values[3];
+    for (uint64_t done = 0; done < STATE_SIZE;) {
+        uint64_t chunk = STATE_SIZE - done < 5 ? STATE_SIZE - done : 5;
+        int64_t got = stream->read(stream, data + done, chunk);
+        if (got <= 0) return false;
+        done += (uint64_t)got;
+    }
+    if (memcmp(data, "STG1", 4)) return false;
+    memcpy(values, data + 4, sizeof values);
+    s->gain = values[0]; s->mode = values[1]; s->trim = values[2];
+    return true;
+}
+
+static const clap_plugin_state_t state_ext = {state_save, state_load};
+
 /* ------------------------------------------------------------ plugin */
 
 static bool plugin_init(const clap_plugin_t *p) { (void)p; return true; }
@@ -280,7 +335,7 @@ static int32_t plugin_process(const clap_plugin_t *p, const clap_process_t *proc
             out[0][i] = out[1][i] = (float)sample;
         } else {
             float **in = process->audio_inputs[0].data32;
-            double gain = s->gain * (s->mode < 0.5 ? 1.0 : -1.0);
+            double gain = s->gain * s->trim * (s->mode < 0.5 ? 1.0 : -1.0);
             for (int c = 0; c < 2; c++) {
                 float delayed = s->delay[c][s->delay_pos];
                 s->delay[c][s->delay_pos] = in[c][i];
@@ -293,7 +348,7 @@ static int32_t plugin_process(const clap_plugin_t *p, const clap_process_t *proc
 }
 
 static const void *plugin_extension(const clap_plugin_t *p, const char *id) {
-    (void)p;
+    if (!strcmp(id, "clap.state")) return state_of(p)->is_sine ? NULL : &state_ext;
     if (!strcmp(id, "clap.params")) return &params_ext;
     if (!strcmp(id, "clap.audio-ports")) return &audio_ports_ext;
     if (!strcmp(id, "clap.note-ports")) return &note_ports_ext;
@@ -327,6 +382,7 @@ static const clap_plugin_t *factory_create(const void *f, const clap_host_t *hos
         state_t *s = calloc(1, sizeof *s);
         s->is_sine = i == 1;
         s->gain = 1.0;
+        s->trim = 1.0;
         s->plugin = (clap_plugin_t){&descriptors[i], s, plugin_init, plugin_destroy, plugin_activate,
                                     plugin_deactivate, plugin_start, plugin_stop, plugin_reset,
                                     plugin_process, plugin_extension, plugin_main_thread};

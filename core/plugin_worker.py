@@ -36,6 +36,7 @@ chi suona.
 
 import base64
 import collections
+import logging
 import os
 import pickle
 import struct
@@ -438,6 +439,17 @@ class _Worker:
             inst.set_values(params or {})
             inst.set_files(files)
         elif fmt == "clap":
+            if (state or "") != self.applied_state.get(key, ""):
+                if not state:
+                    # lo stato caricato non si "toglie": si riparte da un plugin nuovo
+                    self._drop_instance(ref, rate)
+                    inst = self.instance(ref, rate)
+                else:
+                    try:
+                        inst.load_state(base64.b64decode(state))
+                    except Exception as e:       # stato di un'altra versione del plugin: si suona senza
+                        logging.getLogger(__name__).warning("Stato CLAP non caricato (%s): %s", ref, e)
+                    self.applied_state[key] = state
             inst.set_values(params or {})
         return inst
 
