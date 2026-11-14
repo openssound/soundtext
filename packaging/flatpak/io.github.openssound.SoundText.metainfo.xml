@@ -35,7 +35,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>A song in the structure view, with the mixer</caption>
-      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.19.0/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.20.0/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <categories>
@@ -58,6 +58,17 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.20.0" date="2026-11-14">
+      <description>
+        <p>Audio output through JACK, CLAP plugins, and packages for Arch Linux and Flatpak.</p>
+        <ul>
+          <li>Sounds → Audio output → JACK: SoundText becomes a JACK client with its own ports</li>
+          <li>CLAP effects and instruments, next to LV2, VST3 and Audio Unit</li>
+          <li>The same song now renders to the same audio with FluidSynth 2.4 and later</li>
+          <li>MusicXML files with unusual time signatures (3/3, 4/6) can be imported</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.19.0" date="2026-11-10">
       <description>
         <p>Audio Unit plugins and a ready-made app for macOS.</p>
