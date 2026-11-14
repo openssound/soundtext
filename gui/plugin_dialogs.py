@@ -158,10 +158,10 @@ class PluginPickerDialog(QDialog):
         self.hide_twins.setToolTip(tr("Il VST3 rende il brano portabile su Linux e Windows"))
         self.hide_twins.toggled.connect(lambda *_: self._fill())
         self.hide_twins.setVisible(MACOS)
-        # lo stesso per i CLAP: il VST3 ha anche la sua interfaccia grafica
+        # lo stesso per i CLAP: lo stesso plugin non compare due volte
         self.hide_clap_twins = QCheckBox(tr("Nascondi i CLAP che esistono anche in VST3"))
         self.hide_clap_twins.setChecked(True)
-        self.hide_clap_twins.setToolTip(tr("Del VST3 SoundText apre anche l'interfaccia grafica"))
+        self.hide_clap_twins.setToolTip(tr("Lo stesso plugin non compare due volte: resta il VST3"))
         self.hide_clap_twins.toggled.connect(lambda *_: self._fill())
         self.hide_clap_twins.setVisible(False)       # compare se ci sono plugin CLAP (vedi _fill)
         self.dirs_btn.clicked.connect(self._edit_dirs)
@@ -611,7 +611,7 @@ class PluginParamsDialog(QDialog):
             grid.addWidget(row.value_label, r, 2)
         grid.setRowStretch(len(info.files) + len(info.params), 1)
         self.scroll.setWidget(holder)
-        self.editor_btn.setVisible(is_pedalboard_format(info.format))
+        self.editor_btn.setVisible(info.editor)
         self.defaults_btn.setEnabled(True)
         if is_pedalboard_format(info.format):
             self._refresh_texts()
@@ -637,9 +637,12 @@ class PluginParamsDialog(QDialog):
         self._notify_timer.start()
 
     def _notify(self):
-        # nel progetto restano solo i parametri diversi dal valore predefinito
-        defaults = self._defaults()
-        self.params = {k: v for k, v in self.params.items() if k not in defaults or abs(v - defaults[k]) > 1e-9}
+        # nel progetto restano solo i parametri diversi dal valore predefinito;
+        # non per un CLAP con lo stato della sua interfaccia: li' un parametro
+        # non nominato vale quanto dice lo stato, che puo' non essere il predefinito
+        if not (self.info and self.info.format == "clap" and self.state):
+            defaults = self._defaults()
+            self.params = {k: v for k, v in self.params.items() if k not in defaults or abs(v - defaults[k]) > 1e-9}
         if self.on_change:
             self.on_change(dict(self.params), self.state)
         if self.info and is_pedalboard_format(self.info.format):

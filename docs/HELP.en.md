@@ -3171,12 +3171,12 @@ instruments** that play the notes of a track instead of the SoundFont.
   the plugin's identifier (for example
   `ref="clap:/usr/lib/clap/ZamComp.clap|com.zamaudio.ZamComp"`).
 
-  **The plugin's own window does not open** and its internal presets are not
-  saved: for a CLAP, SoundText remembers the parameter values. That is why,
-  **when a plugin also exists as VST3, prefer the VST3**: the **Hide CLAPs
-  that also exist as VST3** option (on by default) keeps only the VST3 in
-  the list. A plugin that is used only through its own window (Tone3000's,
-  for example, where you pick the sound) should be loaded as VST3 or LV2.
+  **Plugin interface…**, in the parameters window, opens the plugin's own
+  window, as for VST3 plugins: what you adjust or choose there (internal
+  presets too, which are not parameters) stays in the project when you close
+  it. On Linux it needs X11 (with Wayland it goes through XWayland). When a
+  plugin also exists as VST3 it appears only once in the list: the **Hide
+  CLAPs that also exist as VST3** option (on by default) keeps only the VST3.
 
 - **LV2**: on Linux only, and it needs the `lilv` system library (on
   Debian/Ubuntu the `liblilv-0-0` package, already present if Ardour, Carla

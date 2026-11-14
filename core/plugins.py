@@ -423,6 +423,7 @@ class PluginInfo:
     problem: str = ""          # se non si puo' usare: perche'
     params: List[PluginParam] = field(default_factory=list)
     state: str = ""            # stato iniziale (VST3, AU)
+    editor: bool = False       # ha un'interfaccia grafica che si puo' aprire (open_editor)
     files: List[PluginFile] = field(default_factory=list)   # LV2: proprieta' da impostare con un file
 
     @property
@@ -443,6 +444,7 @@ def _info_from_dict(d: dict) -> PluginInfo:
                       vendor=d.get("vendor", ""),
                       category=d.get("category", ""), instrument=bool(d.get("instrument")),
                       problem=d.get("problem", ""), params=params, state=d.get("state", ""),
+                      editor=bool(d.get("editor", is_pedalboard_format(d["format"]))),
                       files=[PluginFile(**f) for f in d.get("files", [])])
 
 
@@ -822,7 +824,7 @@ def parameter_texts(ref: str, params: dict, state: str) -> Dict[str, str]:
 
 
 def open_editor(ref: str, params: dict, state: str) -> Tuple[Dict[str, float], str]:
-    """Apre l'interfaccia grafica del plugin (VST3 o AU) e aspetta che venga
+    """Apre l'interfaccia grafica del plugin (VST3, AU o CLAP) e aspetta che venga
     chiusa: torna (parametri, stato) come li ha lasciati l'utente."""
     ref = resolve_ref(ref)
     result = _call("ui", ref, ("editor", ref, dict(params or {}), state or ""), EDITOR_TIMEOUT)

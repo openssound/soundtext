@@ -9,7 +9,13 @@
  *                        l'audio di 32 frame. Ha uno stato (clap.state):
  *                        "STG1" + gain, mode e trim (double), dove trim e'
  *                        un guadagno interno che non e' un parametro e si
- *                        cambia solo caricando uno stato.
+ *                        cambia solo caricando uno stato. Ha anche una
+ *                        finta interfaccia (clap.gui) senza finestre: quando
+ *                        la si mostra chiede all'host un timer e (non su
+ *                        Windows) di sorvegliare una pipe in cui scrive un
+ *                        byte; al terzo scatto del timer, arrivato il byte,
+ *                        mette gain a 1.5 e trim a 0.5 come farebbe l'utente,
+ *                        chiede una misura nuova e dice all'host di chiudere.
  *   test.soundtext.sine  strumento: una sinusoide per ogni nota tenuta, con
  *                        le note ricevute come eventi MIDI.
  *
@@ -20,6 +26,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
 
 typedef struct { uint32_t major, minor, revision; } clap_version_t;
 
@@ -130,6 +139,49 @@ typedef struct {
     bool (*load)(const clap_plugin_t *, const clap_istream_t *);
 } clap_plugin_state_t;
 
+typedef struct { const char *api; void *handle; } clap_window_t;
+
+typedef struct {
+    bool (*is_api_supported)(const clap_plugin_t *, const char *, bool);
+    bool (*get_preferred_api)(const clap_plugin_t *, const char **, bool *);
+    bool (*create)(const clap_plugin_t *, const char *, bool);
+    void (*destroy)(const clap_plugin_t *);
+    bool (*set_scale)(const clap_plugin_t *, double);
+    bool (*get_size)(const clap_plugin_t *, uint32_t *, uint32_t *);
+    bool (*can_resize)(const clap_plugin_t *);
+    bool (*get_resize_hints)(const clap_plugin_t *, void *);
+    bool (*adjust_size)(const clap_plugin_t *, uint32_t *, uint32_t *);
+    bool (*set_size)(const clap_plugin_t *, uint32_t, uint32_t);
+    bool (*set_parent)(const clap_plugin_t *, const clap_window_t *);
+    bool (*set_transient)(const clap_plugin_t *, const clap_window_t *);
+    void (*suggest_title)(const clap_plugin_t *, const char *);
+    bool (*show)(const clap_plugin_t *);
+    bool (*hide)(const clap_plugin_t *);
+} clap_plugin_gui_t;
+
+typedef struct {
+    void (*resize_hints_changed)(const clap_host_t *);
+    bool (*request_resize)(const clap_host_t *, uint32_t, uint32_t);
+    bool (*request_show)(const clap_host_t *);
+    bool (*request_hide)(const clap_host_t *);
+    void (*closed)(const clap_host_t *, bool);
+} clap_host_gui_t;
+
+typedef struct { void (*on_timer)(const clap_plugin_t *, uint32_t); } clap_plugin_timer_support_t;
+
+typedef struct {
+    bool (*register_timer)(const clap_host_t *, uint32_t, uint32_t *);
+    bool (*unregister_timer)(const clap_host_t *, uint32_t);
+} clap_host_timer_support_t;
+
+typedef struct { void (*on_fd)(const clap_plugin_t *, int, uint32_t); } clap_plugin_posix_fd_support_t;
+
+typedef struct {
+    bool (*register_fd)(const clap_host_t *, int, uint32_t);
+    bool (*modify_fd)(const clap_host_t *, int, uint32_t);
+    bool (*unregister_fd)(const clap_host_t *, int);
+} clap_host_posix_fd_support_t;
+
 typedef struct {
     uint32_t (*get_plugin_count)(const void *);
     const clap_plugin_descriptor_t *(*get_plugin_descriptor)(const void *, uint32_t);
@@ -156,6 +208,10 @@ typedef struct {
     uint32_t delay_pos;
     bool held[128];
     double phase[128];
+    const clap_host_t *host;
+    bool gui_open, gui_has_parent, fd_seen;
+    uint32_t timer_id, ticks, gui_width, gui_height;
+    int pipe_fds[2];
 } state_t;
 
 static state_t *state_of(const clap_plugin_t *p) { return (state_t *)p->plugin_data; }
@@ -300,6 +356,113 @@ static bool state_load(const clap_plugin_t *p, const clap_istream_t *stream) {
 
 static const clap_plugin_state_t state_ext = {state_save, state_load};
 
+/* ------------------------------------------------- finta interfaccia */
+
+static bool gui_supported(const clap_plugin_t *p, const char *api, bool floating) {
+    (void)p; (void)api;
+    return !floating;
+}
+static bool gui_preferred(const clap_plugin_t *p, const char **api, bool *floating) {
+    (void)p; (void)api; (void)floating;
+    return false;
+}
+static bool gui_create(const clap_plugin_t *p, const char *api, bool floating) {
+    state_t *s = state_of(p);
+    (void)api;
+    if (floating || s->gui_open) return false;
+    s->gui_open = true; s->gui_has_parent = false; s->fd_seen = false; s->ticks = 0;
+    s->gui_width = 320; s->gui_height = 120;
+    s->pipe_fds[0] = s->pipe_fds[1] = -1;
+    return true;
+}
+static void gui_destroy(const clap_plugin_t *p) {
+    state_t *s = state_of(p);
+    const clap_host_timer_support_t *timers = s->host->get_extension(s->host, "clap.timer-support");
+    if (timers && s->timer_id) timers->unregister_timer(s->host, s->timer_id);
+    s->timer_id = 0;
+#if !defined(_WIN32)
+    const clap_host_posix_fd_support_t *fds = s->host->get_extension(s->host, "clap.posix-fd-support");
+    if (s->pipe_fds[0] >= 0) {
+        if (fds && !s->fd_seen) fds->unregister_fd(s->host, s->pipe_fds[0]);
+        close(s->pipe_fds[0]); close(s->pipe_fds[1]);
+    }
+#endif
+    s->gui_open = false;
+}
+static bool gui_scale(const clap_plugin_t *p, double scale) { (void)p; return scale > 0.0; }
+static bool gui_get_size(const clap_plugin_t *p, uint32_t *w, uint32_t *h) {
+    *w = state_of(p)->gui_width; *h = state_of(p)->gui_height;
+    return true;
+}
+static bool gui_can_resize(const clap_plugin_t *p) { (void)p; return false; }
+static bool gui_hints(const clap_plugin_t *p, void *hints) { (void)p; (void)hints; return false; }
+static bool gui_adjust(const clap_plugin_t *p, uint32_t *w, uint32_t *h) { (void)p; (void)w; (void)h; return true; }
+static bool gui_set_size(const clap_plugin_t *p, uint32_t w, uint32_t h) {
+    state_of(p)->gui_width = w; state_of(p)->gui_height = h;
+    return true;
+}
+static bool gui_set_parent(const clap_plugin_t *p, const clap_window_t *window) {
+    state_of(p)->gui_has_parent = window && window->api;
+    return state_of(p)->gui_has_parent;
+}
+static bool gui_set_transient(const clap_plugin_t *p, const clap_window_t *window) { (void)p; (void)window; return false; }
+static void gui_title(const clap_plugin_t *p, const char *title) { (void)p; (void)title; }
+
+static bool gui_show(const clap_plugin_t *p) {
+    state_t *s = state_of(p);
+    const clap_host_timer_support_t *timers = s->host->get_extension(s->host, "clap.timer-support");
+    if (!s->gui_open || !s->gui_has_parent || !timers) return false;
+    if (!timers->register_timer(s->host, 5, &s->timer_id)) return false;
+#if !defined(_WIN32)
+    const clap_host_posix_fd_support_t *fds = s->host->get_extension(s->host, "clap.posix-fd-support");
+    if (fds && pipe(s->pipe_fds) == 0) {
+        fds->register_fd(s->host, s->pipe_fds[0], 1);           /* lettura */
+        if (write(s->pipe_fds[1], "x", 1) != 1) return false;
+    }
+#else
+    s->fd_seen = true;
+#endif
+    return true;
+}
+static bool gui_hide(const clap_plugin_t *p) { (void)p; return true; }
+
+static const clap_plugin_gui_t gui_ext = {
+    gui_supported, gui_preferred, gui_create, gui_destroy, gui_scale, gui_get_size, gui_can_resize, gui_hints,
+    gui_adjust, gui_set_size, gui_set_parent, gui_set_transient, gui_title, gui_show, gui_hide};
+
+static void timer_tick(const clap_plugin_t *p, uint32_t id) {
+    state_t *s = state_of(p);
+    if (!s->gui_open || id != s->timer_id) return;
+    s->ticks++;
+    /* al terzo scatto, col byte della pipe arrivato; dopo 400 scatti si
+     * chiude comunque, senza cambiare nulla (il test se ne accorge) */
+    if ((s->ticks >= 3 && s->fd_seen) || s->ticks == 400) {
+        const clap_host_gui_t *host_gui = s->host->get_extension(s->host, "clap.gui");
+        if (s->fd_seen) { s->gain = 1.5; s->trim = 0.5; }
+        s->ticks = 1000;                                        /* una volta sola */
+        if (host_gui) {
+            if (host_gui->request_resize(s->host, 400, 150)) { s->gui_width = 400; s->gui_height = 150; }
+            host_gui->closed(s->host, false);
+        }
+    }
+}
+static const clap_plugin_timer_support_t timer_ext = {timer_tick};
+
+static void fd_ready(const clap_plugin_t *p, int fd, uint32_t flags) {
+    state_t *s = state_of(p);
+    (void)flags;
+#if !defined(_WIN32)
+    char byte;
+    const clap_host_posix_fd_support_t *fds = s->host->get_extension(s->host, "clap.posix-fd-support");
+    if (fd != s->pipe_fds[0] || read(fd, &byte, 1) != 1) return;
+    s->fd_seen = true;
+    if (fds) fds->unregister_fd(s->host, fd);
+#else
+    (void)s; (void)fd;
+#endif
+}
+static const clap_plugin_posix_fd_support_t fd_ext = {fd_ready};
+
 /* ------------------------------------------------------------ plugin */
 
 static bool plugin_init(const clap_plugin_t *p) { (void)p; return true; }
@@ -349,6 +512,9 @@ static int32_t plugin_process(const clap_plugin_t *p, const clap_process_t *proc
 
 static const void *plugin_extension(const clap_plugin_t *p, const char *id) {
     if (!strcmp(id, "clap.state")) return state_of(p)->is_sine ? NULL : &state_ext;
+    if (!strcmp(id, "clap.gui")) return state_of(p)->is_sine ? NULL : &gui_ext;
+    if (!strcmp(id, "clap.timer-support")) return state_of(p)->is_sine ? NULL : &timer_ext;
+    if (!strcmp(id, "clap.posix-fd-support")) return state_of(p)->is_sine ? NULL : &fd_ext;
     if (!strcmp(id, "clap.params")) return &params_ext;
     if (!strcmp(id, "clap.audio-ports")) return &audio_ports_ext;
     if (!strcmp(id, "clap.note-ports")) return &note_ports_ext;
@@ -376,13 +542,14 @@ static const clap_plugin_descriptor_t *factory_descriptor(const void *f, uint32_
 }
 
 static const clap_plugin_t *factory_create(const void *f, const clap_host_t *host, const char *id) {
-    (void)f; (void)host;
+    (void)f;
     for (int i = 0; i < 2; i++) {
         if (strcmp(id, descriptors[i].id)) continue;
         state_t *s = calloc(1, sizeof *s);
         s->is_sine = i == 1;
         s->gain = 1.0;
         s->trim = 1.0;
+        s->host = host;
         s->plugin = (clap_plugin_t){&descriptors[i], s, plugin_init, plugin_destroy, plugin_activate,
                                     plugin_deactivate, plugin_start, plugin_stop, plugin_reset,
                                     plugin_process, plugin_extension, plugin_main_thread};

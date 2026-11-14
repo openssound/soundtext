@@ -2,12 +2,16 @@
 test (tests/data/clap_test_plugin.c) si compila qui e si carica davvero:
 elenco dei plugin, parametri, elaborazione con la latenza compensata, uno
 strumento suonato da eventi MIDI, e il percorso completo attraverso il
-processo dei plugin (core.plugins). Senza un compilatore C i test si saltano."""
+processo dei plugin (core.plugins), lo stato (clap.state) e l'interfaccia
+grafica (clap.gui, con la finta interfaccia del plugin di prova: timer,
+descrittori di file, chiusura). Senza un compilatore C i test si saltano."""
 
 import os
 import shutil
 import subprocess
 import sys
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
 import pytest
@@ -137,6 +141,75 @@ def test_plugin_without_state(clap_file):
     with pytest.raises(clap_host.ClapError):
         inst.load_state(b"qualcosa")
     inst.close()
+
+
+@pytest.fixture
+def display(monkeypatch):
+    """Su Linux clap.gui vuole X11: ai test basta che DISPLAY ci sia (Qt e'
+    'offscreen' e il plugin di prova non apre finestre vere)."""
+    monkeypatch.setenv("DISPLAY", os.environ.get("DISPLAY") or ":99")
+
+
+def test_gui_opens_serves_timers_and_fds_and_closes(clap_file, display):
+    from core import clap_gui
+    inst = clap_host.ClapInstance(clap_file + "|test.soundtext.gain", RATE)
+    assert inst.has_gui()
+    resized = []
+    original = inst.open_gui
+
+    def open_gui(parent, scale, listener):
+        size = original(parent, scale, listener)
+        request = listener.request_resize
+        listener.request_resize = lambda w, h: resized.append((w, h)) or request(w, h)
+        return size
+
+    inst.open_gui = open_gui
+    clap_gui.run_editor(inst, "Prova")       # la finta interfaccia si chiude da sola
+    assert resized == [(400, 150)]
+    assert inst._gui is None and inst.gui_listener is None and inst._timers == {} and inst.fds == {}
+    # il plugin ha cambiato gain (parametro) e trim (solo nello stato), come dalla sua finestra
+    assert inst.save_state() == _gain_state(1.5, 0.0, 0.5)
+    assert inst.adopt_values(as_baseline=True) == {"100": 1.5, "200": 0.0}
+    x = _sine(0.1)
+    inst.set_values({})
+    assert np.allclose(inst.process(x), 0.75 * x, atol=1e-6)
+    clap_gui.run_editor(inst)                 # si riapre
+    inst.close()
+
+
+def test_plugin_without_gui(clap_file, display):
+    from core import clap_gui
+    inst = clap_host.ClapInstance(clap_file + "|test.soundtext.sine", RATE)
+    assert not inst.has_gui()
+    with pytest.raises(clap_host.ClapError):
+        clap_gui.run_editor(inst)
+    inst.close()
+
+
+def test_no_gui_without_x11_on_linux(clap_file, monkeypatch):
+    if not sys.platform.startswith("linux"):
+        pytest.skip("solo Linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    inst = clap_host.ClapInstance(clap_file + "|test.soundtext.gain", RATE)
+    assert not inst.has_gui()
+    inst.close()
+
+
+def test_editor_through_the_worker(clap_file, display):
+    """Il comando "Interfaccia del plugin…": tornano i parametri e lo stato
+    lasciati dalla finestra, e il plugin poi suona con quelli."""
+    from core import plugin_worker
+    worker = plugin_worker._Worker()
+    ref = "clap:" + clap_file + "|test.soundtext.gain"
+    assert worker.describe(ref)["editor"] is True
+    assert worker.describe("clap:" + clap_file + "|test.soundtext.sine")["editor"] is False
+    result = worker.editor(ref, {"100": 0.25}, "")
+    assert result["params"] == {"100": 1.5, "200": 0.0}
+    assert result["state"] == plugins.encode_state(_gain_state(1.5, 0.0, 0.5))
+    x = _sine(0.1)
+    assert np.allclose(worker.process(ref, RATE, result["params"], result["state"], x), 0.75 * x, atol=1e-6)
+    assert np.allclose(worker.process(ref, RATE, {}, result["state"], x), 0.75 * x, atol=1e-6)
+    assert np.allclose(worker.process(ref, RATE, {}, "", x), x, atol=1e-6)      # senza stato: plugin nuovo
 
 
 def test_missing_file_and_missing_plugin(clap_file, tmp_path):

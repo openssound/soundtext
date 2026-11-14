@@ -11,7 +11,12 @@ altre ricevono silenzio), note in MIDI o come eventi CLAP, i parametri
 (clap.params, impostati con eventi PARAM_VALUE), la latenza dichiarata
 dal plugin (clap.latency), che si compensa, e lo stato interno (clap.state:
 save_state/load_state, un blocco di byte che il plugin scrive e rilegge).
-L'interfaccia grafica del plugin (clap.gui) non e' gestita.
+
+L'interfaccia grafica del plugin (clap.gui) si apre dentro una finestra
+che le da' chi usa l'istanza (core.clap_gui, con Qt): qui ci sono
+open_gui/close_gui e cio' che al plugin serve per farla vivere, cioe' i
+timer (clap.timer-support) e i descrittori di file da sorvegliare
+(clap.posix-fd-support, su Linux), serviti da idle() e fd_event().
 
 Un riferimento e' 'clap:/percorso/Nome.clap|id.del.plugin': un file .clap
 puo' contenere molti plugin (LSP ne ha centinaia), distinti dall'id.
@@ -21,6 +26,7 @@ import ctypes
 import logging
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -199,6 +205,42 @@ class _PluginState(ctypes.Structure):
                 ("load", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(_Stream)))]
 
 
+class _Window(ctypes.Structure):
+    """clap_window: l'api ("x11", "win32", "cocoa") e la finestra che fa da
+    genitore (id X11, HWND o NSView*: in tutti i casi sta in un puntatore)."""
+    _fields_ = [("api", c_str), ("handle", c_void)]
+
+
+class _PluginGui(ctypes.Structure):
+    _fields_ = [("is_api_supported", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, c_str, ctypes.c_bool)),
+                ("get_preferred_api", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(c_str),
+                                                       ctypes.POINTER(ctypes.c_bool))),
+                ("create", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, c_str, ctypes.c_bool)),
+                ("destroy", ctypes.CFUNCTYPE(None, c_void)),
+                ("set_scale", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.c_double)),
+                ("get_size", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(u32), ctypes.POINTER(u32))),
+                ("can_resize", ctypes.CFUNCTYPE(ctypes.c_bool, c_void)),
+                ("get_resize_hints", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, c_void)),
+                ("adjust_size", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(u32), ctypes.POINTER(u32))),
+                ("set_size", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, u32, u32)),
+                ("set_parent", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(_Window))),
+                ("set_transient", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.POINTER(_Window))),
+                ("suggest_title", ctypes.CFUNCTYPE(None, c_void, c_str)),
+                ("show", ctypes.CFUNCTYPE(ctypes.c_bool, c_void)),
+                ("hide", ctypes.CFUNCTYPE(ctypes.c_bool, c_void))]
+
+
+class _PluginTimer(ctypes.Structure):
+    _fields_ = [("on_timer", ctypes.CFUNCTYPE(None, c_void, u32))]
+
+
+class _PluginPosixFd(ctypes.Structure):
+    _fields_ = [("on_fd", ctypes.CFUNCTYPE(None, c_void, ctypes.c_int, u32))]
+
+
+FD_READ, FD_WRITE, FD_ERROR = 1, 2, 4
+
+
 # --- estensioni dell'host ----------------------------------------------------
 
 class _HostThreadCheck(ctypes.Structure):
@@ -230,8 +272,38 @@ class _HostNotePorts(ctypes.Structure):
                 ("rescan", ctypes.CFUNCTYPE(None, c_void, u32))]
 
 
+class _HostGui(ctypes.Structure):
+    _fields_ = [("resize_hints_changed", ctypes.CFUNCTYPE(None, c_void)),
+                ("request_resize", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, u32, u32)),
+                ("request_show", ctypes.CFUNCTYPE(ctypes.c_bool, c_void)),
+                ("request_hide", ctypes.CFUNCTYPE(ctypes.c_bool, c_void)),
+                ("closed", ctypes.CFUNCTYPE(None, c_void, ctypes.c_bool))]
+
+
+class _HostTimer(ctypes.Structure):
+    _fields_ = [("register_timer", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, u32, ctypes.POINTER(u32))),
+                ("unregister_timer", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, u32))]
+
+
+class _HostPosixFd(ctypes.Structure):
+    _fields_ = [("register_fd", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.c_int, u32)),
+                ("modify_fd", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.c_int, u32)),
+                ("unregister_fd", ctypes.CFUNCTYPE(ctypes.c_bool, c_void, ctypes.c_int))]
+
+
 class ClapError(Exception):
     pass
+
+
+def gui_api() -> Optional[bytes]:
+    """L'api delle finestre di questo sistema per clap.gui, o None se non
+    c'e' modo di aprirne (Linux senza X11: CLAP non ha un'api per Wayland,
+    dove si passa da XWayland)."""
+    if sys.platform == "win32":
+        return b"win32"
+    if sys.platform == "darwin":
+        return b"cocoa"
+    return b"x11" if os.environ.get("DISPLAY") else None
 
 
 def _text(value) -> str:
@@ -421,6 +493,12 @@ class ClapInstance:
         self._baseline: Dict[str, float] = {}  # valori dello stato caricato (load_state), al posto dei predefiniti
         self._touched = False                  # un valore diverso dal predefinito e' stato mandato
         self._needs_main_thread = False
+        self._timers: Dict[int, List[float]] = {}   # id -> [periodo in secondi, prossima scadenza]
+        self._next_timer = 1
+        self.fds: Dict[int, int] = {}          # descrittore -> FD_READ | FD_WRITE | FD_ERROR
+        self.fds_version = 0                   # cambia a ogni modifica di fds
+        self._gui = None                       # clap.gui del plugin, mentre l'interfaccia e' aperta
+        self.gui_listener = None               # chi tiene la finestra: request_resize(w, h), closed()
         self._keep = []                        # callback e strutture che il plugin puo' richiamare
         path, plugin_id = parse_clap_ref(target)
         if not os.path.exists(path):
@@ -470,9 +548,52 @@ class ClapInstance:
                                       _HostAudioPorts._fields_[1][1](nothing))
         note_ports = _HostNotePorts(_HostNotePorts._fields_[0][1](lambda _h: _DIALECT_CLAP | _DIALECT_MIDI),
                                     _HostNotePorts._fields_[1][1](nothing))
+
+        def register_timer(_host, period_ms, timer_id):
+            period = max(1, int(period_ms)) / 1000.0
+            self._timers[self._next_timer] = [period, time.monotonic() + period]
+            timer_id[0] = self._next_timer
+            self._next_timer += 1
+            return True
+
+        def unregister_timer(_host, timer_id):
+            return self._timers.pop(int(timer_id), None) is not None
+
+        def set_fd(_host, fd, flags):
+            self.fds[int(fd)] = int(flags)
+            self.fds_version += 1
+            return True
+
+        def modify_fd(_host, fd, flags):
+            if int(fd) not in self.fds:
+                return False
+            return set_fd(_host, fd, flags)
+
+        def unregister_fd(_host, fd):
+            self.fds_version += 1
+            return self.fds.pop(int(fd), None) is not None
+
+        def request_resize(_host, width, height):
+            listener = self.gui_listener
+            return bool(listener is not None and listener.request_resize(int(width), int(height)))
+
+        def gui_closed(_host, _was_destroyed):
+            if self.gui_listener is not None:
+                self.gui_listener.closed()
+
+        gui_open = lambda _h: self._gui is not None     # noqa: E731
+        fields = _HostGui._fields_
+        host_gui = _HostGui(fields[0][1](nothing), fields[1][1](request_resize), fields[2][1](gui_open),
+                            fields[3][1](gui_open), fields[4][1](gui_closed))
+        host_timer = _HostTimer(_HostTimer._fields_[0][1](register_timer),
+                                _HostTimer._fields_[1][1](unregister_timer))
+        host_fd = _HostPosixFd(_HostPosixFd._fields_[0][1](set_fd), _HostPosixFd._fields_[1][1](modify_fd),
+                               _HostPosixFd._fields_[2][1](unregister_fd))
         extensions = {b"clap.thread-check": thread_check, b"clap.log": host_log, b"clap.params": host_params,
                       b"clap.state": notify, b"clap.latency": notify, b"clap.audio-ports": audio_ports,
-                      b"clap.note-ports": note_ports}
+                      b"clap.note-ports": note_ports, b"clap.gui": host_gui, b"clap.timer-support": host_timer}
+        if sys.platform != "win32":
+            extensions[b"clap.posix-fd-support"] = host_fd
 
         def get_extension(_host, name):
             ext = extensions.get(name)
@@ -584,6 +705,7 @@ class ClapInstance:
     def close(self):
         if self._plugin is not None:
             try:
+                self.close_gui()
                 self._deactivate()
                 self._plugin.destroy(self._pointer)
             finally:
@@ -637,12 +759,7 @@ class ClapInstance:
             # segue: prima di rileggere i valori se ne elabora uno di silenzio
             self._feed(None, BLOCK)
             self._run(BLOCK, [])
-        self._baseline = {}
-        if self._params_ext is not None:
-            value = ctypes.c_double()
-            for p in self.params:
-                if self._params_ext.get_value(self._pointer, p.id, ctypes.byref(value)):
-                    self._baseline[p.key] = min(p.maximum, max(p.minimum, float(value.value)))
+        self._baseline = self.read_values()
         self._values = dict(self._baseline)
 
     def _start_value(self, param: "ClapParam") -> float:
@@ -721,9 +838,107 @@ class ClapInstance:
         self._steady += frames
         if status == 0:
             raise ClapError(tr("il plugin CLAP ha dato un errore durante l'elaborazione"))
+        self.idle()
+
+    def idle(self):
+        """Quello che il plugin chiede al thread principale: la chiamata che
+        ha prenotato (request_callback) e i timer scaduti. La chiama ogni
+        blocco di audio e, a interfaccia aperta, chi tiene la finestra."""
         if self._needs_main_thread:
             self._needs_main_thread = False
             self._plugin.on_main_thread(self._pointer)
+        if self._timers:
+            ext = self._extension(b"clap.timer-support", _PluginTimer)
+            now = time.monotonic()
+            for timer_id, timer in list(self._timers.items()):
+                if timer[1] <= now and timer_id in self._timers:
+                    timer[1] = now + timer[0]
+                    if ext is not None:
+                        ext.on_timer(self._pointer, timer_id)
+
+    def fd_event(self, fd: int, flags: int):
+        """Il descrittore fd (vedi fds) e' pronto: lo si dice al plugin."""
+        ext = self._extension(b"clap.posix-fd-support", _PluginPosixFd)
+        if ext is not None and fd in self.fds:
+            ext.on_fd(self._pointer, int(fd), int(flags))
+
+    # -- interfaccia grafica ---------------------------------------------------
+    def has_gui(self) -> bool:
+        """Il plugin ha un'interfaccia che si puo' aprire dentro una nostra finestra."""
+        api = gui_api()
+        ext = self._extension(b"clap.gui", _PluginGui)
+        return bool(api and ext is not None and ext.is_api_supported(self._pointer, api, False))
+
+    def gui_size(self) -> Tuple[int, int]:
+        width, height = u32(0), u32(0)
+        if self._gui is None or not self._gui.get_size(self._pointer, ctypes.byref(width), ctypes.byref(height)):
+            return 0, 0
+        return int(width.value), int(height.value)
+
+    def gui_resizable(self) -> bool:
+        return bool(self._gui is not None and self._gui.can_resize(self._pointer))
+
+    def gui_resize(self, width: int, height: int) -> Tuple[int, int]:
+        """Chiede al plugin di disegnarsi in width x height (pixel): torna
+        la misura che ha accettato."""
+        if self._gui is None:
+            return 0, 0
+        w, h = u32(max(1, int(width))), u32(max(1, int(height)))
+        self._gui.adjust_size(self._pointer, ctypes.byref(w), ctypes.byref(h))
+        self._gui.set_size(self._pointer, w.value, h.value)
+        return int(w.value), int(h.value)
+
+    def open_gui(self, parent: int, scale: float, listener) -> Tuple[int, int]:
+        """Crea l'interfaccia del plugin dentro la finestra 'parent' (id X11,
+        HWND o NSView*) e la mostra: torna la sua misura in pixel. 'scale'
+        e' il fattore dello schermo (non su macOS, dove le misure sono gia'
+        logiche); 'listener' riceve request_resize(w, h) e closed()."""
+        api = gui_api()
+        ext = self._extension(b"clap.gui", _PluginGui)
+        if not api or ext is None or not ext.is_api_supported(self._pointer, api, False):
+            raise ClapError(tr("questo plugin CLAP non ha un'interfaccia che si possa aprire qui"))
+        if self._gui is not None:
+            raise ClapError(tr("l'interfaccia del plugin e' gia' aperta"))
+        if not ext.create(self._pointer, api, False):
+            raise ClapError(tr("il plugin CLAP non crea la sua interfaccia"))
+        self._gui, self.gui_listener = ext, listener
+        if api != b"cocoa":
+            ext.set_scale(self._pointer, float(scale))
+        window = _Window(api, parent)
+        self._keep.append(window)
+        if not ext.set_parent(self._pointer, ctypes.byref(window)):
+            self.close_gui()
+            raise ClapError(tr("il plugin CLAP non entra nella finestra"))
+        ext.show(self._pointer)
+        return self.gui_size()
+
+    def close_gui(self):
+        if self._gui is not None:
+            ext, self._gui, self.gui_listener = self._gui, None, None
+            ext.hide(self._pointer)
+            ext.destroy(self._pointer)
+
+    def read_values(self) -> Dict[str, float]:
+        """I valori che i parametri hanno adesso nel plugin."""
+        out: Dict[str, float] = {}
+        if self._params_ext is not None:
+            value = ctypes.c_double()
+            for p in self.params:
+                if self._params_ext.get_value(self._pointer, p.id, ctypes.byref(value)):
+                    out[p.key] = min(p.maximum, max(p.minimum, float(value.value)))
+        return out
+
+    def adopt_values(self, as_baseline: bool) -> Dict[str, float]:
+        """Dopo che il plugin ha cambiato i suoi valori da solo (dalla sua
+        interfaccia): li si rilegge e diventano quelli che l'host sa di aver
+        impostato; con as_baseline anche quelli di partenza, come dopo
+        load_state (lo stato appena salvato li contiene)."""
+        values = self.read_values()
+        self._values = dict(values)
+        self._pending_values = {}
+        if as_baseline:
+            self._baseline = dict(values)
+        return values
 
     def _output(self, frames: int) -> np.ndarray:
         out = np.zeros((frames, 2), dtype=np.float32)

@@ -21,7 +21,7 @@ Richieste (tuple con il nome dell'operazione in testa):
     ("render", ref, rate, params, state, events, seconds) -> audio (strumento)
     ("warm", ref, rate, params, state)          -> None (carica e configura in anticipo)
     ("strings", ref, params, state)             -> {parametro: testo mostrato dal plugin}
-    ("editor", ref, params, state)              -> {"params": ..., "state": ...}
+    ("editor", ref, params, state)              -> {"params": ..., "state": ...} (VST3, AU, CLAP)
     ("live_start", ref, rate, params, state, blocksize, pan) -> {"hostapi": ..., "latency_ms": ...}
     ("live_midi", data)                         -> nessuna risposta
 Risposta: ("ok", valore) oppure ("error", messaggio).
@@ -506,9 +506,24 @@ class _Worker:
         inst = self.configure(ref, 48000, params, state)
         return {k: p.string_value for k, p in inst.parameters.items() if k not in HIDDEN_VST3_PARAMS}
 
+    def _clap_editor(self, ref: str, params: dict, state: str) -> dict:
+        """L'interfaccia di un plugin CLAP (core.clap_gui): alla chiusura lo
+        stato che il plugin salva e i valori dei suoi parametri."""
+        from core.clap_gui import run_editor
+        inst = self.configure(ref, 48000, params, state)
+        run_editor(inst)
+        data = inst.save_state()
+        new_state = base64.b64encode(data).decode("ascii") if data else ""
+        values = inst.adopt_values(as_baseline=bool(new_state))
+        if new_state:
+            self.applied_state[(ref, 48000)] = new_state
+        return {"params": values, "state": new_state or state}
+
     def editor(self, ref: str, params: dict, state: str) -> dict:
+        if parse_ref(ref)[0] == "clap":
+            return self._clap_editor(ref, params, state)
         if not is_pedalboard_format(parse_ref(ref)[0]):
-            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3 e AU"))
+            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3, AU e CLAP"))
         inst = self.configure(ref, 48000, params, state)
         if sys.platform == "win32":
             import threading
@@ -655,6 +670,7 @@ def _clap_info_dict(info) -> dict:
 
 def _clap_descriptor(inst) -> dict:
     out = _clap_info_dict(inst.info)
+    out["editor"] = inst.has_gui()
     out["params"] = [{"key": p.key, "label": p.name, "minimum": p.minimum, "maximum": p.maximum,
                       "default": p.default, "raw": False, "text": "", "units": "",
                       "toggled": p.toggled, "integer": p.integer, "logarithmic": False,

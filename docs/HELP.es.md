@@ -3321,12 +3321,13 @@ SoundFont.
   plugin (por ejemplo
   `ref="clap:/usr/lib/clap/ZamComp.clap|com.zamaudio.ZamComp"`).
 
-  **La ventana del plugin no se abre** y sus presets internos no se guardan:
-  de un CLAP SoundText recuerda los valores de los parámetros. Por eso,
-  **cuando un plugin existe también en VST3 conviene el VST3**: la opción
-  **Ocultar los CLAP que también existen en VST3** (activa) deja en la lista
-  solo el VST3. Un plugin que se usa solo desde su ventana (el de Tone3000,
-  por ejemplo, donde se elige el sonido) se carga como VST3 o LV2.
+  **Interfaz del plugin…**, en la ventana de parámetros, abre la ventana
+  gráfica del plugin, como con los VST3: lo que se ajusta o se elige allí
+  (también los presets internos, que no son parámetros) queda en el proyecto
+  al cerrarla. En Linux hace falta X11 (con Wayland se pasa por XWayland).
+  Cuando un plugin existe también en VST3 aparece una sola vez en la lista:
+  la opción **Ocultar los CLAP que también existen en VST3** (activa) deja
+  solo el VST3.
 
 - **LV2**: solo en Linux, y hace falta la biblioteca del sistema `lilv` (en
   Debian/Ubuntu el paquete `liblilv-0-0`, ya presente si están instalados
