@@ -160,7 +160,7 @@ def test_ctrl_z_in_the_editor_undoes_typing_through_project_history():
 def test_operations_that_replace_track_text_are_undoable():
     w = _window()
     track = w.project.tracks[0]
-    w._append_or_replace_track_text(track, "Cmaj7 F")   # come dopo Genera/Importa
+    w.generators.add_text(track, "Cmaj7 F")   # come dopo Genera/Importa
     assert "Cmaj7" in w.project.tracks[0].text
     w.undo()
     assert w.project.tracks[0].text == "c d"

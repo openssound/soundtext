@@ -1801,7 +1801,7 @@ class ArrangementView(AudioClipActions, QWidget):
             # dal menu della traccia devono agire sulla traccia.
             self.select_box(None, None)
             self.host.select_track(track_name)
-            {keyboard_action: self.host.play_keyboard_into_selected_track,
+            {keyboard_action: self.host.generators.play_keyboard,
              import_midi_action: self.host.import_midi_into_selected_track,
              import_audio_action: self.host.import_audio_into_selected_track}[chosen]()
             return
@@ -1863,7 +1863,7 @@ class ArrangementView(AudioClipActions, QWidget):
         ancora nessuno): dove viene accodato un box generato da questo
         menu, analogamente a come 'Genera batteria/basso in questa traccia'
         accoda il testo generato alla fine del testo gia' presente
-        (gui.main_window_mixer._append_or_replace_track_text)."""
+        (gui.track_generators.TrackGenerators.add_text)."""
         track = self.host.project.get_track(track_name)
         clips = track.audio_clips if track.is_audio else track.clips
         if not clips:

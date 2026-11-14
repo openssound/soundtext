@@ -30,6 +30,7 @@ from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
 from .wav_export import WavExport
+from .track_generators import TrackGenerators
 from .soundfont_menu import SoundFontMenu
 from .loop_region import LoopRegion
 from .play_highlight import TrackPlayHighlight
@@ -48,6 +49,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
         self.wav_export = WavExport(self)  # mix, tracce e stem in WAV, congelamento
         self.soundfont = SoundFontMenu(self)   # menu Suoni -> SoundFont
+        self.generators = TrackGenerators(self)  # batteria, basso, giro, accompagnamento, tastiera
         # Va fatto prima di costruire qualunque testata di traccia (vedi
         # refresh_mixer): quelle testate leggono il tema attivo per colorarsi,
         # non seguono automaticamente lo QSS globale (vedi
@@ -525,30 +527,30 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tooltip=tr("Registra voce, chitarra o tastiera dalla scheda audio mentre suona il resto del brano.")
         ))
         track_menu.addAction(self._action(
-            tr("Suona con la tastiera in questa traccia..."), self.play_keyboard_into_selected_track,
+            tr("Suona con la tastiera in questa traccia..."), self.generators.play_keyboard,
             tooltip=tr("Registra una performance suonata con la tastiera del computer e la converte in notazione.")
         ))
 
         compose_menu = menubar.addMenu(tr("&Componi"))
         generate_menu = compose_menu.addMenu(tr("Genera nella traccia selezionata"))
         generate_menu.addAction(self._action(
-            tr("Batteria..."), self.generate_drums_into_selected_track,
+            tr("Batteria..."), self.generators.drums,
             tooltip=tr("Genera un giro di batteria per genere (rock, funk, disco, reggae, punk, soul, bossa nova, rock'n'roll, shuffle, swing), senza IA: "
             "istantaneo, con variabilita' regolabile, nessun modello. Richiede una traccia percussiva.")
         ))
         generate_menu.addAction(self._action(
-            tr("Basso da accordi..."), self.generate_bass_into_selected_track,
+            tr("Basso da accordi..."), self.generators.bass,
             tooltip=tr("Genera una linea di basso che segue gli accordi gia' scritti in un'altra traccia "
             "del progetto (fondamentale, walking, blues, ottavi, reggae, bossa, shuffle...), senza IA.")
         ))
         generate_menu.addAction(self._action(
-            tr("Giro armonico..."), self.generate_progression_into_selected_track,
+            tr("Giro armonico..."), self.generators.progression,
             tooltip=tr("Genera una progressione di accordi (pop, rock, blues, jazz, cadenza andalusa...) "
             "nella tonalita' scelta, da cui far derivare poi basso e accompagnamento, senza IA. "
             "Richiede uno strumento polifonico.")
         ))
         generate_menu.addAction(self._action(
-            tr("Accompagnamento o riff..."), self.generate_melody_into_selected_track,
+            tr("Accompagnamento o riff..."), self.generators.melody,
             tooltip=tr("Genera un accompagnamento (strumenti polifonici: accordi battuti, arpeggio, "
             "accordo spezzato, sostenuto, montuno) o un riff/melodia (strumenti monofonici: riff, "
             "botta e risposta, note guida, passaggio scalare, lick blues) che segue gli accordi gia' "
@@ -566,12 +568,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                        "sezione e il finale.")))
         styles_menu = compose_menu.addMenu(tr("Stili dei generatori"))
         styles_menu.addAction(self._action(
-            tr("Salva la traccia come stile..."), self.save_selected_track_as_style,
+            tr("Salva la traccia come stile..."), self.generators.save_as_style,
             tooltip=tr("Ricava dalla traccia selezionata un nuovo stile per Genera batteria/basso/"
             "accompagnamento/riff (giro base, alternative, fill; note come gradi dell'accordo).")
         ))
         styles_menu.addAction(self._action(
-            tr("Stili personali..."), self.manage_user_styles,
+            tr("Stili personali..."), self.generators.manage_styles,
             tooltip=tr("Rinomina o elimina gli stili salvati dai tuoi box, tracce o file MIDI.")
         ))
         compose_menu.addSeparator()

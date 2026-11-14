@@ -435,11 +435,11 @@ class _FakeGenerator:
 
 
 def test_generated_track_is_created_only_when_confirmed(monkeypatch):
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
     w = _window(tracks=(), audio=())
     _FakeGenerator.seen = []
     monkeypatch.setattr(mixer, "DrumGenerateDialog", _FakeGenerator)
-    w.add_generated_track("drums")
+    w.generators.new_track("drums")
     track = w.project.get_track("Batteria")
     assert track.instrument_name == "Drums" and [c.name for c in track.clips] == ["Groove"]
     assert _FakeGenerator.seen[0]["track_name"] == "Batteria"
@@ -450,12 +450,12 @@ def test_generated_track_is_created_only_when_confirmed(monkeypatch):
             return 0
 
     monkeypatch.setattr(mixer, "ChordProgressionDialog", Cancelled)
-    w.add_generated_track("progression")
+    w.generators.new_track("progression")
     assert [t.name for t in w.project.tracks] == ["Batteria"]
 
 
 def test_generated_track_in_text_view_is_free_text(monkeypatch):
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
     from PySide6.QtWidgets import QInputDialog
     w = _window(tracks=(("Piano", "Piano"),), audio=())
     w.project.get_track("Piano").text = "4: Am F C G"
@@ -463,7 +463,7 @@ def test_generated_track_in_text_view_is_free_text(monkeypatch):
     monkeypatch.setattr(mixer, "MelodyGenerateDialog", _FakeGenerator)
     monkeypatch.setattr(QInputDialog, "getItem", staticmethod(lambda *a, **k: ("Trumpet", True)))
     _FakeGenerator.seen = []
-    w.add_generated_track("melody")
+    w.generators.new_track("melody")
     track = w.project.get_track("Trumpet")
     assert track.clips == [] and track.text == "4: c d e f"
     assert _FakeGenerator.seen[0]["polyphonic"] is False
@@ -495,7 +495,7 @@ def test_header_menu_on_free_text_track_writes_into_the_text(monkeypatch):
     assert "Suona con la tastiera..." in texts and "Rimuovi traccia" in texts
 
     called = []
-    monkeypatch.setattr(w, "play_keyboard_into_selected_track", lambda: called.append(w.current_track_name))
+    monkeypatch.setattr(w.generators, "play_keyboard", lambda: called.append(w.current_track_name))
 
     from _menus import scripted_menus
     with scripted_menus("Suona con la tastiera..."):

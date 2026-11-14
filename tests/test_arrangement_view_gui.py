@@ -252,7 +252,7 @@ def test_accompaniment_hidden_when_the_only_chords_are_in_the_same_track():
 
 
 def test_track_menu_accompaniment_without_chords_explains_instead_of_opening_the_dialog(monkeypatch):
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
     from PySide6.QtWidgets import QMessageBox
     opened, shown = [], []
     monkeypatch.setattr(mixer, "MelodyGenerateDialog", lambda *a, **k: opened.append(1))
@@ -262,7 +262,7 @@ def test_track_menu_accompaniment_without_chords_explains_instead_of_opening_the
     w.project.add_track("Tromba", "Trumpet", "4: c*5 d*5")
     w.refresh_mixer()
     w.select_track("Piano")
-    w.generate_melody_into_selected_track()
+    w.generators.melody()
     assert opened == [] and shown == ["Nessun giro di accordi"]
 
 
@@ -643,7 +643,7 @@ def test_generate_into_selected_track_makes_a_box_in_structure_view(monkeypatch)
     scritto diventa a sua volta un box); in modalita' Testo, senza box, si
     accoda al testo come prima."""
     from PySide6.QtWidgets import QDialog
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
 
     class FakeProgression:
         def __init__(self, *a, **k):
@@ -662,20 +662,20 @@ def test_generate_into_selected_track_makes_a_box_in_structure_view(monkeypatch)
     w.refresh_mixer()
     w.arrangement_action.setChecked(True)
     w.select_track("Piano")
-    w.generate_progression_into_selected_track()
-    w.generate_progression_into_selected_track()
+    w.generators.progression()
+    w.generators.progression()
     piano = w.project.get_track("Piano")
     assert [(c.name, c.start_beat, c.text) for c in piano.clips] == [("Giro", 0.0, "4: 4C 4G"),
                                                                      ("Giro", 8.0, "4: 4C 4G")]
     assert "4C" in piano.text
     w.select_track("Libero")
-    w.generate_progression_into_selected_track()
+    w.generators.progression()
     assert [(c.name, c.start_beat) for c in w.project.get_track("Libero").clips] == [("Libero", 0.0), ("Giro", 4.0)]
     w.undo()
     assert not w.project.get_track("Libero").clips and w.project.get_track("Libero").text == "4: 4Am"
     w.arrangement_action.setChecked(False)
     w.select_track("Testo")
-    w.generate_progression_into_selected_track()
+    w.generators.progression()
     testo = w.project.get_track("Testo")
     assert not testo.clips and testo.text == "4: 4F 4: 4C 4G"
     w._dirty = False

@@ -174,8 +174,8 @@ def test_notation_actions_are_refused_on_audio_tracks(monkeypatch):
     w.select_track("Voce")
     shown = []
     monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a[1])))
-    for action in (w.export_selected_track_midi, w.play_keyboard_into_selected_track,
-                   w.generate_drums_into_selected_track, w.generate_progression_into_selected_track,
+    for action in (w.export_selected_track_midi, w.generators.play_keyboard,
+                   w.generators.drums, w.generators.progression,
                    w.freeze_chords):
         action()
     assert shown == ["Traccia audio"] * 5
