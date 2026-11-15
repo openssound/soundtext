@@ -107,7 +107,7 @@ def test_list_and_unknown_group(capsys):
 
 def test_menu_by_number_or_name_and_empty_exits(monkeypatch, capsys):
     nomi = [nome for nome, _desc in ss.voci_elenco()]
-    assert nomi[-8:] == ["vst3", "host", "lv2", "lilv", "libreria", "strumenti-compilazione", "nam-plugin",
+    assert nomi[-9:] == ["vst3", "clap", "host", "lv2", "lilv", "libreria", "strumenti-compilazione", "nam-plugin",
                          "tutto"] and len(nomi) == len(set(nomi))
     risposte = iter(["1 libreria", "boh", f"{len(nomi)},piano", ""])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(risposte))
@@ -158,11 +158,13 @@ def test_vst3_plugins_for_every_system(monkeypatch, sistema, macchina, chiave):
     assert ss.chiave_sistema() == chiave
     nomi = {nome for nome, _d, _r, _rel, modelli in ss.PLUGIN_VST3 if chiave in modelli}
     # LSP Plugins esiste solo per Linux; su Linux ARM Dexed, Airwindows e OB-Xf non pubblicano build;
-    # Wolf Shaper su Linux e' fra gli LV2 e i plugin Chow non hanno build per Linux
-    attesi = {"linux-x86_64": {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "LSP Plugins", "OB-Xf"},
-              "linux-aarch64": {"Dragonfly Reverb", "LSP Plugins"}}.get(
+    # Wolf Shaper su Linux e' fra gli LV2 e i plugin Chow non hanno build per Linux;
+    # su Linux ARM pubblicano build solo Dragonfly, LSP, AIDA-X e Zam; NeuralRack non esiste per macOS
+    nuovi = {"AIDA-X", "Chameleon", "Proteus", "BYOD", "NeuralRack", "JC-303", "Six Sines", "ChowKick", "Zam plugins"}
+    attesi = {"linux-x86_64": {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "LSP Plugins", "OB-Xf"} | nuovi,
+              "linux-aarch64": {"Dragonfly Reverb", "LSP Plugins", "AIDA-X", "Zam plugins"}}.get(
                   chiave, {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "OB-Xf", "Wolf Shaper",
-                           "ChowTapeModel", "ChowCentaur", "ChowMatrix"})
+                           "ChowTapeModel", "ChowCentaur", "ChowMatrix"} | nuovi - ({"NeuralRack"} if chiave == "macos" else set()))
     assert nomi == attesi
 
 
@@ -185,7 +187,9 @@ def test_vst3_install_goes_on_when_one_plugin_fails(monkeypatch, tmp_path):
     monkeypatch.setattr(ss, "scarica_file", scarica)
     assert ss.installa_plugin_vst3() == ["Dexed"]
     assert sorted(p.name for p in (tmp_path / "vst3").iterdir()) == \
-        ["OB-Xf.vst3", "airwin2rack.vst3", "dragonfly-reverb.vst3", "lsp-plugins.vst3"]
+        ["AIDA-X.vst3", "BYOD.vst3", "Chameleon.vst3", "ChowKick.vst3", "NeuralRack.vst3", "OB-Xf.vst3", "Proteus.vst3",
+         "airwin2rack.vst3", "dragonfly-reverb.vst3", "jc303.vst3", "lsp-plugins.vst3", "six-sines.vst3",
+         "zam-plugins.vst3"]
     with pytest.raises(ss.Errore, match="Dexed"):
         ss.installa_vst3()
 

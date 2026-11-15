@@ -123,7 +123,7 @@ def data_strings():
         for name, desc, _url, _sub in script.GRUPPI + script.EXTRA + script.ORCHESTRA:
             out |= {text for text in _split(desc) if text}
         # e le descrizioni dei plugin nel registro del download
-        out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2}
+        out |= {desc for _name, desc, *_rest in script.PLUGIN_VST3 + script.PLUGIN_LV2 + script.PLUGIN_CLAP}
     return out
 
 

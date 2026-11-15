@@ -34,6 +34,7 @@ def script(tmp_path, monkeypatch):
     s = downloads.load_script()
     monkeypatch.setattr(s, "DEST", tmp_path / "Strumenti")
     monkeypatch.setattr(s, "user_lv2_dir", lambda: tmp_path / "lv2")
+    monkeypatch.setattr(s, "user_clap_dir", lambda: tmp_path / "clap")
     return s
 
 
@@ -166,6 +167,70 @@ def test_lv2_plugins_are_copied_into_the_user_folder(script, tmp_path, monkeypat
     assert not (tmp_path / "lv2" / "Prova.vst3").exists()                # solo gli LV2
 
 
+# ------------------------------------------------------------ plugin CLAP
+
+def test_clap_plugins_are_copied_into_the_user_folder(script, tmp_path, monkeypatch):
+    archive = tmp_path / "plugin.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("dentro/Prova.clap", "finto")
+        z.writestr("dentro/Prova.vst3/finto", "x")
+    monkeypatch.setattr(script, "chiave_sistema", lambda: "windows")
+    monkeypatch.setattr(script, "PLUGIN_CLAP", [("Prova", "finto", "a/b", "latest", {"windows": r"plugin\.zip"}),
+                                                ("Altro", "finto", "a/c", "latest", {"macos": r"x\.zip"})])
+    monkeypatch.setattr(script, "asset_github", lambda *a: "https://example.invalid/plugin.zip")
+    monkeypatch.setattr(script, "scarica_file", lambda url, dest: dest.write_bytes(archive.read_bytes()))
+    script.installa_clap()
+    assert (tmp_path / "clap" / "Prova.clap").read_text() == "finto"
+    assert not (tmp_path / "clap" / "Prova.vst3").exists()               # solo i CLAP
+    assert not downloads.clap_unavailable()
+    monkeypatch.setattr(script, "chiave_sistema", lambda: "linux-aarch64")
+    assert downloads.clap_unavailable()                                   # nessun plugin per questo sistema
+    item = next(i for i in downloads.catalog() if i.key == "clap")
+    assert "Prova" not in item.detail
+
+
+def test_real_clap_list_has_no_vst3_twin(script):
+    """La voce CLAP e' per i plugin senza VST3: degli altri SoundText mostra il VST3."""
+    assert script.PLUGIN_CLAP
+    assert not {p[0] for p in script.PLUGIN_CLAP} & {p[0] for p in script.PLUGIN_VST3}
+
+
+def test_deb_package_is_opened_without_installing(script, tmp_path):
+    """Un .deb (i plugin GuitarML su Linux) e' un archivio "ar" con dentro data.tar.*."""
+    import io
+    import lzma
+    import shutil
+    import subprocess
+    import tarfile
+    data = io.BytesIO()
+    with tarfile.open(fileobj=data, mode="w:xz") as t:
+        content = b"finto plugin"
+        info = tarfile.TarInfo("./usr/local/lib/vst3/Prova.vst3/Contents/x86_64-linux/Prova.so")
+        info.size = len(content)
+        t.addfile(info, io.BytesIO(content))
+
+    def member(name, payload):
+        header = f"{name:<16}{0:<12}{0:<6}{0:<6}{'100644':<8}{len(payload):<10}`\n".encode("ascii")
+        return header + payload + (b"\n" if len(payload) % 2 else b"")
+
+    deb = tmp_path / "prova.deb"
+    deb.write_bytes(b"!<arch>\n" + member("debian-binary", b"2.0\n") + member("control.tar.xz", b"xyz")
+                    + member("data.tar.xz", data.getvalue()))
+    script.estrai(deb, tmp_path / "estratto")
+    script.copia_vst3(tmp_path / "estratto", tmp_path / "vst3")
+    assert (tmp_path / "vst3" / "Prova.vst3" / "Contents" / "x86_64-linux" / "Prova.so").read_bytes() == b"finto plugin"
+    if shutil.which("zstd") and shutil.which("tar"):          # i .deb recenti comprimono con zstd
+        (tmp_path / "data.tar").write_bytes(lzma.decompress(data.getvalue()))
+        subprocess.run(["zstd", "-q", str(tmp_path / "data.tar")], check=True)
+        (tmp_path / "zst.deb").write_bytes(b"!<arch>\n" + member("debian-binary", b"2.0\n")
+                                           + member("data.tar.zst", (tmp_path / "data.tar.zst").read_bytes()))
+        script.estrai(tmp_path / "zst.deb", tmp_path / "estratto-zst")
+        assert list((tmp_path / "estratto-zst").rglob("Prova.so"))
+    (tmp_path / "rotto.deb").write_bytes(b"non e' un pacchetto")
+    with pytest.raises(script.Errore):
+        script.estrai(tmp_path / "rotto.deb", tmp_path / "altro")
+
+
 def test_lv2_item_is_offered_only_on_linux(script, monkeypatch):
     from gui.download_dialog import DownloadDialog, KEY_ROLE
     for system, enabled in (("linux", True), ("windows", False)):
@@ -254,7 +319,8 @@ def test_group_checkbox_checks_every_instrument(script):
 def test_sources_cover_every_kind_of_item():
     keys = {s.key for s in downloads.sources()}
     assert {"sfz:piano", "sfz:fashionbass", "sf:sf-musescore", "profili-nam", "casse-ir", "nam-plugin",
-            "vst3:Dexed", "lv2:Geonkick", "surge", "sfizz-deb", "libreria"} <= keys
+            "vst3:Dexed", "vst3:AIDA-X", "lv2:Geonkick", "lv2:Ratatouille", "clap:Ratatouille", "surge", "sfizz-deb",
+            "libreria"} <= keys
 
 
 def test_overrides_reach_the_script_and_the_modules(script, monkeypatch):

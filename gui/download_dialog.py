@@ -108,7 +108,8 @@ class DownloadDialog(QDialog):
             terminal_only = linux_host and not shutil.which("pkexec")
             unavailable = ((item.key == "nam-plugin" and script is not None
                             and script.SISTEMA not in script.NAM_PLUGIN_FILES)
-                           or (item.key == "lv2" and downloads.lv2_unavailable()))
+                           or (item.key == "lv2" and downloads.lv2_unavailable())
+                           or (item.key == "clap" and downloads.clap_unavailable()))
             if terminal_only:
                 row.setText(2, tr("dal terminale"))
                 row.setToolTip(2, tr("Su Linux si installano con apt, che chiede la password: dal terminale, "
