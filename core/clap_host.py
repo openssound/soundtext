@@ -795,13 +795,13 @@ class ClapInstance:
             event.value = value
             events.append(event)
         self._pending_values = {}
-        for time, data in sorted(midi, key=lambda e: e[0]):
+        for frame, data in sorted(midi, key=lambda e: e[0]):
             if self._midi_dialect is None or not data:
                 continue
             status = data[0] & 0xF0
             if self._midi_dialect == _DIALECT_MIDI:
                 event = _MidiEvent()
-                event.header = _EventHeader(ctypes.sizeof(_MidiEvent), int(time), 0, _EVENT_MIDI, 0)
+                event.header = _EventHeader(ctypes.sizeof(_MidiEvent), int(frame), 0, _EVENT_MIDI, 0)
                 event.port_index = 0
                 for i in range(3):
                     event.data[i] = data[i] if i < len(data) else 0
@@ -809,7 +809,7 @@ class ClapInstance:
             elif status in (0x80, 0x90) and len(data) >= 3:
                 on = status == 0x90 and data[2] > 0
                 event = _NoteEvent()
-                event.header = _EventHeader(ctypes.sizeof(_NoteEvent), int(time), 0,
+                event.header = _EventHeader(ctypes.sizeof(_NoteEvent), int(frame), 0,
                                             _EVENT_NOTE_ON if on else _EVENT_NOTE_OFF, 0)
                 event.note_id, event.port_index, event.channel, event.key = -1, 0, data[0] & 0x0F, data[1]
                 event.velocity = data[2] / 127.0
