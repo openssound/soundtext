@@ -157,6 +157,40 @@ def test_view_buttons_move_to_the_second_row_when_even_that_does_not_fit():
         _app.setFont(old_font)
 
 
+def test_toolbar_parts_go_back_up_after_a_narrow_window():
+    """Una finestra nuova nasce stretta, con riquadro Brano e pulsanti di
+    vista nella riga in fondo; allargata quanto basta per la barra intera,
+    devono risalire tutti e due, anche se il conto fatto da giu' era piu'
+    largo (su Windows il riquadro restava giu': la CI lo vedeva con la barra
+    larga 1591 px in una finestra di 1600)."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 19px; }")
+    try:
+        probe = _window(width=3600)
+        full = probe.first_row_full_width()                  # la barra intera, misurata tutta in alto
+        probe.close()
+        w = MainWindow()
+        if w.song_box_in_first_row() or w.view_buttons_in_first_row():
+            w.close()
+            pytest.skip("la finestra nuova non nasce abbastanza stretta")
+        w.resize(full + 5, 720)
+        w.show()
+        _app.processEvents()
+        _app.processEvents()
+        assert w.width() >= full
+        assert w.song_box_in_first_row() and w.view_buttons_in_first_row(), (full, w.first_row_full_width())
+        assert all(b.isVisible() for b in (w.view_structure_btn, w.view_text_btn, w.view_score_btn))
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
 @pytest.mark.parametrize("family", ["DejaVu Sans", "Noto Sans"])
 def test_toolbar_has_room_to_spare_with_wide_fonts(family):
     """DejaVu Sans (comune su Linux, quello della CI) e' piu' largo di Noto
