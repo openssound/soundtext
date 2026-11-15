@@ -1116,9 +1116,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         ribalta avanti e indietro."""
         if not hasattr(self, "_view_slot_bottom"):
             return
+        # Spostare un pezzo cambia il conto dell'altro (i pulsanti di vista che
+        # risalgono fanno posto al riquadro Brano): si rifa' finche' non cambia
+        # piu' niente, al massimo qualche volta
+        for _ in range(3):
+            if not self._place_toolbar_parts_once():
+                break
+
+    def _place_toolbar_parts_once(self) -> bool:
+        """Un passo di _place_song_box: True se ha spostato qualcosa."""
         full = self.first_row_full_width()
         song_top = full <= self.width()
         view_top = full - self._moved_width(self._song_box) <= self.width()
+        moved = False
         for widget, top_now, want_top, top_slot, bottom_slot, action in (
                 (self._song_box, self.song_box_in_first_row(), song_top,
                  self._song_slot_top, self._song_slot_bottom, self._song_top_action),
@@ -1132,10 +1142,18 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             widget.show()
             action.setVisible(want_top)
             bottom_slot.setVisible(not want_top)
+            moved = True
+        if moved:
+            # le misure della barra si aggiornano con il suo layout
+            self._main_toolbar.layout().activate()
+        return moved
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._place_song_box()
+        # e di nuovo a layout assestato: subito dopo un ridimensionamento la
+        # barra puo' riportare ancora le misure di prima
+        QTimer.singleShot(0, self, self._place_song_box)
 
     def _apply_theme(self, name: str):
         app_settings.set_theme(name)
