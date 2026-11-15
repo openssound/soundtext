@@ -6,7 +6,10 @@ Durante l'ascolto le note che suonano diventano rosse e la vista le segue
 (la finestra principale chiama show_playing_beat a ogni scatto della barra
 di avanzamento).
 
-La finestra non e' modale: resta aperta accanto all'editor. Ogni mezzo
+La stessa vista (ScoreView) sta nella finestra Partitura, non modale, che
+resta aperta accanto all'editor, e al posto del testo nella finestra
+principale (pulsante Partitura accanto a Struttura e Testo), con la sola
+traccia selezionata. Ogni mezzo
 secondo controlla se il progetto e' cambiato (lo stesso contatore delle
 modifiche del salvataggio automatico) e, dopo una breve pausa nella
 digitazione, ridisegna. Se una traccia ha un errore di sintassi resta la
@@ -227,16 +230,19 @@ class ScorePagesWidget(QWidget):
         painter.end()
 
 
-class ScoreDialog(QDialog):
-    """host: la finestra principale (project, current_track_name e il
-    contatore delle modifiche autosave.generation)."""
+class ScoreView(QWidget):
+    """La partitura con i suoi comandi (tracce, zoom, PDF, stampa): sta nella
+    finestra Partitura (ScoreDialog) e, con only_current, al posto del testo
+    nella finestra principale (pulsante Partitura, la traccia selezionata).
 
-    def __init__(self, host):
-        super().__init__(host)
+    host: la finestra principale (project, current_track_name e il
+    contatore delle modifiche autosave.generation). Si aggiorna da sola
+    finche' e' visibile."""
+
+    def __init__(self, host, only_current: bool = False, parent=None):
+        super().__init__(parent)
         self.host = host
-        self.setWindowTitle(tr("Partitura"))
-        self.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
-        self.resize(900, 760)
+        self._fixed_current = only_current
         self._pages: List[str] = []
         self._timing = None             # core.score_render.NoteTiming delle pagine mostrate
         self._playing_beat = None       # beat dell'ascolto, None da fermo
@@ -244,13 +250,18 @@ class ScoreDialog(QDialog):
         self._pending_key = None
 
         layout = QVBoxLayout(self)
+        if only_current:
+            layout.setContentsMargins(0, 0, 0, 0)
         bar = QHBoxLayout()
         self.tracks_combo = QComboBox()
         self.tracks_combo.addItem(tr("Tutte le tracce udibili"), False)
         self.tracks_combo.addItem(tr("Solo la traccia selezionata"), True)
         self.tracks_combo.currentIndexChanged.connect(lambda _i: self._schedule(now=True))
-        bar.addWidget(self.tracks_combo)
-        bar.addSpacing(12)
+        if only_current:
+            self.tracks_combo.hide()            # sempre e solo la traccia selezionata
+        else:
+            bar.addWidget(self.tracks_combo)
+            bar.addSpacing(12)
         self.zoom_out_btn = QPushButton("−")
         self.zoom_out_btn.setToolTip(tr("Riduci"))
         self.zoom_out_btn.clicked.connect(lambda: self._step_zoom(-1))
@@ -293,15 +304,20 @@ class ScoreDialog(QDialog):
 
     # ----------------------------------------------------------- contenuto
 
+    def only_current(self) -> bool:
+        return self._fixed_current or bool(self.tracks_combo.currentData())
+
     def _key(self):
-        only_current = bool(self.tracks_combo.currentData())
+        only_current = self.only_current()
         return (self.host.autosave.generation, only_current,
                 self.host.current_track_name if only_current else None)
 
     def _check_changes(self):
         key = self._key()
         if key != self._shown_key and key != self._pending_key:
-            self._schedule()
+            # un'altra traccia selezionata (il brano no): subito, non c'e' digitazione da aspettare
+            shown = self._shown_key
+            self._schedule(now=shown is not None and key[0] == shown[0])
 
     def _schedule(self, now: bool = False):
         self._pending_key = self._key()
@@ -311,8 +327,7 @@ class ScoreDialog(QDialog):
             self._delay.start()
 
     def selected_tracks(self):
-        return score_tracks(self.host.project, bool(self.tracks_combo.currentData()),
-                            self.host.current_track_name)
+        return score_tracks(self.host.project, self.only_current(), self.host.current_track_name)
 
     def refresh(self):
         self._delay.stop()
@@ -324,7 +339,13 @@ class ScoreDialog(QDialog):
             self._pages = []
             self._timing = None
             self.pages_widget.set_pages([])
-            self._set_status(tr("Nessuna traccia con note da mettere in partitura."))
+            if self.only_current() and not self.host.current_track_name:
+                self._set_status(tr("Seleziona una traccia per vederne la partitura."))
+            elif self.only_current():
+                self._set_status(tr("La traccia selezionata non ha note da mettere in partitura "
+                                    "(una traccia audio, o vuota)."))
+            else:
+                self._set_status(tr("Nessuna traccia con note da mettere in partitura."))
             return
         try:
             pages, timing = render_score_with_timing(self.host.project, tracks)
@@ -428,6 +449,32 @@ class ScoreDialog(QDialog):
         self._poll.start()
         self._check_changes()
         super().showEvent(event)
+
+
+
+
+class ScoreDialog(QDialog):
+    """La finestra Partitura (Vista -> Partitura...): non modale, con la
+    scelta fra tutte le tracce udibili e la sola traccia selezionata. I
+    comandi e lo stato sono quelli di ScoreView (self.view), che si leggono
+    anche direttamente dalla finestra (dlg.pages(), dlg.status_label...)."""
+
+    def __init__(self, host):
+        super().__init__(host)
+        self.host = host
+        self.setWindowTitle(tr("Partitura"))
+        self.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
+        self.resize(900, 760)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.view = ScoreView(host, parent=self)
+        layout.addWidget(self.view)
+
+    def __getattr__(self, name):
+        # chiamato solo per i nomi che la finestra non ha: sono della vista
+        if name == "view":
+            raise AttributeError(name)
+        return getattr(self.view, name)
 
 
 def show_selection_score(parent, project) -> None:

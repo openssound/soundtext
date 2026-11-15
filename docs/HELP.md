@@ -1912,7 +1912,8 @@ automaticamente dalla sequenza dei suoi box: lavorare a box non e' "un
 altro formato", e' solo un modo diverso di scrivere lo stesso testo.
 
 **Attivazione**: pulsanti **Struttura** / **Testo** nella barra dei
-comandi, oppure menu **Vista → Struttura brano (a box)** (scorciatoia
+comandi (il terzo, **Partitura**, mostra la traccia selezionata su
+pentagramma al posto del testo: vedi 27.2), oppure menu **Vista → Struttura brano (a box)** (scorciatoia
 `Ctrl+Shift+B`): alternano questa vista e l'editor di testo lineare
 classico. E' la vista con cui SoundText si apre di default.
 
@@ -4620,6 +4621,14 @@ breve pausa nella digitazione).
 
 **Progetto → Esporta → Partitura PDF...** fa lo stesso senza aprire la
 finestra.
+
+La partitura della **traccia selezionata** si vede anche **al posto del
+testo**, senza aprire un'altra finestra: pulsante **Partitura** nella barra
+dei comandi, accanto a **Struttura** e **Testo**. Selezionando un'altra
+traccia nella colonna a sinistra cambia la partitura; **Testo** torna alla
+notazione. Zoom, PDF e stampa sono gli stessi della finestra. In entrambe,
+durante l'ascolto, le note che suonano diventano **rosse** e la pagina le
+segue.
 
 L'impaginazione e' di **Verovio**, una libreria libera di incisione
 musicale (LGPL) installata insieme a SoundText. Se manca, la finestra

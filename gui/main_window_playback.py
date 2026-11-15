@@ -316,11 +316,12 @@ class PlaybackMixin:
             self._sync_playback_fields(self.project.tempo_bpm, self.project.time_sig)
 
     def _show_beat_in_score(self, beat):
-        """Le note che suonano evidenziate nella vista Partitura, se e' stata
-        aperta (gui.score_view.ScoreDialog.show_playing_beat); None le spegne."""
-        score = getattr(self, "_score_dialog", None)
-        if score is not None:
-            score.show_playing_beat(beat)
+        """Le note che suonano evidenziate in partitura, nella finestra
+        Partitura e al posto del testo, se sono state aperte
+        (gui.score_view.ScoreView.show_playing_beat); None le spegne."""
+        for score in (getattr(self, "_score_dialog", None), getattr(self, "score_panel", None)):
+            if score is not None:
+                score.show_playing_beat(beat)
 
     # ------------------------------------------------------ salto e loop A-B
 

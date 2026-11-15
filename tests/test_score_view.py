@@ -207,3 +207,44 @@ def test_score_dialog_highlights_what_is_playing(monkeypatch):
     assert dlg.pages_widget.highlighted() == ()
     dlg.close()
     _close(w, monkeypatch)
+
+
+@needs_verovio
+def test_score_button_shows_the_selected_track_in_place_of_the_text(monkeypatch):
+    w = _window()
+    w.arrangement_action.setChecked(True)                  # dalla Struttura...
+    w.view_score_btn.click()
+    assert not w.arrangement_action.isChecked() and w.view_score_btn.isChecked()   # ...si passa alla Partitura
+    panel = w.score_panel
+    assert w.text_stack.currentWidget() is panel
+    assert w.text_stack.currentIndex() == 1 and not w.text_tools.isVisibleTo(w)
+    assert panel.status_label.text() == "1 pagina" and not panel.tracks_combo.isVisibleTo(panel)
+    assert "Basso" not in panel.pages()[0]                 # solo la traccia selezionata
+    w.select_track("Basso")
+    panel._check_changes()                                 # un'altra traccia: subito, senza attesa
+    assert "Basso" in panel.pages()[0]
+    panel.show_playing_beat(0.5)
+    assert panel.pages_widget.highlighted()
+    w.stop()                                               # Stop: le note rosse si spengono
+    assert panel.pages_widget.highlighted() == ()
+    w.view_text_btn.click()
+    assert w.text_stack.currentIndex() == 0 and w.text_tools.isVisibleTo(w) and w.view_text_btn.isChecked()
+    w.view_score_btn.click()
+    assert w.score_panel is panel                          # una vista sola, riusata
+    w.arrangement_action.setChecked(True)                  # Struttura e ritorno (Ctrl+Shift+B): di nuovo la Partitura
+    assert w.view_structure_btn.isChecked()
+    w.arrangement_action.setChecked(False)
+    assert w.view_score_btn.isChecked() and w.text_stack.currentIndex() == 1
+    _close(w, monkeypatch)
+
+
+def test_score_button_without_verovio_stays_where_it_was(monkeypatch):
+    w = _window()
+    w.arrangement_action.setChecked(False)
+    monkeypatch.setattr(score_render, "available", lambda: False)
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a[2]))
+    w.view_score_btn.click()
+    assert "pip install verovio" in shown[0]
+    assert w.view_text_btn.isChecked() and w.text_stack.currentIndex() == 0 and w.score_panel is None
+    _close(w, monkeypatch)

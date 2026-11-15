@@ -4737,6 +4737,14 @@ ventana sigue abierta junto al editor y **se actualiza mientras escribes**
 **Proyecto → Exportar → Partitura PDF...** hace lo mismo sin abrir la
 ventana.
 
+La partitura de la **pista seleccionada** también se ve **en lugar del
+texto**, sin abrir otra ventana: botón **Partitura** en la barra de
+comandos, junto a **Estructura** y **Texto**. Al seleccionar otra pista en
+la columna de la izquierda cambia la partitura; **Texto** vuelve a la
+notación. Zoom, PDF e impresión son los mismos de la ventana. En ambas,
+durante la escucha, las notas que suenan se vuelven **rojas** y la página
+las sigue.
+
 La maquetación la hace **Verovio**, una biblioteca libre de grabado
 musical (LGPL) que se instala con SoundText. Si falta, la ventana explica
 cómo instalarla (`pip install verovio`); la exportación MusicXML funciona
