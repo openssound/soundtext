@@ -436,6 +436,18 @@ def set_plugin_dirs(dirs: List[str]):
     _save()
 
 
+def get_hide_plugin_twins(fmt: str) -> bool:
+    """Nell'elenco dei plugin, nascondere quelli di questo formato ("clap",
+    "au") che esistono anche come VST3: di solito si'."""
+    return bool(_load().get("hide_plugin_twins", {}).get(fmt, True))
+
+
+def set_hide_plugin_twins(fmt: str, hide: bool):
+    _load()
+    _cache["hide_plugin_twins"] = {**_cache.get("hide_plugin_twins", {}), fmt: bool(hide)}
+    _save()
+
+
 def get_accepted_instrument_fixes() -> List[str]:
     """Strumenti salvati come ripiego dalle versioni vecchie (vedi
     core.instruments.legacy_instrument_fix) che l'utente ha fatto correggere."""

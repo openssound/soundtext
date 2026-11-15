@@ -595,6 +595,34 @@ def test_picker_puts_unusable_plugins_last_and_disabled(monkeypatch):
     assert "bloccato" in items[2].toolTip(1)
 
 
+def test_picker_remembers_whether_clap_twins_of_a_vst3_are_hidden(monkeypatch):
+    from PySide6.QtCore import Qt
+    from core import settings
+    from gui.plugin_dialogs import PluginPickerDialog
+    _app()
+    infos = [plugins.PluginInfo(ref="vst3:/Dexed.vst3", format="vst3", name="Dexed"),
+             plugins.PluginInfo(ref="clap:/Dexed.clap|dexed", format="clap", name="Dexed")]
+    monkeypatch.setattr(plugins, "quick_scan", lambda: (list(infos), 0))
+    monkeypatch.setattr(plugins, "scan_plugins", lambda refresh=False, progress=None: list(infos))
+
+    def refs():
+        dialog = PluginPickerDialog(None)
+        deadline = time.time() + 5
+        while dialog.tree.topLevelItemCount() < 1 and time.time() < deadline:
+            _app().processEvents()
+        return dialog, [dialog.tree.topLevelItem(i).data(0, Qt.UserRole) for i in range(dialog.tree.topLevelItemCount())]
+    try:
+        dialog, shown = refs()
+        assert shown == ["vst3:/Dexed.vst3"] and dialog.hide_clap_twins.isChecked()
+        assert not dialog.hide_clap_twins.isHidden()                # la casella c'e' sempre, anche senza CLAP
+        dialog.hide_clap_twins.setChecked(False)                    # tolta la spunta: compaiono tutti e due
+        assert dialog.tree.topLevelItemCount() == 2
+        dialog, shown = refs()                                      # e la scelta resta la volta dopo
+        assert len(shown) == 2 and not dialog.hide_clap_twins.isChecked()
+    finally:
+        settings.set_hide_plugin_twins("clap", True)
+
+
 @pytest.mark.skipif(not lv2_available(), reason="libreria lilv non disponibile")
 def test_lv2_plugin_list_is_safe_from_several_threads(monkeypatch):
     """Rendendo in parallelo piu' tracce con plugin LV2, piu' thread chiedono

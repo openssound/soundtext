@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
-from core import plugins
+from core import plugins, settings as app_settings
 from core.lv2_host import decode_state as decode_lv2_state, encode_state as encode_lv2_state
 from core.plugin_worker import is_pedalboard_format
 from core.plugins import PluginError, PluginInfo, home_relative
@@ -154,16 +154,15 @@ class PluginPickerDialog(QDialog):
         self.dirs_btn.setToolTip(tr("Aggiungi le cartelle in cui hai installato i plugin VST3"))
         # molti plugin si installano sia come VST3 sia come AU: il VST3 rende il brano portabile
         self.hide_twins = QCheckBox(tr("Nascondi gli AU che esistono anche in VST3"))
-        self.hide_twins.setChecked(True)
+        self.hide_twins.setChecked(app_settings.get_hide_plugin_twins("au"))
         self.hide_twins.setToolTip(tr("Il VST3 rende il brano portabile su Linux e Windows"))
-        self.hide_twins.toggled.connect(lambda *_: self._fill())
+        self.hide_twins.toggled.connect(lambda on: self._twins_toggled("au", on))
         self.hide_twins.setVisible(MACOS)
         # lo stesso per i CLAP: lo stesso plugin non compare due volte
         self.hide_clap_twins = QCheckBox(tr("Nascondi i CLAP che esistono anche in VST3"))
-        self.hide_clap_twins.setChecked(True)
+        self.hide_clap_twins.setChecked(app_settings.get_hide_plugin_twins("clap"))
         self.hide_clap_twins.setToolTip(tr("Lo stesso plugin non compare due volte: resta il VST3"))
-        self.hide_clap_twins.toggled.connect(lambda *_: self._fill())
-        self.hide_clap_twins.setVisible(False)       # compare se ci sono plugin CLAP (vedi _fill)
+        self.hide_clap_twins.toggled.connect(lambda on: self._twins_toggled("clap", on))
         self.dirs_btn.clicked.connect(self._edit_dirs)
         row.addWidget(self.rescan_btn)
         row.addWidget(self.dirs_btn)
@@ -181,6 +180,11 @@ class PluginPickerDialog(QDialog):
         self._scan(refresh=False)
         if instrument:
             self._fill()        # "Nessuno" e lo strumento SFZ non aspettano la ricerca dei plugin
+
+    def _twins_toggled(self, fmt: str, hide: bool):
+        """La scelta vale anche le prossime volte, per strumenti ed effetti."""
+        app_settings.set_hide_plugin_twins(fmt, hide)
+        self._fill()
 
     def _scan(self, refresh: bool):
         if self._job is not None and self._job.running:
@@ -253,7 +257,6 @@ class PluginPickerDialog(QDialog):
         grey = self.tree.palette().color(QPalette.Disabled, QPalette.Text)
         twins = plugins.vst3_twins(self.infos)
         hide_twins = {"au": self.hide_twins.isChecked(), "clap": self.hide_clap_twins.isChecked()}
-        self.hide_clap_twins.setVisible(any(i.format == "clap" for i in self.infos))
         for info in sorted(self.infos, key=lambda i: not i.usable):
             text = f"{info.name} {info.vendor} {info.category}".lower()
             if query and query not in text:
