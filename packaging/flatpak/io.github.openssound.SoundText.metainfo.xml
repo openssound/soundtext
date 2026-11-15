@@ -35,7 +35,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>A song in the structure view, with the mixer</caption>
-      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.20.0/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.20.1/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <categories>
@@ -58,6 +58,18 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.20.1" date="2026-11-15">
+      <description>
+        <p>CLAP plugins get their own window and saved state, and the Flatpak installs instruments properly.</p>
+        <ul>
+          <li>CLAP plugins open their own graphical interface and keep their internal state in the song</li>
+          <li>Download and install: guitars, amplifier models and CLAP plugins, with 7z archives supported</li>
+          <li>Flatpak: downloaded instruments are kept after closing the program</li>
+          <li>The option to hide CLAP plugins that also exist as VST3 is always visible and remembered</li>
+          <li>Score view button next to Structure and Text; the toolbar rearranges on narrow windows</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.20.0" date="2026-11-14">
       <description>
         <p>Audio output through JACK, CLAP plugins, and packages for Arch Linux and Flatpak.</p>
