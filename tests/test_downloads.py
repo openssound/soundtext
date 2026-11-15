@@ -229,6 +229,28 @@ def test_linux_host_item_asks_the_password_with_pkexec(script, monkeypatch):
         dlg.close()
 
 
+def test_in_a_flatpak_the_host_item_is_not_needed(script, tmp_path, monkeypatch):
+    from gui import download_dialog
+    from gui.download_dialog import DownloadDialog, KEY_ROLE
+    from PySide6.QtCore import Qt
+    monkeypatch.setattr(script, "SISTEMA", "linux")
+    monkeypatch.setattr(script, "in_flatpak", lambda: True)             # niente apt dentro un Flatpak
+    monkeypatch.setattr(download_dialog.shutil, "which", lambda name: None)
+    dlg = DownloadDialog()
+    row = next(r for r in dlg._rows() if r.data(0, KEY_ROLE) == "host")
+    assert not row.flags() & Qt.ItemIsEnabled and row.text(2) == "non serve"
+    assert "Flatpak" in row.toolTip(2)
+    dlg.close()
+    # senza py7zr il messaggio non propone apt ne' pip, che nel Flatpak non ci sono
+    monkeypatch.setattr(script, "programma_7z", lambda: None)
+    monkeypatch.setitem(sys.modules, "py7zr", None)
+    archive = tmp_path / "strumento.7z"
+    archive.write_bytes(b"7z")
+    with pytest.raises(script.Errore) as error:
+        script.estrai(archive, tmp_path / "out")
+    assert "Flatpak" in str(error.value) and "pip install" not in str(error.value)
+
+
 def test_linux_host_installs_everything_with_one_password(script, tmp_path, monkeypatch):
     import types
     from pathlib import PureWindowsPath

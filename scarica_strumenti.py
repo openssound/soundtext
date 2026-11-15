@@ -304,6 +304,12 @@ def tr_descrizione(desc: str) -> str:
     return tr(desc)
 
 
+def in_flatpak() -> bool:
+    """SoundText gira dentro un Flatpak: niente apt ne' pip, e gli archivi
+    .7z li estrae il pacchetto py7zr incluso nel Flatpak."""
+    return os.path.exists("/.flatpak-info")
+
+
 def comando_script() -> str:
     if SISTEMA == "windows":
         return "py scarica_strumenti.py"
@@ -494,6 +500,9 @@ def estrai(file: Path, cartella: Path):
         try:
             import py7zr
         except ImportError:
+            if in_flatpak():
+                raise Errore(tr("per estrarre {} manca il pacchetto py7zr, che dovrebbe far parte del Flatpak: "
+                                "segnalalo su https://github.com/openssound/soundtext/issues", file.name))
             raise Errore(tr("per estrarre {} serve 7-Zip (esegui prima: {} host) "
                             "oppure il pacchetto Python py7zr (pip install py7zr)", file.name, comando_script()))
         with py7zr.SevenZipFile(file) as z:
@@ -1317,7 +1326,9 @@ def main(argv) -> int:
         try:
             import py7zr  # noqa: F401
         except ImportError:
-            print(tr("Attenzione: manca 7-Zip, servira' per gli strumenti in .7z (esegui prima: {} host)", comando_script()))
+            if not in_flatpak():
+                print(tr("Attenzione: manca 7-Zip, servira' per gli strumenti in .7z (esegui prima: {} host)",
+                         comando_script()))
     compila = "--compila" in argv
     argv = [arg for arg in argv if arg != "--compila"]
     cartella = None

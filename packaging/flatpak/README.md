@@ -20,14 +20,14 @@ il Flatpak:
 - si vedono il sequencer ALSA per le tastiere MIDI e i plugin LV2 installati
   come estensioni.
 
-Controlli di Flathub (`flatpak-builder-lint`): il manifest passa, con il solo
-avviso che esiste il runtime 26.08. Sulla build locale restano due errori
-sulle schermate (`appstream-external-screenshot-url`,
-`appstream-screenshots-not-mirrored-in-ostree`): sono attesi fuori da
-Flathub, che le copia sui suoi server durante la sua build.
+Controlli di Flathub (`flatpak-builder-lint`): il manifest, la build e il
+repository passano, con il solo avviso che esiste il runtime 26.08, se la
+build si fa con il comando di Flathub (`flathub-build`, sotto). Con un
+`flatpak-builder` qualsiasi restano due errori su icone e schermate
+(`appstream-external-screenshot-url`, `appstream-remote-icon-not-mirrored`),
+perché mancano le opzioni che le fanno puntare ai server di Flathub.
 
-Non ancora provati: l'ascolto dalle casse, il download dei suoni dal
-programma, la registrazione e la build con il tag di una release.
+Provata anche la build con il tag di una release (v1.20.0).
 
 ## Costruirlo in locale
 
@@ -57,7 +57,24 @@ flatpak-builder --user --install --force-clean build io.github.openssound.SoundT
 flatpak run io.github.openssound.SoundText
 ```
 
+Per rifare la build come la fa Flathub, e controllarla:
+
+```bash
+flatpak run --command=flathub-build org.flatpak.Builder io.github.openssound.SoundText.yml
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.openssound.SoundText.yml
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder builddir builddir
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+```
+
 ## Da sapere
+
+- **Scarica e installa.** Dentro un Flatpak la cartella personale è
+  temporanea: con `--persist=.` quello che SoundText scarica (`~/Strumenti`,
+  `~/.lv2`, `~/.vst3`, `~/.local/lib/soundtext`) resta in
+  `~/.var/app/io.github.openssound.SoundText`. Gli archivi `.7z` li estrae
+  `py7zr` (`EXTRA` in `genera_dipendenze.py`), perché 7-Zip, sfizz e Surge XT
+  si installerebbero con apt: nella finestra quella voce è «non serve».
+  `soundtext.sh` aggiunge `~/.lv2` a `LV2_PATH`.
 
 - **Plugin.** Dentro un Flatpak i plugin installati nel sistema
   (`/usr/lib/lv2`, `~/.vst3`, ...) non si vedono. Si usano quelli pubblicati

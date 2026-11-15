@@ -2,13 +2,28 @@
     "name": "python-deps",
     "buildsystem": "simple",
     "build-commands": [
-        "pip3 install --verbose --exists-action=i --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} --no-build-isolation \"cffi==2.1.1\" \"JACK-Client==0.5.7\" \"mido==1.3.3\" \"numpy==2.5.4\" \"packaging==26.3\" \"pedalboard==0.9.26\" \"pycparser==3.12\" \"PySide6==6.9.3\" \"PySide6_Addons==6.9.3\" \"PySide6_Essentials==6.9.3\" \"shiboken6==6.9.3\" \"sounddevice==0.5.6\" \"st-language==2.12.2\" \"verovio==6.4.1\""
+        "pip3 install --verbose --exists-action=i --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} --no-build-isolation \"backports.zstd==1.8.0\" \"brotli==1.2.1\" \"cffi==2.1.1\" \"inflate64==1.0.4\" \"JACK-Client==0.5.7\" \"mido==1.3.3\" \"multivolumefile==0.2.3\" \"numpy==2.5.4\" \"packaging==26.3\" \"pedalboard==0.9.26\" \"psutil==7.2.2\" \"py7zr==1.1.4\" \"pybcj==1.0.8\" \"pycparser==3.12\" \"pycryptodomex==3.24.2\" \"pyppmd==1.3.1\" \"PySide6==6.9.3\" \"PySide6_Addons==6.9.3\" \"PySide6_Essentials==6.9.3\" \"shiboken6==6.9.3\" \"sounddevice==0.5.6\" \"st-language==2.12.2\" \"texttable==1.7.3\" \"verovio==6.4.1\""
     ],
     "sources": [
         {
             "type": "file",
+            "url": "https://files.pythonhosted.org/packages/5d/6d/3c422b33d40aaca6e9d9fdd47f1a047ac499de749c887ab3dab62f731fb2/backports_zstd-1.8.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "44a9004f9e809ea56910d326d21946650369db59eb86edc0c76840f21530704c"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/65/85/4c57c3cd2eee42878677b4943086e6b36cefc50214a5447028268045ce63/brotli-1.2.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "264fd5b200f6f6170cb551a4b9fcaabf8aa846ddaefe72db4d5f49f9d3743df9"
+        },
+        {
+            "type": "file",
             "url": "https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
             "sha256": "a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/c0/c5/038dc2593bbc4272d87eac8c9f75692267d47f834ced888f6d81995df606/inflate64-1.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "f62a13d0327631778fa2a47c308ae2b07b2659b7bb8564783259ac65949f8c0c"
         },
         {
             "type": "file",
@@ -19,6 +34,11 @@
             "type": "file",
             "url": "https://files.pythonhosted.org/packages/fd/28/45deb15c11859d2f10702b32e71de9328a9fa494f989626916db39a9617f/mido-1.3.3-py3-none-any.whl",
             "sha256": "01033c9b10b049e4436fca2762194ca839b09a4334091dd3c34e7f4ae674fd8a"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/22/31/ec5f46fd4c83185b806aa9c736e228cb780f13990a9cf4da0beb70025fcc/multivolumefile-0.2.3-py3-none-any.whl",
+            "sha256": "237f4353b60af1703087cf7725755a1f6fcaeeea48421e1896940cd1c920d678"
         },
         {
             "type": "file",
@@ -37,8 +57,33 @@
         },
         {
             "type": "file",
+            "url": "https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/96/bd/72bace0bf4025af8ab4bf972394fab466d4b565cdbea805281fbee9a8dbc/py7zr-1.1.4-py3-none-any.whl",
+            "sha256": "f6f868a457a6bd485b78d26e619045718bcd0b7720a6bf97d5fe86a1523423e8"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/4b/cf/c4b0248051cdb7af7f38223db63427175e755db1f1a7905e781e923f6d53/pybcj-1.0.8-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "e5e67ec32176985bbf941185319a3fe385527b6826d457a8ec67dd43b5f0b5fa"
+        },
+        {
+            "type": "file",
             "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
             "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/05/18/38963ed164a09e2de52f2f8308937254bb7c1ec42ef6a9873d793c62f1bd/pycryptodomex-3.24.2-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "e340408a601003f235b50117cd16f87b2a5b4760765aafe93340eeaadeb0414d"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/64/fd/673d429df719affa1445611288aab6111c0bc87e51eb4677fe2421a1dd64/pyppmd-1.3.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "bd00522ddfcc292304577386b6c217758c0c10e1fb9ce7877ad7d3b7b821a808"
         },
         {
             "type": "file",
@@ -69,6 +114,11 @@
             "type": "file",
             "url": "https://files.pythonhosted.org/packages/cf/73/086789d36caef0de862f2edc6701aedbdd875a46bdf12ef64291ad486753/st_language-2.12.2-py3-none-any.whl",
             "sha256": "d647dc82fa2656a67cbd61a4903d67a9b7c8219ce01a8a27bf9e53329f500bb8"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/9e/16/428cc7df8670f407c7810882cf736dbc04163ec60589f3bd8ebb6a2c263a/texttable-1.7.3-py2.py3-none-any.whl",
+            "sha256": "b8eaebd6d32565ce85b79b17e2aa52815889249b37bb6dd0894d3eca67c329f8"
         },
         {
             "type": "file",

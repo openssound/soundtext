@@ -105,11 +105,17 @@ class DownloadDialog(QDialog):
             row.setData(0, KEY_ROLE, item.key)
             row.setToolTip(1, item.detail)
             linux_host = item.key == "host" and script is not None and script.SISTEMA == "linux"
-            terminal_only = linux_host and not shutil.which("pkexec")
+            flatpak_host = linux_host and script.in_flatpak()
+            terminal_only = linux_host and not flatpak_host and not shutil.which("pkexec")
             unavailable = ((item.key == "nam-plugin" and script is not None
                             and script.SISTEMA not in script.NAM_PLUGIN_FILES)
                            or (item.key == "lv2" and downloads.lv2_unavailable()))
-            if terminal_only:
+            if flatpak_host:
+                row.setText(2, tr("non serve"))
+                row.setToolTip(2, tr("Nel Flatpak gli archivi .7z si estraggono già senza 7-Zip. sfizz e Surge XT "
+                                     "si installano come estensioni Flatpak (org.freedesktop.LinuxAudio.Plugins)."))
+                row.setFlags(row.flags() & ~(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable))
+            elif terminal_only:
                 row.setText(2, tr("dal terminale"))
                 row.setToolTip(2, tr("Su Linux si installano con apt, che chiede la password: dal terminale, "
                                      "nella cartella di SoundText, esegui ./scarica_strumenti.sh host"))

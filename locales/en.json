@@ -2857,5 +2857,8 @@
  "il plugin CLAP non entra nella finestra": "the CLAP plugin does not attach to the window",
  "per l'interfaccia dei plugin CLAP su Linux serve X11 (con Wayland: XWayland)": "the interface of CLAP plugins on Linux needs X11 (with Wayland: XWayland)",
  "il plugin CLAP ha dato un errore durante l'elaborazione": "the CLAP plugin reported an error while processing",
- "il plugin CLAP ha prodotto valori non validi (NaN)": "the CLAP plugin produced invalid values (NaN)"
+ "il plugin CLAP ha prodotto valori non validi (NaN)": "the CLAP plugin produced invalid values (NaN)",
+ "non serve": "not needed",
+ "Nel Flatpak gli archivi .7z si estraggono già senza 7-Zip. sfizz e Surge XT si installano come estensioni Flatpak (org.freedesktop.LinuxAudio.Plugins).": "In the Flatpak, .7z archives are already extracted without 7-Zip. sfizz and Surge XT are installed as Flatpak extensions (org.freedesktop.LinuxAudio.Plugins).",
+ "per estrarre {} manca il pacchetto py7zr, che dovrebbe far parte del Flatpak: segnalalo su https://github.com/openssound/soundtext/issues": "to extract {} the py7zr package is missing, although it should be part of the Flatpak: please report it at https://github.com/openssound/soundtext/issues"
 }

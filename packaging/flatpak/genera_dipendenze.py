@@ -24,6 +24,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 # pacchetti senza wheel adatta: li compila il manifest
 FROM_SOURCE = ("python-rtmidi",)
+# solo nel Flatpak: estrae gli strumenti in .7z di "Scarica e installa"
+# (fuori dal Flatpak lo fa il programma 7-Zip del sistema)
+EXTRA = ("py7zr",)
 PLATFORMS = ["manylinux_2_28_x86_64", "manylinux_2_27_x86_64", "manylinux_2_17_x86_64",
              "manylinux2014_x86_64", "linux_x86_64"]
 
@@ -57,7 +60,7 @@ def main():
         report = os.path.join(tmp, "report.json")
         requirements = os.path.join(tmp, "requirements.txt")
         with open(os.path.join(ROOT, "requirements.txt"), encoding="utf-8") as f:
-            lines = _for_target(f)
+            lines = _for_target(f) + [name + "\n" for name in EXTRA]
         with open(requirements, "w", encoding="utf-8") as f:
             f.writelines(lines)
         command = [sys.executable, "-m", "pip", "install", "--dry-run", "--ignore-installed", "--quiet",

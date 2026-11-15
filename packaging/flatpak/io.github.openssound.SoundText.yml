@@ -24,6 +24,10 @@ finish-args:
   # brani, SoundFont e strumenti dell'utente
   - --filesystem=xdg-documents
   - --filesystem=xdg-music
+  # la cartella personale dentro il Flatpak e' temporanea: cosi' quello che
+  # SoundText scarica (~/Strumenti, ~/.lv2, ~/.vst3, ~/.local/lib/soundtext)
+  # resta in ~/.var/app/io.github.openssound.SoundText
+  - --persist=.
   # i plugin installati come estensioni Flatpak (sotto)
   - --env=LV2_PATH=/app/extensions/Plugins/lv2
   - --env=VST3_PATH=/app/extensions/Plugins/vst3
