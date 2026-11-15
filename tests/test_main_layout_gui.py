@@ -94,7 +94,8 @@ def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
     _app.setStyleSheet(stylesheet_for("dark"))
     try:
         w = _window(width=1600)
-        assert w.song_box_in_first_row()
+        # sulla larghezza vera: lo schermo della CI di Windows e' piu' stretto di 1600 px
+        assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width()), w.width()
         for width in (1000, 1600, 1000):
             w.resize(width, 720)
             _app.processEvents()
