@@ -2979,6 +2979,43 @@ effects, divided by family in the **+ Effect** menu:
       the page github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
       then extract the `.nam` files you are interested in into
       `profili_nam`.
+    - **Other model-based amplifiers, as plugins**: *AIDA-X*, *Ratatouille*,
+      *NeuralRack* and *Proteus* (from **Sounds → Download and install...**)
+      do the same job as the **NAM profile**, but you choose the model in
+      the plugin's own window. A *model* is a file holding the sound of a
+      real amplifier or pedal: the plugin runs the guitar through that
+      file, and with no model loaded there is no amplifier. To use them:
+      1. in the track's chain, **+ Effect → Plugin → Plugin (VST3/LV2)**
+         and choose the plugin;
+      2. on the card, **Parameters…** and then **Plugin interface…** open
+         its window;
+      3. there, load the model file (and the cabinet file, if needed) from
+         disk;
+      4. close the window: the choice stays in the project.
+
+      What differs from one to the other:
+      - **AIDA-X** plays straight away: it has one amplifier and one
+        cabinet built in. To change them, click the file name and pick
+        another: `.json` or `.aidax` models, IR cabinets in WAV or FLAC.
+        The icon next to the name turns the model or the cabinet on and
+        off.
+      - **Ratatouille** loads one or two models, `.nam` or `.json` /
+        `.aidax`, and up to two IR cabinets. With two models **Blend**
+        mixes them; with one it does nothing. On Linux it comes as LV2 and
+        CLAP, on Windows as CLAP.
+      - **NeuralRack** loads a NAM or AIDA-X model and its IR cabinet, all
+        in one plugin.
+      - **Proteus** uses its own models (`.json` files made for Proteus: it
+        does not read `.nam` files or AIDA-X ones). **Load Model** lets you
+        choose the *folder* that holds them; you download them from the
+        *ToneLibrary* at guitarml.com.
+
+      NAM and AIDA-X models are on Tone3000, like the profiles above. Keep
+      them in a folder you do not move, ideally next to the project: the
+      plugin usually remembers where the file is, and if the file is gone
+      the sound cannot be found again. If you want a ready amplifier
+      without downloading anything else, use *Chameleon* (three sounds
+      built in) or the **Recommended NAM profiles**.
 
     If a downloaded profile does not sound as you expect: an amplifier
     without a cabinet sounds harsh until you give it an IR; a pedal on its
@@ -3279,11 +3316,23 @@ More things the window can do:
   the *OB-Xf* synthesizer, the *Wolf Shaper* waveshaper and, for guitar,
   *ChowTapeModel*, *ChowCentaur* and *ChowMatrix*. On Windows the Chow
   plugins only come with their installer: the window starts it and Windows
-  asks you to confirm.
+  asks you to confirm. Also for guitar, three neural-network amplifiers
+  (GPL-3.0): *Chameleon*, with three ready-made sounds, *AIDA-X*, with one
+  amplifier and one cabinet built in, and *Proteus*; in the last two, more
+  models are loaded from their own window (**Plugin interface…**, see
+  **19.3**). *BYOD* builds a chain of distortions, pedals and
+  amplifiers, and *NeuralRack* (Linux and Windows) plays a NAM or AIDA-X
+  model with its cabinet. On Windows Chameleon, Proteus, BYOD and ChowKick
+  come only with their installer. There are also the synthesizers *JC-303*
+  (TB-303 clone), *Six Sines* (FM) and *ChowKick* (kick drum), and the
+  *Zam* effects (compressors, equalizers, delay, gate).
+- **Free CLAP plugins (without a VST3)**: *Ratatouille* (Linux and
+  Windows), a guitar amplifier that loads and blends NAM and AIDA-X models,
+  chosen from its own window. It goes into the user's CLAP folder.
 - **Free LV2 plugins** (Linux only): *Dragonfly Reverb*, *LSP Plugins*,
-  *Wolf Shaper* and the drum synthesizer *Geonkick*, in the `~/.lv2`
-  folder. If the lilv library is missing, the window asks whether to
-  install it.
+  *Wolf Shaper*, the drum synthesizer *Geonkick* and *Ratatouille*, in the
+  `~/.lv2` folder. If the lilv library is missing, the window asks whether
+  to install it.
 - **Sources...** (also from **Options → Download sources...**): the
   addresses each item is downloaded from, editable with a double-click, for
   example to use a mirror. Changed ones are in bold; **Restore the

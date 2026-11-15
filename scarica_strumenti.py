@@ -12,9 +12,15 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
                                                   Airwindows Consolidated, Dragonfly
                                                   Reverb, OB-Xf, LSP Plugins (solo Linux),
                                                   Wolf Shaper e i plugin Chow (Windows e
-                                                  macOS)
+                                                  macOS), per la chitarra AIDA-X, Chameleon,
+                                                  Proteus, BYOD e NeuralRack, i
+                                                  sintetizzatori JC-303, Six Sines e ChowKick
+                                                  e gli effetti Zam
+    python3 scarica_strumenti.py clap             plugin CLAP gratuiti che non esistono in
+                                                  VST3: Ratatouille (Linux e Windows)
     python3 scarica_strumenti.py lv2              solo Linux: plugin LV2 gratuiti (Dragonfly
-                                                  Reverb, LSP Plugins, Wolf Shaper, Geonkick)
+                                                  Reverb, LSP Plugins, Wolf Shaper, Geonkick,
+                                                  Ratatouille, NeuralRack su ARM)
     python3 scarica_strumenti.py lilv             solo Linux: la libreria lilv, con cui
                                                   SoundText usa i plugin LV2 (apt)
     python3 scarica_strumenti.py libreria         il motore SFZ sfizioso per lo strumento
@@ -34,7 +40,8 @@ Uso (su Windows "py" al posto di "python3"; su Linux anche ./scarica_strumenti.s
     python3 scarica_strumenti.py piano basso      scarica i gruppi indicati
     python3 scarica_strumenti.py tutto            tutti i gruppi (esclusi gli extra)
     python3 scarica_strumenti.py extra_basso      extra: extra_basso, extra_piano,
-                                                  extra_etnici, extra_batterie
+                                                  extra_chitarre, extra_etnici,
+                                                  extra_batterie
     python3 scarica_strumenti.py vsco-legni       orchestra (fuori da "tutto"): vsco-archi,
                                                   vsco-legni, vsco-ottoni, vsco-percussioni,
                                                   vcsl-vibrafono, vcsl-clavicembalo,
@@ -141,6 +148,16 @@ def user_vst3_dir() -> Path:
     return Path.home() / ".vst3"
 
 
+# Cartella CLAP dell'utente, fra quelle in cui SoundText li cerca (vedi
+# core.clap_host.default_clap_dirs)
+def user_clap_dir() -> Path:
+    if SISTEMA == "windows":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "Programs" / "Common" / "CLAP"
+    if SISTEMA == "macos":
+        return Path.home() / "Library" / "Audio" / "Plug-Ins" / "CLAP"
+    return Path.home() / ".clap"
+
+
 # gruppo, descrizione, URL, cartella di destinazione
 GRUPPI = [
     ("piano", "Piano a coda Salamander (SFZ+FLAC, ~740 MB)", f"{FREEPATS}/Piano/SalamanderGrandPiano/SalamanderGrandPiano-SFZ+FLAC-V3+20200602.tar.gz", "sfz"),
@@ -149,6 +166,7 @@ GRUPPI = [
     ("chitarra", "Chitarra classica spagnola (SFZ+FLAC, ~5 MB)", f"{FREEPATS}/Guitar/SpanishClassicalGuitar/SpanishClassicalGuitar-SFZ+FLAC-20190618.7z", "sfz"),
     ("chitarra-elettrica", "Chitarra elettrica pulita FreePats (SFZ+FLAC, ~125 MB)", "https://github.com/freepats/electric-guitar-FSBS-clean/releases/download/2026-08-07/EGuitarFSBS-clean-SFZ+FLAC-20260807.7z", "sfz"),
     ("chitarra-dist", "Chitarra elettrica distorta FreePats (SFZ+FLAC, ~315 MB)", "https://github.com/freepats/electric-guitar-FSBS-dist1/releases/download/2022-09-11/EGuitarFSBS-dist1-SFZ+FLAC-20220911.7z", "sfz"),
+    ("emilyguitar", "Chitarra acustica Emilyguitar Karoryfer (corde d'acciaio, CC0, ~105 MB)", "https://github.com/sfzinstruments/karoryfer.emilyguitar/releases/download/v1.001/Karoryfer.Emilyguitar.v1.001.zip", "sfz"),
     ("contrabbasso", "Contrabbasso D. Smolken (CC0, arco e pizzicato, ~265 MB)", "https://github.com/sfzinstruments/dsmolken.double-bass/releases/download/v1.001/DSmolken.double_bass.v1.001.zip", "sfz"),
     ("pastabass", "Pastabass Karoryfer (basso, CC0, ~315 MB)", "https://github.com/sfzinstruments/karoryfer.pastabass/releases/download/v1.101/Karoryfer.Pastabass.v1.101.zip", "sfz"),
     ("basso", "Basso elettrico dita (SFZ+FLAC, ~3 MB)", "https://github.com/freepats/electric-bass-YR/releases/download/2019-09-30/FingerBassYR-SFZ+FLAC-20190930.7z", "sfz"),
@@ -184,6 +202,8 @@ EXTRA = [
     ("big-little-bass", "Big Little Bass Karoryfer (basso elettrico, ~250 MB)", "https://github.com/sfzinstruments/karoryfer.big-little-bass/releases/download/v1.000/Big_Little_Bass_1000.zip", "sfz"),
     ("ergo", "Ergo Karoryfer (contrabbasso elettrico, ~190 MB)", "https://github.com/sfzinstruments/karoryfer.ergo/releases/download/v1.001/Karoryfer.Ergo_EUB.v1.001.zip", "sfz"),
     ("black-blue-bassi", "Black And Blue Basses Karoryfer (raccolta di bassi, ~960 MB)", "https://github.com/sfzinstruments/karoryfer.black-and-blue-basses/releases/download/v1.002/Black_And_Blue_Basses_1002.zip", "sfz"),
+    ("black-green-chitarre", "Black And Green Guitars Karoryfer (due chitarre elettriche pulite, da amplificare, ~480 MB)", "https://github.com/sfzinstruments/karoryfer.black-and-green-guitars/releases/download/v1.000/Karoryfer_Black_And_Green_Guitars_1000.zip", "sfz"),
+    ("shinyguitar", "Shinyguitar Karoryfer (chitarra archtop da jazz, ~370 MB)", "https://github.com/sfzinstruments/karoryfer.shinyguitar/releases/download/v1.002/Karoryfer.Shinyguitar.v1.002.zip", "sfz"),
     ("scarypiano", "Scarypiano Karoryfer (piano, ~340 MB)", "https://github.com/sfzinstruments/karoryfer.scarypiano/releases/download/v1.002/Karoryfer.Scarypiano.v1.002.zip", "sfz"),
     ("osiris-piano", "Osiris Piano (~435 MB)", "https://github.com/sfzinstruments/Osiris_Piano/releases/download/v0.925/Osiris_Piano_0925.zip", "sfz"),
     ("erhu", "Erhu cinese (~75 MB)", "https://github.com/sfzinstruments/aliexpress-erhu/releases/download/v1.000/aliexpress-erhu_v1000.zip", "sfz"),
@@ -208,6 +228,7 @@ EXTRA = [
 EXTRA_GRUPPI = [
     ("extra_basso", "~2,3 GB", "fashionbass growlybass swagbass sneakybass big-little-bass ergo black-blue-bassi"),
     ("extra_piano", "~780 MB", "scarypiano osiris-piano"),
+    ("extra_chitarre", "~850 MB", "black-green-chitarre shinyguitar"),
     ("extra_etnici", "~1,1 GB", "erhu cithara banjo squidpipes zither ganjo horsepulse war-tuba bear-sax"),
     ("extra_batterie", "~5,5 GB", "virtuosity-drums unruly-drums swirly-drums big-rusty-drums naked-drums sonor-drums hat-phat frankensnare"),
 ]
@@ -330,6 +351,8 @@ def voci_elenco() -> list:
     return ([(nome, tr_descrizione(desc)) for nome, desc, _url, _sotto in GRUPPI + EXTRA + ORCHESTRA]
             + [(nome, f"(extra, {spazio}) {membri}") for nome, spazio, membri in EXTRA_GRUPPI]
             + [("vst3", tr("plugin VST3 gratuiti nella cartella VST3 dell'utente: {}", vst3)),
+               ("clap", tr("plugin CLAP gratuiti che non esistono in VST3, nella cartella CLAP dell'utente: {}",
+                           ", ".join(nome for nome, *_r in PLUGIN_CLAP))),
                ("host", host),
                ("lv2", tr("solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: {}",
                           ", ".join(nome for nome, *_r in PLUGIN_LV2))),
@@ -507,8 +530,50 @@ def estrai(file: Path, cartella: Path):
                             "oppure il pacchetto Python py7zr (pip install py7zr)", file.name, comando_script()))
         with py7zr.SevenZipFile(file) as z:
             z.extractall(cartella)
+    elif nome.endswith(".deb"):
+        estrai_deb(file, cartella)
     else:
         raise Errore(tr("formato sconosciuto: {}", file.name))
+
+
+def estrai_deb(file: Path, cartella: Path):
+    """I file di un pacchetto .deb, senza installarlo (niente password di
+    amministratore): un .deb e' un archivio "ar" che contiene data.tar.*
+    con i file. Serve per i plugin pubblicati su Linux solo cosi'."""
+    with open(file, "rb") as f:
+        if f.read(8) != b"!<arch>\n":
+            raise Errore(tr("formato sconosciuto: {}", file.name))
+        while True:
+            intestazione = f.read(60)
+            if len(intestazione) < 60:
+                break
+            membro = intestazione[:16].decode("ascii", "replace").strip().rstrip("/")
+            dimensione = int(intestazione[48:58].decode("ascii").strip())
+            if re.fullmatch(r"data\.tar(\.(gz|xz|bz2|zst))?", membro):
+                with tempfile.TemporaryDirectory() as tmp:
+                    dati = Path(tmp) / membro
+                    dati.write_bytes(f.read(dimensione))
+                    if membro.endswith(".zst"):
+                        # zstd non e' nella libreria di Python (prima della 3.14): lo apre il tar del sistema
+                        cartella.mkdir(parents=True, exist_ok=True)
+                        try:
+                            subprocess.run(["tar", "--zstd", "-xf", str(dati), "-C", str(cartella)], check=True,
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        except (OSError, subprocess.CalledProcessError):
+                            raise Errore(tr("per aprire {} servono tar e zstd (sudo apt-get install -y zstd)",
+                                            file.name))
+                        return
+                    with tarfile.open(dati) as t:
+                        if hasattr(tarfile, "data_filter"):
+                            t.extractall(cartella, filter="data")
+                        else:
+                            for m in t.getmembers():
+                                if not _dentro(cartella, m.name) or m.issym() or m.islnk():
+                                    raise Errore(tr("percorso non valido nell'archivio: {}", m.name))
+                            t.extractall(cartella)
+                return
+            f.seek(dimensione + dimensione % 2, 1)
+    raise Errore(tr("formato sconosciuto: {}", file.name))
 
 
 def archivio_github(url_git: str) -> str:
@@ -857,6 +922,40 @@ PLUGIN_VST3 = [
      {"windows": r"ChowCentaur-Win-[\d.]+\.exe", "macos": r"ChowCentaur-Mac-[\d.]+\.dmg"}),
     ("ChowMatrix", "delay a rami (BSD-3)", "Chowdhury-DSP/ChowMatrix", "latest",
      {"windows": r"ChowMatrix-Win-[\d.]+\.exe", "macos": r"ChowMatrix-Mac-[\d.]+\.dmg"}),
+    # Amplificatori per chitarra a reti neurali. AIDA-X ha un modello e una cassa
+    # gia' dentro e ne carica altri dalla sua finestra; i due di GuitarML su Linux esistono solo
+    # come pacchetto .deb, che si apre senza installarlo (vedi estrai_deb)
+    ("AIDA-X", "amplificatore per chitarra a modelli neurali, con un amplificatore e una cassa gia' dentro (GPL-3.0)",
+     "AidaDSP/AIDA-X", "latest",
+     {"linux-x86_64": r"AIDA-X-[\d.]+-linux-x86_64\.tar\.xz", "linux-aarch64": r"AIDA-X-[\d.]+-linux-arm64\.tar\.xz",
+      "windows": r"AIDA-X-[\d.]+-win64\.zip", "macos": r"AIDA-X-[\d.]+-macos-universal-[\d.]+\.dmg"}),
+    ("Chameleon", "amplificatore per chitarra vintage con tre suoni pronti (GPL-3.0)", "GuitarML/Chameleon", "latest",
+     {"linux-x86_64": r"Chameleon-Linux-x64-[\d.]+\.deb", "windows": r"Chameleon-Win-[\d.]+\.exe",
+      "macos": r"Install-Chameleon-v[\d.]+-Mac\.dmg"}),
+    ("Proteus", "amplificatori e pedali per chitarra da modelli neurali, da caricare dalla sua finestra (GPL-3.0)",
+     "GuitarML/Proteus", "latest",
+     {"linux-x86_64": r"Proteus-Linux-x64-[\d.]+\.deb", "windows": r"Proteus-Win-[\d.]+\.exe",
+      "macos": r"Install-Proteus-v[\d.]+-Mac\.dmg"}),
+    ("BYOD", "catena di distorsioni, pedali e amplificatori per chitarra da comporre (GPL-3.0)",
+     "Chowdhury-DSP/BYOD", "latest",
+     {"linux-x86_64": r"BYOD-Linux-x64-[\d.]+\.deb", "windows": r"BYOD-Win-64bit-[\d.]+\.exe",
+      "macos": r"BYOD-Mac-[\d.]+\.dmg"}),
+    # NeuralRack su Linux ARM esiste solo in LV2 (vedi PLUGIN_LV2)
+    ("NeuralRack", "amplificatore per chitarra: un modello NAM o AIDA-X con la sua cassa IR (BSD-3)",
+     "brummer10/NeuralRack", "latest",
+     {"linux-x86_64": r"NeuralRack-v[\d.]+-vst3-linux-x86_64\.tar\.xz", "windows": r"NeuralRack-vst3-v[\d.]+-win64\.zip"}),
+    ("JC-303", "sintetizzatore di basso, clone del Roland TB-303 (GPL-3.0)", "midilab/jc303", "latest",
+     {"linux-x86_64": r"jc303-[\d.]+-linux_x64-plugins\.zip", "windows": r"jc303-[\d.]+-windows_x64-plugins\.zip",
+      "macos": r"jc303-[\d.]+-macos_universal-plugins\.zip"}),
+    ("Six Sines", "sintetizzatore FM a sei operatori (MIT)", "baconpaul/six-sines", "latest",
+     {"linux-x86_64": r"six-sines-Linux-[\d-]+-[0-9a-f]+\.zip", "windows": r"six-sines-Windows-[\d-]+-[0-9a-f]+\.zip",
+      "macos": r"six-sines-macOS-[\d-]+-[0-9a-f]+\.dmg"}),
+    ("ChowKick", "sintetizzatore di cassa in stile drum machine (BSD-3)", "Chowdhury-DSP/ChowKick", "latest",
+     {"linux-x86_64": r"ChowKick-Linux-x64-[\d.]+\.deb", "windows": r"ChowKick-Win-64bit-[\d.]+\.exe",
+      "macos": r"ChowKick-Mac-[\d.]+\.dmg"}),
+    ("Zam plugins", "compressori, equalizzatori, delay, gate e saturazione (GPL-2.0)", "zamaudio/zam-plugins", "latest",
+     {"linux-x86_64": r"zam-plugins-[\d.]+-linux-x86_64\.tar\.xz", "linux-aarch64": r"zam-plugins-[\d.]+-linux-arm64\.tar\.xz",
+      "windows": r"zam-plugins-[\d.]+-win64\.zip", "macos": r"zam-plugins-[\d.]+-macos-universal\.dmg"}),
 ]
 
 
@@ -949,6 +1048,22 @@ PLUGIN_LV2 = [
      {"linux-x86_64": r"wolf-shaper-v[\d.]+-linux-x64\.zip", "linux-aarch64": r"wolf-shaper-v[\d.]+-linux-arm64\.zip"}),
     ("Geonkick", "sintetizzatore di batteria e percussioni (GPL-3.0)", "geonkick-synthesizer/geonkick", "latest",
      {"linux-x86_64": r"GNULinux_binaries_v[\d.]+_basic\.zip"}),
+    ("Ratatouille", "amplificatore per chitarra: carica e miscela modelli NAM e AIDA-X (BSD-3)",
+     "brummer10/Ratatouille.lv2", "latest",
+     {"linux-x86_64": r"Ratatouille\.lv2-v[\d.]+-linux-x86_64\.tar\.xz",
+      "linux-aarch64": r"Ratatouille\.lv2-v[\d.]+-linux-arm64\.tar\.xz"}),
+    # su Linux x86_64 NeuralRack e' fra i VST3
+    ("NeuralRack", "amplificatore per chitarra: un modello NAM o AIDA-X con la sua cassa IR (BSD-3)",
+     "brummer10/NeuralRack", "latest", {"linux-aarch64": r"NeuralRack-v[\d.]+-lv2-linux-arm64\.tar\.xz"}),
+]
+
+# Plugin CLAP gratuiti e open source che non esistono in VST3 (di un plugin che
+# ha anche il VST3 SoundText mostra solo quello), nella cartella CLAP dell'utente
+PLUGIN_CLAP = [
+    ("Ratatouille", "amplificatore per chitarra: carica e miscela modelli NAM e AIDA-X (BSD-3)",
+     "brummer10/Ratatouille.lv2", "latest",
+     {"linux-x86_64": r"Ratatouille\.lv2-clap-v[\d.]+-linux-x86_64\.tar\.xz",
+      "windows": r"Ratatouille\.lv2-clap-v[\d.]+-win64\.zip"}),
 ]
 
 
@@ -981,18 +1096,17 @@ def installa_lilv():
     _esegui(admin + ["apt-get", "install", "-y", "liblilv-0-0"])
 
 
-def installa_lv2():
-    if SISTEMA != "linux":
-        print("== lv2: " + tr("i plugin LV2 si usano solo su Linux, salto"))
-        return
-    dest = user_lv2_dir()
+def _installa_plugin(elenco: list, dest: Path, estensione: str, dove: str) -> list:
+    """Scarica i plugin di 'elenco' disponibili per questo sistema e ne
+    copia i bundle con 'estensione' in dest; un plugin che non riesce non
+    ferma gli altri. Restituisce i nomi di quelli non riusciti."""
     falliti = []
-    for nome, desc, repo, release, modelli in PLUGIN_LV2:
+    for nome, desc, repo, release, modelli in elenco:
         modello = modelli.get(chiave_sistema())
         if modello is None:
             print(f"== {nome}: " + tr("non c'e' una versione per questo sistema, salto"))
             continue
-        print(f"== {nome} ({tr(desc)}), " + tr("nella cartella LV2 dell'utente"))
+        print(f"== {nome} ({tr(desc)}), " + dove)
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 tmp = Path(tmp)
@@ -1000,15 +1114,29 @@ def installa_lv2():
                 archivio = tmp / url.rsplit("/", 1)[-1]
                 scarica_file(url, archivio)
                 estrai(archivio, tmp / "estratto")
-                copia_vst3(tmp / "estratto", dest, ".lv2")
+                copia_vst3(tmp / "estratto", dest, estensione)
         except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
             print("   " + tr("non riuscito: {}", e))
             falliti.append(nome)
+    return falliti
+
+
+def installa_lv2():
+    if SISTEMA != "linux":
+        print("== lv2: " + tr("i plugin LV2 si usano solo su Linux, salto"))
+        return
+    falliti = _installa_plugin(PLUGIN_LV2, user_lv2_dir(), ".lv2", tr("nella cartella LV2 dell'utente"))
     if not lilv_presente():
         print("   " + tr("Attenzione: manca la libreria lilv, senza la quale SoundText non usa i plugin LV2 "
                          "({} lilv, oppure sudo apt-get install -y liblilv-0-0)", comando_script()))
     if falliti:
         raise Errore(tr("plugin LV2 non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
+
+
+def installa_clap():
+    falliti = _installa_plugin(PLUGIN_CLAP, user_clap_dir(), ".clap", tr("nella cartella CLAP dell'utente"))
+    if falliti:
+        raise Errore(tr("plugin CLAP non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
 
 
 def installa_host():
@@ -1351,6 +1479,8 @@ def main(argv) -> int:
                 installa_strumenti_compilazione()
             elif arg == "lv2":
                 installa_lv2()
+            elif arg == "clap":
+                installa_clap()
             elif arg == "lilv":
                 installa_lilv()
             elif arg == "nam-plugin":

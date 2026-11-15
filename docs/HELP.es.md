@@ -3120,6 +3120,43 @@ Los efectos disponibles, divididos por familia en el menú **+ Efecto**:
     - **Toda la colección en GitHub** (unos 260 perfiles, 108 MB): en la
       página github.com/pelennor2170/NAM_models, **Code → Download ZIP**, y
       luego extrae los `.nam` que te interesen en `profili_nam`.
+    - **Otros amplificadores de modelos, como plugins**: *AIDA-X*,
+      *Ratatouille*, *NeuralRack* y *Proteus* (desde **Sonidos → Descargar
+      e instalar...**) hacen el mismo trabajo que el **Perfil NAM**, pero
+      el modelo se elige en la ventana del plugin. Un *modelo* es un
+      archivo con el sonido de un amplificador o un pedal real: el plugin
+      hace pasar la guitarra por ese archivo, y sin un modelo cargado no
+      hay amplificador. Para usarlos:
+      1. en la cadena de la pista, **+ Efecto → Plugin → Plugin
+         (VST3/LV2)** y elige el plugin;
+      2. en la tarjeta, **Parámetros…** y luego **Interfaz del plugin…**
+         abren su ventana;
+      3. allí carga desde el disco el archivo del modelo (y, si hace
+         falta, el de la caja);
+      4. cierra la ventana: la elección queda en el proyecto.
+
+      En qué se diferencian:
+      - **AIDA-X** suena enseguida: ya lleva un amplificador y una caja.
+        Para cambiarlos haz clic en el nombre del archivo y elige otro:
+        modelos `.json` o `.aidax`, cajas IR en WAV o FLAC. El icono junto
+        al nombre enciende y apaga el modelo o la caja.
+      - **Ratatouille** carga uno o dos modelos, `.nam` o `.json` /
+        `.aidax`, y hasta dos cajas IR. Con dos modelos **Blend** los
+        mezcla; con uno solo no hace nada. En Linux está en LV2 y en CLAP,
+        en Windows en CLAP.
+      - **NeuralRack** carga un modelo NAM o AIDA-X y su caja IR, todo en
+        un plugin.
+      - **Proteus** usa modelos propios (archivos `.json` hechos para
+        Proteus: no lee los `.nam` ni los de AIDA-X). **Load Model** hace
+        elegir la *carpeta* que los contiene; se descargan de la
+        *ToneLibrary* de guitarml.com.
+
+      Los modelos NAM y AIDA-X están en Tone3000, como los perfiles de
+      arriba. Guárdalos en una carpeta que no muevas, mejor junto al
+      proyecto: el plugin suele recordar dónde está el archivo, y si el
+      archivo desaparece el sonido no se recupera. Si quieres un
+      amplificador listo sin descargar nada más, usa *Chameleon* (tres
+      sonidos ya incluidos) o los **Perfiles NAM recomendados**.
 
     Si un perfil descargado no suena como esperas: un amplificador sin caja
     suena áspero hasta que le das una IR; un pedal solo suena «pequeño», hay
@@ -3431,11 +3468,23 @@ Otras cosas que sabe hacer la ventana:
   Reverb, el sintetizador *OB-Xf*, el waveshaper *Wolf Shaper* y, para la
   guitarra, *ChowTapeModel*, *ChowCentaur* y *ChowMatrix*. En Windows los
   plugins Chow solo existen con su instalador: la ventana lo abre y Windows
-  pide confirmar.
+  pide confirmar. También para la guitarra, tres amplificadores de redes
+  neuronales (GPL-3.0): *Chameleon*, con tres sonidos listos, *AIDA-X*, con
+  un amplificador y una caja ya incluidos, y *Proteus*; en los dos últimos
+  se cargan más modelos desde su ventana (**Interfaz del plugin…**, véase
+  **19.3**). *BYOD* compone una cadena de distorsiones,
+  pedales y amplificadores, y *NeuralRack* (Linux y Windows) suena con un
+  modelo NAM o AIDA-X y su caja. En Windows Chameleon, Proteus, BYOD y
+  ChowKick tienen solo el instalador. Están además los sintetizadores
+  *JC-303* (clon del TB-303), *Six Sines* (FM) y *ChowKick* (bombo), y los
+  efectos *Zam* (compresores, ecualizadores, delay, puerta).
+- **Plugins CLAP gratuitos (sin un VST3)**: *Ratatouille* (Linux y
+  Windows), un amplificador de guitarra que carga y mezcla modelos NAM y
+  AIDA-X, elegidos desde su ventana. Va a la carpeta CLAP del usuario.
 - **Plugins LV2 gratuitos** (solo Linux): *Dragonfly Reverb*, *LSP
-  Plugins*, *Wolf Shaper* y el sintetizador de batería *Geonkick*, en la
-  carpeta `~/.lv2`. Si falta la biblioteca lilv, la ventana pregunta si
-  instalarla.
+  Plugins*, *Wolf Shaper*, el sintetizador de batería *Geonkick* y
+  *Ratatouille*, en la carpeta `~/.lv2`. Si falta la biblioteca lilv, la
+  ventana pregunta si instalarla.
 - **Orígenes...** (también desde **Opciones → Orígenes de las
   descargas...**): las direcciones desde las que se descarga cada
   elemento, modificables con doble clic, por ejemplo para usar un mirror.

@@ -3182,6 +3182,45 @@ disponibles, divisés par famille dans le menu **+ Effet** :
     - **Toute la collection sur GitHub** (environ 260 profils, 108 Mo) : sur
       la page github.com/pelennor2170/NAM_models, **Code → Download ZIP**,
       puis extrayez les `.nam` qui vous intéressent dans `profili_nam`.
+    - **D'autres amplificateurs à modèles, en plugins** : *AIDA-X*,
+      *Ratatouille*, *NeuralRack* et *Proteus* (depuis **Sons → Télécharger
+      et installer...**) font le même travail que le **Profil NAM**, mais
+      le modèle se choisit dans la fenêtre du plugin. Un *modèle* est un
+      fichier qui contient le son d'un vrai amplificateur ou d'une vraie
+      pédale : le plugin fait passer la guitare par ce fichier, et sans
+      modèle chargé il n'y a pas d'amplificateur. Pour les utiliser :
+      1. dans la chaîne de la piste, **+ Effet → Plugin → Plugin
+         (VST3/LV2)** et choisissez le plugin ;
+      2. sur la carte, **Paramètres…** puis **Interface du plugin…**
+         ouvrent sa fenêtre ;
+      3. chargez-y depuis le disque le fichier du modèle (et, au besoin,
+         celui du baffle) ;
+      4. fermez la fenêtre : le choix reste dans le projet.
+
+      Ce qui change de l'un à l'autre :
+      - **AIDA-X** sonne tout de suite : il contient déjà un amplificateur
+        et un baffle. Pour les changer, cliquez sur le nom du fichier et
+        choisissez-en un autre : modèles `.json` ou `.aidax`, baffles IR en
+        WAV ou FLAC. L'icône à côté du nom active ou coupe le modèle ou le
+        baffle.
+      - **Ratatouille** charge un ou deux modèles, `.nam` ou `.json` /
+        `.aidax`, et jusqu'à deux baffles IR. Avec deux modèles, **Blend**
+        les mélange ; avec un seul, il ne fait rien. Sous Linux il existe
+        en LV2 et en CLAP, sous Windows en CLAP.
+      - **NeuralRack** charge un modèle NAM ou AIDA-X et son baffle IR, le
+        tout dans un seul plugin.
+      - **Proteus** utilise ses propres modèles (fichiers `.json` faits
+        pour Proteus : il ne lit ni les `.nam` ni ceux d'AIDA-X). **Load
+        Model** fait choisir le *dossier* qui les contient ; on les
+        télécharge depuis la *ToneLibrary* de guitarml.com.
+
+      Les modèles NAM et AIDA-X se trouvent sur Tone3000, comme les profils
+      ci-dessus. Gardez-les dans un dossier que vous ne déplacez pas, de
+      préférence à côté du projet : le plugin retient en général
+      l'emplacement du fichier, et si le fichier disparaît le son ne se
+      retrouve pas. Si vous voulez un amplificateur prêt sans rien
+      télécharger d'autre, utilisez *Chameleon* (trois sons intégrés) ou
+      les **Profils NAM recommandés**.
 
     Si un profil téléchargé ne sonne pas comme prévu : un amplificateur sans
     baffle sonne agressif tant que vous ne lui donnez pas d'IR ; une pédale
@@ -3501,11 +3540,25 @@ Autres choses que sait faire la fenêtre :
   Reverb, le synthétiseur *OB-Xf*, le waveshaper *Wolf Shaper* et, pour la
   guitare, *ChowTapeModel*, *ChowCentaur* et *ChowMatrix*. Sous Windows,
   les plugins Chow n'existent qu'avec leur installateur : la fenêtre le
-  lance et Windows demande de confirmer.
+  lance et Windows demande de confirmer. Toujours pour la guitare, trois
+  amplificateurs à réseaux de neurones (GPL-3.0) : *Chameleon*, avec trois
+  sons prêts, *AIDA-X*, avec un amplificateur et un baffle intégrés, et
+  *Proteus* ; dans les deux derniers, d'autres modèles se chargent depuis
+  leur fenêtre (**Interface du plugin…**, voir **19.3**). *BYOD* compose une
+  chaîne de distorsions, de pédales et d'amplificateurs, et *NeuralRack*
+  (Linux et Windows) joue un modèle NAM ou AIDA-X avec son baffle. Sous
+  Windows, Chameleon, Proteus, BYOD et ChowKick n'ont que l'installateur.
+  S'y ajoutent les synthétiseurs *JC-303* (clone de la TB-303), *Six
+  Sines* (FM) et *ChowKick* (grosse caisse), et les effets *Zam*
+  (compresseurs, égaliseurs, delay, gate).
+- **Plugins CLAP gratuits (sans VST3)** : *Ratatouille* (Linux et
+  Windows), un amplificateur de guitare qui charge et mélange des modèles
+  NAM et AIDA-X, choisis depuis sa fenêtre. Il va dans le dossier CLAP de
+  l'utilisateur.
 - **Plugins LV2 gratuits** (Linux uniquement) : *Dragonfly Reverb*, *LSP
-  Plugins*, *Wolf Shaper* et le synthétiseur de batterie *Geonkick*, dans
-  le dossier `~/.lv2`. S'il manque la bibliothèque lilv, la fenêtre
-  demande s'il faut l'installer.
+  Plugins*, *Wolf Shaper*, le synthétiseur de batterie *Geonkick* et
+  *Ratatouille*, dans le dossier `~/.lv2`. S'il manque la bibliothèque
+  lilv, la fenêtre demande s'il faut l'installer.
 - **Sources...** (aussi depuis **Options → Sources des
   téléchargements...**) : les adresses d'où chaque élément est téléchargé,
   modifiables par un double-clic, par exemple pour utiliser un miroir.

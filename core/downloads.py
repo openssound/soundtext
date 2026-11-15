@@ -186,6 +186,9 @@ def catalog() -> List[Item]:
                           stamp.exists() and stamp.read_text().strip() == version))
         vst3 = ", ".join(n for n, _d, _r, _rel, modelli in script.PLUGIN_VST3 if script.chiave_sistema() in modelli)
         items.append(Item("vst3", CATEGORY_PLUGINS, tr("Plugin VST3 gratuiti"), vst3, None))
+        clap = ", ".join(n for n, _d, _r, _rel, modelli in script.PLUGIN_CLAP if script.chiave_sistema() in modelli)
+        items.append(Item("clap", CATEGORY_PLUGINS, tr("Plugin CLAP gratuiti (senza un VST3)"),
+                          clap or tr("non disponibile per questo sistema"), None))
         items.append(Item("host", CATEGORY_PLUGINS, tr("7-Zip, sfizz e Surge XT"),
                           tr("i programmi per estrarre e suonare gli strumenti"), None))
         lv2 = ", ".join(n for n, _d, _r, _rel, modelli in script.PLUGIN_LV2 if script.chiave_sistema() in modelli)
@@ -212,6 +215,13 @@ def lv2_unavailable() -> bool:
     """La voce "lv2" non vale per questo sistema (i plugin LV2 si usano solo su Linux)."""
     script = load_script()
     return script is None or script.SISTEMA != "linux"
+
+
+def clap_unavailable() -> bool:
+    """La voce "clap" non ha plugin per questo sistema."""
+    script = load_script()
+    return script is None or not any(script.chiave_sistema() in modelli
+                                     for _n, _d, _r, _rel, modelli in script.PLUGIN_CLAP)
 
 
 def lilv_missing() -> bool:
@@ -297,6 +307,8 @@ def sources() -> List[Source]:
                 for name, _d, repo, _rel, _m in script.PLUGIN_VST3]
         out += [Source(f"lv2:{name}", plugins, f"LV2: {name}", GITHUB + repo, "github")
                 for name, _d, repo, _rel, _m in script.PLUGIN_LV2]
+        out += [Source(f"clap:{name}", plugins, f"CLAP: {name}", GITHUB + repo, "github")
+                for name, _d, repo, _rel, _m in script.PLUGIN_CLAP]
         out += [Source("surge", plugins, tr("Surge XT (Windows e macOS)"), GITHUB + script.SURGE_REPO, "github"),
                 Source("surge-linux", plugins, tr("Surge XT Nightly (Linux)"), GITHUB + script.SURGE_NIGHTLY_REPO,
                        "github"),
@@ -342,7 +354,7 @@ def apply_source_overrides(script, overrides: Dict[str, str]):
         return
     for groups in (script.GRUPPI, script.EXTRA, script.ORCHESTRA):
         groups[:] = [(n, d, overrides.get(f"sfz:{n}", u), sub) for n, d, u, sub in groups]
-    for prefix, plugins in (("vst3", script.PLUGIN_VST3), ("lv2", script.PLUGIN_LV2)):
+    for prefix, plugins in (("vst3", script.PLUGIN_VST3), ("lv2", script.PLUGIN_LV2), ("clap", script.PLUGIN_CLAP)):
         plugins[:] = [(n, d, _repo(overrides[f"{prefix}:{n}"]) if f"{prefix}:{n}" in overrides else r, rel, m)
                       for n, d, r, rel, m in plugins]
     for key, attribute in (("surge", "SURGE_REPO"), ("surge-linux", "SURGE_NIGHTLY_REPO"),

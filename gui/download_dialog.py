@@ -109,7 +109,8 @@ class DownloadDialog(QDialog):
             terminal_only = linux_host and not flatpak_host and not shutil.which("pkexec")
             unavailable = ((item.key == "nam-plugin" and script is not None
                             and script.SISTEMA not in script.NAM_PLUGIN_FILES)
-                           or (item.key == "lv2" and downloads.lv2_unavailable()))
+                           or (item.key == "lv2" and downloads.lv2_unavailable())
+                           or (item.key == "clap" and downloads.clap_unavailable()))
             if flatpak_host:
                 row.setText(2, tr("non serve"))
                 row.setToolTip(2, tr("Nel Flatpak gli archivi .7z si estraggono già senza 7-Zip. sfizz e Surge XT "
