@@ -120,6 +120,42 @@ def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
         _app.setFont(old_font)
 
 
+def test_view_buttons_move_to_the_second_row_when_even_that_does_not_fit():
+    """Se la barra non entra neanche senza il riquadro Brano (i controlli di
+    Windows sono piu' larghi), scendono anche Struttura/Testo/Partitura,
+    invece di finire nascosti nel menu »; tornano su appena c'e' spazio."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 26px; }")   # una barra molto larga
+    try:
+        w = _window(width=3600)
+        full = w.first_row_full_width()
+        without_song = full - w._moved_width(w._song_box)
+        w.resize(without_song - 40, 720)                     # non entra neanche senza il riquadro Brano
+        _app.processEvents()
+        if w.width() < without_song:                         # la finestra si e' davvero stretta
+            assert not w.song_box_in_first_row() and not w.view_buttons_in_first_row()
+            assert w._view_slot_bottom.isVisible()
+        for b in (w.view_structure_btn, w.view_text_btn, w.view_score_btn):
+            assert b.isVisible()
+            assert b.mapTo(w, QPoint(b.width(), 0)).x() <= w.width()
+        w.view_text_btn.click()
+        assert w.view_text_btn.isChecked()                   # funzionano anche in basso
+        w.resize(3600, 720)
+        _app.processEvents()
+        if w.width() >= full:
+            assert w.song_box_in_first_row() and w.view_buttons_in_first_row()
+            assert not w._view_slot_bottom.isVisible()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
 @pytest.mark.parametrize("family", ["DejaVu Sans", "Noto Sans"])
 def test_toolbar_has_room_to_spare_with_wide_fonts(family):
     """DejaVu Sans (comune su Linux, quello della CI) e' piu' largo di Noto

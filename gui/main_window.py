@@ -948,7 +948,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             song_layout.addLayout(column)
         # Il riquadro Brano sta in uno "slot" della prima riga o, se la
         # prima riga non entra nella finestra, in uno della seconda (vedi
-        # _place_song_box): Struttura/Testo non finiscono mai nel menu ».
+        # _place_song_box): Struttura/Testo/Partitura non finiscono mai nel
+        # menu ». Se non basta, scendono anche loro (stesso metodo).
         self._song_box = song_box
         self._main_toolbar = toolbar
         self._song_slot_top = QWidget()
@@ -975,11 +976,20 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                           "del testo; durante l'ascolto le note che suonano diventano rosse"))
         self._view_group = QButtonGroup(self)
         self._view_group.setExclusive(True)
+        self._view_box = QWidget()
+        view_layout = QHBoxLayout(self._view_box)
+        view_layout.setContentsMargins(0, 0, 0, 0)
+        view_layout.setSpacing(toolbar.layout().spacing())
         for b in (self.view_structure_btn, self.view_text_btn, self.view_score_btn):
             b.setCheckable(True)
             b.setObjectName("viewToggle")
             self._view_group.addButton(b)
-            toolbar.addWidget(b)
+            view_layout.addWidget(b)
+        self._view_slot_top = QWidget()
+        view_top_layout = QHBoxLayout(self._view_slot_top)
+        view_top_layout.setContentsMargins(0, 0, 0, 0)
+        view_top_layout.addWidget(self._view_box)
+        self._view_top_action = toolbar.addWidget(self._view_slot_top)
         self.view_structure_btn.clicked.connect(lambda: self.arrangement_action.setChecked(True))
         self.view_text_btn.clicked.connect(lambda: self.show_score_page(False))
         self.view_score_btn.clicked.connect(lambda: self.show_score_page(True))
@@ -1026,6 +1036,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         bottom_layout.setContentsMargins(0, 0, 8, 0)
         self._song_slot_bottom.setVisible(False)
         self._bottom_row.addWidget(self._song_slot_bottom, 0, Qt.AlignVCenter)
+        # e, se non basta, anche i pulsanti Struttura/Testo/Partitura
+        self._view_slot_bottom = QWidget()
+        view_bottom_layout = QHBoxLayout(self._view_slot_bottom)
+        view_bottom_layout.setContentsMargins(0, 0, 8, 0)
+        self._view_slot_bottom.setVisible(False)
+        self._bottom_row.addWidget(self._view_slot_bottom, 0, Qt.AlignVCenter)
 
     def _tool_button(self, icon_name, tooltip, slot, color=None, checkable=False):
         """Pulsante a icona della barra dei comandi (vedi gui.icons)."""
@@ -1073,32 +1089,49 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def song_box_in_first_row(self) -> bool:
         return self._song_box.parent() is self._song_slot_top
 
+    def view_buttons_in_first_row(self) -> bool:
+        return self._view_box.parent() is self._view_slot_top
+
+    def _moved_width(self, widget) -> int:
+        return widget.sizeHint().width() + self._main_toolbar.layout().spacing()
+
     def first_row_full_width(self) -> int:
-        """La larghezza che chiede la prima riga della barra con il riquadro Brano dentro."""
+        """La larghezza che chiede la prima riga della barra con dentro il
+        riquadro Brano e i pulsanti di vista."""
         need = self._main_toolbar.sizeHint().width()
         if not self.song_box_in_first_row():
-            need += self._song_box.sizeHint().width() + self._main_toolbar.layout().spacing()
+            need += self._moved_width(self._song_box)
+        if not self.view_buttons_in_first_row():
+            need += self._moved_width(self._view_box)
         return need
 
     def _place_song_box(self):
         """Il riquadro Brano nella barra dei comandi se la barra intera entra
         nella finestra, altrimenti nella riga in fondo, accanto alla barra di
         avanzamento (con caratteri larghi, come quello di sistema di macOS, o
-        una finestra stretta). Il conto si fa sempre sulla barra completa,
-        cosi' non si ribalta avanti e indietro."""
-        if not hasattr(self, "_song_box"):
+        una finestra stretta). Se senza il riquadro la barra ancora non entra
+        (i controlli di Windows sono piu' larghi), in fondo scendono anche i
+        pulsanti Struttura/Testo/Partitura, che cosi' non finiscono mai nel
+        menu ». Il conto si fa sempre sulla barra completa, cosi' non si
+        ribalta avanti e indietro."""
+        if not hasattr(self, "_view_slot_bottom"):
             return
-        top = self.song_box_in_first_row()
-        want_top = self.first_row_full_width() <= self.width()
-        if want_top == top:
-            return
-        source, target = ((self._song_slot_bottom, self._song_slot_top) if want_top
-                          else (self._song_slot_top, self._song_slot_bottom))
-        source.layout().removeWidget(self._song_box)
-        target.layout().addWidget(self._song_box)
-        self._song_box.show()
-        self._song_top_action.setVisible(want_top)
-        self._song_slot_bottom.setVisible(not want_top)
+        full = self.first_row_full_width()
+        song_top = full <= self.width()
+        view_top = full - self._moved_width(self._song_box) <= self.width()
+        for widget, top_now, want_top, top_slot, bottom_slot, action in (
+                (self._song_box, self.song_box_in_first_row(), song_top,
+                 self._song_slot_top, self._song_slot_bottom, self._song_top_action),
+                (self._view_box, self.view_buttons_in_first_row(), view_top,
+                 self._view_slot_top, self._view_slot_bottom, self._view_top_action)):
+            if want_top == top_now:
+                continue
+            source, target = (bottom_slot, top_slot) if want_top else (top_slot, bottom_slot)
+            source.layout().removeWidget(widget)
+            target.layout().addWidget(widget)
+            widget.show()
+            action.setVisible(want_top)
+            bottom_slot.setVisible(not want_top)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
