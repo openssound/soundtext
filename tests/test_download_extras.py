@@ -189,6 +189,31 @@ def test_clap_plugins_are_copied_into_the_user_folder(script, tmp_path, monkeypa
     assert "Prova" not in item.detail
 
 
+def test_clap_of_vst3_plugins_are_copied_when_the_archive_has_them(script, tmp_path, monkeypatch, capsys):
+    with_clap, without_clap = tmp_path / "con.zip", tmp_path / "senza.zip"
+    with zipfile.ZipFile(with_clap, "w") as z:
+        z.writestr("Dexed.clap", "finto")
+        z.writestr("Dexed.vst3/finto", "x")
+    with zipfile.ZipFile(without_clap, "w") as z:
+        z.writestr("Verbo.vst3/finto", "x")
+    archives = {"con": with_clap, "senza": without_clap}
+    monkeypatch.setattr(script, "chiave_sistema", lambda: "windows")
+    monkeypatch.setattr(script, "PLUGIN_VST3", [
+        ("Dexed", "finto", "a/dexed", "latest", {"windows": r"con\.zip"}),
+        ("Verbo", "finto", "a/verbo", "latest", {"windows": r"senza\.zip"}),
+        ("Inst", "finto", "a/inst", "latest", {"windows": r"inst\.exe"}),          # installer: non si apre
+        ("Altro", "finto", "a/altro", "latest", {"macos": r"x\.zip"})])
+    monkeypatch.setattr(script, "asset_github", lambda repo, rel, modello: f"https://example.invalid/{repo[2:]}.zip")
+    monkeypatch.setattr(script, "scarica_file", lambda url, dest: dest.write_bytes(
+        archives["con" if url.endswith("dexed.zip") else "senza"].read_bytes()))
+    script.installa_clap_con_vst3()                              # un archivio senza CLAP non e' un errore
+    assert (tmp_path / "clap" / "Dexed.clap").read_text() == "finto"
+    assert sorted(p.name for p in (tmp_path / "clap").iterdir()) == ["Dexed.clap"]     # niente VST3
+    assert "nessun plugin CLAP" in capsys.readouterr().out
+    item = next(i for i in downloads.catalog() if i.key == "clap-con-vst3")
+    assert "VST3" in item.label
+
+
 def test_real_clap_list_has_no_vst3_twin(script):
     """La voce CLAP e' per i plugin senza VST3: degli altri SoundText mostra il VST3."""
     assert script.PLUGIN_CLAP

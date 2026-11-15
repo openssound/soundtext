@@ -2884,5 +2884,10 @@
  "il plugin CLAP ha prodotto valori non validi (NaN)": "el plugin CLAP produjo valores no válidos (NaN)",
  "non serve": "no hace falta",
  "Nel Flatpak gli archivi .7z si estraggono già senza 7-Zip. sfizz e Surge XT si installano come estensioni Flatpak (org.freedesktop.LinuxAudio.Plugins).": "En el Flatpak, los archivos .7z ya se extraen sin 7-Zip. sfizz y Surge XT se instalan como extensiones Flatpak (org.freedesktop.LinuxAudio.Plugins).",
- "per estrarre {} manca il pacchetto py7zr, che dovrebbe far parte del Flatpak: segnalalo su https://github.com/openssound/soundtext/issues": "para extraer {} falta el paquete py7zr, que debería formar parte del Flatpak: avísalo en https://github.com/openssound/soundtext/issues"
+ "per estrarre {} manca il pacchetto py7zr, che dovrebbe far parte del Flatpak: segnalalo su https://github.com/openssound/soundtext/issues": "para extraer {} falta el paquete py7zr, que debería formar parte del Flatpak: avísalo en https://github.com/openssound/soundtext/issues",
+ "CLAP dei plugin che hanno anche il VST3": "CLAP de los plugins que también tienen VST3",
+ "i file .clap che si trovano negli archivi dei plugin VST3 gratuiti (se ce ne sono)": "los archivos .clap que hay en los archivos de los plugins VST3 gratuitos (si los hay)",
+ "i plugin CLAP che stanno negli archivi dei plugin VST3 gratuiti, nella cartella CLAP dell'utente: {}": "los plugins CLAP que hay en los archivos de los plugins VST3 gratuitos, en la carpeta CLAP del usuario: {}",
+ "si installa con un programma di installazione, non cerco il CLAP, salto": "se instala con un programa de instalación, no busco el CLAP, lo salto",
+ "nessun plugin CLAP in questo archivio, salto": "ningún plugin CLAP en este archivo, lo salto"
 }

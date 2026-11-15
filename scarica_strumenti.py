@@ -353,6 +353,8 @@ def voci_elenco() -> list:
             + [("vst3", tr("plugin VST3 gratuiti nella cartella VST3 dell'utente: {}", vst3)),
                ("clap", tr("plugin CLAP gratuiti che non esistono in VST3, nella cartella CLAP dell'utente: {}",
                            ", ".join(nome for nome, *_r in PLUGIN_CLAP))),
+               ("clap-con-vst3", tr("i plugin CLAP che stanno negli archivi dei plugin VST3 gratuiti, "
+                                    "nella cartella CLAP dell'utente: {}", vst3)),
                ("host", host),
                ("lv2", tr("solo Linux: plugin LV2 gratuiti nella cartella LV2 dell'utente: {}",
                           ", ".join(nome for nome, *_r in PLUGIN_LV2))),
@@ -772,9 +774,10 @@ def asset_github(repo: str, release: str, modello: str) -> str:
     raise Errore(tr("nessun file {} nella release {} di {}", modello, release, repo))
 
 
-def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3"):
+def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3", obbligatorio: bool = True) -> int:
     """Copia ogni bundle (.vst3, o .lv2 con estensione=".lv2") trovato sotto
-    radice nella cartella dest."""
+    radice nella cartella dest. Restituisce quanti ne ha copiati; se non ce
+    n'e' nessuno e 'obbligatorio', e' un errore."""
     dest.mkdir(parents=True, exist_ok=True)
     trovati = 0
     for root, dirs, files in os.walk(radice):
@@ -790,8 +793,9 @@ def copia_vst3(radice: Path, dest: Path, estensione: str = ".vst3"):
                 trovati += 1
                 if nome in dirs:
                     dirs.remove(nome)            # dentro un bundle non si cerca
-    if not trovati:
+    if not trovati and obbligatorio:
         raise Errore(tr("nessun plugin {} nell'archivio", estensione[1:].upper()))
+    return trovati
 
 
 def cartella_dati_surge() -> Path:
@@ -1139,6 +1143,37 @@ def installa_clap():
         raise Errore(tr("plugin CLAP non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
 
 
+def installa_clap_con_vst3():
+    """I file .clap che stanno negli stessi archivi dei plugin VST3 gratuiti
+    (PLUGIN_VST3): per chi vuole anche il CLAP di un plugin che ha il VST3.
+    Un archivio senza CLAP, o che non si puo' aprire senza eseguirlo
+    (installer .exe, immagini .dmg), si salta; non e' un errore."""
+    dest = user_clap_dir()
+    falliti = []
+    for nome, desc, repo, release, modelli in PLUGIN_VST3:
+        modello = modelli.get(chiave_sistema())
+        if modello is None:
+            continue
+        if re.search(r"\.(exe|dmg|deb)\b", modello):
+            print(f"== {nome}: " + tr("si installa con un programma di installazione, non cerco il CLAP, salto"))
+            continue
+        print(f"== {nome} ({tr(desc)}), " + tr("nella cartella CLAP dell'utente"))
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp)
+                url = asset_github(repo, release, modello)
+                archivio = tmp / url.rsplit("/", 1)[-1]
+                scarica_file(url, archivio)
+                estrai(archivio, tmp / "estratto")
+                if not copia_vst3(tmp / "estratto", dest, ".clap", obbligatorio=False):
+                    print("   " + tr("nessun plugin CLAP in questo archivio, salto"))
+        except (Errore, OSError, subprocess.CalledProcessError, urllib.error.URLError) as e:
+            print("   " + tr("non riuscito: {}", e))
+            falliti.append(nome)
+    if falliti:
+        raise Errore(tr("plugin CLAP non installati: {} (rilancia per riprovare)", ", ".join(falliti)))
+
+
 def installa_host():
     if SISTEMA == "linux":
         host_linux()
@@ -1481,6 +1516,8 @@ def main(argv) -> int:
                 installa_lv2()
             elif arg == "clap":
                 installa_clap()
+            elif arg == "clap-con-vst3":
+                installa_clap_con_vst3()
             elif arg == "lilv":
                 installa_lilv()
             elif arg == "nam-plugin":

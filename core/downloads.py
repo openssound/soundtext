@@ -189,6 +189,9 @@ def catalog() -> List[Item]:
         clap = ", ".join(n for n, _d, _r, _rel, modelli in script.PLUGIN_CLAP if script.chiave_sistema() in modelli)
         items.append(Item("clap", CATEGORY_PLUGINS, tr("Plugin CLAP gratuiti (senza un VST3)"),
                           clap or tr("non disponibile per questo sistema"), None))
+        items.append(Item("clap-con-vst3", CATEGORY_PLUGINS, tr("CLAP dei plugin che hanno anche il VST3"),
+                          tr("i file .clap che si trovano negli archivi dei plugin VST3 gratuiti (se ce ne sono)"),
+                          None))
         items.append(Item("host", CATEGORY_PLUGINS, tr("7-Zip, sfizz e Surge XT"),
                           tr("i programmi per estrarre e suonare gli strumenti"), None))
         lv2 = ", ".join(n for n, _d, _r, _rel, modelli in script.PLUGIN_LV2 if script.chiave_sistema() in modelli)
