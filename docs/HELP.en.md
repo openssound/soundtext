@@ -4505,6 +4505,13 @@ pause in typing).
 **Project → Export → PDF score...** does the same without opening the
 window.
 
+The score of the **selected track** can also be shown **in place of the
+text**, without opening another window: the **Score** button in the command
+bar, next to **Structure** and **Text**. Selecting another track in the
+left column changes the score; **Text** goes back to the notation. Zoom, PDF
+and printing are the same as in the window. In both, during playback the
+notes being played turn **red** and the page follows them.
+
 The layout is done by **Verovio**, a free music engraving library (LGPL)
 installed together with SoundText. If it is missing, the window explains
 how to install it (`pip install verovio`); the MusicXML export works

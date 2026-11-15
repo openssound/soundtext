@@ -4847,6 +4847,14 @@ pendant la saisie** (après une courte pause).
 **Projet → Exporter → Partition PDF...** fait la même chose sans ouvrir
 la fenêtre.
 
+La partition de la **piste sélectionnée** s'affiche aussi **à la place du
+texte**, sans ouvrir d'autre fenêtre : bouton **Partition** dans la barre
+de commandes, à côté de **Structure** et **Texte**. En sélectionnant une
+autre piste dans la colonne de gauche, la partition change ; **Texte**
+revient à la notation. Zoom, PDF et impression sont ceux de la fenêtre.
+Dans les deux, pendant l'écoute, les notes jouées deviennent **rouges** et
+la page les suit.
+
 La mise en page est faite par **Verovio**, une bibliothèque libre de
 gravure musicale (LGPL) installée avec SoundText. Si elle manque, la
 fenêtre explique comment l'installer (`pip install verovio`) ; l'export

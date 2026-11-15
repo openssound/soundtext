@@ -233,9 +233,15 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         )
         relative_btn.clicked.connect(self.rewrite_relative)
         self.text_tool_buttons = (freeze_btn, relative_btn)
+        # i comandi sul testo stanno in un contenitore: nella vista Partitura
+        # spariscono tutti insieme (vedi _apply_text_page)
+        self.text_tools = QWidget()
+        tools_layout = QHBoxLayout(self.text_tools)
+        tools_layout.setContentsMargins(0, 0, 0, 0)
         for button in self.text_tool_buttons:
             button.setObjectName("textTool")
-            title_row.addWidget(button, 0, Qt.AlignTop)
+            tools_layout.addWidget(button, 0, Qt.AlignTop)
+        title_row.addWidget(self.text_tools, 0, Qt.AlignTop)
         # Come nel dialogo del box: la traccia con il contenuto dei pattern al
         # posto dei %Nome, in sola lettura, in un secondo editor (quello vero
         # resta com'e'). Visibile solo se la traccia usa dei pattern.
@@ -244,8 +250,20 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                                  "(in sola lettura)"))
         self.expand_patterns_check.toggled.connect(self._on_expand_patterns_toggled)
         self.expand_patterns_check.hide()
-        title_row.addWidget(self.expand_patterns_check, 0, Qt.AlignTop)
+        tools_layout.addWidget(self.expand_patterns_check, 0, Qt.AlignTop)
         right_layout.addLayout(title_row)
+
+        # Sotto il titolo, il testo della traccia oppure la sua partitura
+        # (pulsante Partitura, vedi _apply_text_page): due pagine
+        text_page = QWidget()
+        text_layout = QVBoxLayout(text_page)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(8)
+        self.text_stack = QStackedWidget()
+        self.text_stack.addWidget(text_page)
+        self.score_panel = None             # gui.score_view.ScoreView, creata la prima volta che serve
+        self._score_mode = False
+        right_layout.addWidget(self.text_stack, 1)
 
         # Traccia fatta di box: qui si legge il testo completo, ma si modifica
         # aprendo un box (prima lo diceva il titolo, in una frase lunga)
@@ -266,7 +284,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             f"QFrame#boxesBanner {{ border-left: 3px solid {ACCENT}; border-radius: 4px; "
             "background-color: rgba(90,169,230,28); }")
         self.boxes_banner.hide()
-        right_layout.addWidget(self.boxes_banner)
+        text_layout.addWidget(self.boxes_banner)
 
         self.editor = NotationEditor()
         # Ctrl+Z/Ctrl+Y dell'editor vanno alla cronologia unica del progetto
@@ -294,21 +312,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.editor.enable_reference_preview(self._on_editor_reference_preview)
         self.highlighter = NotationHighlighter(self.editor.document())
         self.editor.enable_line_numbers()
-        right_layout.addWidget(self.editor)
+        text_layout.addWidget(self.editor)
 
         self.expanded_editor = NotationEditor()
         self.expanded_editor.setFont(QFont("Monospace", 11))
         self.expanded_editor.setReadOnly(True)
         self._expanded_highlighter = NotationHighlighter(self.expanded_editor.document())
         self.expanded_editor.hide()
-        right_layout.addWidget(self.expanded_editor)
+        text_layout.addWidget(self.expanded_editor)
 
         # Riga sottile in fondo all'editor: sintassi valida, avvisi sulle
         # battute (un clic porta al primo) o errore (vedi _validate_current)
         self.validation_label = QLabel("")
         self.validation_label.setStyleSheet(VALIDATION_STYLE)
         self.validation_label.installEventFilter(self)
-        right_layout.addWidget(self.validation_label)
+        text_layout.addWidget(self.validation_label)
 
         # Area centrale: due pagine intercambiabili (vedi
         # _toggle_arrangement_view) - l'editor di testo classico (sopra) e la
@@ -930,7 +948,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             song_layout.addLayout(column)
         # Il riquadro Brano sta in uno "slot" della prima riga o, se la
         # prima riga non entra nella finestra, in uno della seconda (vedi
-        # _place_song_box): Struttura/Testo non finiscono mai nel menu ».
+        # _place_song_box): Struttura/Testo/Partitura non finiscono mai nel
+        # menu ». Se non basta, scendono anche loro (stesso metodo).
         self._song_box = song_box
         self._main_toolbar = toolbar
         self._song_slot_top = QWidget()
@@ -943,7 +962,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         toolbar.addWidget(spacer)
 
-        # --- Vista: Struttura / Testo ------------------------------------
+        # --- Vista: Struttura / Testo / Partitura -------------------------
         self.view_structure_btn = QToolButton()
         self.view_structure_btn.setText(tr("Struttura"))
         self.view_structure_btn.setToolTip(tr("Vista Struttura brano: tutte le tracce a box sullo stesso "
@@ -951,15 +970,29 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.view_text_btn = QToolButton()
         self.view_text_btn.setText(tr("Testo"))
         self.view_text_btn.setToolTip(tr("Vista Testo: la notazione della traccia selezionata (Ctrl+Shift+B)"))
+        self.view_score_btn = QToolButton()
+        self.view_score_btn.setText(tr("Partitura"))
+        self.view_score_btn.setToolTip(tr("Vista Partitura: la traccia selezionata su pentagramma, al posto "
+                                          "del testo; durante l'ascolto le note che suonano diventano rosse"))
         self._view_group = QButtonGroup(self)
         self._view_group.setExclusive(True)
-        for b in (self.view_structure_btn, self.view_text_btn):
+        self._view_box = QWidget()
+        view_layout = QHBoxLayout(self._view_box)
+        view_layout.setContentsMargins(0, 0, 0, 0)
+        view_layout.setSpacing(toolbar.layout().spacing())
+        for b in (self.view_structure_btn, self.view_text_btn, self.view_score_btn):
             b.setCheckable(True)
             b.setObjectName("viewToggle")
             self._view_group.addButton(b)
-            toolbar.addWidget(b)
+            view_layout.addWidget(b)
+        self._view_slot_top = QWidget()
+        view_top_layout = QHBoxLayout(self._view_slot_top)
+        view_top_layout.setContentsMargins(0, 0, 0, 0)
+        view_top_layout.addWidget(self._view_box)
+        self._view_top_action = toolbar.addWidget(self._view_slot_top)
         self.view_structure_btn.clicked.connect(lambda: self.arrangement_action.setChecked(True))
-        self.view_text_btn.clicked.connect(lambda: self.arrangement_action.setChecked(False))
+        self.view_text_btn.clicked.connect(lambda: self.show_score_page(False))
+        self.view_score_btn.clicked.connect(lambda: self.show_score_page(True))
         self.view_text_btn.setChecked(True)
 
         self._build_bottom_row()
@@ -1003,6 +1036,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         bottom_layout.setContentsMargins(0, 0, 8, 0)
         self._song_slot_bottom.setVisible(False)
         self._bottom_row.addWidget(self._song_slot_bottom, 0, Qt.AlignVCenter)
+        # e, se non basta, anche i pulsanti Struttura/Testo/Partitura
+        self._view_slot_bottom = QWidget()
+        view_bottom_layout = QHBoxLayout(self._view_slot_bottom)
+        view_bottom_layout.setContentsMargins(0, 0, 8, 0)
+        self._view_slot_bottom.setVisible(False)
+        self._bottom_row.addWidget(self._view_slot_bottom, 0, Qt.AlignVCenter)
 
     def _tool_button(self, icon_name, tooltip, slot, color=None, checkable=False):
         """Pulsante a icona della barra dei comandi (vedi gui.icons)."""
@@ -1050,32 +1089,49 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def song_box_in_first_row(self) -> bool:
         return self._song_box.parent() is self._song_slot_top
 
+    def view_buttons_in_first_row(self) -> bool:
+        return self._view_box.parent() is self._view_slot_top
+
+    def _moved_width(self, widget) -> int:
+        return widget.sizeHint().width() + self._main_toolbar.layout().spacing()
+
     def first_row_full_width(self) -> int:
-        """La larghezza che chiede la prima riga della barra con il riquadro Brano dentro."""
+        """La larghezza che chiede la prima riga della barra con dentro il
+        riquadro Brano e i pulsanti di vista."""
         need = self._main_toolbar.sizeHint().width()
         if not self.song_box_in_first_row():
-            need += self._song_box.sizeHint().width() + self._main_toolbar.layout().spacing()
+            need += self._moved_width(self._song_box)
+        if not self.view_buttons_in_first_row():
+            need += self._moved_width(self._view_box)
         return need
 
     def _place_song_box(self):
         """Il riquadro Brano nella barra dei comandi se la barra intera entra
         nella finestra, altrimenti nella riga in fondo, accanto alla barra di
         avanzamento (con caratteri larghi, come quello di sistema di macOS, o
-        una finestra stretta). Il conto si fa sempre sulla barra completa,
-        cosi' non si ribalta avanti e indietro."""
-        if not hasattr(self, "_song_box"):
+        una finestra stretta). Se senza il riquadro la barra ancora non entra
+        (i controlli di Windows sono piu' larghi), in fondo scendono anche i
+        pulsanti Struttura/Testo/Partitura, che cosi' non finiscono mai nel
+        menu ». Il conto si fa sempre sulla barra completa, cosi' non si
+        ribalta avanti e indietro."""
+        if not hasattr(self, "_view_slot_bottom"):
             return
-        top = self.song_box_in_first_row()
-        want_top = self.first_row_full_width() <= self.width()
-        if want_top == top:
-            return
-        source, target = ((self._song_slot_bottom, self._song_slot_top) if want_top
-                          else (self._song_slot_top, self._song_slot_bottom))
-        source.layout().removeWidget(self._song_box)
-        target.layout().addWidget(self._song_box)
-        self._song_box.show()
-        self._song_top_action.setVisible(want_top)
-        self._song_slot_bottom.setVisible(not want_top)
+        full = self.first_row_full_width()
+        song_top = full <= self.width()
+        view_top = full - self._moved_width(self._song_box) <= self.width()
+        for widget, top_now, want_top, top_slot, bottom_slot, action in (
+                (self._song_box, self.song_box_in_first_row(), song_top,
+                 self._song_slot_top, self._song_slot_bottom, self._song_top_action),
+                (self._view_box, self.view_buttons_in_first_row(), view_top,
+                 self._view_slot_top, self._view_slot_bottom, self._view_top_action)):
+            if want_top == top_now:
+                continue
+            source, target = (bottom_slot, top_slot) if want_top else (top_slot, bottom_slot)
+            source.layout().removeWidget(widget)
+            target.layout().addWidget(widget)
+            widget.show()
+            action.setVisible(want_top)
+            bottom_slot.setVisible(not want_top)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -1145,7 +1201,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         target = canvas_bar if checked else text_bar
         QTimer.singleShot(0, target, lambda: target.setValue(offset))
         self.center_stack.setCurrentIndex(1 if checked else 0)
-        (self.view_structure_btn if checked else self.view_text_btn).setChecked(True)
+        if checked:
+            self._sync_view_buttons()
+        else:
+            self._apply_text_page()
         # Colonna delle tracce solo nella vista Testo: nella Struttura le
         # stesse testate stanno gia' a sinistra delle righe.
         self.mixer_panel.setVisible(not checked)
@@ -1157,6 +1216,37 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             # fermata esplicitamente, altrimenti resterebbe a suonare in
             # sottofondo senza alcun controllo piu' raggiungibile.
             self.arrangement_view._preview_playback.stop()
+
+    # ------------------------------------------------------- vista Partitura
+
+    def show_score_page(self, on: bool):
+        """Pulsanti Testo e Partitura: la traccia selezionata come testo o
+        come partitura (gui.score_view.ScoreView), nello stesso posto. Dalla
+        Struttura si passa prima alla vista Testo."""
+        if on and self._score_unavailable():       # manca Verovio: resta dov'era
+            self._sync_view_buttons()
+            return
+        self._score_mode = on
+        if self.arrangement_action.isChecked():
+            self.arrangement_action.setChecked(False)   # _toggle_arrangement_view -> _apply_text_page
+        else:
+            self._apply_text_page()
+
+    def _apply_text_page(self):
+        score = self._score_mode
+        if score and self.score_panel is None:
+            from .score_view import ScoreView
+            self.score_panel = ScoreView(self, only_current=True)
+            self.text_stack.addWidget(self.score_panel)
+        self.text_stack.setCurrentIndex(1 if score else 0)
+        self.text_tools.setVisible(not score)
+        self._sync_view_buttons()
+
+    def _sync_view_buttons(self):
+        if self.arrangement_action.isChecked():
+            self.view_structure_btn.setChecked(True)
+        else:
+            (self.view_score_btn if self._score_mode else self.view_text_btn).setChecked(True)
 
     def refresh_master_fx_button(self):
         """Pulsante FX accanto al Master: acceso con la catena del master
