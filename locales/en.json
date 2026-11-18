@@ -2969,5 +2969,10 @@
  "verticale 9:16": "vertical 9:16",
  "{name} condiviso ({size} MB).": "{name} shared ({size} MB).",
  "{name} pronto ({size} MB): condivisione annullata.": "{name} ready ({size} MB): sharing cancelled.",
- "{name} scaricato ({size} MB).": "{name} downloaded ({size} MB)."
+ "{name} scaricato ({size} MB).": "{name} downloaded ({size} MB).",
+ "Idea": "Idea",
+ "Idea al volo: canticchia una melodia e diventa testo.": "Quick idea: hum a melody and it becomes text.",
+ "Quello che hai condiviso non è un brano di SoundText.": "What you shared is not a SoundText song.",
+ "Testo condiviso": "Shared text",
+ "Vibrazione leggera sul metronomo": "Light vibration on the metronome"
 }

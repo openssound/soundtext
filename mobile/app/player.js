@@ -223,6 +223,7 @@ function setPlayButton() {
   const b = $("play");
   b.textContent = state.playing ? "❚❚" : "▶";
   b.setAttribute("aria-label", state.playing ? t("Pausa") : t("Suona"));
+  if (typeof updateMediaSession === "function") updateMediaSession();
 }
 
 async function setTranspose(semitones) {
@@ -502,6 +503,7 @@ async function frame() {
     state.lastTick = tick;
     highlightAt(beat);
     scoreAt(beat);
+    buzzAt(beat);
   } catch (e) {
     console.warn(e);
   } finally {

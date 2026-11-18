@@ -1,7 +1,7 @@
 {
   "name": "SoundText Mobile (prototipo)",
   "short_name": "SoundText",
-  "description": "Prototipo della fase 0: apre un brano .st, lo suona ed evidenzia il testo.",
+  "description": "Scrivi la musica come testo, ascoltala, arrangiala e condividila: SoundText sul telefono.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",
@@ -10,7 +10,86 @@
   "background_color": "#1e1f22",
   "theme_color": "#1e1f22",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Idea al volo",
+      "short_name": "Idea",
+      "description": "Un brano nuovo: canticchia una melodia e diventa testo",
+      "url": "./?azione=idea",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nuovo brano",
+      "short_name": "Nuovo",
+      "url": "./?azione=nuovo",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Un brano in 60 secondi",
+      "short_name": "In 60 s",
+      "url": "./?azione=veloce",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ultimo brano",
+      "short_name": "Ultimo",
+      "url": "./?azione=ultimo",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./?azione=file",
+      "name": "Brano SoundText",
+      "accept": {
+        "text/plain": [
+          ".st"
+        ]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "./?azione=condividi",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

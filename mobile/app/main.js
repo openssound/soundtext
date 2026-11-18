@@ -46,6 +46,7 @@ async function main() {
   setupHum();
   setupQuick();
   setupExport();
+  setupSystem();
   setupCrea();
   setupStructure();
   setupTransform();
@@ -142,6 +143,7 @@ async function main() {
     call("transforms").then((r) => { bar.transforms = r.result; if (bar.page === 3) renderKeys(); }).catch(() => {});
     setTimeout(prefetchForOffline, 5000);
     await restored;
+    await runLaunchAction().catch(showError);
     if (!state.doc) {
       setStatus(t("Scegli un brano"));
       setView("brani");
