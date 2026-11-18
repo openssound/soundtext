@@ -26,7 +26,8 @@ function unlockInGesture() {
     try { navigator.audioSession.type = "playback"; } catch (e) {}
   }
   if (!state.ctx) {
-    state.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
+    state.ctxHint = state.ctxHint || "playback";
+    state.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: state.ctxHint });
   }
   const resumed = state.ctx.resume();
   if ($("unlockAudio").checked && !state.silentAudio) {

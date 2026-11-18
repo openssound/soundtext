@@ -97,6 +97,10 @@
 
   <!-- Crea: giro, batteria, basso, accompagnamento (generatori di SoundText) -->
   <section id="view-crea" class="view" aria-label="Crea">
+    <div class="pad-entry">
+      <button id="padChordsOpen" data-i18n>Pad degli accordi</button>
+      <button id="padDrumsOpen" data-i18n>Pad della batteria</button>
+    </div>
     <div class="gentabs" role="tablist" aria-label="Generatori">
       <button role="tab" data-gen="progression" aria-selected="true" aria-controls="genForm" data-i18n>Giro</button>
       <button role="tab" data-gen="drums" aria-selected="false" aria-controls="genForm" data-i18n>Batteria</button>
@@ -233,6 +237,45 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- I pad: gli accordi della tonalità e la batteria, per creare toccando -->
+<dialog id="padDialog" class="pad-sheet" aria-labelledby="padTitle">
+  <h2 id="padTitle"></h2>
+  <p id="padInfo" class="hint"></p>
+  <div id="padChordOpts" class="pad-opts">
+    <label><span data-i18n>Tonalità</span> <select id="padKey"></select></label>
+    <label><span data-i18n>Ogni accordo comincia</span>
+      <select id="padGrid2">
+        <option value="bar" data-i18n>alla battuta</option>
+        <option value="half" data-i18n>a mezza battuta</option>
+        <option value="beat" data-i18n>al battito</option>
+      </select>
+    </label>
+  </div>
+  <div id="padDrumOpts" class="pad-opts" hidden>
+    <label><span data-i18n>Il giro dura</span>
+      <select id="padLoop">
+        <option value="1" data-i18n>1 battuta</option>
+        <option value="2" data-i18n>2 battute</option>
+        <option value="4" data-i18n>4 battute</option>
+      </select>
+    </label>
+  </div>
+  <div id="padGrid" class="pad-grid"></div>
+  <div class="pad-controls">
+    <button id="padRecord" class="primary" aria-pressed="false" data-i18n>Registra</button>
+    <button id="padUndo" disabled data-i18n>Annulla l'ultimo</button>
+    <button id="padClear" disabled data-i18n>Svuota</button>
+  </div>
+  <pre id="padText" class="gentext" aria-label="Quello che hai suonato" translate="no"></pre>
+  <p id="padStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <div class="pad-controls">
+    <button id="padListen" disabled><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+    <button id="padAddTrack" disabled data-i18n>Aggiungi come traccia</button>
+    <button id="padAddPattern" disabled data-i18n>Aggiungi come pattern</button>
+  </div>
+  <button id="padClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Esportare l'audio (WAV, M4A) o una clip video (MP4) -->
 <dialog id="exportDialog" class="sheet" aria-labelledby="exportTitle">
   <h2 id="exportTitle" data-i18n>Esporta audio e clip</h2>
@@ -345,6 +388,7 @@
 <script src="app/quick.js"></script>
 <script src="app/effects.js"></script>
 <script src="app/export.js"></script>
+<script src="app/pads.js"></script>
 <script src="app/system.js"></script>
 <script src="app/songs-view.js"></script>
 <script src="app/create.js"></script>

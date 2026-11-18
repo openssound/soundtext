@@ -1425,6 +1425,171 @@ def quick_song(options: Optional[dict] = None) -> dict:
             "bars": total_bars, "seconds": seconds, "genre": genre, "mood": mood}
 
 
+# ------------------------------------------------------------ pad (fase 3)
+#
+# Due schermate a pad per creare toccando: gli accordi della tonalita' del brano e otto suoni di batteria.
+# Il motore da' gli accordi (con le note da suonare e le varianti: settima, sospeso, rivolto) e trasforma
+# quello che si e' toccato, con i tempi in battiti, nel testo ST di una traccia o di un pattern.
+
+_PAD_NAMES_SHARP = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+_PAD_NAMES_FLAT = ("C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B")
+_PAD_NOTE_NAMES = ("c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b")
+_PAD_MAJOR = (0, 2, 4, 5, 7, 9, 11)
+_PAD_MINOR = (0, 2, 3, 5, 7, 8, 10)
+_PAD_TRIADS = {"": (0, 4, 7), "m": (0, 3, 7), "dim": (0, 3, 6)}
+_PAD_SEVENTHS = {"maj7": (0, 4, 7, 11), "m7": (0, 3, 7, 10), "7": (0, 4, 7, 10), "m7b5": (0, 3, 6, 10)}
+# (etichetta, scostamento dalla tonica, qualita', settima)
+_PAD_MAJOR_CHORDS = (("I", 0, "", "maj7"), ("ii", 2, "m", "m7"), ("iii", 4, "m", "m7"), ("IV", 5, "", "maj7"),
+                     ("V", 7, "", "7"), ("vi", 9, "m", "m7"), ("vii°", 11, "dim", "m7b5"),
+                     ("V/V", 2, "", "7"), ("iv", 5, "m", "m7"))
+_PAD_MINOR_CHORDS = (("i", 0, "m", "m7"), ("ii°", 2, "dim", "m7b5"), ("III", 3, "", "maj7"), ("iv", 5, "m", "m7"),
+                     ("V", 7, "", "7"), ("VI", 8, "", "maj7"), ("VII", 10, "", "7"),
+                     ("v", 7, "m", "m7"), ("♭II", 1, "", "maj7"))
+PAD_DRUMS = (("kick", 36), ("snare", 38), ("hihat", 42), ("hihat_open", 46), ("tom_hi", 50), ("tom2", 45),
+             ("crash", 49), ("ride", 51))
+
+
+def _pad_midi_name(midi: int) -> str:
+    """Una nota MIDI come la scrive ST: c*4 e' il do centrale (60)."""
+    return f"{_PAD_NOTE_NAMES[midi % 12]}*{midi // 12 - 1}"
+
+
+def pad_info(key: str = "C") -> dict:
+    """I pad degli accordi per la tonalita' 'key': nove accordi (gradi della scala piu' due colori) con le note
+    da suonare e le varianti, e gli otto suoni di batteria con il loro numero MIDI.
+
+    {key, mode, chords: [{label, symbol, notes, seventh: {symbol, notes}, sus: {symbol, notes},
+    inversion: {text, notes}}], drums: [{name, midi}]}. 'text' e' il blocco di note ST di un accordo
+    rivoltato (i simboli degli accordi in ST non hanno il basso diverso: Sol/Si non si scrive)."""
+    from core.rhythm_generate import parse_key
+    tonic, mode, flats = parse_key(key)
+    names = _PAD_NAMES_FLAT if flats else _PAD_NAMES_SHARP
+    chords = []
+    for label, offset, quality, seventh in (_PAD_MAJOR_CHORDS if mode == "major" else _PAD_MINOR_CHORDS):
+        root = (tonic + offset) % 12
+        spell = _PAD_NAMES_FLAT if (flats or label.startswith("♭")) else names      # ♭II si scrive con il bemolle
+        base = 48 + root
+        triad = [base + i for i in _PAD_TRIADS[quality]]
+        notes = [base - 12] + triad                                  # il basso un'ottava sotto
+        sev = [base + i for i in _PAD_SEVENTHS[seventh]]
+        sus = [base + i for i in (0, 5, 7)]
+        first = sorted([triad[1], triad[2], triad[0] + 12])           # primo rivolto: la fondamentale sopra
+        while first[-1] > 71:
+            first = [n - 12 for n in first]
+        chords.append({
+            "label": label, "symbol": spell[root] + quality, "notes": notes,
+            "seventh": {"symbol": spell[root] + seventh, "notes": [base - 12] + sev},
+            "sus": {"symbol": spell[root] + "sus4", "notes": [base - 12] + sus},
+            "inversion": {"text": "[" + " ".join(_pad_midi_name(n) for n in first) + "]", "notes": [base - 12] + first},
+        })
+    return {"key": key, "mode": mode, "chords": chords, "drums": [{"name": n, "midi": m} for n, m in PAD_DRUMS]}
+
+
+def pad_chords_text(events: list, options: Optional[dict] = None) -> dict:
+    """Il testo di una traccia di accordi da quello che si e' toccato.
+
+    events: [{beat, text}] con 'beat' dall'inizio della registrazione e 'text' l'accordo come si scrive in
+    ST (Am, G7, Gsus4, oppure un blocco [b*3 d*4 g*4]). options: bar_beats (4), total_beats (la fine della
+    registrazione: l'ultimo accordo dura fin li', portata a una battuta intera), grid ("bar", "half" o
+    "beat": a che passo si quantizza l'attacco; il passo si riduce al battito se la meta' battuta non e' intera).
+    Restituisce {text: "4: 4Am 4F ...", bars, chords}. ValueError se non c'e' nessun accordo."""
+    options = dict(options or {})
+    bar = float(options.get("bar_beats", 4))
+    grid = options.get("grid", "bar")
+    unit = {"bar": bar, "half": bar / 2, "beat": 1.0}.get(grid)
+    if unit is None:
+        raise ValueError(f"griglia sconosciuta: {grid}")
+    if unit != int(unit):
+        unit = 1.0                                                    # durate intere: il token ST e' «4Am»
+    placed = {}
+    for ev in sorted(events, key=lambda e: float(e["beat"])):
+        step = max(0, round(float(ev["beat"]) / unit))
+        placed[step] = str(ev["text"])
+    if not placed:
+        raise ValueError("Nessun accordo: tocca almeno un pad.")
+    steps = sorted(placed)
+    total = float(options.get("total_beats") or 0)
+    # la fine: quella della registrazione, alla battuta piu' vicina, ma non prima dell'ultimo accordo
+    last_bar = math.ceil((steps[-1] + 1) * unit / bar - 1e-9) * bar
+    end = max(round(total / bar) * bar, last_bar)
+    end_step = round(end / unit)
+    tokens = []
+    if steps[0] > 0:
+        tokens.append(f"{steps[0] * unit:g}r")
+    for i, step in enumerate(steps):
+        nxt = steps[i + 1] if i + 1 < len(steps) else end_step
+        tokens.append(f"{(nxt - step) * unit:g}{placed[step]}")
+    return {"text": "4: " + " ".join(tokens), "bars": round(end / bar), "chords": len(steps)}
+
+
+def pad_drums_text(hits: list, options: Optional[dict] = None) -> dict:
+    """Il testo di un giro di batteria da quello che si e' toccato: i colpi si quantizzano a sedicesimi.
+
+    hits: [{beat, name}] nel giro (battiti da 0 alla fine del giro); options: bars (1), bar_beats (4).
+    Restituisce {text: "16: [kick hihat] 3r snare ... |", bars, hits}: una riga di sedicesimi per battuta, i
+    colpi insieme in un blocco, le pause di fila contate («3r»). ValueError senza colpi."""
+    options = dict(options or {})
+    bars = max(1, int(options.get("bars", 1)))
+    bar_beats = float(options.get("bar_beats", 4))
+    per_bar = max(1, round(bar_beats * 4))
+    total = bars * per_bar
+    names = {n for n, _m in PAD_DRUMS}
+    steps: Dict[int, List[str]] = {}
+    for hit in hits:
+        name = str(hit["name"])
+        if name not in names:
+            raise ValueError(f"suono di batteria sconosciuto: {name}")
+        step = round(float(hit["beat"]) * 4) % total
+        if name not in steps.setdefault(step, []):
+            steps[step].append(name)
+    if not steps:
+        raise ValueError("Nessun colpo: tocca almeno un pad.")
+    order = [n for n, _m in PAD_DRUMS]
+    lines = []
+    for b in range(bars):
+        tokens, rest = [], 0
+        for i in range(per_bar):
+            here = sorted(steps.get(b * per_bar + i, []), key=order.index)
+            if not here:
+                rest += 1
+                continue
+            if rest:
+                tokens.append("r" if rest == 1 else f"{rest}r")
+                rest = 0
+            tokens.append(here[0] if len(here) == 1 else "[" + " ".join(here) + "]")
+        if rest:
+            tokens.append("r" if rest == 1 else f"{rest}r")
+        lines.append(" ".join(tokens) + " |")
+    return {"text": "16: " + "\n".join(lines), "bars": bars, "hits": sum(len(v) for v in steps.values())}
+
+
+def add_pattern(text: str, name: str, body: str) -> dict:
+    """Il brano con un pattern «%Nome» nuovo, prima della prima traccia (dopo l'intestazione e gli strumenti):
+    {text, name}. Il nome ha un numero in piu' se c'e' gia'."""
+    from core.project_io import parse_project_text
+    try:
+        taken = set(parse_project_text(text, "Brano").patterns)
+    except Exception:
+        taken = set()
+    base = re.sub(r"\W", "", name) or "Pattern"
+    candidate, n = base, 2
+    while candidate in taken or "%" + candidate in taken:
+        candidate, n = f"{base}{n}", n + 1
+    lines = "\n".join("  " + line if line.strip() else "" for line in body.strip().split("\n"))
+    block = f"Pattern %{candidate}:\n{lines}\n\n"
+    # prima del primo blocco che e' una traccia: l'intestazione di una traccia non comincia con Pattern/Strumento/Mixer/Box
+    at = len(text)
+    for b in file_blocks(text):
+        header = b["header"]
+        if not re.match(r"^(Pattern|Strumento|Instrument|Mixer|Box|Master|Effetti|Effects)\b", header):
+            at = b["hstart"]
+            break
+    head = text[:at]
+    if head and not head.endswith("\n\n"):
+        head = head.rstrip("\n") + "\n\n"
+    return {"text": head + block + text[at:], "name": candidate}
+
+
 # ------------------------------------------------------------ canta (fase 2)
 #
 # Una melodia canticchiata (o un ritmo fatto con la bocca, in una traccia di

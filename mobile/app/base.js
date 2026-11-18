@@ -20,6 +20,7 @@ const state = {
   ctx: null,
   synth: null,
   audioReady: null,       // Promise
+  ctxHint: "",            // la latenza con cui e' stato creato il contesto audio ("interactive" per i pad)
   fx: null,               // gli effetti del brano aperto che l'app sa fare (engine.effects_plan)
   fxChain: null,          // la catena master collegata in questo momento
   reverbKey: "",          // il riverbero con cui e' stato creato il sintetizzatore

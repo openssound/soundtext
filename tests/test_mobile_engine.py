@@ -756,3 +756,87 @@ def test_unheard_effects_warning_lists_only_the_kinds_the_app_cannot_do():
         warnings = [w["message"] for w in e.check_text(f.read(), "jazz")["warnings"] if w["kind"] == "unsupported"]
     effects = [m for m in warnings if m.startswith("Effetti che nell'app non si sentono")]
     assert len(effects) == 1 and "nam" in effects[0] and "plugin" in effects[0] and "riverbero" not in effects[0]
+
+
+def test_pad_chords_cover_the_key_and_every_symbol_is_valid_st():
+    """Nove pad per tonalita': accordi della scala piu' due colori, con settima, sospeso e rivolto che ST sa leggere."""
+    e = _quick()
+    from core.chords import parse_chord_symbol
+    from core.project_io import parse_project_text
+    from core.rhythm_generate import extract_chords_from_track
+    for key, labels, first in (("C", ["I", "ii", "iii", "IV", "V", "vi", "vii°", "V/V", "iv"], "C"),
+                               ("Am", ["i", "ii°", "III", "iv", "V", "VI", "VII", "v", "♭II"], "Am"),
+                               ("Bb", None, "Bb"), ("Ebm", None, "Ebm"), ("F#", None, "F#")):
+        info = e.pad_info(key)
+        assert len(info["chords"]) == 9 and info["chords"][0]["symbol"] == first, key
+        if labels:
+            assert [c["label"] for c in info["chords"]] == labels
+        for chord in info["chords"]:
+            for symbol in (chord["symbol"], chord["seventh"]["symbol"], chord["sus"]["symbol"]):
+                parse_chord_symbol(symbol)                                     # nessun simbolo non valido
+            assert all(24 <= n <= 90 for n in chord["notes"]) and chord["notes"] == sorted(chord["notes"])
+            block = chord["inversion"]["text"]                                  # il rivolto e' un blocco di note ST
+            project = parse_project_text(f"ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPiano:\n  4: 4{block}\n", "x")
+            assert extract_chords_from_track(project.tracks[0].text, project.patterns, midi_dir=None)
+    flat = [c["symbol"] for c in e.pad_info("Bb")["chords"]]
+    sharp = [c["symbol"] for c in e.pad_info("E")["chords"]]
+    assert "Eb" in flat and "G#m" in sharp and not any("#" in s for s in flat)
+    assert e.pad_info("Am")["chords"][8]["symbol"] == "Bb"                      # ♭II con il bemolle anche in La minore
+    assert [d["name"] for d in e.pad_info("C")["drums"]] == ["kick", "snare", "hihat", "hihat_open", "tom_hi", "tom2", "crash", "ride"]
+
+
+def test_pad_chords_text_quantizes_taps_to_bars_or_half_bars():
+    e = _quick()
+    from core.project_io import parse_project_text
+    from core.rhythm_generate import extract_chords_from_track
+    taps = [{"beat": 0.1, "text": "Am"}, {"beat": 4.3, "text": "F"}, {"beat": 7.8, "text": "C"}, {"beat": 12.2, "text": "G7"}]
+    r = e.pad_chords_text(taps, {"total_beats": 16.4, "grid": "bar"})
+    assert r["text"] == "4: 4Am 4F 4C 4G7" and r["bars"] == 4 and r["chords"] == 4
+    project = parse_project_text(f"ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPiano:\n  {r['text']}\n", "x")
+    chords = extract_chords_from_track(project.tracks[0].text, project.patterns, midi_dir=None)
+    assert [(c.start_beat, c.duration_beats, c.root_pc) for c in chords] == [(0, 4, 9), (4, 4, 5), (8, 4, 0), (12, 4, 7)]
+    assert e.pad_chords_text([{"beat": 0, "text": "Am"}, {"beat": 2.2, "text": "G"}], {"grid": "half"})["text"] == "4: 2Am 2G"
+    # due tocchi nello stesso passo: vale l'ultimo; l'ultimo accordo arriva alla fine della registrazione
+    assert e.pad_chords_text([{"beat": 0.1, "text": "C"}, {"beat": 0.3, "text": "F"}], {"total_beats": 8})["text"] == "4: 8F"
+    # chi comincia dopo la battuta uno trova prima una pausa; una meta' battuta non intera passa al battito
+    assert e.pad_chords_text([{"beat": 4.2, "text": "Am"}], {"grid": "bar"})["text"].startswith("4: 4r 4Am")
+    assert e.pad_chords_text([{"beat": 0, "text": "Am"}, {"beat": 1.6, "text": "G"}], {"bar_beats": 3, "grid": "half"})["text"] == "4: 2Am 1G"
+    for bad in ([], [{"beat": 0, "text": "C"}]):
+        if not bad:
+            with pytest.raises(ValueError):
+                e.pad_chords_text(bad)
+    with pytest.raises(ValueError):
+        e.pad_chords_text([{"beat": 0, "text": "C"}], {"grid": "mai"})
+
+
+def test_pad_drums_text_makes_a_groove_that_suona():
+    e = _quick()
+    from core.project_io import parse_project_text
+    hits = [{"beat": 0, "name": "kick"}, {"beat": 0.02, "name": "hihat"}, {"beat": 1.0, "name": "snare"}, {"beat": 2.52, "name": "hihat"},
+            {"beat": 3.9, "name": "kick"}, {"beat": 5, "name": "crash"}]
+    r = e.pad_drums_text(hits, {"bars": 2})
+    assert r["text"] == "16: [kick hihat] 3r snare 5r hihat 5r |\nkick 3r crash 11r |" and r["hits"] == 6 and r["bars"] == 2
+    project = parse_project_text(f"ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nDrums:\n  {r['text']}\n", "x")
+    events = project.tracks[0].parsed_events(project.patterns, midi_dir=None, meter="4/4")
+    played = sorted((round(ev.start, 3), it["name"]) for ev in events if ev.kind == "block" for it in ev.items) + \
+        sorted((round(ev.start, 3), ev.name) for ev in events if ev.kind == "percussion")
+    assert (0.0, "kick") in played and (0.0, "hihat") in played and (1.0, "snare") in played and (5.0, "crash") in played
+    # un giro di una battuta: i colpi dopo la fine tornano all'inizio
+    assert e.pad_drums_text([{"beat": 4.0, "name": "kick"}], {"bars": 1})["text"] == "16: kick 15r |"
+    with pytest.raises(ValueError):
+        e.pad_drums_text([])
+    with pytest.raises(ValueError):
+        e.pad_drums_text([{"beat": 0, "name": "cabasa"}])
+
+
+def test_add_pattern_goes_before_the_first_track_and_is_valid():
+    e = _quick()
+    from core.project_io import parse_project_text
+    text = ("// idea\n\nST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPattern %Rest:\n  4: 4r |\n\nPiano:\n  1: C | F |\n\nBass:\n  4: c d |\n")
+    out = e.add_pattern(text, "Groove", "16: kick 3r snare 3r |")
+    assert out["name"] == "Groove" and out["text"].index("Pattern %Groove:") < out["text"].index("Piano:")
+    project = parse_project_text(out["text"], "x")
+    assert "Groove" in project.patterns or "%Groove" in project.patterns
+    assert [t.name for t in project.tracks] == ["Piano", "Bass"]                      # le tracce non cambiano
+    assert e.add_pattern(out["text"], "Groove", "16: snare 15r |")["name"] == "Groove2"      # nome gia' preso
+    assert e.add_pattern("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n", "G", "4: c |")["text"].endswith("  4: c |\n\n")

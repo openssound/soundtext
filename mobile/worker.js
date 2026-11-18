@@ -259,6 +259,7 @@ const CALLS = {
   dictate: "dictate", dictation_words: "dictation_words", dictate_track: "dictate_track",
   track_instruments: "track_instruments", new_track: "new_track", strip_comments: "strip_comments",
   quick_choices: "quick_choices", quick_song: "quick_song", chord_chart: "chord_chart",
+  pad_info: "pad_info", pad_chords_text: "pad_chords_text", pad_drums_text: "pad_drums_text", add_pattern: "add_pattern",
 };
 
 self.onmessage = async (ev) => {
