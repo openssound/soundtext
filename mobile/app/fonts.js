@@ -77,6 +77,7 @@ async function syncFonts(synth) {
 function resetSynth() {
   if (state.playing) pause();
   if (state.synthNode) { try { state.synthNode.disconnect(); } catch (e) {} }
+  if (state.fxChain) { state.fxChain.dispose(); state.fxChain = null; }
   if (state.synth) { try { state.synth.close(); } catch (e) {} }
   state.synth = null;
   state.synthNode = null;

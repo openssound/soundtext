@@ -10,12 +10,12 @@ importScripts("vendor/js-synthesizer/libfluidsynth-2.4.6.js", "vendor/js-synthes
 const BLOCK = 1024;
 
 self.onmessage = async (ev) => {
-  const { sf, fonts, midi, rate, fromTick, toTick, maxFrames, tailFrames } = ev.data;
+  const { sf, fonts, reverb, midi, rate, fromTick, toTick, maxFrames, tailFrames } = ev.data;
   let synth = null;
   try {
     await JSSynth.waitForReady();
     synth = new JSSynth.Synthesizer();
-    synth.init(rate, { midiChannelCount: 32 });
+    synth.init(rate, { midiChannelCount: 32, ...(reverb || {}) });        // il riverbero del brano, come nel lettore
     await synth.loadSFont(sf);
     // i SoundFont dell'utente sopra quello incluso: il predefinito (banco 0) e quelli delle tracce (banco 1, 2...)
     for (const font of fonts || []) {
@@ -59,8 +59,8 @@ self.onmessage = async (ev) => {
     }
     const length = Math.min(frames, maxFrames + tailFrames);
     const left = new Float32Array(length), right = new Float32Array(length);
-    lefts.forEach((chunk, i) => { const at = i * BLOCK; left.set(chunk.subarray(0, Math.min(BLOCK, length - at)), at); });
-    rights.forEach((chunk, i) => { const at = i * BLOCK; right.set(chunk.subarray(0, Math.min(BLOCK, length - at)), at); });
+    lefts.forEach((chunk, i) => { const at = i * BLOCK; if (at < length) left.set(chunk.subarray(0, Math.min(BLOCK, length - at)), at); });
+    rights.forEach((chunk, i) => { const at = i * BLOCK; if (at < length) right.set(chunk.subarray(0, Math.min(BLOCK, length - at)), at); });
     synth.close();
     self.postMessage({ type: "done", left, right, marks: Float64Array.from(marks), block: BLOCK, rate, musicFrames: frames - tail }, [left.buffer, right.buffer]);
   } catch (e) {

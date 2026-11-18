@@ -44,7 +44,7 @@ function exportRange() {
 
 async function exportMidi() {
   const r = await call("render", { key: "export-" + Date.now(), semitones: state.semitones, muted: silentTracks(), metronome: false,
-                                  banks: fontBanks() });
+                                  banks: fontBanks(), sends: fxSends() });
   return r.midi;
 }
 
@@ -68,7 +68,7 @@ async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress
     worker.onerror = (ev) => { worker.terminate(); reject(new Error(ev.message || "worker")); };
     const maxFrames = seconds ? Math.round(seconds * EXPORT_RATE) : 20 * 60 * EXPORT_RATE;
     worker.postMessage({
-      sf, fonts: extra.filter((f) => f.bytes), midi: midi.slice().buffer, rate: EXPORT_RATE,
+      sf, fonts: extra.filter((f) => f.bytes), reverb: reverbSettings(), midi: midi.slice().buffer, rate: EXPORT_RATE,
       fromTick: Math.round(fromBeat * TICKS_PER_BEAT), toTick: toBeat == null ? null : Math.round(toBeat * TICKS_PER_BEAT),
       maxFrames, tailFrames: Math.round((tail === undefined ? 2.5 : tail) * EXPORT_RATE),
     }, [sf, ...extra.filter((f) => f.bytes).map((f) => f.bytes)]);
@@ -145,6 +145,7 @@ async function exportAudio(kind) {
   await analyze();
   const midi = await exportMidi();
   const out = await renderOffline(midi, { fromBeat: range.fromBeat, toBeat: range.toBeat, tail: range.part ? 0.8 : 2.5 }, progress);
+  await applyMasterOffline(out);                // la catena master del brano
   const channels = [out.left, out.right];
   Wav.normalize(channels);
   if (range.part) Wav.fadeOut(channels, Math.round(EXPORT_RATE * 0.03));
@@ -385,6 +386,7 @@ async function exportClip() {
   setExportStatus(t("Calcolo l'audio…"));
   const out = await renderOffline(midi, { fromBeat: range.fromBeat, toBeat: range.toBeat, seconds: wanted, tail: 0 },
                                   (s) => setExportStatus(t("Calcolo l'audio… {s} s", { s: Math.round(s) })));
+  await applyMasterOffline(out);
   const seconds = Math.min(wanted, out.left.length / out.rate);
   Wav.normalize([out.left, out.right]);
   Wav.fadeOut([out.left, out.right], Math.round(EXPORT_RATE * 0.3));

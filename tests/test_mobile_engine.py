@@ -717,3 +717,42 @@ def test_bank_select_sends_a_pitched_track_to_its_soundfont():
     # con la trasposizione e il mute il resto continua a funzionare
     mixed = engine.midi_bytes(2, muted=[piano], banks={piano: 3})
     assert mixed != engine.midi_bytes(0)
+
+
+def test_effects_plan_keeps_what_the_app_can_do_and_lists_the_rest():
+    """Gli effetti che l'app sente: la catena master (Web Audio) e il riverbero di traccia (invio di FluidSynth);
+    il resto si elenca come non udibile."""
+    _engine("jazz_aaba.st")
+    e = sys.modules["engine"]
+    with open(os.path.join(ROOT, "examples", "jazz_1_evening_swing__sfz__plugin-areverb__nam-twin.st"), encoding="utf-8") as f:
+        text = f.read()
+    engine = e.Engine()
+    engine.load(text, "jazz")
+    plan = engine.effects_plan()
+    assert [m["kind"] for m in plan["master"]] == ["compressore", "limiter"]           # il plugin del master non si sente
+    assert plan["master"][0]["params"]["soglia"] == -14 and plan["master"][1]["params"]["tetto"] == -1
+    assert plan["sends"]["Piano"]["91"] > 0 and "Guitar" in plan["sends"]
+    assert plan["reverb"] and 0 < plan["reverb"]["room"] < 1 and plan["reverb"]["level"] > 0
+    assert {"nam", "plugin"} <= set(plan["ignored"]) and "riverbero" not in plan["ignored"]
+    assert {"compressore", "eq"} <= set(plan["ignored"])                               # per traccia non si possono fare
+    # il MIDI porta gli invii al riverbero sui canali della traccia (non su quelli delle percussioni)
+    import io
+
+    import mido
+    midi = mido.MidiFile(file=io.BytesIO(engine.midi_bytes(0, sends=plan["sends"])))
+    sent = {t.name: {m.value for m in t if m.type == "control_change" and m.control == 91} for t in midi.tracks}
+    assert plan["sends"]["Piano"]["91"] in sent["Piano"]
+    assert engine.midi_bytes(0) != engine.midi_bytes(0, sends=plan["sends"])
+    # senza effetti: niente da fare, e il MIDI resta quello di sempre
+    plain = e.Engine()
+    plain.load("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPiano:\n  4: c d e f |\n", "p")
+    assert plain.effects_plan() == {"master": [], "reverb": None, "sends": {}, "ignored": []}
+    assert plain.midi_bytes(0, sends={}) == plain.midi_bytes(0)
+
+
+def test_unheard_effects_warning_lists_only_the_kinds_the_app_cannot_do():
+    e = _quick()
+    with open(os.path.join(ROOT, "examples", "jazz_1_evening_swing__sfz__plugin-areverb__nam-twin.st"), encoding="utf-8") as f:
+        warnings = [w["message"] for w in e.check_text(f.read(), "jazz")["warnings"] if w["kind"] == "unsupported"]
+    effects = [m for m in warnings if m.startswith("Effetti che nell'app non si sentono")]
+    assert len(effects) == 1 and "nam" in effects[0] and "plugin" in effects[0] and "riverbero" not in effects[0]

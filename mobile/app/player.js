@@ -60,9 +60,10 @@ async function initAudio() {
   for (const url of WORKLET_MODULES) await ctx.audioWorklet.addModule(url);
   const synth = new JSSynth.AudioWorkletNodeSynthesizer();
   synth.init(ctx.sampleRate, { midiChannelCount: 32 });
-  const node = synth.createAudioNode(ctx, { outputChannelCount: [2] });
-  node.connect(ctx.destination);
+  const node = synth.createAudioNode(ctx, { outputChannelCount: [2], midiChannelCount: 32, ...reverbSettings() });
   state.synthNode = node;
+  state.reverbKey = reverbKey();
+  applyEffects();                               // sintetizzatore -> catena master -> uscita
   const worklet_ms = ms(t0);
 
   const t1 = performance.now();
@@ -118,6 +119,7 @@ async function play() {
   try {
     await resumed;
     if (!state.doc) return;
+    if (state.audioReady && state.reverbKey !== reverbKey()) resetSynth();     // un altro riverbero: sintetizzatore nuovo
     // testo cambiato dall'ultima analisi: si rianalizza prima di suonare
     if (!state.song || state.song.text !== state.doc.text) {
       state.pausedTick = 0;
@@ -248,9 +250,9 @@ function silentTracks() {
 // "" quando il MIDI e' quello del brano com'e' scritto
 function midiKey() {
   const silent = silentTracks();
-  const banks = fontBanks();
-  if (!state.semitones && !silent.length && !state.metronome && !Object.keys(banks).length) return "";
-  return JSON.stringify([state.semitones, silent, state.metronome, banks]);
+  const banks = fontBanks(), sends = fxSends();
+  if (!state.semitones && !silent.length && !state.metronome && !Object.keys(banks).length && !Object.keys(sends).length) return "";
+  return JSON.stringify([state.semitones, silent, state.metronome, banks, sends]);
 }
 
 // Il MIDI con trasposizione, mute, solo e metronomo, fatto dal motore. Se
@@ -261,7 +263,7 @@ async function renderMidi() {
   const key = midiKey();
   if (key === state.midiKey) return;
   const r = await call("render", {
-    key, semitones: state.semitones, muted: silentTracks(), metronome: state.metronome, banks: fontBanks(),
+    key, semitones: state.semitones, muted: silentTracks(), metronome: state.metronome, banks: fontBanks(), sends: fxSends(),
   });
   if (state.song !== song || r.key !== midiKey()) return;   // superata da un'altra modifica
   state.midiKey = key;

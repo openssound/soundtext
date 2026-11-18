@@ -20,6 +20,9 @@ const state = {
   ctx: null,
   synth: null,
   audioReady: null,       // Promise
+  fx: null,               // gli effetti del brano aperto che l'app sa fare (engine.effects_plan)
+  fxChain: null,          // la catena master collegata in questo momento
+  reverbKey: "",          // il riverbero con cui e' stato creato il sintetizzatore
   synthNode: null,        // il nodo audio del sintetizzatore (si scollega quando cambia il SoundFont predefinito)
   playing: false,
   playToken: 0,
@@ -241,6 +244,7 @@ async function analyze() {
     fillScoreTracks(r.info.tracks);
     setTimeline(r.info.timeline);
     renderMixer();
+    await loadEffectsPlan();                      // gli effetti del brano, prima di calcolare il MIDI con gli invii di riverbero
     // trasposizione, mute, solo e metronomo restano dopo una modifica del testo
     if (midiKey() !== "") await renderMidi();
     const tm = r.timings;

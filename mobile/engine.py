@@ -111,7 +111,7 @@ class Engine:
         return self._midi
 
     def midi_bytes(self, transpose: int = 0, muted: Iterable[str] = (), metronome: bool = False,
-                   banks: Optional[Dict[str, int]] = None) -> bytes:
+                   banks: Optional[Dict[str, int]] = None, sends: Optional[Dict[str, Dict[str, int]]] = None) -> bytes:
         """Il brano in MIDI, come lo suona il lettore dell'app.
 
         'transpose': le note non percussive si spostano di tanti semitoni.
@@ -133,11 +133,16 @@ class Engine:
         «Bank Select» (CC 0) sceglie quel banco. E' come un brano suona con un
         SoundFont per traccia: ogni SoundFont caricato oltre al predefinito ha
         un suo scostamento di banco (setSFontBankOffset) e il banco della
-        traccia punta ai suoi suoni. Le percussioni non si toccano."""
+        traccia punta ai suoi suoni. Le percussioni non si toccano.
+
+        'sends': {nome della traccia: {controller: valore}}: l'invio al riverbero
+        (CC 91) e al chorus (CC 93) di FluidSynth, per gli effetti di traccia che
+        l'app puo' fare (vedi effects_plan)."""
         base = self._base_midi()
         muted = set(muted)
         banks = {name: int(bank) for name, bank in (banks or {}).items() if int(bank) > 0}
-        if not transpose and not muted and not metronome and not banks:
+        sends = {name: {int(cc): int(v) for cc, v in ccs.items()} for name, ccs in (sends or {}).items() if ccs}
+        if not transpose and not muted and not metronome and not banks and not sends:
             return base
         import mido
         from st_language.instruments import DRUM_MIDI_CHANNEL
@@ -147,10 +152,14 @@ class Engine:
             silent = track.name in muted
             kept = []
             carry = 0
-            if track.name in banks:
+            if track.name in banks or track.name in sends:
                 channels = sorted({m.channel for m in track if hasattr(m, "channel") and m.channel != DRUM_MIDI_CHANNEL})
-                kept += [mido.Message("control_change", channel=ch, control=0, value=min(127, banks[track.name]), time=0)
-                         for ch in channels]
+                if track.name in banks:
+                    kept += [mido.Message("control_change", channel=ch, control=0, value=min(127, banks[track.name]), time=0)
+                             for ch in channels]
+                for cc, value in sorted(sends.get(track.name, {}).items()):
+                    kept += [mido.Message("control_change", channel=ch, control=cc, value=max(0, min(127, value)), time=0)
+                             for ch in channels]
             for msg in track:
                 if msg.type in ("note_on", "note_off", "polytouch"):
                     if silent:
@@ -169,6 +178,60 @@ class Engine:
         mid.save(file=out)
         self.timings["render_s"] = time.perf_counter() - t0
         return out.getvalue()
+
+    # ------------------------------------------------------------ effetti
+
+    # Gli effetti che l'app sa fare con il Web Audio, sul mix finale (catena master)
+    FX_MASTER = ("eq", "compressore", "limiter", "volume", "passa_alto", "passa_basso", "delay", "riverbero", "chorus")
+
+    def effects_plan(self) -> dict:
+        """Gli effetti del brano che l'app puo' sentire, dato che tutte le tracce escono
+        mischiate da un solo sintetizzatore:
+        - master: la catena master, in ordine, con gli effetti che il Web Audio sa fare
+          (EQ, compressore, limiter, volume, filtri, delay, riverbero, chorus);
+        - reverb, sends: il riverbero (e il chorus) di traccia diventano l'invio al riverbero
+          (CC 91) e al chorus (CC 93) di FluidSynth, un riverbero condiviso con la stanza, lo
+          smorzamento e l'ampiezza medi dei riverberi del brano;
+        - ignored: i tipi di effetto che non si sentono (amplificatore, NAM, plugin, e quelli di
+          traccia che non sono riverbero o chorus), perche' le tracce non escono separate."""
+        from core import effects as fx
+        project = self.project
+        master, ignored = [], set()
+        for e in project.master_effects:
+            if not e.enabled:
+                continue
+            if e.kind in self.FX_MASTER:
+                params = fx.clamp_params(e.kind, e.params)
+                item = {"kind": e.kind, "params": params}
+                if e.kind == "delay":
+                    item["seconds"] = fx.delay_seconds(params, project.tempo_bpm)
+                master.append(item)
+            else:
+                ignored.add(e.kind)
+        sends: Dict[str, Dict[str, int]] = {}
+        rooms, damps, widths = [], [], []
+        for track in project.tracks:
+            if track.is_audio:
+                continue
+            for e in track.effects:
+                if not e.enabled:
+                    continue
+                params = fx.clamp_params(e.kind, e.params) if e.kind in fx.EFFECT_KINDS else {}
+                if e.kind == "riverbero":
+                    sends.setdefault(track.name, {})["91"] = min(127, round(params["mix"] / 100 * 127 * 2.5))
+                    rooms.append(params["stanza"]); damps.append(params["smorzamento"]); widths.append(params["ampiezza"])
+                elif e.kind == "chorus":
+                    sends.setdefault(track.name, {})["93"] = min(127, round(params["mix"] / 100 * 127))
+                else:
+                    ignored.add(e.kind)
+        average = lambda values: sum(values) / len(values) / 100 if values else 0.0
+        reverb = {"room": round(average(rooms), 3), "damp": round(average(damps), 3), "width": round(average(widths), 3),
+                  "level": 0.9} if rooms else None
+        return {"master": master, "reverb": reverb, "sends": sends, "ignored": sorted(ignored)}
+
+    def effects_plan_json(self) -> str:
+        import json
+        return json.dumps(self.effects_plan())
 
     def _metronome_track(self, mid):
         import mido
@@ -325,6 +388,13 @@ def _names(names: List[str], most: int = 4) -> str:
     return ", ".join(names[:most]) + (", …" if len(names) > most else "")
 
 
+def _unheard_effects(project) -> List[str]:
+    """I tipi di effetto del brano che l'app non sa fare (vedi Engine.effects_plan)."""
+    e = Engine()
+    e.project = project
+    return e.effects_plan()["ignored"]
+
+
 def _unsupported_warnings(text: str, project, warn, tr) -> None:
     """Un avviso per ogni genere di parte che l'app non suona, sul primo
     blocco che la scrive: strumenti SFZ o plugin (suonano col SoundFont
@@ -352,9 +422,11 @@ def _unsupported_warnings(text: str, project, warn, tr) -> None:
              tr("Strumenti SFZ o plugin ({tracks}): nell'app suonano con il SoundFont General MIDI.",
                 tracks=_names(synth)))
     if effects or project.master_effects:
-        start, end = first.get("effects", (0, 0))
-        warn(start, end, "unsupported",
-             tr("Effetti e catena master non si sentono nell'app; il file li conserva come sono."))
+        kinds = _unheard_effects(project)
+        if kinds:
+            start, end = first.get("effects", (0, 0))
+            warn(start, end, "unsupported",
+                 tr("Effetti che nell'app non si sentono: {kinds}. Il file li conserva come sono.", kinds=", ".join(kinds)))
     if audio:
         start, end = first.get("audio", (0, 0))
         warn(start, end, "unsupported",

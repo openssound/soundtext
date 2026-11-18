@@ -2730,7 +2730,6 @@
  "Il box è della traccia «{track}», che nel brano non c'è.": "The box belongs to the track «{track}», which is not in the song.",
  "«{header}» viene ignorato: «{instrument}» non è uno strumento noto.": "«{header}» is ignored: «{instrument}» is not a known instrument.",
  "Strumenti SFZ o plugin ({tracks}): nell'app suonano con il SoundFont General MIDI.": "SFZ or plugin instruments ({tracks}): in the app they play with the General MIDI SoundFont.",
- "Effetti e catena master non si sentono nell'app; il file li conserva come sono.": "Effects and the master chain are not heard in the app; the file keeps them as they are.",
  "Tracce audio ({tracks}): nell'app non suonano; il file le conserva come sono.": "Audio tracks ({tracks}): they do not play in the app; the file keeps them as they are.",
  "La traccia '{name}' non c'è.": "The track '{name}' does not exist.",
  "Nel brano non c'è ancora una traccia con degli accordi da seguire.": "The song does not have a track with chords to follow yet.",
@@ -2993,5 +2992,7 @@
  "{size} MB · predefinito dell'app": "{size} MB · the app's default",
  "«{name}» non è un SoundFont .sf2.": "“{name}” is not a .sf2 SoundFont.",
  "«{name}» è tra i tuoi SoundFont ({size} MB). Scegli «{title}» come predefinito o assegnalo a una traccia dal mixer.": "“{name}” is among your SoundFonts ({size} MB). Pick “{title}” as the default or assign it to a track from the mixer.",
- "«{name}» è un SoundFont .sf3 (campioni compressi): il motore di SoundText Mobile non li legge. Serve un .sf2.": "“{name}” is an .sf3 SoundFont (compressed samples): the SoundText Mobile engine cannot read those. You need a .sf2."
+ "«{name}» è un SoundFont .sf3 (campioni compressi): il motore di SoundText Mobile non li legge. Serve un .sf2.": "“{name}” is an .sf3 SoundFont (compressed samples): the SoundText Mobile engine cannot read those. You need a .sf2.",
+ "Effetti che nell'app non si sentono: {kinds}. Il file li conserva come sono.": "Effects that are not heard in the app: {kinds}. The file keeps them as they are.",
+ "Effetti del brano (riverbero, compressore, EQ…)": "Song effects (reverb, compressor, EQ…)"
 }
