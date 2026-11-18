@@ -47,6 +47,7 @@ async function main() {
   setupQuick();
   setupExport();
   setupPads();
+  setupExercises();
   setupEffects();
   setupFonts().catch(() => {});
   setupSystem();

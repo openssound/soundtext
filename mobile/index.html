@@ -29,6 +29,9 @@
   <!-- Brani -->
   <section id="view-brani" class="view" aria-label="Brani">
     <div class="actions">
+      <button id="exOpen" class="ex-open" data-i18n>Esercizi di oggi</button>
+    </div>
+    <div class="actions">
       <button id="quickSong" class="quick-song"><span aria-hidden="true">✦ </span><span data-i18n>Un brano in 60 secondi</span></button>
     </div>
     <div class="actions">
@@ -237,6 +240,39 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- Esercizi quotidiani: intervalli, accordi, giri, battute, errori e ritmi -->
+<dialog id="exDialog" class="pad-sheet" aria-labelledby="exTitle" data-screen="home">
+  <h2 id="exTitle" data-i18n>Esercizi</h2>
+  <section id="exHome">
+    <p id="exStreak" class="ex-streak"></p>
+    <p id="exToday" class="hint"></p>
+    <button id="exDaily" class="primary ex-daily" data-i18n>La sessione di oggi (6 domande)</button>
+    <h3 data-i18n>Oppure allenati su un tipo</h3>
+    <ul id="exKinds" class="ex-kinds"></ul>
+  </section>
+  <section id="exQuestion" hidden>
+    <p id="exProgress" class="hint"></p>
+    <h3 id="exPrompt"></h3>
+    <p id="exContext" class="hint"></p>
+    <div class="pad-controls">
+      <button id="exListen"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+      <button id="exListenAgain" hidden></button>
+    </div>
+    <div id="exInput" class="ex-input"></div>
+    <button id="exCheck" class="primary" hidden data-i18n>Controlla</button>
+    <p id="exFeedback" class="ex-feedback" role="status" aria-live="polite"></p>
+    <button id="exNext" class="primary" hidden data-i18n>Avanti</button>
+    <button id="exHomeFromQuestion" data-i18n>Torna agli esercizi</button>
+  </section>
+  <section id="exSummary" hidden>
+    <h3 id="exScore"></h3>
+    <p id="exSummaryStreak" class="ex-streak"></p>
+    <p id="exLevelNotes" class="hint"></p>
+    <button id="exSummaryHome" class="primary" data-i18n>Torna agli esercizi</button>
+  </section>
+  <button id="exClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- I pad: gli accordi della tonalità e la batteria, per creare toccando -->
 <dialog id="padDialog" class="pad-sheet" aria-labelledby="padTitle">
   <h2 id="padTitle"></h2>
@@ -375,6 +411,7 @@
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
 <script src="share.js"></script>
+<script src="progress.js"></script>
 <script src="fxchain.js"></script>
 <script src="soundfonts.js"></script>
 <script src="mp4.js"></script>
@@ -389,6 +426,7 @@
 <script src="app/effects.js"></script>
 <script src="app/export.js"></script>
 <script src="app/pads.js"></script>
+<script src="app/exercises.js"></script>
 <script src="app/system.js"></script>
 <script src="app/songs-view.js"></script>
 <script src="app/create.js"></script>

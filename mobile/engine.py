@@ -1590,6 +1590,25 @@ def add_pattern(text: str, name: str, body: str) -> dict:
     return {"text": head + block + text[at:], "name": candidate}
 
 
+# ------------------------------------------------------------ esercizi (fase 3)
+#
+# Si generano e si correggono in exercises.py (a parte: e' solo Python standard).
+
+def exercise_kinds() -> list:
+    import exercises
+    return exercises.exercise_kinds()
+
+
+def exercise(kind: str, level: int, seed: int) -> dict:
+    import exercises
+    return exercises.exercise(kind, level, seed)
+
+
+def exercise_check(kind: str, level: int, seed: int, answer) -> dict:
+    import exercises
+    return exercises.exercise_check(kind, level, seed, answer)
+
+
 # ------------------------------------------------------------ canta (fase 2)
 #
 # Una melodia canticchiata (o un ritmo fatto con la bocca, in una traccia di

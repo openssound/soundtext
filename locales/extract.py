@@ -31,7 +31,8 @@ sys.path.insert(0, ROOT)
 def code_strings():
     out = set()
     for path in sorted(glob.glob(os.path.join(ROOT, "core", "*.py")) + glob.glob(os.path.join(ROOT, "gui", "*.py"))
-                       + [os.path.join(ROOT, "scarica_strumenti.py"), os.path.join(ROOT, "mobile", "engine.py")]):
+                       + [os.path.join(ROOT, "scarica_strumenti.py"), os.path.join(ROOT, "mobile", "engine.py"),
+                          os.path.join(ROOT, "mobile", "exercises.py")]):
         tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "tr" \
@@ -43,7 +44,7 @@ def code_strings():
 # t("...") nel JavaScript dell'app, anche spezzato in piu' pezzi con +
 _JS_CALL = re.compile(r'\bt\(\s*((?:"(?:[^"\\\n]|\\.)*"\s*\+?\s*)+)')
 _JS_PIECE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
-MOBILE_SCRIPTS = ("app/base.js", "app/editor.js", "app/voice.js", "app/fonts.js", "app/hum.js", "app/quick.js", "app/effects.js", "app/export.js", "app/pads.js", "app/system.js", "app/songs-view.js", "app/create.js", "app/structure.js", "app/player.js", "app/score.js", "app/main.js")
+MOBILE_SCRIPTS = ("app/base.js", "app/editor.js", "app/voice.js", "app/fonts.js", "app/hum.js", "app/quick.js", "app/effects.js", "app/export.js", "app/pads.js", "app/exercises.js", "app/system.js", "app/songs-view.js", "app/create.js", "app/structure.js", "app/player.js", "app/score.js", "app/main.js")
 MOBILE_PAGES = ("index.html",)
 _HTML_ATTRIBUTES = ("aria-label", "title", "placeholder")
 

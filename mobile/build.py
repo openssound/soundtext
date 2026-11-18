@@ -133,6 +133,7 @@ def build():
     zpath = os.path.join(BUNDLE, "engine.zip")
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(HERE, "engine.py"), "engine.py")
+        z.write(os.path.join(HERE, "exercises.py"), "exercises.py")
         for name in modules:
             rel = name.replace(".", "/") + ("/__init__.py" if name == "core" else ".py")
             z.write(os.path.join(ROOT, rel), rel)
