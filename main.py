@@ -21,6 +21,12 @@ if __name__ == "__main__" and "--plugin-worker" in sys.argv[1:]:
     _plugin_worker_main()
     sys.exit(0)
 
+# L'esportazione in MP3/FLAC/OGG (core.audio_encode) converte in un processo
+# a parte: l'app impacchettata avvia se stessa con --converti-audio.
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--converti-audio":
+    from core.audio_encode import encode_main as _encode_main
+    sys.exit(_encode_main(sys.argv[2:]))
+
 # La finestra "Scarica e installa" (gui.download_dialog) avvia se stessa con
 # --scarica-strumenti <voci>: esegue scarica_strumenti.py (accanto al
 # programma) in un processo a parte, anche nell'app impacchettata, dove non

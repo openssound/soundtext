@@ -4185,17 +4185,33 @@ escucha.
 
 ### Exportar
 
-- **Proyecto → Exportar → Mezcla de audio (WAV)...** exporta la canción tal
-  como suena (pistas audibles, audio incluido) a un WAV de 48 kHz / 24 bits.
+- **Proyecto → Exportar → Mezcla de audio (WAV, MP3, FLAC, OGG)...**
+  exporta la canción tal como suena (pistas audibles, audio incluido) a un
+  archivo de audio. El formato se elige en el diálogo de guardado (o
+  escribiendo la extensión en el nombre), y SoundText propone el último
+  usado:
+  - **WAV** (48 kHz / 24 bits): sin pérdida, para seguir trabajando en otro
+    programa; si el tempo no cambia, el archivo lo lleva consigo.
+  - **MP3** (VBR de alta calidad, unas 10 veces más pequeño): para hacer
+    escuchar la canción o enviarla en un mensaje o un correo.
+  - **FLAC** (24 bits): sin pérdida como el WAV, pero más o menos la mitad;
+    para archivar o subir a sitios de música.
+  - **OGG Vorbis** (256 kbps): comprimido como el MP3.
+
   Hace falta un SoundFont para las pistas con notas; una canción hecha solo
-  de pistas de audio se exporta también sin él.
+  de pistas de audio se exporta también sin él. En algunos procesadores sin
+  AVX el codificador MP3 interno no funciona: SoundText usa entonces `lame`
+  o `ffmpeg` si están instalados; si no, lo indica y se puede exportar a
+  WAV, FLAC u OGG.
 - **Proyecto → Exportar → Todas las pistas, una por archivo (stems)...**
-  escribe un WAV por cada pista no silenciada en una carpeta "Nombre -
-  pistas", con los efectos o secas. Todas empiezan al principio de la
+  escribe un archivo de audio por cada pista no silenciada en una carpeta
+  "Nombre - pistas", con los efectos o secas, en el formato elegido en la
+  misma ventana (WAV, MP3, FLAC u OGG). Todas empiezan al principio de la
   canción y duran lo mismo: en otro programa (o para otro músico) se
   alinean solas.
-- **Pista → Exportar esta pista → WAV...**, o **clic derecho en el nombre de
-  una pista → Exportar WAV (solo esta)...**, exporta a un WAV solo esa pista, con notación o audio, tal como sonaría en
+- **Pista → Exportar esta pista → Audio (WAV, MP3, FLAC, OGG)...**, o **clic
+  derecho en el nombre de una pista → Exportar audio (solo esta)...**,
+  exporta a un archivo de audio solo esa pista, con notación o audio, tal como sonaría en
   Solo (el Solo/Mute de las demás pistas no cuenta). Para las pistas con
   notación, el mismo menú tiene también **Exportar MIDI (solo esta)...**.
 - **Pista → Exportar esta pista → WAV seco (para re-amping)...**, o el mismo

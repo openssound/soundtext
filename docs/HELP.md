@@ -4086,17 +4086,31 @@ si ricalcola al prossimo ascolto.
 
 ### Esportare
 
-- **Progetto → Esporta → Mix audio (WAV)...** esporta il brano come si sente
-  (tracce udibili, audio compreso) in un WAV 48 kHz / 24 bit. Serve un
-  SoundFont per le tracce con note; un brano di sole tracce audio si esporta
-  anche senza.
+- **Progetto → Esporta → Mix audio (WAV, MP3, FLAC, OGG)...** esporta il
+  brano come si sente (tracce udibili, audio compreso) in un file audio. Il
+  formato si sceglie nel dialogo di salvataggio (o scrivendo l'estensione
+  nel nome), e SoundText ripropone l'ultimo usato:
+  - **WAV** (48 kHz / 24 bit): senza perdita, per lavorarci ancora in un
+    altro programma; se il tempo non cambia, il file lo porta con sé.
+  - **MP3** (VBR alta qualità, circa 10 volte più piccolo): per far
+    ascoltare il brano, mandarlo con un messaggio o una email.
+  - **FLAC** (24 bit): senza perdita come il WAV, ma circa la metà; per
+    archiviare o caricare su siti di musica.
+  - **OGG Vorbis** (256 kbps): compresso come l'MP3.
+
+  Serve un SoundFont per le tracce con note; un brano di sole tracce audio
+  si esporta anche senza. Su alcuni processori senza AVX il codificatore
+  MP3 interno non funziona: SoundText usa allora `lame` o `ffmpeg`, se sono
+  installati, altrimenti lo dice e si può esportare in WAV, FLAC o OGG.
 - **Progetto → Esporta → Tutte le tracce, una per file (stem)...** scrive
-  un WAV per ogni traccia non silenziata in una cartella "Nome - tracce",
-  con gli effetti o asciutte. Partono tutte dall'inizio del brano e sono
+  un file audio per ogni traccia non silenziata in una cartella "Nome -
+  tracce", con gli effetti o asciutte, nel formato scelto nella stessa
+  finestra (WAV, MP3, FLAC o OGG). Partono tutte dall'inizio del brano e sono
   lunghe uguale: in un altro programma (o da un altro musicista) si
   allineano da sole.
-- **Traccia → Esporta questa traccia → WAV...**, o **tasto destro sul nome di
-  una traccia → Esporta WAV (solo questa)...**, esporta in un WAV solo quella traccia, con notazione o audio, come si
+- **Traccia → Esporta questa traccia → Audio (WAV, MP3, FLAC, OGG)...**, o
+  **tasto destro sul nome di una traccia → Esporta audio (solo questa)...**,
+  esporta in un file audio solo quella traccia, con notazione o audio, come si
   sentirebbe in Solo (Solo/Mute delle altre tracce non contano). Per le
   tracce con notazione lo stesso menu ha anche **Esporta MIDI (solo
   questa)...**.

@@ -3988,18 +3988,32 @@ loses nothing, it is recalculated the next time you listen.
 
 ### Exporting
 
-- **Project → Export → Audio mix (WAV)...** exports the song as it sounds
-  (audible tracks, audio included) to a 48 kHz / 24-bit WAV. A SoundFont is
-  needed for tracks with notes; a song made only of audio tracks can be
-  exported even without one.
+- **Project → Export → Audio mix (WAV, MP3, FLAC, OGG)...** exports the
+  song as it sounds (audible tracks, audio included) to an audio file. You
+  pick the format in the save dialog (or by typing the extension in the
+  name), and SoundText offers the last one you used:
+  - **WAV** (48 kHz / 24 bit): lossless, to keep working on it in another
+    program; if the tempo does not change, the file carries it.
+  - **MP3** (high-quality VBR, about 10 times smaller): to let people hear
+    the song, or send it in a message or an email.
+  - **FLAC** (24 bit): lossless like WAV, but about half the size; to
+    archive or upload to music sites.
+  - **OGG Vorbis** (256 kbps): compressed like MP3.
+
+  A SoundFont is needed for tracks with notes; a song made only of audio
+  tracks can be exported even without one. On some processors without AVX
+  the built-in MP3 encoder does not work: SoundText then uses `lame` or
+  `ffmpeg` if they are installed, otherwise it says so and you can export
+  to WAV, FLAC or OGG.
 - **Project → Export → All tracks, one file each (stems)...** writes one
-  WAV for each unmuted track into a "Name - tracks" folder, with effects or
-  dry. They all start at the beginning of the song and have the same
+  audio file for each unmuted track into a "Name - tracks" folder, with
+  effects or dry, in the format chosen in the same window (WAV, MP3, FLAC
+  or OGG). They all start at the beginning of the song and have the same
   length: in another program (or for another musician) they line up by
   themselves.
-- **Track → Export this track → WAV...**, or **right-click on a track's name
-  → Export WAV (this one only)...**, exports
-  only that track to a WAV, with notation or audio, as it would sound in Solo
+- **Track → Export this track → Audio (WAV, MP3, FLAC, OGG)...**, or
+  **right-click on a track's name → Export audio (this one only)...**,
+  exports only that track to an audio file, with notation or audio, as it would sound in Solo
   (Solo/Mute of the other tracks do not count). For tracks with notation the
   same menu also has **Export MIDI (this one only)...**.
 - **Track → Export this track → Dry WAV (for re-amping)...**, or the same

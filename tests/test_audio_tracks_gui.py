@@ -120,7 +120,7 @@ def test_audio_menus_offer_audio_actions_only(tmp_path):
 
     header = _menu_actions(lambda: view.show_track_menu("Voce", pos))
     assert "Importa file audio..." in header and not any("MIDI" in a for a in header)
-    assert "Esporta WAV (solo questa)..." in header
+    assert "Esporta audio (solo questa)..." in header
 
     item = next(it for it in view.canvas._scene.items() if isinstance(it, AudioBoxItem))
     box = _menu_actions(lambda: view.show_box_menu(item, pos))
@@ -339,7 +339,7 @@ def test_note_track_menu_offers_midi_and_wav_export():
     w.refresh_mixer()
     header = _menu_actions(lambda: w.arrangement_view.show_track_menu("Piano", w.mapToGlobal(w.rect().center())))
     assert "Esporta MIDI (solo questa)..." in header
-    assert "Esporta WAV (solo questa)..." in header
+    assert "Esporta audio (solo questa)..." in header
 
 
 def test_export_track_wav_renders_only_that_track(tmp_path, monkeypatch):

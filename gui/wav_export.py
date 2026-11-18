@@ -1,5 +1,6 @@
 """
-L'audio che esce dalla finestra principale: il mix in WAV, una traccia sola
+L'audio che esce dalla finestra principale: il mix (WAV, MP3, FLAC o OGG,
+vedi core.audio_encode), una traccia sola
 (anche asciutta, per il re-amping), tutte le tracce una per file (stem), un
 box della vista Struttura, e il congelamento di una traccia in audio.
 
@@ -14,12 +15,39 @@ import os
 import re
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox, QProgressDialog, QWidget
 
 from core.i18n import tr
 from core.notation import validate_track_text
 from .file_dialogs import file_dialog_options
 from .worker import Worker
+
+
+def _ask_audio_path(parent, title: str, default_path: str, wav_only: bool = False):
+    """Il dialogo "Salva" con i formati audio (WAV, MP3, FLAC, OGG): propone
+    l'ultimo usato e ricorda quello scelto. Ritorna il percorso con
+    l'estensione giusta, o '' se si annulla. Un'estensione scritta a mano
+    vince sul filtro scelto; con 'wav_only' si salva solo in WAV."""
+    from core import audio_encode
+    from core.settings import get_audio_export_format, set_audio_export_format
+    ext = ".wav" if wav_only else get_audio_export_format()
+    filters = [audio_encode.file_filter(".wav")] if wav_only else audio_encode.all_filters()
+    path, chosen = QFileDialog.getSaveFileName(parent, title, audio_encode.with_extension(default_path, ext),
+                                               ";;".join(filters), audio_encode.file_filter(ext),
+                                               options=file_dialog_options())
+    if not path:
+        return ""
+    typed = audio_encode.format_of(path)
+    if wav_only:
+        ext = ".wav"
+    elif typed:
+        ext = typed
+    elif chosen:
+        ext = audio_encode.ext_from_filter(chosen)
+    path = audio_encode.with_extension(path, ext)
+    if not wav_only:
+        set_audio_export_format(ext)
+    return path
 
 
 def _safe_file_name(name: str, fallback: str) -> str:
@@ -84,7 +112,7 @@ class WavExport:
 
     def mix(self):
         """Esporta il brano come si sente (tracce udibili, audio compreso)
-        in un WAV."""
+        in un file audio (WAV, MP3, FLAC o OGG)."""
         if not self.window._check_tracks_syntax():
             return
         self.render(tr("Esporta mix audio"), self.window._default_export_path(".wav"), None,
@@ -106,7 +134,7 @@ class WavExport:
                         os.path.join(self._export_dir(), safe_name + "_asciutto.wav"), [track],
                         tr("Traccia '{name}' esportata asciutta (senza effetti)", name=track.name), dry=True)
             return
-        self.render(tr("Esporta WAV della traccia"), os.path.join(self._export_dir(), safe_name + ".wav"), [track],
+        self.render(tr("Esporta l'audio della traccia"), os.path.join(self._export_dir(), safe_name + ".wav"), [track],
                     tr("Traccia '{name}' esportata", name=track.name))
 
     def stems(self):
@@ -121,9 +149,23 @@ class WavExport:
             QMessageBox.information(window, tr("Esporta le tracce"),
                                     tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
             return
+        from core import audio_encode
+        from core.settings import get_audio_export_format, set_audio_export_format
         box = QMessageBox(QMessageBox.Question, tr("Esporta le tracce"), tr(
-            "{n} tracce, un file WAV ciascuna. Con gli effetti (come si sentono) o asciutte "
+            "{n} tracce, un file audio ciascuna. Con gli effetti (come si sentono) o asciutte "
             "(senza effetti, riverbero e pan, per mixarle altrove)?", n=len(tracks)), parent=window)
+        format_row = QWidget(box)
+        row_layout = QHBoxLayout(format_row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.addWidget(QLabel(tr("Formato:"), format_row))
+        format_combo = QComboBox(format_row)
+        for ext, name in audio_encode.FORMATS.items():
+            format_combo.addItem(name, ext)
+        format_combo.setCurrentIndex(max(0, format_combo.findData(get_audio_export_format())))
+        row_layout.addWidget(format_combo)
+        row_layout.addStretch(1)
+        grid = box.layout()
+        grid.addWidget(format_row, grid.rowCount(), 0, 1, grid.columnCount())
         wet = box.addButton(tr("Con gli effetti"), QMessageBox.AcceptRole)
         dry = box.addButton(tr("Asciutte"), QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Cancel)
@@ -132,6 +174,8 @@ class WavExport:
         if box.clickedButton() not in (wet, dry):
             return
         dry_choice = box.clickedButton() is dry
+        fmt = format_combo.currentData() or ".wav"
+        set_audio_export_format(fmt)
         base = QFileDialog.getExistingDirectory(window, tr("Cartella in cui salvare le tracce"), self._export_dir(),
                                                 options=file_dialog_options())
         if not base:
@@ -145,11 +189,12 @@ class WavExport:
 
         self._start("worker", tr("Esporta le tracce"), tr("Rendering delle tracce..."), len(tracks),
                     tr("Errore esportazione audio"), done,
-                    render_stems_to_dir, window.project, out_dir, dry=dry_choice, step_progress=True)
+                    render_stems_to_dir, window.project, out_dir, dry=dry_choice, fmt=fmt, step_progress=True)
 
     def render(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False,
                project=None, skip_seconds: float = 0.0, length_seconds=None):
-        """Chiede dove salvare e renderizza in un WAV le tracce udibili
+        """Chiede dove salvare (WAV, MP3, FLAC o OGG; solo WAV se 'dry', che
+        serve al re-amping) e renderizza le tracce udibili
         (tracks=None) o solo tracks (asciutte con 'dry') del brano, o di
         'project' (es. un solo box); 'skip_seconds' si tolgono dall'inizio, e
         con 'length_seconds' il WAV dura tanto. Se il tempo non cambia, il
@@ -157,12 +202,9 @@ class WavExport:
         altro brano ne segue il tempo."""
         from core.playback import constant_tempo, render_project_mix_to_wav
         window = self.window
-        path, _ = QFileDialog.getSaveFileName(window, title, default_path,
-                                              tr("WAV (*.wav)"), options=file_dialog_options())
+        path = _ask_audio_path(window, title, default_path, wav_only=dry)
         if not path:
             return
-        if not path.lower().endswith(".wav"):
-            path += ".wav"
         project = project or window.project
         self._start("worker", title, tr("Rendering audio in corso..."), 0, tr("Errore esportazione audio"),
                     lambda _result: window.statusBar().showMessage(f"{done_msg}: {path}", 6000),

@@ -389,6 +389,21 @@ def set_record_count_in_bars(value: int):
     _save()
 
 
+def get_audio_export_format() -> str:
+    """L'estensione dell'ultimo formato audio esportato (".wav", ".mp3",
+    ".flac", ".ogg"): le esportazioni la ripropongono."""
+    value = str(_load().get("audio_export_format", ".wav"))
+    return value if value in (".wav", ".mp3", ".flac", ".ogg") else ".wav"
+
+
+def set_audio_export_format(ext: str):
+    if ext not in (".wav", ".mp3", ".flac", ".ogg"):
+        return
+    _load()
+    _cache["audio_export_format"] = ext
+    _save()
+
+
 def get_record_metronome() -> bool:
     return bool(_load().get("record_metronome", True))
 

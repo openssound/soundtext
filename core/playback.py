@@ -825,16 +825,18 @@ def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
                               tracks: Optional[List[Track]] = None, dry: bool = False,
                               skip_seconds: float = 0.0, length_seconds: Optional[float] = None,
                               tempo: Optional[float] = None) -> None:
-    """Esporta in out_path (WAV 48 kHz, 24 bit, stereo) il mix delle tracce
+    """Esporta in out_path il mix delle tracce
     udibili, o solo di tracks, eventualmente asciutte (vedi
     render_project_mix, di cui solleva gli stessi errori), senza i primi
     'skip_seconds'. Con 'length_seconds' il WAV dura esattamente tanto: la
     coda dopo la fine (rilascio delle note, riverbero) si taglia con una
     dissolvenza di END_FADE_SECONDS, cosi' un box esportato dura quanto il box.
     Con 'tempo' (vedi constant_tempo) il WAV porta il suo tempo (blocco
-    "acid", vedi core.audio_tracks.write_acid_tempo), con la metrica del brano."""
+    "acid", vedi core.audio_tracks.write_acid_tempo), con la metrica del brano.
+    Il formato viene dall'estensione (core.audio_encode.write_audio): WAV
+    48 kHz 24 bit stereo, oppure MP3, FLAC o OGG (senza il tempo)."""
     import numpy as np
-    from .audio_tracks import write_wav
+    from .audio_encode import write_audio
     import time
     started = time.monotonic()
     mixed, rate = render_project_mix(project, stop_check, tracks=tracks, dry=dry)
@@ -854,7 +856,7 @@ def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
             padded = np.zeros((frames, mixed.shape[1]), np.float32)
             padded[:len(mixed)] = mixed
             mixed = padded
-    write_wav(out_path, mixed, rate, bits=24, tempo=tempo, meter=_wav_meter(project))
+    write_audio(out_path, mixed, rate, tempo=tempo, meter=_wav_meter(project))
     _log_export(out_path, len(mixed) / float(rate), time.monotonic() - started)
 
 
@@ -895,14 +897,17 @@ def stem_tracks(project: Project) -> List[Track]:
 
 
 def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bool = False,
-                        progress=None) -> List[str]:
+                        progress=None, fmt: str = ".wav") -> List[str]:
     """Esporta in out_dir un WAV (48 kHz, 24 bit) per traccia, come "Esporta
     WAV (solo questa)" (o asciutte con 'dry'): tutti dall'inizio del brano e
     lunghi uguale, cosi' in un altro programma si allineano da soli. Le
     tracce si renderizzano una alla volta (in memoria ce n'e' sempre una
-    sola). Ritorna i percorsi scritti; progress(fatte, totale)."""
+    sola). Con 'fmt' (".mp3", ".flac", ".ogg") i WAV si convertono alla fine
+    in quel formato (core.audio_encode). Ritorna i percorsi scritti;
+    progress(fatte, totale)."""
     import re
     import numpy as np
+    from .audio_encode import convert_wav, format_of
     from .audio_tracks import read_wav, write_wav
     tracks = stem_tracks(project)
     if not tracks:
@@ -927,6 +932,16 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
             samples, rate = read_wav(path)
             pad = np.zeros((longest - length, samples.shape[1]), dtype=np.float32)
             write_wav(path, np.concatenate([samples, pad]), rate, bits=24, tempo=tempo, meter=meter)
+    if format_of("x" + fmt) not in ("", ".wav"):
+        converted = []
+        for path in paths:
+            if stop_check and stop_check():
+                raise RuntimeError(tr("Esportazione annullata."))
+            target = os.path.splitext(path)[0] + fmt
+            convert_wav(path, target)
+            os.remove(path)
+            converted.append(target)
+        paths = converted
     return paths
 
 

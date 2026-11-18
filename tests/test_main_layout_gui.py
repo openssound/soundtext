@@ -428,7 +428,7 @@ def test_header_menu_has_all_track_actions(monkeypatch):
     view = w.arrangement_view
     midi = _menu_texts(lambda: view.canvas.header_widgets["Piano"]._open_menu())
     for label in ("Suona con la tastiera...", "Importa MIDI...", "Importa audio → note...",
-                  "Nome e strumento...", "Esporta MIDI (solo questa)...", "Esporta WAV (solo questa)...",
+                  "Nome e strumento...", "Esporta MIDI (solo questa)...", "Esporta audio (solo questa)...",
                   "Rimuovi traccia"):
         assert label in midi
     audio = _menu_texts(lambda: view.canvas.header_widgets["Voce"]._open_menu())
@@ -787,10 +787,10 @@ def test_palette_finds_menu_commands_ignoring_accents_and_case():
     w = _window()
     commands = collect_commands(w.menuBar())
     titles = [c.title for c in commands]
-    assert "Mix audio (WAV)..." in titles and "Ingrandisci (zoom)" in titles
+    assert "Mix audio (WAV, MP3, FLAC, OGG)..." in titles and "Ingrandisci (zoom)" in titles
     # le voci dei sottomenu si trovano anche per percorso: "esporta" e' il sottomenu
     first = rank_commands(commands, "esporta")[0]
-    assert first.title == "Mix audio (WAV)..." and first.path == "Progetto › Esporta"
+    assert first.title == "Mix audio (WAV, MP3, FLAC, OGG)..." and first.path == "Progetto › Esporta"
     assert [(c.path, c.title) for c in rank_commands(commands, "esporta midi")][:2] == \
         [("Progetto › Esporta", "MIDI..."), ("Traccia › Esporta questa traccia", "MIDI...")]
     assert any(c.title == "Analizza tonalità..." for c in rank_commands(commands, "TONALITA"))
@@ -839,7 +839,7 @@ def test_menus_group_import_and_export_in_submenus(monkeypatch):
     commands = {(c.path, c.title): c.action for c in collect_commands(w.menuBar())}
     for fmt in ("MIDI...", "MusicXML...", "ABC...", "MTXT..."):
         assert ("Progetto › Importa", fmt) in commands
-    for fmt in ("Mix audio (WAV)...", "MIDI...", "Partitura PDF...", "Partitura MusicXML...",
+    for fmt in ("Mix audio (WAV, MP3, FLAC, OGG)...", "MIDI...", "Partitura PDF...", "Partitura MusicXML...",
                 "Partitura ABC...", "MTXT..."):
         assert ("Progetto › Esporta", fmt) in commands
     # le scorciatoie restano anche dentro i sottomenu
@@ -850,7 +850,7 @@ def test_menus_group_import_and_export_in_submenus(monkeypatch):
     exported = []
     monkeypatch.setattr(w.wav_export, "track", lambda name, dry=False: exported.append((name, dry)))
     w.current_track_name = "Voce"
-    commands[("Traccia › Esporta questa traccia", "WAV...")].trigger()
+    commands[("Traccia › Esporta questa traccia", "Audio (WAV, MP3, FLAC, OGG)...")].trigger()
     commands[("Traccia › Esporta questa traccia", "WAV asciutto (per il re-amping)...")].trigger()
     assert exported == [("Voce", False), ("Voce", True)]
     assert ("Traccia › Esporta questa traccia", "MIDI...") in commands
