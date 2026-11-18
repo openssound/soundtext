@@ -46,6 +46,7 @@ async function main() {
   setupHum();
   setupQuick();
   setupExport();
+  setupFonts().catch(() => {});
   setupSystem();
   setupCrea();
   setupStructure();

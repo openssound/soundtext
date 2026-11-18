@@ -158,6 +158,14 @@
     <label class="check"><input id="metronome" type="checkbox"> <span data-i18n>Metronomo</span></label>
     <label class="check"><input id="vibrate" type="checkbox"> <span data-i18n>Vibrazione leggera sul metronomo</span></label>
     <button id="exportOpen" class="export-open" disabled data-i18n>Esporta audio e clip…</button>
+    <details class="opts sf-box" id="sfBox">
+      <summary data-i18n>SoundFont</summary>
+      <p class="hint" data-i18n>Un SoundFont .sf2 dal telefono suona al posto di quello incluso, e dal mixer si può dare un SoundFont diverso a una traccia. I file restano sul telefono. Le percussioni suonano sempre dal predefinito. I file .sf3 non si leggono.</p>
+      <ul id="sfList" class="sf-list"></ul>
+      <p id="sfHint" class="hint" data-i18n>Ancora nessun SoundFont tuo.</p>
+      <label class="button"><span data-i18n>Carica SoundFont…</span><input id="sfFile" type="file" accept=".sf2,application/octet-stream"></label>
+      <p id="sfStatus" class="hint" role="status" aria-live="polite"></p>
+    </details>
     <h2 id="mixerTitle" data-i18n>Tracce</h2>
     <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
     <details class="opts">
@@ -323,12 +331,14 @@
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
 <script src="share.js"></script>
+<script src="soundfonts.js"></script>
 <script src="mp4.js"></script>
 <script src="wav.js"></script>
 <script src="app/base.js"></script>
 <script src="app/text-edits.js"></script>
 <script src="app/editor.js"></script>
 <script src="app/voice.js"></script>
+<script src="app/fonts.js"></script>
 <script src="app/hum.js"></script>
 <script src="app/quick.js"></script>
 <script src="app/export.js"></script>

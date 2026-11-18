@@ -118,7 +118,7 @@ async function onEdit() {
     // prima modifica di un esempio (o di un brano arrivato da un link): diventa un brano dell'utente
     doc.copying = true;
     const name = await Songs.freeName(doc.name);
-    const song = await Songs.create({ name, text: doc.text, eol: doc.eol, bom: doc.bom,
+    const song = await Songs.create({ name, text: doc.text, eol: doc.eol, bom: doc.bom, fonts: doc.fonts || {},
                                       source: doc.kind === "link" ? "link condiviso" : "esempio " + doc.file });
     Object.assign(doc, { kind: "song", id: song.id, name, copying: false });
     showDocTitle();
@@ -136,6 +136,7 @@ async function saveDoc() {
   const song = await Songs.get(doc.id);
   if (!song) return;
   song.text = doc.text;
+  song.fonts = doc.fonts || {};
   await Songs.put(song);
 }
 

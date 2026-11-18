@@ -43,13 +43,20 @@ function exportRange() {
 }
 
 async function exportMidi() {
-  const r = await call("render", { key: "export-" + Date.now(), semitones: state.semitones, muted: silentTracks(), metronome: false });
+  const r = await call("render", { key: "export-" + Date.now(), semitones: state.semitones, muted: silentTracks(), metronome: false,
+                                  banks: fontBanks() });
   return r.midi;
 }
 
 // L'audio fuori tempo: {left, right, marks, block, rate} (vedi export-worker.js).
 async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress) {
   const sf = await (await fetch(SOUNDFONT_URL)).arrayBuffer();
+  // i SoundFont dell'utente: il predefinito e quelli delle tracce, ognuno col suo banco (come nel lettore)
+  const extra = [];
+  if (fonts.defaultId) extra.push({ bytes: await SoundFonts.get(fonts.defaultId), bank: 0 });
+  for (const font of new Set(Object.values(docFonts()))) {
+    if (font.id !== fonts.defaultId) extra.push({ bytes: await SoundFonts.get(font.id), bank: fontBank(font.id) });
+  }
   return new Promise((resolve, reject) => {
     const worker = new Worker("export-worker.js");
     worker.onmessage = (ev) => {
@@ -61,10 +68,10 @@ async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress
     worker.onerror = (ev) => { worker.terminate(); reject(new Error(ev.message || "worker")); };
     const maxFrames = seconds ? Math.round(seconds * EXPORT_RATE) : 20 * 60 * EXPORT_RATE;
     worker.postMessage({
-      sf, midi: midi.slice().buffer, rate: EXPORT_RATE,
+      sf, fonts: extra.filter((f) => f.bytes), midi: midi.slice().buffer, rate: EXPORT_RATE,
       fromTick: Math.round(fromBeat * TICKS_PER_BEAT), toTick: toBeat == null ? null : Math.round(toBeat * TICKS_PER_BEAT),
       maxFrames, tailFrames: Math.round((tail === undefined ? 2.5 : tail) * EXPORT_RATE),
-    }, [sf]);
+    }, [sf, ...extra.filter((f) => f.bytes).map((f) => f.bytes)]);
   });
 }
 

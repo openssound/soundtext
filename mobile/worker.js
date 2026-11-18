@@ -277,8 +277,10 @@ self.onmessage = async (ev) => {
       // il MIDI che suona il lettore: trasposizione, tracce mute, metronomo
       const t0 = performance.now();
       const muted = py.toPy(msg.muted || []);
-      const midi = toBytes(engine.midi_bytes(msg.semitones || 0, muted, !!msg.metronome));
+      const banks = py.toPy(msg.banks || {});
+      const midi = toBytes(engine.midi_bytes(msg.semitones || 0, muted, !!msg.metronome, banks));
       muted.destroy();
+      banks.destroy();
       post({ type: "midi", id: msg.id, midi, key: msg.key, ms: ms(t0) }, [midi.buffer]);
     } else if (msg.cmd === "preview") {
       // il MIDI di un altro testo (anteprima della schermata Crea), con un

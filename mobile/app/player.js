@@ -62,6 +62,7 @@ async function initAudio() {
   synth.init(ctx.sampleRate, { midiChannelCount: 32 });
   const node = synth.createAudioNode(ctx, { outputChannelCount: [2] });
   node.connect(ctx.destination);
+  state.synthNode = node;
   const worklet_ms = ms(t0);
 
   const t1 = performance.now();
@@ -74,6 +75,7 @@ async function initAudio() {
   await synth.loadSFont(sf);
   const sfload_ms = ms(t2);
   state.synth = synth;
+  fonts.loaded.clear();
   Metrics.record("audio", {
     worklet_ms, soundfont_cached: sfCached, soundfont_bytes: sf.byteLength, soundfont_fetch_ms: download_ms,
     soundfont_load_ms: sfload_ms, sample_rate: ctx.sampleRate,
@@ -85,6 +87,7 @@ async function initAudio() {
 async function startPlayer(fromTick) {
   const synth = state.synth;
   const token = ++state.playToken;
+  await syncFonts(synth);                       // i SoundFont dell'utente, predefinito e per traccia
   await synth.resetPlayer();
   await synth.addSMFDataToPlayer(state.midi.slice().buffer);
   synth.setPlayerTempo(0, state.speed);   // 0 = PlayerSetTempoType.Internal: moltiplicatore del tempo del file
@@ -245,8 +248,9 @@ function silentTracks() {
 // "" quando il MIDI e' quello del brano com'e' scritto
 function midiKey() {
   const silent = silentTracks();
-  if (!state.semitones && !silent.length && !state.metronome) return "";
-  return JSON.stringify([state.semitones, silent, state.metronome]);
+  const banks = fontBanks();
+  if (!state.semitones && !silent.length && !state.metronome && !Object.keys(banks).length) return "";
+  return JSON.stringify([state.semitones, silent, state.metronome, banks]);
 }
 
 // Il MIDI con trasposizione, mute, solo e metronomo, fatto dal motore. Se
@@ -257,7 +261,7 @@ async function renderMidi() {
   const key = midiKey();
   if (key === state.midiKey) return;
   const r = await call("render", {
-    key, semitones: state.semitones, muted: silentTracks(), metronome: state.metronome,
+    key, semitones: state.semitones, muted: silentTracks(), metronome: state.metronome, banks: fontBanks(),
   });
   if (state.song !== song || r.key !== midiKey()) return;   // superata da un'altra modifica
   state.midiKey = key;
@@ -300,6 +304,8 @@ function renderMixer() {
       return b;
     };
     li.append(name, toggle("M", state.muted, t("Mute")), toggle("S", state.solo, t("Solo")));
+    const sf = fontSelectFor(track);
+    if (sf) li.append(sf);
     list.append(li);
   }
 }

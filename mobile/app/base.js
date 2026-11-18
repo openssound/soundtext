@@ -20,6 +20,7 @@ const state = {
   ctx: null,
   synth: null,
   audioReady: null,       // Promise
+  synthNode: null,        // il nodo audio del sintetizzatore (si scollega quando cambia il SoundFont predefinito)
   playing: false,
   playToken: 0,
   speed: 1,
@@ -175,6 +176,7 @@ function openDoc(doc) {
   stop(true);
   stopVoice();
   state.doc = doc;
+  doc.fonts = doc.fonts || {};
   state.song = null;
   if (doc.kind !== "link" && /(^|[#&])b=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
   state.semitones = 0;

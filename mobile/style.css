@@ -47,6 +47,12 @@ h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacin
 .sheet h3 { margin: 12px 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; }
 .sheet-actions.two { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
 .quick-song { width: 100%; min-height: 48px; font-size: 16px; }
+.sf-list { list-style: none; margin: 8px 0; padding: 0; }
+.sf-list li { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); padding: 6px 0; }
+.sf-list label { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.sf-list input[type=radio] { width: 22px; height: 22px; flex: none; }
+.sf-list small { display: block; color: var(--dim); font-size: 12px; }
+.sfsel { max-width: 46%; min-height: 34px; font-size: 12px; }
 .copy-shared { flex: none; min-height: 32px; padding: 0 10px; font-size: 13px; }
 .qr-canvas[hidden] { display: none; }
 .qr-canvas { display: block; width: min(86vw, 420px); height: auto; aspect-ratio: 1; margin: 8px auto; image-rendering: pixelated; border-radius: 4px; }

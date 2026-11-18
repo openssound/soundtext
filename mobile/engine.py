@@ -110,7 +110,8 @@ class Engine:
             self.timings["midi_s"] = time.perf_counter() - t0
         return self._midi
 
-    def midi_bytes(self, transpose: int = 0, muted: Iterable[str] = (), metronome: bool = False) -> bytes:
+    def midi_bytes(self, transpose: int = 0, muted: Iterable[str] = (), metronome: bool = False,
+                   banks: Optional[Dict[str, int]] = None) -> bytes:
         """Il brano in MIDI, come lo suona il lettore dell'app.
 
         'transpose': le note non percussive si spostano di tanti semitoni.
@@ -126,10 +127,17 @@ class Engine:
         (strumento, controlli) resta, cosi' riattivarla a meta' suona giusto.
 
         'metronome': un click sul canale 10 a ogni battito, piu' forte
-        sul primo della battuta (con la metrica del brano)."""
+        sul primo della battuta (con la metrica del brano).
+
+        'banks': {nome della traccia: banco}: all'inizio delle sue note un
+        «Bank Select» (CC 0) sceglie quel banco. E' come un brano suona con un
+        SoundFont per traccia: ogni SoundFont caricato oltre al predefinito ha
+        un suo scostamento di banco (setSFontBankOffset) e il banco della
+        traccia punta ai suoi suoni. Le percussioni non si toccano."""
         base = self._base_midi()
         muted = set(muted)
-        if not transpose and not muted and not metronome:
+        banks = {name: int(bank) for name, bank in (banks or {}).items() if int(bank) > 0}
+        if not transpose and not muted and not metronome and not banks:
             return base
         import mido
         from st_language.instruments import DRUM_MIDI_CHANNEL
@@ -139,6 +147,10 @@ class Engine:
             silent = track.name in muted
             kept = []
             carry = 0
+            if track.name in banks:
+                channels = sorted({m.channel for m in track if hasattr(m, "channel") and m.channel != DRUM_MIDI_CHANNEL})
+                kept += [mido.Message("control_change", channel=ch, control=0, value=min(127, banks[track.name]), time=0)
+                         for ch in channels]
             for msg in track:
                 if msg.type in ("note_on", "note_off", "polytouch"):
                     if silent:

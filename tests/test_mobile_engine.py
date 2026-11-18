@@ -683,3 +683,37 @@ def test_chord_chart_reads_written_chords_and_chords_made_of_notes():
     labels = [c[2] for c in chart]
     assert labels and {"Am", "G", "F", "E"} & set(labels), labels          # il giro di La minore
     assert e.chord_chart("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nDrums:\n  4: kick snare kick snare |\n") == []
+
+
+def test_bank_select_sends_a_pitched_track_to_its_soundfont():
+    """Un SoundFont per traccia: il banco della traccia (CC 0) apre i suoni del suo SoundFont; le
+    percussioni restano sul predefinito, e senza banchi il MIDI e' quello di sempre."""
+    import io
+
+    import mido
+    _engine("jazz_aaba.st")
+    e = sys.modules["engine"]
+    with open(os.path.join(ROOT, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+        engine = e.Engine()
+        engine.load(f.read(), "jazz")
+
+    def banks_of(data):
+        out = {}
+        for track in mido.MidiFile(file=io.BytesIO(data)).tracks:
+            for msg in track:
+                if msg.type == "control_change" and msg.control == 0:
+                    out.setdefault(track.name, set()).add((msg.channel, msg.value))
+        return out
+
+    assert engine.midi_bytes(0) == engine.midi_bytes(0, banks={}) == engine.midi_bytes(0, banks={"Piano": 0})
+    base_banks = banks_of(engine.midi_bytes(0))                      # la batteria ha gia' il suo banco (GS)
+    assert all(ch == 9 for pairs in base_banks.values() for ch, _v in pairs)
+    named = {t.name for t in mido.MidiFile(file=io.BytesIO(engine.midi_bytes(0))).tracks}
+    piano = next(n for n in named if n.lower().startswith("piano"))
+    drums = next(n for n in named if n.lower().startswith("drums"))
+    result = banks_of(engine.midi_bytes(0, banks={piano: 3, drums: 4}))
+    assert result[piano] and all(value == 3 and channel != 9 for channel, value in result[piano])
+    assert result.get(drums) == base_banks.get(drums)                # le percussioni non cambiano banco
+    # con la trasposizione e il mute il resto continua a funzionare
+    mixed = engine.midi_bytes(2, muted=[piano], banks={piano: 3})
+    assert mixed != engine.midi_bytes(0)

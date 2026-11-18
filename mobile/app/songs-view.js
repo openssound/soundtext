@@ -95,7 +95,7 @@ async function openExample(file, show) {
 async function openSong(id, show = true) {
   const song = await Songs.get(id);
   if (!song) return;
-  const ready = openDoc({ kind: "song", id: song.id, name: song.name, text: song.text, eol: song.eol, bom: song.bom });
+  const ready = openDoc({ kind: "song", id: song.id, name: song.name, text: song.text, eol: song.eol, bom: song.bom, fonts: song.fonts });
   if (show) setView("testo");
   return ready;
 }

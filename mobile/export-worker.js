@@ -10,13 +10,18 @@ importScripts("vendor/js-synthesizer/libfluidsynth-2.4.6.js", "vendor/js-synthes
 const BLOCK = 1024;
 
 self.onmessage = async (ev) => {
-  const { sf, midi, rate, fromTick, toTick, maxFrames, tailFrames } = ev.data;
+  const { sf, fonts, midi, rate, fromTick, toTick, maxFrames, tailFrames } = ev.data;
   let synth = null;
   try {
     await JSSynth.waitForReady();
     synth = new JSSynth.Synthesizer();
     synth.init(rate, { midiChannelCount: 32 });
     await synth.loadSFont(sf);
+    // i SoundFont dell'utente sopra quello incluso: il predefinito (banco 0) e quelli delle tracce (banco 1, 2...)
+    for (const font of fonts || []) {
+      const id = await synth.loadSFont(font.bytes);
+      if (font.bank) synth.setSFontBankOffset(id, font.bank);
+    }
     await synth.addSMFDataToPlayer(midi);
     await synth.playPlayer();
 
