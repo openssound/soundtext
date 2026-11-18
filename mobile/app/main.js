@@ -122,7 +122,9 @@ async function main() {
 
   // La schermata Brani si usa subito, mentre il motore si avvia.
   await renderSongs();
-  const restored = restoreLastDoc().catch(() => null);
+  $("copyShared").onclick = () => copyShared().catch(showError);
+  window.addEventListener("hashchange", () => openSharedLink().catch(showError));
+  const restored = openSharedLink().then((opened) => opened || restoreLastDoc()).catch(() => null);
   if (!state.doc) setStatus(t("Avvio del motore…"));
 
   try {

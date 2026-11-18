@@ -2899,5 +2899,18 @@
  "i file .clap che si trovano negli archivi dei plugin VST3 gratuiti (se ce ne sono)": "les fichiers .clap qui se trouvent dans les archives des plugins VST3 gratuits (s'il y en a)",
  "i plugin CLAP che stanno negli archivi dei plugin VST3 gratuiti, nella cartella CLAP dell'utente: {}": "les plugins CLAP qui se trouvent dans les archives des plugins VST3 gratuits, dans le dossier CLAP de l'utilisateur : {}",
  "si installa con un programma di installazione, non cerco il CLAP, salto": "il s'installe avec un programme d'installation, je ne cherche pas le CLAP, je passe",
- "nessun plugin CLAP in questo archivio, salto": "aucun plugin CLAP dans cette archive, je passe"
+ "nessun plugin CLAP in questo archivio, salto": "aucun plugin CLAP dans cette archive, je passe",
+ "Fai una copia": "Faire une copie",
+ "Condividi come link": "Partager comme lien",
+ "Mostra QR code": "Afficher le QR code",
+ "Il link è lungo: alcune app lo tagliano. Se non si apre, manda il file .st.": "Le lien est long : certaines applis le coupent. S'il ne s'ouvre pas, envoyez le fichier .st.",
+ "Link copiato ({n} caratteri).": "Lien copié ({n} caractères).",
+ "Copia il link:": "Copiez le lien :",
+ "Questo brano è troppo grande per un QR code ({n} byte, il massimo è {max}). Usa «Condividi come link» o il file .st.": "Ce morceau est trop grand pour un QR code ({n} octets, le maximum est {max}). Utilisez « Partager comme lien » ou le fichier .st.",
+ "QR code del brano {name}": "QR code du morceau {name}",
+ "Inquadralo con la fotocamera di un altro telefono. I commenti del brano non sono nel QR.": "Cadrez-le avec l'appareil photo d'un autre téléphone. Les commentaires du morceau ne sont pas dans le QR.",
+ "Questo link è di una versione di SoundText che l'app non conosce.": "Ce lien vient d'une version de SoundText que l'appli ne connaît pas.",
+ "Il brano di questo link è troppo grande.": "Le morceau de ce lien est trop grand.",
+ "Il link non contiene un brano valido: forse è stato tagliato o modificato.": "Le lien ne contient pas de morceau valide : il a peut-être été coupé ou modifié.",
+ "brano condiviso: sola lettura": "morceau partagé : lecture seule"
 }

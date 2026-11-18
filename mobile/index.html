@@ -22,6 +22,7 @@
 <header>
   <h1 id="title">SoundText</h1>
   <span id="badge" class="badge" hidden></span>
+  <button id="copyShared" class="copy-shared" hidden data-i18n>Fai una copia</button>
 </header>
 
 <main>
@@ -218,6 +219,14 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- Il QR code di un brano: si legge con la fotocamera di un altro telefono -->
+<dialog id="qrDialog" class="sheet" aria-labelledby="qrTitle">
+  <h2 id="qrTitle"></h2>
+  <canvas id="qrCanvas" class="qr-canvas" role="img"></canvas>
+  <p id="qrHelp" class="hint"></p>
+  <button id="qrClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Canta: una melodia canticchiata diventa testo nella traccia del cursore -->
 <dialog id="humDialog" class="sheet" aria-labelledby="humTitle">
   <h2 id="humTitle"></h2>
@@ -252,6 +261,7 @@
 <script src="i18n.js"></script>
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
+<script src="share.js"></script>
 <script src="app/base.js"></script>
 <script src="app/text-edits.js"></script>
 <script src="app/editor.js"></script>

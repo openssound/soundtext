@@ -20,6 +20,8 @@ async function renderSongs() {
       [t("Rinomina"), () => renameSong(song.id)],
       [t("Duplica"), () => duplicate(song)],
       [t("Condividi"), () => share(song)],
+      [t("Condividi come link"), () => shareLink(song)],
+      [t("Mostra QR code"), () => showQr(song)],
       [t("Elimina"), () => deleteSong(song.id), "danger"],
     ]));
   }
@@ -31,6 +33,8 @@ async function renderSongs() {
                        () => openExample(file, true), [
       [t("Crea una copia"), async () => duplicate(await exampleDoc(file))],
       [t("Condividi"), async () => share(await exampleDoc(file))],
+      [t("Condividi come link"), async () => shareLink(await exampleDoc(file))],
+      [t("Mostra QR code"), async () => showQr(await exampleDoc(file))],
     ]));
   }
 }
@@ -167,4 +171,87 @@ async function share(song) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ------------------------------------------------------------ link e QR code
+//
+// Il brano sta nel frammento del link (#v=1&b=...): non passa da nessun server.
+// Vedi share.js.
+
+async function songLink(song, bytes = StFormat.toBytes(song)) {
+  const fragment = await ShareLink.makeFragment(song.name, bytes);
+  return ShareLink.makeUrl(location.origin + location.pathname, fragment);
+}
+
+// Condivide il link (foglio di condivisione) o lo copia.
+async function shareLink(song) {
+  const url = await songLink(song);
+  const long = url.length > ShareLink.LONG_LINK
+    ? " " + t("Il link è lungo: alcune app lo tagliano. Se non si apre, manda il file .st.") : "";
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: song.name, url });
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    setStatus(t("Link copiato ({n} caratteri).", { n: url.length }) + long);
+  } catch (e) {
+    prompt(t("Copia il link:"), url);
+  }
+}
+
+// Il QR del link, per la lavagna o un altro telefono: senza commenti, per farlo stare.
+async function showQr(song) {
+  await state.booted;
+  const bare = (await call("strip_comments", { args: [song.text] })).result;
+  const url = await songLink(song, new TextEncoder().encode(bare));
+  const qr = Qr.encode(new TextEncoder().encode(url));
+  $("qrTitle").textContent = song.name;
+  $("qrCanvas").hidden = !qr;
+  if (qr) {
+    Qr.draw($("qrCanvas"), qr, 840);
+    $("qrCanvas").setAttribute("aria-label", t("QR code del brano {name}", { name: song.name }));
+    $("qrHelp").textContent = t("Inquadralo con la fotocamera di un altro telefono. I commenti del brano non sono nel QR.");
+  } else {
+    // il motivo sta nella finestra stessa, non nella riga di stato del lettore
+    $("qrHelp").textContent = t("Questo brano è troppo grande per un QR code ({n} byte, il massimo è {max}). " +
+      "Usa «Condividi come link» o il file .st.", { n: new TextEncoder().encode(url).length, max: Qr.MAX_BYTES });
+  }
+  const dialog = $("qrDialog");
+  dialog.showModal();
+  $("qrClose").onclick = () => dialog.close();
+}
+
+// Il brano di un link aperto: si ascolta e si guarda in sola lettura; la prima
+// modifica (o "Fai una copia") lo mette fra i brani dell'utente.
+async function openSharedLink() {
+  let shared;
+  try {
+    shared = await ShareLink.readFragment(location.hash);
+  } catch (e) {
+    const why = { formato: t("Questo link è di una versione di SoundText che l'app non conosce."),
+                  grande: t("Il brano di questo link è troppo grande."),
+                  dati: t("Il link non contiene un brano valido: forse è stato tagliato o modificato.") }[e.code];
+    setStatus(why || shortError(e), true);
+    return null;
+  }
+  if (!shared) return null;
+  const f = StFormat.fromBytes(shared.bytes);
+  const ready = openDoc({ kind: "link", name: shared.name, text: f.text, eol: f.eol, bom: f.bom });
+  setEditable(false);                          // prima l'ascolto; per modificare si fa una copia
+  setView("testo");
+  return ready;
+}
+
+async function copyShared() {
+  const doc = state.doc;
+  if (!doc || doc.kind !== "link") return;
+  const name = await Songs.freeName(doc.name);
+  const song = await Songs.create({ name, text: doc.text, eol: doc.eol, bom: doc.bom, source: "link condiviso" });
+  await openSong(song.id);
+  setStatus(t("Copia salvata fra i tuoi brani"));
 }

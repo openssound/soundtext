@@ -2899,5 +2899,18 @@
  "i file .clap che si trovano negli archivi dei plugin VST3 gratuiti (se ce ne sono)": "the .clap files found in the archives of the free VST3 plugins (when there are any)",
  "i plugin CLAP che stanno negli archivi dei plugin VST3 gratuiti, nella cartella CLAP dell'utente: {}": "the CLAP plugins found in the archives of the free VST3 plugins, in the user's CLAP folder: {}",
  "si installa con un programma di installazione, non cerco il CLAP, salto": "it installs with an installer program, I do not look for the CLAP, skipping",
- "nessun plugin CLAP in questo archivio, salto": "no CLAP plugin in this archive, skipping"
+ "nessun plugin CLAP in questo archivio, salto": "no CLAP plugin in this archive, skipping",
+ "Fai una copia": "Make a copy",
+ "Condividi come link": "Share as a link",
+ "Mostra QR code": "Show QR code",
+ "Il link è lungo: alcune app lo tagliano. Se non si apre, manda il file .st.": "The link is long: some apps cut it. If it does not open, send the .st file.",
+ "Link copiato ({n} caratteri).": "Link copied ({n} characters).",
+ "Copia il link:": "Copy the link:",
+ "Questo brano è troppo grande per un QR code ({n} byte, il massimo è {max}). Usa «Condividi come link» o il file .st.": "This song is too big for a QR code ({n} bytes, the maximum is {max}). Use “Share as a link” or the .st file.",
+ "QR code del brano {name}": "QR code of the song {name}",
+ "Inquadralo con la fotocamera di un altro telefono. I commenti del brano non sono nel QR.": "Point another phone's camera at it. The song's comments are not in the QR.",
+ "Questo link è di una versione di SoundText che l'app non conosce.": "This link is from a version of SoundText that the app does not know.",
+ "Il brano di questo link è troppo grande.": "The song in this link is too big.",
+ "Il link non contiene un brano valido: forse è stato tagliato o modificato.": "The link does not contain a valid song: it may have been cut or changed.",
+ "brano condiviso: sola lettura": "shared song: read only"
 }

@@ -129,7 +129,7 @@ async function prefetchForOffline() {
 
 // ------------------------------------------------------------ documento
 //
-// state.doc e' il brano aperto: { kind: "song" | "example", id, file, name,
+// state.doc e' il brano aperto: { kind: "song" | "example" | "link", id, file, name,
 // text, eol, bom }. Gli esempi sono in sola lettura: la prima modifica ne
 // crea una copia fra i brani dell'utente. state.song e' l'ultima analisi del
 // motore (il testo analizzato e' state.song.text): se il testo cambia, si
@@ -164,6 +164,7 @@ function codepointOffsets(text) {
 }
 
 function rememberDoc(doc) {
+  if (doc && doc.kind === "link") return;        // un brano da un link non si riapre all'avvio: il link non c'e' piu'
   try {
     localStorage.setItem("stmobile.last", JSON.stringify(doc ? { kind: doc.kind, id: doc.id, file: doc.file } : null));
   } catch (e) {}
@@ -175,6 +176,7 @@ function openDoc(doc) {
   stopVoice();
   state.doc = doc;
   state.song = null;
+  if (doc.kind !== "link" && /(^|[#&])b=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
   state.semitones = 0;
   $("trans").value = 0; $("transOut").value = "0";
   state.muted.clear();
@@ -200,8 +202,10 @@ function showDocTitle() {
   const doc = state.doc;
   $("title").textContent = doc ? doc.name : "SoundText";
   $("nowName").textContent = doc ? doc.name : "–";
-  $("badge").hidden = !(doc && doc.kind === "example");
-  $("badge").textContent = t("esempio: le modifiche creano una copia");
+  const shared = !!doc && doc.kind === "link";
+  $("badge").hidden = !(doc && (doc.kind === "example" || shared));
+  $("badge").textContent = shared ? t("brano condiviso: sola lettura") : t("esempio: le modifiche creano una copia");
+  $("copyShared").hidden = !shared;
 }
 
 // Analizza il testo attuale, se non e' gia' quello analizzato.

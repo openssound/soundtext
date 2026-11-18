@@ -2899,5 +2899,18 @@
  "i file .clap che si trovano negli archivi dei plugin VST3 gratuiti (se ce ne sono)": "los archivos .clap que hay en los archivos de los plugins VST3 gratuitos (si los hay)",
  "i plugin CLAP che stanno negli archivi dei plugin VST3 gratuiti, nella cartella CLAP dell'utente: {}": "los plugins CLAP que hay en los archivos de los plugins VST3 gratuitos, en la carpeta CLAP del usuario: {}",
  "si installa con un programma di installazione, non cerco il CLAP, salto": "se instala con un programa de instalación, no busco el CLAP, lo salto",
- "nessun plugin CLAP in questo archivio, salto": "ningún plugin CLAP en este archivo, lo salto"
+ "nessun plugin CLAP in questo archivio, salto": "ningún plugin CLAP en este archivo, lo salto",
+ "Fai una copia": "Hacer una copia",
+ "Condividi come link": "Compartir como enlace",
+ "Mostra QR code": "Mostrar código QR",
+ "Il link è lungo: alcune app lo tagliano. Se non si apre, manda il file .st.": "El enlace es largo: algunas apps lo cortan. Si no se abre, manda el archivo .st.",
+ "Link copiato ({n} caratteri).": "Enlace copiado ({n} caracteres).",
+ "Copia il link:": "Copia el enlace:",
+ "Questo brano è troppo grande per un QR code ({n} byte, il massimo è {max}). Usa «Condividi come link» o il file .st.": "Esta canción es demasiado grande para un código QR ({n} bytes, el máximo es {max}). Usa «Compartir como enlace» o el archivo .st.",
+ "QR code del brano {name}": "Código QR de la canción {name}",
+ "Inquadralo con la fotocamera di un altro telefono. I commenti del brano non sono nel QR.": "Enfócalo con la cámara de otro teléfono. Los comentarios de la canción no están en el QR.",
+ "Questo link è di una versione di SoundText che l'app non conosce.": "Este enlace es de una versión de SoundText que la app no conoce.",
+ "Il brano di questo link è troppo grande.": "La canción de este enlace es demasiado grande.",
+ "Il link non contiene un brano valido: forse è stato tagliato o modificato.": "El enlace no contiene una canción válida: quizá lo cortaron o lo modificaron.",
+ "brano condiviso: sola lettura": "canción compartida: solo lectura"
 }

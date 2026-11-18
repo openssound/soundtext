@@ -257,7 +257,7 @@ const CALLS = {
   structure: "structure", box_edit: "box_edit",
   transform_at: "transform_at", transform_preview: "transform_preview", transform_apply: "transform_apply",
   dictate: "dictate", dictation_words: "dictation_words", dictate_track: "dictate_track",
-  track_instruments: "track_instruments", new_track: "new_track",
+  track_instruments: "track_instruments", new_track: "new_track", strip_comments: "strip_comments",
 };
 
 self.onmessage = async (ev) => {

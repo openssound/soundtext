@@ -582,3 +582,26 @@ def test_short_headers_and_odd_meters_of_st_language_2122():
     assert {b["label"] for b in result["blocks"]} == {"Basso", "Flute"}
     song = engine.analyze("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/6\n\nFlute:\n  4: c d e f\n", "x")
     assert [t["instrument"] for t in song["info"]["tracks"]] == ["Flute"]
+
+
+def test_strip_comments_keeps_the_song_but_not_the_comments():
+    """Per il QR code: tolti i commenti il brano e' lo stesso (la stessa musica), e un // dentro un testo cantato non e' un commento."""
+    import glob
+
+    _engine("jazz_aaba.st")                               # mette il motore fra i moduli importabili
+    e = sys.modules["engine"]
+    assert e.strip_comments("// titolo\n\nST: 2.6\nTempo: 90 BPM // veloce\n\n\n\nPiano:\n  1: C | // via\n") == \
+        "ST: 2.6\nTempo: 90 BPM\n\nPiano:\n  1: C |\n"
+    assert e.strip_comments("Testo: \"a // b\" // fine\n") == "Testo: \"a // b\"\n"
+    files = sorted(glob.glob(os.path.join(ROOT, "examples", "*.st")) + glob.glob(os.path.join(ROOT, "examples", "didattici", "*.st")))
+    assert len(files) >= 10
+    for path in files:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        short = e.strip_comments(text)
+        assert len(short) <= len(text) + 1, path
+        # la stessa musica: gli stessi byte MIDI, con e senza commenti
+        full, bare = e.Engine(), e.Engine()
+        full.load(text, "Brano")
+        bare.load(short, "Brano")
+        assert bare.midi_bytes(0) == full.midi_bytes(0), path

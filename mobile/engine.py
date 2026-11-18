@@ -749,6 +749,27 @@ def new_track(text: str, instrument: str) -> dict:
     return {"text": r["text"].rstrip("\n") + "\n  ", "name": r["name"]}
 
 
+def strip_comments(text: str) -> str:
+    """Il brano senza commenti, per farlo stare in un QR code: le righe fatte
+    solo di commento spariscono e le righe vuote di fila diventano una. I
+    commenti si trovano come nel resto del motore (comment_spans), quindi un
+    // dentro un testo fra virgolette resta."""
+    from core.notation import comment_spans
+    out: List[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        spans = comment_spans(line)
+        if spans:
+            for start, end in reversed(spans):
+                line = line[:start] + line[end:]
+            line = line.rstrip()
+            if not line:
+                continue                                  # era solo un commento
+        if not line.strip() and out and not out[-1].strip():
+            continue
+        out.append(line)
+    return "\n".join(out).strip("\n") + "\n"
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""
