@@ -1720,7 +1720,7 @@ class ArrangementView(AudioClipActions, QWidget):
             menu.addSeparator()
             if hasattr(self.host, "wav_export"):
                 self.host.wav_export.add_freeze_action(menu, track_name)
-            export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
+            export_wav_action = menu.addAction(tr("Esporta audio (solo questa)..."))
             export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
             menu.addSeparator()
             remove_action = menu.addAction(tr("Rimuovi traccia"))
@@ -1781,7 +1781,7 @@ class ArrangementView(AudioClipActions, QWidget):
         if hasattr(self.host, "wav_export"):
             self.host.wav_export.add_freeze_action(menu, track_name)
         export_action = menu.addAction(tr("Esporta MIDI (solo questa)..."))
-        export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
+        export_wav_action = menu.addAction(tr("Esporta audio (solo questa)..."))
         export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
         menu.addSeparator()
         remove_action = menu.addAction(tr("Rimuovi traccia"))

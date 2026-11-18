@@ -403,12 +403,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                                "con i tempi in quarti): una traccia per canale, come un MIDI.")))
         export_menu = file_menu.addMenu(tr("Esporta"))
         export_menu.addAction(self._action(
-            tr("Mix audio (WAV)..."), self.wav_export.mix,
+            tr("Mix audio (WAV, MP3, FLAC, OGG)..."), self.wav_export.mix,
             tooltip=tr("Esporta il brano come si sente (tracce udibili, comprese le tracce audio) "
-            "in un file WAV 48 kHz / 24 bit.")))
+            "in un file WAV (48 kHz / 24 bit), MP3, FLAC o OGG: il formato si sceglie nel dialogo.")))
         export_menu.addAction(self._action(
             tr("Tutte le tracce, una per file (stem)..."), self.wav_export.stems,
-            tooltip=tr("Un WAV per traccia (quelle non silenziate), tutti dall'inizio del brano e lunghi "
+            tooltip=tr("Un file audio per traccia (quelle non silenziate; WAV, MP3, FLAC o OGG), tutti dall'inizio del brano e lunghi "
                        "uguale: per mixare in un altro programma o mandare le parti a un altro musicista.")))
         export_menu.addAction(self._action(tr("MIDI..."), self.export_midi, "Ctrl+Shift+E",
                                             tr("Esporta l'intero ensemble (tracce udibili) in un file MIDI.")))
@@ -527,8 +527,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         track_export_menu = track_menu.addMenu(tr("Esporta questa traccia"))
         track_export_menu.addAction(self._action(tr("MIDI..."), self.export_selected_track_midi))
         track_export_menu.addAction(self._action(
-            tr("WAV..."), self.export_selected_track_wav,
-            tooltip=tr("Esporta in un WAV solo la traccia selezionata, come si sente in Solo (con i suoi effetti).")
+            tr("Audio (WAV, MP3, FLAC, OGG)..."), self.export_selected_track_wav,
+            tooltip=tr("Esporta in un file audio solo la traccia selezionata, come si sente in Solo (con i suoi effetti).")
         ))
         track_export_menu.addAction(self._action(
             tr("WAV asciutto (per il re-amping)..."), lambda: self.export_selected_track_wav(dry=True),

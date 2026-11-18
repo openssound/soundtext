@@ -716,7 +716,7 @@ class MixerMixin:
                     lambda: self.edit_track_synth(track_name)
         self.wav_export.add_freeze_action(menu, track_name)
         actions[menu.addAction(tr("Esporta MIDI (solo questa)..."))] = self.export_selected_track_midi
-        actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.wav_export.track(track_name)
+        actions[menu.addAction(tr("Esporta audio (solo questa)..."))] = lambda: self.wav_export.track(track_name)
         actions[menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))] = \
             lambda: self.wav_export.track(track_name, dry=True)
         menu.addSeparator()
@@ -1058,7 +1058,7 @@ class MixerMixin:
             QMessageBox.critical(self, tr("Errore export MIDI"), str(e))
 
     def export_selected_track_wav(self, dry: bool = False):
-        """Menu Traccia → Esporta questa traccia → WAV (o WAV asciutto)."""
+        """Menu Traccia → Esporta questa traccia → Audio (o WAV asciutto)."""
         if not self.current_track_name:
             QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia da esportare."))
             return
