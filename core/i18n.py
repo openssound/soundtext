@@ -86,6 +86,10 @@ def set_language(language: str):
     global _language, _catalog
     _language = language if language in LANGUAGES else SOURCE_LANGUAGE
     _catalog = load_catalog(_language)
+    # i messaggi di st_language passano da tr; quelli che qui non ci sono
+    # ripiegano sui cataloghi della libreria, che deve sapere la lingua
+    import st_language
+    st_language.set_language(_language)
 
 
 def current_language() -> str:

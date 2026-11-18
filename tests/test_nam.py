@@ -40,6 +40,14 @@ RATE = 48000
 needs_pedalboard = pytest.mark.skipif(not effects_available(), reason="pedalboard non installato")
 
 
+@pytest.fixture(autouse=True)
+def _numpy_engine(monkeypatch):
+    """Qui si prova la rete in numpy: il plugin Neural Amp Modeler, se e'
+    installato sul computer, resta fuori (lo prova tests/test_nam_plugin.py)."""
+    from core import nam_plugin
+    monkeypatch.setattr(nam_plugin, "_disabled_reason", "test")
+
+
 def _reference():
     with open(REFERENCE) as f:
         return json.load(f)
@@ -276,32 +284,17 @@ def test_recommended_profiles_download(tmp_path):
     assert stopped["downloaded"] == [] and stopped["failed"] == []
 
 
-def test_download_command_in_the_menu(tmp_path, monkeypatch):
-    from PySide6.QtWidgets import QApplication, QMessageBox
-    app = QApplication.instance() or QApplication([])
-    from core import nam_profiles
+def test_downloads_are_in_the_single_window():
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
     from gui.command_palette import collect_commands
     from gui.main_window import MainWindow
-    calls, shown = [], []
-
-    def fake_download(folder, progress=None, should_stop=None):
-        calls.append(folder)
-        progress(0, 1, "uno")
-        return {"folder": folder, "downloaded": ["uno.nam"], "present": [], "failed": []}
-
-    monkeypatch.setattr(nam_profiles, "download_profiles", fake_download)
-    monkeypatch.setattr(nam_profiles, "ensure_nam_dir", lambda: str(tmp_path))
-    monkeypatch.setattr(QMessageBox, "information", lambda *a: shown.append(a[2]))
     w = MainWindow()
-    labels = [c.action.text() for c in collect_commands(w.menuBar())]   # sottomenu compresi
-    assert "Scarica profili NAM consigliati..." in labels
-    w.download_nam_profiles(ask=False)
-    w._nam_download_worker.wait()
-    for _ in range(50):
-        app.processEvents()
-        if shown:
-            break
-    assert calls == [str(tmp_path)] and shown and "Scaricati: 1" in shown[0]
+    labels = [c.action.text() for c in collect_commands(w.menuBar())]
+    assert "Scarica e installa..." in labels                     # profili e casse NAM stanno li' dentro
+    assert not [t for t in labels if t.startswith("Scarica profili") or t.startswith("Scarica casse")]
+    assert not hasattr(w, "download_nam_profiles")
+
 
 
 def _wav_bytes(samples, rate=44100):
@@ -350,34 +343,6 @@ def test_cabinet_irs_download(tmp_path):
     assert stopped["downloaded"] == [] and stopped["failed"] == []
 
 
-def test_cabinet_download_command_in_the_menu(tmp_path, monkeypatch):
-    from PySide6.QtWidgets import QApplication, QMessageBox
-    app = QApplication.instance() or QApplication([])
-    from core import cab_irs
-    from gui.command_palette import collect_commands
-    from gui.main_window import MainWindow
-    calls, shown = [], []
-
-    def fake_download(folder, progress=None, should_stop=None):
-        calls.append(folder)
-        progress(0, 1, "uno")
-        return {"folder": folder, "downloaded": ["uno.wav"], "present": [], "failed": []}
-
-    monkeypatch.setattr(cab_irs, "download_cabinets", fake_download)
-    monkeypatch.setattr(cab_irs, "ensure_cab_dir", lambda: str(tmp_path))
-    monkeypatch.setattr(QMessageBox, "information", lambda *a: shown.append(a[2]))
-    w = MainWindow()
-    labels = [c.action.text() for c in collect_commands(w.menuBar())]   # sottomenu compresi
-    assert "Scarica casse IR per gli amplificatori NAM..." in labels
-    w.download_cab_irs(ask=False)
-    w._cab_download_worker.wait()
-    for _ in range(50):
-        app.processEvents()
-        if shown:
-            break
-    assert calls == [str(tmp_path)] and shown and "Scaricati: 1" in shown[0] and "File IR" in shown[0]
-
-
 # ------------------------------------------------------------ casse, synth asciutto, velocita'
 
 def _profile(tmp_path, name, gear_type=None, **meta):
@@ -394,7 +359,58 @@ def _cabinet(effect):
     return choice_key(effect_params("nam")[1], clamp_params("nam", effect.params)["cassa"])
 
 
-def test_profile_without_cabinet_gets_one_and_with_cabinet_goes_back_to_none(tmp_path):
+@pytest.fixture
+def no_cabinet_irs(monkeypatch):
+    """Le casse IR non scaricate: si propongono le casse interne."""
+    import core.cab_irs
+    monkeypatch.setattr(core.cab_irs, "existing_cab_dir", lambda: "")
+
+
+@pytest.fixture
+def cabinet_irs(tmp_path, monkeypatch):
+    """Una cartella delle casse con due IR (vedi core.cab_irs)."""
+    import wave
+    import core.cab_irs
+    folder = tmp_path / "casse"
+    folder.mkdir()
+    for name in ("Marshall JMP 2203  Jose Arredondo mod.wav", "EVH 5150 III.wav"):
+        with wave.open(str(folder / name), "wb") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(48000)
+            f.writeframes((np.r_[1.0, np.zeros(255)] * 30000).astype("<i2").tobytes())
+    monkeypatch.setattr(core.cab_irs, "existing_cab_dir", lambda: str(folder))
+    return folder
+
+
+def test_rock_head_gets_the_real_cabinet_of_its_family(tmp_path, cabinet_irs):
+    from core.effects import set_nam_profile
+    effect = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(effect, _profile(tmp_path, "Marshall JCM800.nam", "amp", gear_make="Marshall"))
+    assert _cabinet(effect) == "file"
+    assert effect.ir == str(cabinet_irs / "Marshall JMP 2203  Jose Arredondo mod.wav")
+    combo = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(combo, _profile(tmp_path, "Vox AC30.nam", "amp"))
+    assert _cabinet(combo) == "combo_1x12" and not combo.ir      # nessuna IR adatta: la cassa interna
+    pedal = Effect("nam", clamp_params("nam", {}))
+    set_nam_profile(pedal, _profile(tmp_path, "Boss HM-2.nam", "pedal"))
+    assert _cabinet(pedal) == "nessuna" and not pedal.ir
+
+
+@pytest.mark.skipif(not effects_available(), reason="pedalboard non installato")
+def test_missing_cabinet_file_falls_back_to_the_inner_cabinet(tmp_path, no_cabinet_irs):
+    path = _profile(tmp_path, "Marshall JCM800.nam", "amp", gear_make="Marshall")
+    choices = [k for k, _ in __import__("core.effects", fromlist=["x"]).effect_params("nam")[1].choices]
+    missing = Effect("nam", clamp_params("nam", {"cassa": choices.index("file")}), nam=path,
+                     ir=str(tmp_path / "non_c_e.wav"))
+    inner = Effect("nam", clamp_params("nam", {"cassa": choices.index("4x12")}), nam=path)
+    x = (np.sin(np.arange(9600) * 0.05)[:, None] * np.ones((1, 2)) * 0.3).astype(np.float32)
+    a = apply_effect_chain(x, 48000, [missing], with_tail=False)
+    b = apply_effect_chain(x, 48000, [inner], with_tail=False)
+    assert np.allclose(a, b)                                     # la 4x12 adatta al profilo, non il suono senza cassa
+
+
+def test_profile_without_cabinet_gets_one_and_with_cabinet_goes_back_to_none(tmp_path, no_cabinet_irs):
     from core.effects import set_nam_profile
     effect = Effect("nam", clamp_params("nam", {}))
     set_nam_profile(effect, _profile(tmp_path, "Marshall JCM800.nam", "amp", gear_make="Marshall"))

@@ -262,7 +262,7 @@ def _fits_grid_ignoring_one_outlier(fracs: List[float], n: int) -> bool:
     errors = sorted(abs(f * n - round(f * n)) / n for f in fracs)
     return errors[-2] <= GRID_FIT_TOLERANCE
 
-def _dominant_swing_grid(onset_fracs: Dict[int, List[float]]) -> int:
+def _dominant_swing_grid(onset_fracs: Dict[int, List[float]], fine_rhythm: bool = False) -> int:
     """Griglia (3 = terzine, 4 = dritto, ...) piu' frequente fra le battute
     del canale che hanno prove genuine di suddivisione, per stabilire il
     feel ritmico dominante (es. uno shuffle blues) e risolvere con quello le
@@ -276,7 +276,7 @@ def _dominant_swing_grid(onset_fracs: Dict[int, List[float]]) -> int:
         merged = _merge_near_simultaneous(fracs)
         if len(merged) < 2 and (not merged or merged[0] < 0.05):
             continue
-        votes[_choose_beat_grid(fracs)] += 1
+        votes[_choose_beat_grid(fracs, fine_rhythm=fine_rhythm)] += 1
     if not votes:
         return 4
     grid, count = votes.most_common(1)[0]
@@ -286,7 +286,8 @@ def _dominant_swing_grid(onset_fracs: Dict[int, List[float]]) -> int:
         return 4
     return grid
 
-def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None) -> int:
+def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None,
+                      fine_rhythm: bool = False) -> int:
     """Suddivisione per beat (4 = sedicesimi, 3 = terzine 8T, 6 = 16T,
     5 = quintine 16Q, 7 = settimine 16S, 8 = trentaduesimi) che spiega meglio gli attacchi di
     UNA battuta (fracs = posizione di ciascun attacco dentro il beat, in
@@ -300,7 +301,12 @@ def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None) -
     suoi attacchi (tutti tranne al piu' un ghost note) e' compatibile con
     quella griglia, la usa invece di ripiegare sempre su sedicesimi - cosi'
     uno shuffle non si spezza beat per beat a causa di una singola nota
-    leggermente fuori tempo."""
+    leggermente fuori tempo.
+
+    fine_rhythm (Opzioni > Slide nell'import MIDI... > Ritmo fedele
+    all'esecuzione) sceglie i trentaduesimi in ogni battito che spiegano
+    meglio dei sedicesimi: un brano suonato dal vivo resta piu' vicino
+    all'esecuzione, a prezzo di un testo con piu' cambi di griglia."""
     fracs = _merge_near_simultaneous(fracs)
 
     def err(n):
@@ -334,6 +340,13 @@ def _choose_beat_grid(fracs: List[float], dominant_grid: Optional[int] = None) -
         return 8
     if dominant_grid and dominant_grid != 4 and _fits_grid_ignoring_one_outlier(fracs, dominant_grid):
         return dominant_grid
+    # Un solo attacco fuori dai sedicesimi ma preciso sul trentaduesimo: un
+    # abbellimento (Strange Brew: un do di 71 ms prima del la, a 105 BPM).
+    # Arrotondato al sedicesimo spostava di 70 ms la nota che lo segue.
+    if err(8) <= GRID_FIT_TOLERANCE * 0.4:
+        return 8
+    if fine_rhythm and err(8) < err4:
+        return 8
     return 4
 
 def _channel_to_tokens_impl(channel: "ChannelData", ticks_per_beat: int,
@@ -383,10 +396,11 @@ def _channel_to_tokens_impl(channel: "ChannelData", ticks_per_beat: int,
     for start, _end, _note, _vel in channel.notes:
         beat, rem = divmod(start, tpb)
         onset_fracs[beat].append(rem / tpb)
-    dominant_grid = _dominant_swing_grid(onset_fracs)
+    fine_rhythm = getattr(channel, "fine_rhythm", False)      # vedi _choose_beat_grid
+    dominant_grid = _dominant_swing_grid(onset_fracs, fine_rhythm)
     beat_grid = {}
     for beat, fracs in onset_fracs.items():
-        n = _choose_beat_grid(fracs, dominant_grid)
+        n = _choose_beat_grid(fracs, dominant_grid, fine_rhythm)
         if n != 4:
             beat_grid[beat] = n
 
@@ -563,7 +577,11 @@ def _channel_to_tokens_impl(channel: "ChannelData", ticks_per_beat: int,
 
             n_here = grid_at(pos)
             if n_here != current_grid:
-                tokens.append(GRID_COMMANDS[n_here])
+                # due cambi di griglia di fila: vale l'ultimo (era "16: 32:")
+                if tokens and tokens[-1] in GRID_COMMANDS.values():
+                    tokens[-1] = GRID_COMMANDS[n_here]
+                else:
+                    tokens.append(GRID_COMMANDS[n_here])
                 current_grid = n_here
             unit = BEAT_UNITS // n_here
 

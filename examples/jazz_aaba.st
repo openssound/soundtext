@@ -1,22 +1,22 @@
-// Luci sul Naviglio: un brano jazz nella forma classica AABA (32 battute).
+// Lights on the Naviglio: a jazz tune in the classic AABA form (32 bars).
 //
-// Un quartetto (tromba, pianoforte, chitarra, contrabbasso e batteria) che
-// suona un "chorus" dopo l'altro, come in un vero club:
-//   introduzione di 4 battute, tema alla tromba, assolo di pianoforte,
-//   tema ripreso con la sezione ritmica piu' vivace, e una breve coda.
-// Cosa c'e' dentro:
-//   - lo swing (swing=66): le crome scritte dritte suonano "terzinate";
-//   - la tonalita' (key=F): il si e' bemolle senza scriverlo;
-//   - il basso "camminato" (walking bass): quattro note a battuta, sempre
-//     in movimento verso l'accordo seguente;
-//   - il pianoforte che accompagna con il ritmo "Charleston" e gli accordi
-//     a voicing drop-2 (.drop2); la chitarra con i quarti alla Freddie Green;
-//   - la batteria con il ride swing, il pedale del charleston sul 2 e sul 4,
-//     la "piumata" della cassa nell'ultimo chorus;
-//   - le sezioni A e B come pattern: A, A, B, A per tre chorus;
-//   - le forcelle di dinamica sul ponte e la corona finale.
+// A quintet (tenor sax, piano, guitar, double bass and drums) playing one
+// "chorus" after another, as in a real club:
+//   a 4-bar intro, the head on tenor sax, a piano solo,
+//   the head again with a livelier rhythm section, and a short coda.
+// What's inside:
+//   - swing (swing=66): straight eighth notes are played "triplet-like";
+//   - the key (key=F): B flat without writing it;
+//   - the walking bass: four notes per bar, always moving towards the next
+//     chord;
+//   - the piano comping with the "Charleston" rhythm and drop-2 voicings
+//     (.drop2); the guitar playing "four to the bar";
+//   - the drums with the swing ride, the hi-hat pedal on 2 and 4, and the
+//     "feathered" bass drum in the last chorus;
+//   - the A and B sections as patterns: A, A, B, A for three choruses;
+//   - dynamic hairpins on the bridge and the final fermata.
 //
-// Forma: introduzione 4 + tema 32 + assolo 32 + tema 32 + coda 4 = 104 battute.
+// Form: intro 4 + head 32 + solo 32 + head 32 + coda 4 = 104 bars.
 //   A  Fmaj7 | D7 | Gm7 | C7 | Am7 D7 | Gm7 C7 | Fmaj7 Dm7 | Gm7 C7
 //   B  Em7 A7 | Dmaj7 | Dm7 G7 | Cmaj7 | Cm7 F7 | Bbmaj7 | Gm7 C7 | C7
 
@@ -25,12 +25,15 @@ Tempo: 132 BPM
 Metrica: 4/4
 Tonalita: F
 
-// ---------------------------------------------------------------- generale
+Strumento TenorSax:
+  program=66 percussione=no ottava=4 range=49-82 poly=no voicing=monophonic
+
+// ---------------------------------------------------------------- general
 
 Pattern %Rest:
   4: 4r |
 
-// ---------------------------------------------------------------- tema (tromba)
+// ---------------------------------------------------------------- head (tenor sax)
 
 Pattern %HeadA1:
   key=F 8: 92@
@@ -68,7 +71,7 @@ Pattern %HeadB:
 Pattern %Head:
   %HeadA1 %HeadA1 %HeadB %HeadA3
 
-// ---------------------------------------------------------------- assolo (pianoforte)
+// ---------------------------------------------------------------- solo (piano)
 
 Pattern %SoloA1:
   key=F 8: 88@
@@ -117,7 +120,7 @@ Pattern %SoloA3:
 Pattern %Solo:
   %SoloA1 %SoloA2 %SoloB %SoloA3
 
-// ---------------------------------------------------------------- contrabbasso (walking)
+// ---------------------------------------------------------------- double bass (walking)
 
 Pattern %BF:
   key=F 4: 90@ f*1 a*1 c*2 e*2 |
@@ -163,7 +166,7 @@ Pattern %BassB:
 Pattern %BassChorus:
   %BassA %BassA %BassB %BassAEnd
 
-// ---------------------------------------------------------------- pianoforte (comping)
+// ---------------------------------------------------------------- piano (comping)
 
 Pattern %CF:
   8: 74@ 3Fmaj7.drop2! Fmaj7.drop2! 4r |
@@ -209,7 +212,7 @@ Pattern %CompAEnd:
 Pattern %CompChorus:
   %CompA %CompA %CompB %CompAEnd
 
-// ---------------------------------------------------------------- chitarra (quarti alla Freddie Green)
+// ---------------------------------------------------------------- guitar (four to the bar)
 
 Pattern %GtrA:
   4: 62@
@@ -247,7 +250,7 @@ Pattern %GtrB:
 Pattern %GtrChorus:
   %GtrA %GtrA %GtrB %GtrAEnd
 
-// ---------------------------------------------------------------- batteria
+// ---------------------------------------------------------------- drums
 
 Pattern %Ride:
   8: 72@ ride r [ride hihat_pedal] 52@ ride 72@ ride r [ride hihat_pedal] 52@ ride |
@@ -285,21 +288,21 @@ Pattern %DrumsChorus2:
 Pattern %DrumsChorus3:
   %DrumsAK %DrumsAK %DrumsB %DrumsAK
 
-// ================================================================ tracce
+// ================================================================ tracks
 
-Trumpet:
+Traccia Tenor Sax [TenorSax]:
 
-Box Trumpet "Chorus 1" |16:
-  // chorus 1: il tema
-  swing=66 $"tema" %Head
+Box Tenor Sax "Chorus 1" |16:
+  // chorus 1: the head, an octave below the written notes: the tenor's register
+  swing=66 transpose=-12 $"head" %Head
 
-Box Trumpet "Chorus 3" |272:
-  // chorus 3: il tema ripreso, con piu' forza
-  swing=66 100@ %Head
+Box Tenor Sax "Chorus 3" |272:
+  // chorus 3: the head again, stronger
+  swing=66 transpose=-12 100@ %Head
 
-Box Trumpet "Coda" |400:
+Box Tenor Sax "Coda" |400:
   // coda
-  swing=66 100@ key=F 8: 90@
+  swing=66 transpose=-12 100@ key=F 8: 90@
   r g*4 b*4 d*5 2f*5 e*5 c*5 |
   2a*4 c*5 f*5 3d*5 r |
   r g*4 b*4 d*5 2c*5 e*5 c*5 |
@@ -307,8 +310,8 @@ Box Trumpet "Coda" |400:
 
 Piano:
 
-Box Piano "Introduzione" |0:
-  // introduzione: una breve frase a mano sola sul giro ii-V
+Box Piano "Intro" |0:
+  // intro: a short one-handed phrase over the ii-V
   swing=66 key=F 8: 82@
   r c*5 e*5 a*5 g*5 f#*5 a*5 d*5 |
   c*5 b*4 g*4 b*4 d*5 c*5 e*4 g*4 |
@@ -316,15 +319,15 @@ Box Piano "Introduzione" |0:
   b*4 d*5 g*5 f*5 2e*5 c*5 e*5 |
 
 Box Piano "Chorus 1" |16:
-  // chorus 1: accompagnamento Charleston sotto il tema
+  // chorus 1: Charleston comping under the head
   swing=66 key=F 8: 82@ %CompChorus
 
 Box Piano "Chorus 2" |144:
-  // chorus 2: l'assolo
-  swing=66 key=F 8: 82@ $"assolo" %Solo
+  // chorus 2: the solo
+  swing=66 key=F 8: 82@ $"solo" %Solo
 
 Box Piano "Chorus 3" |272:
-  // chorus 3: di nuovo il compagnamento
+  // chorus 3: comping again
   swing=66 key=F 8: 82@ 100@ %CompChorus
 
 Box Piano "Coda" |400:
@@ -337,11 +340,11 @@ Box Piano "Coda" |400:
 Guitar 1:
 
 Box Guitar 1 "Chorus 2" |144:
-  // la chitarra entra con l'assolo di pianoforte
+  // the guitar comes in with the piano solo
   swing=66 vol=100 %GtrChorus
 
 Box Guitar 1 "Chorus 3" |272:
-  // chorus 3: di nuovo in sottofondo
+  // chorus 3: in the background again
   swing=66 vol=80 %GtrChorus
 
 Box Guitar 1 "Coda" |400:
@@ -353,12 +356,12 @@ Box Guitar 1 "Coda" |400:
 
 Bass:
 
-Box Bass "Introduzione" |8:
-  // introduzione: il basso entra alla terza battuta
+Box Bass "Intro" |8:
+  // intro: the bass comes in on bar 3
   swing=66 %BAmD %BGmC
 
-Box Bass "Tre chorus" |16:
-  // tre chorus
+Box Bass "Chorus x3" |16:
+  // three choruses
   swing=66 3%BassChorus
 
 Box Bass "Coda" |400:
@@ -368,16 +371,16 @@ Box Bass "Coda" |400:
 
 Drums:
 
-Box Drums "Introduzione" |8:
-  // introduzione: due battute di pausa, poi il ride e il rullo di entrata
+Box Drums "Intro" |8:
+  // intro: two bars of rest, then the ride and the lead-in fill
   swing=66 %Ride %RideFill
 
-Box Drums "Chorus 1 e 2" |16:
-  // chorus 1 e 2: ride swing
+Box Drums "Chorus 1 and 2" |16:
+  // choruses 1 and 2: swing ride
   swing=66 %DrumsChorus1 %DrumsChorus2
 
 Box Drums "Chorus 3" |272:
-  // chorus 3: la cassa "piumata" e piu' energia
+  // chorus 3: the "feathered" bass drum and more energy
   swing=66 %DrumsChorus3
 
 Box Drums "Coda" |400:
@@ -386,7 +389,7 @@ Box Drums "Coda" |400:
 
 // ================================================================ mixer
 
-Mixer Trumpet:
+Mixer Tenor Sax:
   volume: 92 pan: 0.3 mute: no solo: no reverb: 30
 
 Mixer Piano:

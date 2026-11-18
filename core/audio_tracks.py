@@ -38,6 +38,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .memory import cache_budget
 from .model import AudioClip, Project, Track
 from .i18n import tr
 
@@ -149,7 +150,7 @@ def read_wav(path: str) -> Tuple[np.ndarray, int]:
 # recente fino a _DECODED_MAX_BYTES.
 _decoded: "OrderedDict[tuple, Tuple[np.ndarray, int]]" = OrderedDict()
 _decoded_lock = threading.Lock()
-_DECODED_MAX_BYTES = 512 * 1024 * 1024
+_DECODED_MAX_BYTES = cache_budget("decoded")      # vedi core.memory
 
 
 def decoded_wav(path: str) -> Tuple[np.ndarray, int]:
@@ -174,9 +175,12 @@ def decoded_wav(path: str) -> Tuple[np.ndarray, int]:
     return samples, rate
 
 
-def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24) -> None:
+def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24,
+              tempo: Optional[float] = None, meter: Tuple[int, int] = (4, 4)) -> None:
     """Scrive samples (float, forma (frame, canali), [-1, 1]; oltre viene
-    limitato) come WAV PCM a 16 o 24 bit."""
+    limitato) come WAV PCM a 16 o 24 bit. Con 'tempo' (BPM) il file porta
+    anche il blocco "acid" (vedi write_acid_tempo): un loop che le DAW, e
+    SoundText all'importazione, fanno andare a tempo con il brano."""
     if samples.ndim == 1:
         samples = samples.reshape(-1, 1)
     clipped = np.clip(samples, -1.0, 1.0)
@@ -192,6 +196,53 @@ def write_wav(path: str, samples: np.ndarray, samplerate: int, bits: int = 24) -
         w.setsampwidth(bits // 8)
         w.setframerate(samplerate)
         w.writeframes(raw)
+    if tempo:
+        write_acid_tempo(path, tempo, len(samples) / float(samplerate) * tempo / 60.0, meter)
+
+
+# Il blocco "acid" (Sony ACID, letto da Ableton, Logic, Cubase, FL Studio,
+# Reaper...): flags, nota base, due campi riservati, numero di beat, metrica
+# (denominatore, numeratore) e tempo in BPM.
+_ACID = struct.Struct("<IHHfIHHf")
+_ACID_STRETCH = 0x04       # il loop si adatta al tempo (non e' un "one-shot")
+
+
+def write_acid_tempo(path: str, tempo: float, beats: float, meter: Tuple[int, int] = (4, 4)) -> None:
+    """Aggiunge in fondo al WAV 'path' il blocco "acid" con il suo tempo."""
+    body = _ACID.pack(_ACID_STRETCH, 60, 0x8000, 0.0, max(0, int(round(beats))),
+                      int(meter[1]), int(meter[0]), float(tempo))
+    with open(path, "r+b") as f:
+        f.seek(0, os.SEEK_END)
+        if f.tell() % 2:
+            f.write(b"\0")                 # i blocchi RIFF cominciano su un byte pari
+        f.write(b"acid" + struct.pack("<I", len(body)) + body)
+        size = f.tell() - 8
+        f.seek(4)
+        f.write(struct.pack("<I", size))
+
+
+def read_wav_tempo(path: str) -> Optional[float]:
+    """Il tempo (BPM) del blocco "acid" di un WAV, se c'e' (un loop
+    esportato da SoundText o da un'altra DAW); None se non c'e' o se il file
+    non e' un WAV leggibile."""
+    try:
+        with open(path, "rb") as f:
+            header = f.read(12)
+            if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+                return None
+            while True:
+                chunk = f.read(8)
+                if len(chunk) < 8:
+                    return None
+                chunk_id, size = chunk[:4], struct.unpack("<I", chunk[4:])[0]
+                if chunk_id == b"acid" and size >= _ACID.size:
+                    fields = _ACID.unpack(f.read(_ACID.size))
+                    tempo = fields[7]
+                    one_shot = fields[0] & 0x01
+                    return round(float(tempo), 3) if not one_shot and 20.0 <= tempo <= 400.0 else None
+                f.seek(size + (size % 2), os.SEEK_CUR)
+    except (OSError, struct.error):
+        return None
 
 
 def resample(samples: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
@@ -793,7 +844,15 @@ MIN_STRETCH, MAX_STRETCH = 0.25, 4.0
 _stretch_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _stretch_lock = threading.Lock()
 # in byte, non in clip: con "tempo fisso" una ripresa e' un pezzo per battuta
-_STRETCH_CACHE_MAX_BYTES = 256 * 1024 * 1024
+_STRETCH_CACHE_MAX_BYTES = cache_budget("stretch")
+
+
+def clear_caches() -> None:
+    """Svuota le cache in memoria dei file decodificati e dei time-stretch."""
+    with _decoded_lock:
+        _decoded.clear()
+    with _stretch_lock:
+        _stretch_cache.clear()
 
 
 def _has_shift(semitones) -> bool:
@@ -1027,15 +1086,6 @@ def warm_stretched_layers(layers: List["AudioLayer"], samplerate: int = AUDIO_SA
     return done
 
 
-def _tracks_with_tempo_markers(project: Project) -> List[Track]:
-    """Le sole tracce che possono avere marcatori 'tempo=N' nel testo (anche
-    dentro un pattern): leggere le note di tutte le tracce a ogni modifica
-    costerebbe decimi di secondo, e quasi mai ce ne sono."""
-    in_patterns = any("tempo=" in tok for pat in project.patterns.values() for tok in pat.tokens)
-    return [t for t in project.tracks
-            if not t.is_audio and ("tempo=" in t.text or (in_patterns and "%" in t.text))]
-
-
 def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     """Le clip che seguono il tempo del brano (source_bpm > 0) prendono lo
     stretch che le fa durare, con la mappa del tempo di adesso, tante battute
@@ -1046,7 +1096,7 @@ def adapt_clips_to_tempo(project: Project) -> List[AudioClip]:
     if not following:
         return []
     from .tempo_map import build_tempo_beat_map, seconds_for_beats, value_at_beat
-    tempo_map = build_tempo_beat_map(project, tracks=_tracks_with_tempo_markers(project))
+    tempo_map = build_tempo_beat_map(project)
     changed = []
     for clip in following:
         info = cached_wav_info(clip.file)
@@ -1287,10 +1337,10 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
     'stems' sono tracce gia' renderizzate ed elaborate (catena di effetti,
     vedi core.effect_render): [(campioni (frame, 2) a 'samplerate', inizio
     in secondi)], un inizio negativo ne taglia la parte iniziale."""
-    mix = base.astype(np.float32, copy=True)
     # La lunghezza finale prima di mixare: allungare il mix a ogni clip lo
-    # ricopierebbe tutto ogni volta (lentissimo con centinaia di pezzi).
-    needed = len(mix)
+    # ricopierebbe tutto ogni volta (lentissimo con centinaia di pezzi). Il
+    # mix si prepara subito lungo quanto serve e base vi si copia una volta.
+    needed = len(base)
     for samples, start_seconds in stems:
         needed = max(needed, int(round(start_seconds * samplerate)) + len(samples))
     for layer in layers:
@@ -1298,9 +1348,9 @@ def mix_layers(base: np.ndarray, samplerate: int, layers: List[AudioLayer], stem
         if info is not None:
             part = max(0.0, info.seconds - layer.trim_start - layer.trim_end) * layer.stretch
             needed = max(needed, int(round(layer.start_seconds * samplerate)) + int(math.ceil(part * samplerate)) + 2)
-    used = len(mix)                                # fin dove si e' scritto davvero
-    if needed > len(mix):
-        mix = np.concatenate([mix, np.zeros((needed - len(mix), 2), dtype=np.float32)])
+    mix = np.zeros((needed, 2), dtype=np.float32)
+    mix[:len(base)] = base[:, :2]
+    used = len(base)                               # fin dove si e' scritto davvero
     for samples, start_seconds in stems:
         offset = int(round(start_seconds * samplerate))
         part = samples[max(0, -offset):]

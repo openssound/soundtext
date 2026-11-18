@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from gui.help_dialog import HelpDialog
+from gui.help_dialog import HELP_PATH, HelpDialog
 
 app = QApplication.instance() or QApplication([])
 
@@ -66,3 +66,27 @@ def test_enter_goes_forward_and_shift_enter_back():
     QTest.keyClick(d.search_edit, Qt.Key_Return, Qt.ShiftModifier)
     assert d._current == 1
     assert d.isVisible()                     # Invio non preme "Chiudi"
+
+
+def test_every_index_link_reaches_its_section():
+    """L'indice in cima alla guida: in ogni lingua ogni voce porta a un
+    titolo che esiste, e le sezioni sono numerate di seguito."""
+    import re
+
+    from core import i18n
+    try:
+        for code in ("it", "en", "es", "fr"):
+            i18n.set_language(code)
+            d = HelpDialog()
+            d.show()
+            with open(i18n.localized_doc(HELP_PATH), encoding="utf-8") as f:
+                text = f.read()
+            refs = re.findall(r"\]\(#([0-9][0-9.]*)\)", text)
+            assert len(refs) > 90
+            for ref in refs:
+                assert d.goto_section(ref), (code, ref)
+            chapters = [int(n) for n in re.findall(r"^## ([0-9]+)\. ", text, re.M)]
+            assert chapters == list(range(1, len(chapters) + 1)), code
+            d.close()
+    finally:
+        i18n.set_language("it")

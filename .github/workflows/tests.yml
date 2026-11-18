@@ -77,7 +77,11 @@ jobs:
       - name: Installa dipendenze Python
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest
+          pip install -c constraints.txt -r requirements.txt -r requirements-dev.txt
+
+      # Errori veri (nomi non definiti, import non usati): vedi ruff.toml
+      - name: Controllo statico (ruff)
+        run: ruff check .
 
       - name: Controlla i componenti audio
         run: >
@@ -90,5 +94,8 @@ jobs:
       - name: Esegui i test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest -q -rs          # -rs: il motivo di ogni test saltato
+        # -n auto --dist loadfile: in parallelo su tutti i core, i test di un
+        # file nello stesso processo e nel loro ordine; -rs: il motivo di
+        # ogni test saltato
+        run: python -m pytest -q -rs -n auto --dist loadfile
 

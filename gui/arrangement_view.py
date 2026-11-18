@@ -14,12 +14,13 @@ ricalcola Track.text da core.arrangement.flatten_clips_to_text.
 import dataclasses
 import itertools
 import os
+import re
 import time
 
 import numpy as np
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QCursor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsItem,
@@ -34,6 +35,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.clip_preview import clip_preview, patterns_key
+from core.arrangement import song_sections
 from core.arrangement import (
     anchored_preview_text,
     clip_duration_beats,
@@ -56,7 +59,7 @@ from .audio_import_dialog import AudioImportDialog
 from .box_edit_dialog import BoxEditDialog
 from .box_transpose_dialog import BoxTransposeDialog
 from .keyboard_play_dialog import KeyboardPlayDialog
-from .main_window_playback import TEXT_DIM_INVERT_BG
+from .play_highlight import TEXT_DIM_INVERT_BG
 from .rhythm_generate_dialog import (
     BassGenerateDialog, ChordProgressionDialog, DrumGenerateDialog, MelodyGenerateDialog, chord_source_tracks,
     last_box_key,
@@ -73,13 +76,23 @@ DEFAULT_PX_PER_BEAT = 24
 MIN_PX_PER_BEAT = 6
 MAX_PX_PER_BEAT = 96
 ZOOM_STEP = 1.25
-ROW_HEIGHT = 64
+ROW_HEIGHT = 64          # cambia con Vista -> Altezza delle tracce (vedi ArrangementView.set_row_height)
+DEFAULT_ROW_HEIGHT = 64
+# Le altezze delle righe: con le righe alte la miniatura delle note si legge
+# meglio. Non piu' basse di 64: le testate (gui.track_header) ci stanno a fatica.
+ROW_HEIGHTS = (64, 96, 128)
 ROW_GAP = 6
-HEADER_WIDTH = 230   # colonna delle testate traccia (mixer dentro le righe, vedi gui.track_header)
-RULER_HEIGHT = 26
+HEADER_WIDTH = 250   # colonna delle testate traccia (mixer dentro le righe, vedi gui.track_header); larga
+                     # quanto la colonna della vista Testo e il gruppo Master della barra dei comandi
+RULER_HEIGHT = 40
+RULER_BARS_HEIGHT = 20   # in alto i numeri di battuta, sotto la fascia delle sezioni (core.arrangement.song_sections)
 SNAP_BEATS = 1.0
 MIN_SCENE_BARS = 32
 BOX_CORNER_RADIUS = 6
+# Box: striscia con il nome in alto, sotto la miniatura delle note (core.clip_preview)
+BOX_NAME_STRIP = 16
+BOX_PREVIEW_MIN_WIDTH = 18     # piu' stretto di cosi' il box mostra solo il colore
+BOX_PREVIEW_MIN_SPAN = 12      # semitoni: una melodia di poche note non occupa tutta l'altezza
 PLAYHEAD_EDGE_MARGIN = 60  # px dal bordo del viewport oltre cui l'auto-scroll insegue la testina
 PREVIEW_PLAY_TEXT = tr("Ascolta il box selezionato")
 PREVIEW_PAUSE_TEXT = tr("Pausa ascolto del box")
@@ -90,7 +103,9 @@ HELP_TEXT = (
     "• Doppio click su un box: modificalo. Tasto destro: trasponi, duplica, dividi e altro.\n"
     "• Shift+Spazio: ascolta il box selezionato. Play/Stop in alto: tutto il brano.\n"
     "• Clic sul righello: salta in quel punto.\n"
-    "• Testata della traccia: M/S/● e volume; ⋯ o tasto destro per tutte le azioni.")
+    "• Testata della traccia: M/S/● e volume; ⋯ o tasto destro per tutte le azioni.\n"
+    "• Tasti: Spazio Play · R registra · Canc elimina · Ctrl+D duplica · S dividi · "
+    "Ctrl+rotellina zoom · Ctrl+Maiusc+rotellina altezza delle righe · Ctrl+K cerca un comando.")
 )
 EMPTY_ROW_HINT = tr("Doppio click per creare un box · tasto destro per generare, suonare o importare")
 EMPTY_AUDIO_ROW_HINT = tr("Doppio click per importare un file audio · ● per registrare")
@@ -115,10 +130,10 @@ def _snap(beat: float) -> float:
 
 def _canvas_colors() -> dict:
     if get_active_theme() == "light":
-        return {"bg": "#f0f0f2", "header_bg": "#ffffff", "row_bg": "#f7f7f9", "ruler_bg": "#ffffff",
-                "border": "#c4c4c8", "text": TEXT_DIM, "box_text": "#10151a"}
+        return {"bg": "#e1e1e5", "header_bg": "#ededef", "row_bg": "#e7e7ea", "ruler_bg": "#ededef",
+                "border": "#b4b4ba", "text": "#45454a", "text_strong": "#1c1c20", "box_text": "#10151a"}
     return {"bg": "#181818", "header_bg": "#232323", "row_bg": "#202020", "ruler_bg": "#232323",
-            "border": BORDER, "text": TEXT_DIM, "box_text": "#10151a"}
+            "border": BORDER, "text": TEXT_DIM, "text_strong": "#e8e8e8", "box_text": "#10151a"}
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +154,10 @@ class BoxItem(QGraphicsRectItem):
         # dopo il primo posizionamento: quello non deve passare da itemChange
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable |
                        QGraphicsItem.ItemSendsGeometryChanges)
+        if type(self) is BoxItem:
+            # l'immagine del box (colore, nome, miniatura delle note) si tiene
+            # pronta: ridisegnare la vista con centinaia di box la copia soltanto
+            self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
 
     def _layout(self):
         instrument_name = self.view.host.project.get_track(self.track_name).instrument_name
@@ -149,6 +168,18 @@ class BoxItem(QGraphicsRectItem):
         color = QColor(_family_color(instrument_name))
         self.setBrush(QBrush(color))
         self.setPen(QPen(color.darker(140), 1))
+        # Solo se l'aspetto e' cambiato: la miniatura si ricalcola e l'immagine
+        # tenuta pronta (setCacheMode) si ridisegna. refresh() ripassa da qui
+        # per ogni box: ridisegnarli tutti ogni volta costava tempo.
+        look = (color.rgba(), self.clip.name, self.clip.text, width, height, instrument_name,
+                self.clip.start_beat)
+        if look != getattr(self, "_look", None):
+            self._look = look
+            self._note_rects = None
+            self._strip_color = QColor(color).darker(112)
+            self._note_color = _ink_on(color, 150)
+            self._text_color = _ink_on(color, 255)
+            self.update()
         self.setPos(HEADER_WIDTH + self.clip.start_beat * PX_PER_BEAT, self._fixed_y)
         self.setToolTip(tr("{name}  ({duration:.2f} beat)\nDoppio click per modificare, tasto destro per altre azioni.", name=self.clip.name, duration=duration))
 
@@ -221,9 +252,30 @@ class BoxItem(QGraphicsRectItem):
         # rettangolo con angoli vivi, senza modo di arrotondarli - qui si
         # ridisegna a mano con lo stesso pen/brush impostati in _layout(),
         # cosi' inizio/fine di ogni box risaltano meglio nel canvas.
+        rect = self.rect()
+        color = self.brush().color()
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
-        painter.drawRoundedRect(self.rect(), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.drawRoundedRect(rect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        strip = min(BOX_NAME_STRIP, rect.height())
+        # striscia del nome: un po' piu' scura del box, angoli arrotondati solo in alto
+        painter.save()
+        painter.setClipRect(QRectF(rect.left(), rect.top(), rect.width(), strip))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self._strip_color)
+        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.restore()
+        notes = self._preview_rects(QRectF(rect.left() + 3, rect.top() + strip + 3,
+                                          rect.width() - 6, rect.height() - strip - 6))
+        if notes:
+            # trattini allineati ai pixel: senza antialiasing costano molto meno
+            # (centinaia di box con decine di note ciascuno) e sembrano uguali
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(self._note_color)
+            painter.drawRects(notes)
+            painter.restore()
         if self.clip is self.view.selected_clip:
             # Evidenziazione esplicita del box selezionato (invece di
             # affidarsi al solo indicatore tratteggiato predefinito di Qt,
@@ -232,15 +284,90 @@ class BoxItem(QGraphicsRectItem):
             # _import_..._into_selected_track (main_window_mixer.py) per
             # sapere se il box selezionato, non la traccia, e' la
             # destinazione di "in questa/o".
-            sel_pen = QPen(QColor(ACCENT))
+            sel_pen = QPen(_selection_color(color))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
-        painter.setPen(QPen(QColor(_canvas_colors()["box_text"])))
-        painter.setFont(QFont("Sans", 9))
-        rect = self.rect().adjusted(4, 2, -4, -2)
-        painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, self.clip.name)
+            painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
+        painter.setPen(self._text_color)
+        painter.setFont(_box_font())
+        painter.drawText(QRectF(rect.left() + 5, rect.top(), rect.width() - 8, strip),
+                         Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, self.clip.name)
+
+    def _preview_rects(self, area: QRectF):
+        """I trattini della miniatura nell'area data (coordinate del box),
+        calcolati una volta per scala e dimensione (vedi _layout)."""
+        if area.width() < BOX_PREVIEW_MIN_WIDTH or area.height() < 6:
+            return []
+        key = (PX_PER_BEAT, area.width(), area.height())
+        if self._note_rects is not None and self._note_rects[0] == key:
+            return self._note_rects[1]
+        preview = self.view.box_preview(self.track_name, self.clip)
+        rects = []
+        if preview is not None:
+            if preview.percussion:
+                lanes = preview.high + 1
+                low, span = 0, lanes
+            else:
+                span = max(BOX_PREVIEW_MIN_SPAN, preview.high - preview.low + 1)
+                low = (preview.low + preview.high + 1) / 2 - span / 2
+            row = area.height() / span
+            thick = max(1.5, min(5.0, row))
+            for start, duration, lane in preview.notes:
+                x = area.left() + start * PX_PER_BEAT
+                if x > area.right():
+                    continue
+                width = min(max(2.0, duration * PX_PER_BEAT - 1), area.right() - x)
+                if preview.percussion:
+                    y = area.top() + lane * row + (row - thick) / 2
+                else:
+                    y = area.bottom() - (lane - low + 1) * row + (row - thick) / 2
+                rects.append(QRectF(x, y, width, thick))
+        self._note_rects = (key, rects)
+        return rects
+
+
+def _selection_color(box: QColor) -> QColor:
+    """Il bordo del box selezionato: l'accento, ma sui box di un colore
+    vicino (i Pianoforti #7ec9e8, i Synth Pad, gli strumenti senza famiglia
+    che hanno proprio l'accento) l'inchiostro del box, che ne contrasta
+    sempre il colore: altrimenti la selezione non si vedeva."""
+    accent = QColor(ACCENT)
+    distance = ((box.red() - accent.red()) ** 2 + (box.green() - accent.green()) ** 2
+                + (box.blue() - accent.blue()) ** 2) ** 0.5
+    return accent if distance > 90 else _ink_on(box, 255)
+
+
+def _ink_on(color: QColor, alpha: int) -> QColor:
+    """Testo e note sopra un box: scuri sui colori chiari, chiari su quelli
+    scuri (luminanza percepita)."""
+    light = 0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue() > 140
+    ink = QColor("#10151a") if light else QColor("#f4f4f4")
+    ink.setAlpha(alpha)
+    return ink
+
+
+_BOX_FONT = None
+
+
+def _ui_font(pixels: int, bold: bool = False) -> QFont:
+    """Il carattere del programma a 'pixels' px: prima la vista disegnava
+    con "Sans" a punti fissi, diverso dal resto dell'interfaccia."""
+    from PySide6.QtWidgets import QApplication
+    font = QFont(QApplication.font())
+    font.setPixelSize(pixels)
+    font.setBold(bold)
+    return font
+
+
+def _box_font() -> QFont:
+    """Il carattere del programma, a 11 px (nome dei box, sezioni del righello)."""
+    global _BOX_FONT
+    if _BOX_FONT is None:
+        from PySide6.QtWidgets import QApplication
+        _BOX_FONT = QFont(QApplication.font())
+        _BOX_FONT.setPixelSize(11)
+    return _BOX_FONT
 
 
 class AudioBoxItem(BoxItem):
@@ -335,7 +462,23 @@ class AudioBoxItem(BoxItem):
     def hoverEnterEvent(self, event):
         self._hover = True
         self.update()
+        if type(self) is BoxItem and "%" in self.clip.text:
+            QTimer.singleShot(500, self, self._show_reference_preview)
         super().hoverEnterEvent(event)
+
+    def _show_reference_preview(self):
+        """Fermando il mouse su un box che ha un richiamo con funzioni."""
+        if not self._hover or self._dragging:
+            return
+        from core.transform_preview import pattern_references, reference_at
+        for reference in pattern_references(self.clip.text):
+            if reference_at(self.clip.text, reference.start):
+                from .transform_preview import show_reference_preview
+                host = self.view.host
+                show_reference_preview(self.view, self.clip.text, reference.start, host.project,
+                                       host.project.get_track(self.track_name), self.view._preview_playback,
+                                       QCursor.pos(), origin_beat=self.clip.start_beat)
+                return
 
     def hoverLeaveEvent(self, event):
         self._hover = False
@@ -584,7 +727,7 @@ class AudioBoxItem(BoxItem):
         if rect.width() < MIN_DETAIL_PX:
             # troppo stretto per forma d'onda ed etichetta: solo il box
             if selected:
-                painter.setPen(QPen(QColor(ACCENT), 2))
+                painter.setPen(QPen(_selection_color(self.brush().color()), 2))
                 painter.setBrush(Qt.NoBrush)
                 painter.drawRect(rect)
             return
@@ -612,13 +755,13 @@ class AudioBoxItem(BoxItem):
                     x = max(rect.left(), min(rect.right() - FADE_HANDLE_PX, x - FADE_HANDLE_PX / 2))
                     painter.drawRect(QRectF(x, rect.top() + 1, FADE_HANDLE_PX, FADE_HANDLE_PX))
         if selected:
-            sel_pen = QPen(QColor(ACCENT))
+            sel_pen = QPen(_selection_color(self.brush().color()))
             sel_pen.setWidth(3)
             painter.setPen(sel_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), BOX_CORNER_RADIUS, BOX_CORNER_RADIUS)
         painter.setPen(QPen(text_color))
-        painter.setFont(QFont("Sans", 9, QFont.Bold))
+        painter.setFont(_ui_font(11, bold=True))
         if self._missing:
             label = tr("{name}  (file mancante)", name=self.clip.name)
         elif self.clip.muted:
@@ -802,11 +945,19 @@ class ArrangementCanvas(QGraphicsView):
 
     def wheelEvent(self, event):
         """Ctrl+rotellina: zoom orizzontale, tenendo fermo il beat sotto il
-        mouse. Senza Ctrl: scorrimento normale."""
+        mouse; Ctrl+Maiusc+rotellina: altezza delle righe. Senza Ctrl:
+        scorrimento normale."""
         if not event.modifiers() & Qt.ControlModifier:
             super().wheelEvent(event)
             return
         steps = event.angleDelta().y() / 120.0
+        if event.modifiers() & Qt.ShiftModifier:
+            # con Maiusc alcuni sistemi passano la rotellina sull'asse orizzontale
+            steps = steps or event.angleDelta().x() / 120.0
+            if steps:
+                self.view.step_row_height(1 if steps > 0 else -1)
+            event.accept()
+            return
         if steps:
             self.view.zoom_by(ZOOM_STEP ** steps, anchor_view_x=event.position().x())
         event.accept()
@@ -816,9 +967,14 @@ class ArrangementCanvas(QGraphicsView):
         if self._over_fixed_area(view_pos):
             if (event.button() == Qt.LeftButton and view_pos.y() < RULER_HEIGHT
                     and view_pos.x() >= HEADER_WIDTH):
-                # Click sul righello: salta in quel punto del brano (agganciato al beat).
-                scene_x = self.mapToScene(view_pos).x()
-                self.view.host.seek_to_beat(float(round((scene_x - HEADER_WIDTH) / PX_PER_BEAT)))
+                # Click sul righello: salta in quel punto del brano (agganciato
+                # al beat), o all'inizio della sezione cliccata.
+                section = self.section_at(view_pos)
+                if section is not None:
+                    self.view.host.seek_to_beat(float(section))
+                else:
+                    scene_x = self.mapToScene(view_pos).x()
+                    self.view.host.seek_to_beat(float(round((scene_x - HEADER_WIDTH) / PX_PER_BEAT)))
             elif view_pos.y() >= RULER_HEIGHT:
                 self.view.select_box(None, None)   # click sulla colonna dei nomi
             # Niente super(): non si afferra il box che scorre sotto.
@@ -862,6 +1018,79 @@ class ArrangementCanvas(QGraphicsView):
         if hit:
             self.view.show_empty_menu(hit[0], _snap(hit[1]), event.globalPos())
 
+    def _section_rects(self, vw: int) -> list:
+        """[(rettangolo nel viewport, beat, nome)] delle etichette delle
+        sezioni visibili: ciascuna si ferma dove comincia la successiva."""
+        out = []
+        sections = getattr(self, "sections", [])
+        font_metrics = QFontMetrics(_box_font())
+        for i, (beat, name) in enumerate(sections):
+            x = self.mapFromScene(QPointF(HEADER_WIDTH + beat * PX_PER_BEAT, 0)).x()
+            end = (self.mapFromScene(QPointF(HEADER_WIDTH + sections[i + 1][0] * PX_PER_BEAT, 0)).x()
+                   if i + 1 < len(sections) else vw)
+            if end <= HEADER_WIDTH or x >= vw:
+                continue
+            width = min(font_metrics.horizontalAdvance(name) + 12, end - x - 2)
+            if width < 14:
+                continue
+            out.append((QRectF(x + 1, RULER_BARS_HEIGHT + 1, width, RULER_HEIGHT - RULER_BARS_HEIGHT - 4), beat, name))
+        return out
+
+    def _draw_sections(self, painter, colors, vw):
+        tag = QColor(ACCENT)
+        tag.setAlpha(55)
+        painter.save()
+        painter.setClipRect(HEADER_WIDTH, 0, vw - HEADER_WIDTH, RULER_HEIGHT)
+        painter.setFont(_box_font())
+        for rect, _beat, name in self._section_rects(vw):
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(tag)
+            painter.drawRoundedRect(rect, 4, 4)
+            painter.setPen(QColor(colors["text_strong"]))
+            painter.drawText(rect.adjusted(6, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine,
+                             name)
+        painter.restore()
+
+    def section_at(self, view_pos):
+        """Il beat della sezione sotto il punto del righello, o None."""
+        for rect, beat, _name in self._section_rects(self.viewport().width()):
+            if rect.contains(QPointF(view_pos)):
+                return beat
+        return None
+
+    def drawBackground(self, painter, rect):
+        """La griglia delle battute e dei movimenti, sotto i box: disegnata
+        sopra (in paintEvent, come prima) attraversava i box e li faceva
+        sembrare spezzati in tanti pezzi."""
+        super().drawBackground(painter, rect)
+        colors = _canvas_colors()
+        bar_pen = QPen(QColor(colors["border"]), 0)
+        beat_color = QColor(colors["border"])
+        beat_color.setAlpha(70)
+        beat_pen = QPen(beat_color, 0)
+        time_sig, metrica_changes, pickup = self.meter_args
+        bars = [float(b) for b in itertools.takewhile(
+            lambda b: HEADER_WIDTH + float(b) * PX_PER_BEAT <= rect.right(),
+            bar_starts(time_sig, metrica_changes, pickup))]
+        if pickup:
+            bars.insert(0, 0.0)
+        top, bottom = rect.top(), rect.bottom()
+        if PX_PER_BEAT >= 18:               # i movimenti solo quando c'e' spazio per vederli
+            painter.setPen(beat_pen)
+            edges = bars + [bars[-1] + self.beats_per_bar] if bars else []
+            for start, end in zip(edges, edges[1:]):
+                beat = start + 1
+                while beat < end - 1e-9:
+                    x = HEADER_WIDTH + beat * PX_PER_BEAT
+                    if rect.left() <= x:
+                        painter.drawLine(QLineF(x, top, x, bottom))
+                    beat += 1
+        painter.setPen(bar_pen)
+        for start in bars:
+            x = HEADER_WIDTH + start * PX_PER_BEAT
+            if x >= rect.left():
+                painter.drawLine(QLineF(x, top, x, bottom))
+
     def paintEvent(self, event):
         super().paintEvent(event)
         colors = _canvas_colors()
@@ -874,7 +1103,7 @@ class ArrangementCanvas(QGraphicsView):
         beat0_x = self.mapFromScene(QPointF(HEADER_WIDTH, 0)).x()
         pen = QPen(QColor(colors["border"]))
         painter.setPen(pen)
-        painter.setFont(QFont("Sans", 8))
+        painter.setFont(_ui_font(11))
         # Le stanghette vere del brano: cambi di metrica e levare compresi
         # (con il levare, la battuta 0 comincia all'inizio del brano).
         time_sig, metrica_changes, pickup = self.meter_args
@@ -887,9 +1116,10 @@ class ArrangementCanvas(QGraphicsView):
                 break
             if x >= HEADER_WIDTH:
                 painter.setPen(pen)
-                painter.drawLine(int(x), 0, int(x), vh)
+                painter.drawLine(int(x), 0, int(x), RULER_BARS_HEIGHT)   # nelle righe la disegna drawBackground
                 painter.setPen(QColor(colors["text"]))
-                painter.drawText(int(x) + 3, RULER_HEIGHT - 8, str(bar))
+                painter.drawText(int(x) + 3, RULER_BARS_HEIGHT - 6, str(bar))
+        self._draw_sections(painter, colors, vw)
 
         # Loop A-B: fascia colorata sul righello (piena se attivo, tenue se
         # solo impostato) con i marcatori A e B.
@@ -927,12 +1157,12 @@ class ArrangementCanvas(QGraphicsView):
             hint = self._row_hint(name)
             if hint and top >= RULER_HEIGHT:
                 painter.setPen(QColor(colors["text"]))
-                painter.setFont(QFont("Sans", 9))
+                painter.setFont(_ui_font(12))
                 painter.drawText(QRectF(HEADER_WIDTH + 14, top, vw - HEADER_WIDTH - 20, ROW_HEIGHT),
                                  Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, hint)
         if not self.row_ys:
             painter.setPen(QColor(colors["text"]))
-            painter.setFont(QFont("Sans", 10))
+            painter.setFont(_ui_font(13))
             painter.drawText(QRectF(HEADER_WIDTH + 14, RULER_HEIGHT, vw - HEADER_WIDTH - 20, ROW_HEIGHT),
                              Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine, NO_TRACKS_HINT)
 
@@ -1034,6 +1264,11 @@ class ArrangementView(AudioClipActions, QWidget):
 
         self.canvas = ArrangementCanvas(self)
         layout.addWidget(self.canvas)
+        # l'altezza delle righe scelta l'ultima volta (Vista -> Altezza delle tracce)
+        global ROW_HEIGHT
+        from core import settings as app_settings
+        saved = app_settings.get_arrangement_row_height()
+        ROW_HEIGHT = min(ROW_HEIGHTS, key=lambda h: abs(h - saved)) if saved else DEFAULT_ROW_HEIGHT
 
     # ------------------------------------------------------------ ciclo di vita
 
@@ -1042,8 +1277,14 @@ class ArrangementView(AudioClipActions, QWidget):
         self.refresh()
 
     def select_box(self, track_name: str | None, clip: Clip | None):
+        previous = getattr(self, "selected_clip", None)
         self.selected_track_name = track_name
         self.selected_clip = clip
+        # i box tengono pronta la loro immagine (setCacheMode): il vecchio e
+        # il nuovo selezionato vanno ridisegnati, il resto della scena no
+        for item in self.canvas._scene.items():
+            if isinstance(item, BoxItem) and (item.clip is previous or item.clip is clip):
+                item.update()
         self.canvas._scene.update()
 
     def selected_track(self):
@@ -1070,6 +1311,9 @@ class ArrangementView(AudioClipActions, QWidget):
         seguire l'esecuzione dell'intero brano con una linea verticale nel
         canvas, indipendentemente da quale traccia sia quella selezionata."""
         self.canvas.set_playhead_beat(beat)
+        display = getattr(self.host, "time_display", None)
+        if display is not None:
+            display.set_beat(beat)
 
     def set_loop_region(self, region, active: bool = False):
         """Sezione del loop A-B della riproduzione principale da mostrare
@@ -1093,6 +1337,12 @@ class ArrangementView(AudioClipActions, QWidget):
         self.selected_track()
 
         self.canvas.meter_args = (project.time_sig, list(project.metrica_changes), project.pickup)
+        display = getattr(self.host, "time_display", None)
+        if display is not None:
+            display.set_meter(*self.canvas.meter_args)
+        self._patterns_sig = patterns_key(project.patterns)     # per la miniatura dei box (box_preview)
+        self.canvas.sections = song_sections(project)          # la fascia delle sezioni nel righello
+        self._meter = project.meter()
         try:
             num, den = project.time_sig.split("/")
             self.canvas.beats_per_bar = int(num) * 4.0 / int(den)
@@ -1217,7 +1467,7 @@ class ArrangementView(AudioClipActions, QWidget):
         # davvero conclusa - stessa classe di crash gia' incontrata e
         # corretta altrove nel progetto per il mixer (vedi refresh_mixer).
         # Rimandarlo al giro successivo del loop eventi lo rende sicuro.
-        QTimer.singleShot(0, lambda: self._finish_clip_change(track_name))
+        QTimer.singleShot(0, self, lambda: self._finish_clip_change(track_name))
 
     def _finish_clip_change(self, track_name: str):
         self.refresh()
@@ -1279,6 +1529,18 @@ class ArrangementView(AudioClipActions, QWidget):
             self._tempo_map_cache = (key, build_tempo_beat_map(project))
         return self._tempo_map_cache[1]
 
+    def box_preview(self, track_name: str, clip):
+        """Le note da disegnare dentro il box (core.clip_preview), in cache."""
+        project = self.host.project
+        track = project.get_track(track_name)
+        if track.is_audio:
+            return None
+        sig = getattr(self, "_patterns_sig", None)
+        meter = getattr(self, "_meter", None) or project.meter()
+        return clip_preview(clip.text, track.instrument, project.patterns, meter=meter,
+                            origin_beat=clip.start_beat, patterns_sig=sig,
+                            meter_key=(project.time_sig, tuple(project.metrica_changes), project.pickup))
+
     def clip_length_beats(self, track_name: str, clip) -> float:
         """Durata in beat di un box: dalla notazione per un Clip, dal file
         (alla posizione della clip, vedi core.audio_tracks) per un AudioClip."""
@@ -1286,8 +1548,18 @@ class ArrangementView(AudioClipActions, QWidget):
         if isinstance(clip, AudioClip):
             return audio_tracks.clip_span_beats(clip, self._tempo_map())     # con la ripetizione in loop
         track = project.get_track(track_name)
-        return clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
-                                   start_beat=clip.start_beat, meter=project.meter())
+        # In cache: refresh() la chiede due volte per ogni box, e rileggere la
+        # notazione era la parte piu' lenta del ricalcolo della vista.
+        sig = getattr(self, "_patterns_sig", None) or patterns_key(project.patterns)
+        key = (clip.text, track.instrument.default_octave, sig,
+               (project.time_sig, tuple(project.metrica_changes), project.pickup), round(clip.start_beat, 6))
+        cache = self.__dict__.setdefault("_length_cache", {})
+        if key not in cache:
+            if len(cache) > 20000:
+                cache.clear()
+            cache[key] = clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
+                                             start_beat=clip.start_beat, meter=project.meter())
+        return cache[key]
 
     def edit_box(self, item: BoxItem):
         if isinstance(item, AudioBoxItem):
@@ -1317,7 +1589,7 @@ class ArrangementView(AudioClipActions, QWidget):
             return
         track.text = dlg.result_text()
         self.host._mark_dirty()
-        QTimer.singleShot(0, lambda: self._finish_clip_change(track_name))
+        QTimer.singleShot(0, self, lambda: self._finish_clip_change(track_name))
 
     def box_from_free_text(self, track_name: str):
         """Doppio clic su una traccia con testo ma ancora senza box: il box
@@ -1446,8 +1718,8 @@ class ArrangementView(AudioClipActions, QWidget):
             menu.addSeparator()
             rename_action = menu.addAction(tr("Rinomina traccia..."))
             menu.addSeparator()
-            if hasattr(self.host, "add_freeze_action"):
-                self.host.add_freeze_action(menu, track_name)
+            if hasattr(self.host, "wav_export"):
+                self.host.wav_export.add_freeze_action(menu, track_name)
             export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
             export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
             menu.addSeparator()
@@ -1466,9 +1738,9 @@ class ArrangementView(AudioClipActions, QWidget):
             elif chosen is rename_action:
                 self.host._open_edit_dialog_for(track_name)
             elif chosen is export_wav_action:
-                self.host.export_track_wav(track_name)
+                self.host.wav_export.track(track_name)
             elif chosen is export_dry_action:
-                self.host.export_track_wav(track_name, dry=True)
+                self.host.wav_export.track(track_name, dry=True)
             elif chosen is remove_action:
                 self._remove_track(track_name)
             return
@@ -1499,11 +1771,15 @@ class ArrangementView(AudioClipActions, QWidget):
             reconvert_action.setToolTip(tr("Rifa' la conversione dalla traccia audio con le stesse scelte: "
                                            "il contenuto della traccia viene sostituito (Ctrl+Z lo riporta)."))
         menu.addSeparator()
+        from core.instruments import instrument_suggestion
+        suggestion = None if instrument.resolved else instrument_suggestion(track.instrument_name)
+        suggest_action = menu.addAction(tr("Usa «{suggestion}»", suggestion=suggestion)) if suggestion else None
         edit_action = menu.addAction(tr("Nome e strumento..."))
+        octave_action = menu.addAction(tr("Ottava della traccia..."))
         synth_action = menu.addAction(tr("Strumento plugin (VST3/LV2)..."))
         synth_params_action = menu.addAction(tr("Parametri dello strumento plugin...")) if track.synth else None
-        if hasattr(self.host, "add_freeze_action"):
-            self.host.add_freeze_action(menu, track_name)
+        if hasattr(self.host, "wav_export"):
+            self.host.wav_export.add_freeze_action(menu, track_name)
         export_action = menu.addAction(tr("Esporta MIDI (solo questa)..."))
         export_wav_action = menu.addAction(tr("Esporta WAV (solo questa)..."))
         export_dry_action = menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))
@@ -1525,12 +1801,18 @@ class ArrangementView(AudioClipActions, QWidget):
             # dal menu della traccia devono agire sulla traccia.
             self.select_box(None, None)
             self.host.select_track(track_name)
-            {keyboard_action: self.host.play_keyboard_into_selected_track,
+            {keyboard_action: self.host.generators.play_keyboard,
              import_midi_action: self.host.import_midi_into_selected_track,
              import_audio_action: self.host.import_audio_into_selected_track}[chosen]()
             return
         if reconvert_action is not None and chosen is reconvert_action:
             self.reconvert_tracks([track_name])
+            return
+        if suggest_action is not None and chosen is suggest_action:
+            self.host.use_suggested_instrument(track_name)
+            return
+        if chosen is octave_action:
+            self.host.change_track_octave(track_name)
             return
         if chosen is edit_action:
             self.host._open_edit_dialog_for(track_name)
@@ -1563,9 +1845,9 @@ class ArrangementView(AudioClipActions, QWidget):
             self.host.select_track(track_name)
             self.host.export_selected_track_midi()
         elif chosen is export_wav_action:
-            self.host.export_track_wav(track_name)
+            self.host.wav_export.track(track_name)
         elif chosen is export_dry_action:
-            self.host.export_track_wav(track_name, dry=True)
+            self.host.wav_export.track(track_name, dry=True)
         elif convert_action is not None and chosen is convert_action:
             self._convert_to_free_text(track_name)
         elif free_text_action is not None and chosen is free_text_action:
@@ -1581,7 +1863,7 @@ class ArrangementView(AudioClipActions, QWidget):
         ancora nessuno): dove viene accodato un box generato da questo
         menu, analogamente a come 'Genera batteria/basso in questa traccia'
         accoda il testo generato alla fine del testo gia' presente
-        (gui.main_window_mixer._append_or_replace_track_text)."""
+        (gui.track_generators.TrackGenerators.add_text)."""
         track = self.host.project.get_track(track_name)
         clips = track.audio_clips if track.is_audio else track.clips
         if not clips:
@@ -1687,6 +1969,9 @@ class ArrangementView(AudioClipActions, QWidget):
         stop_action = menu.addAction(tr("■ Stop"))
         transpose_action = menu.addAction(tr("Trasponi..."))
         from .reharmonize_dialog import can_reharmonize
+        from core.transform_preview import pattern_references
+        references = pattern_references(clip.text)
+        transform_action = menu.addAction(tr("Trasforma...")) if len(references) == 1 else None
         reharmonize_action = menu.addAction(tr("Riarmonizza...")) \
             if can_reharmonize(clip.text, self.host.project.patterns) else None
         harmonize_action = None
@@ -1706,6 +1991,7 @@ class ArrangementView(AudioClipActions, QWidget):
         paste_action = menu.addAction(tr("Incolla qui")) if isinstance(self._clipboard, Clip) else None
         menu.addSeparator()
         export_action = menu.addAction(tr("Esporta come .box..."))
+        export_wav_action = menu.addAction(tr("Esporta come WAV..."))
         save_style_action = menu.addAction(tr("Salva come stile del generatore..."))
         menu.addSeparator()
         delete_action = menu.addAction(tr("Elimina"))
@@ -1713,12 +1999,16 @@ class ArrangementView(AudioClipActions, QWidget):
         chosen = menu.exec(global_pos)
         if chosen is play_action:
             self._play_clip(track_name, clip)
+        elif chosen is export_wav_action:
+            self._export_clip_wav(track_name, clip)
         elif chosen is save_style_action:
             self._save_clip_as_style(track_name, clip)
         elif chosen is stop_action:
             self._stop_preview()
         elif chosen is transpose_action:
             self._transpose_clip(track_name, clip)
+        elif transform_action is not None and chosen is transform_action:
+            self.transform_clip(track_name, clip, references[0])
         elif reharmonize_action is not None and chosen is reharmonize_action:
             self.reharmonize_clip(track_name, clip)
         elif harmonize_action is not None and chosen is harmonize_action:
@@ -1754,6 +2044,39 @@ class ArrangementView(AudioClipActions, QWidget):
         name = add_harmony_track(self, source_name, dlg.result_text(), start_beat)
         if hasattr(self.host, "statusBar"):
             self.host.statusBar().showMessage(tr("Accordi nella traccia nuova '{name}'.", name=name), 6000)
+
+    def transform_clip(self, track_name: str, clip: Clip, reference):
+        """Trasforma... su un box con un solo richiamo (gui.transform_dialog)."""
+        from core.transform_preview import reference_point
+        from .transform_dialog import TransformDialog
+        project = self.host.project
+        track = project.get_track(track_name)
+        point = reference_point(clip.text, reference.start, project.patterns, track.instrument, project.meter(),
+                                clip.start_beat)
+        dlg = TransformDialog(self, project, self._preview_playback, track.instrument_name, track,
+                              token=reference.token, point=point)
+        self._transform_dialog = dlg   # per i test
+        if dlg.exec() != TransformDialog.Accepted:
+            return
+        if dlg.result_token:
+            text = clip.text[:reference.start] + dlg.result_token + clip.text[reference.end:]
+            if dlg.freeze:
+                text = self._frozen_clip_text(text, reference.start, reference.start + len(dlg.result_token), track, clip)
+            clip.text = text
+            self.on_clip_changed(track_name)
+        elif dlg.created_pattern:
+            self.on_clip_changed(track_name)
+
+    def _frozen_clip_text(self, text: str, start: int, end: int, track, clip: Clip) -> str:
+        from core.notation import NotationError
+        from core.settings import get_freeze_comment
+        from core.transform_preview import freeze_span
+        try:
+            return freeze_span(text, start, end, self.host.project, track.instrument, clip.start_beat,
+                               get_freeze_comment())
+        except (NotationError, ValueError) as e:
+            QMessageBox.warning(self, tr("Congela la trasformazione"), str(e))
+            return text
 
     def reharmonize_clip(self, track_name: str, clip: Clip):
         """Riarmonizza un box di soli accordi (gui.reharmonize_dialog): il
@@ -1856,6 +2179,27 @@ class ArrangementView(AudioClipActions, QWidget):
         canvas.viewport().update()
         self.host.statusBar().showMessage(tr("Zoom: {0:.0%}", PX_PER_BEAT / DEFAULT_PX_PER_BEAT), 2000)
 
+    def set_row_height(self, height: int, remember: bool = True):
+        """Altezza delle righe (una di ROW_HEIGHTS): righe e testate si
+        ricostruiscono, la scelta si ricorda nelle impostazioni."""
+        global ROW_HEIGHT
+        height = min(ROW_HEIGHTS, key=lambda h: abs(h - height))
+        if remember:
+            from core import settings as app_settings
+            app_settings.set_arrangement_row_height(height)
+        if height == ROW_HEIGHT:
+            return
+        ROW_HEIGHT = height
+        self._rebuild_headers()
+        self.refresh()
+        self.canvas.viewport().update()
+        if hasattr(self.host, "sync_row_height_actions"):
+            self.host.sync_row_height_actions()
+
+    def step_row_height(self, step: int):
+        index = ROW_HEIGHTS.index(ROW_HEIGHT) if ROW_HEIGHT in ROW_HEIGHTS else 0
+        self.set_row_height(ROW_HEIGHTS[max(0, min(len(ROW_HEIGHTS) - 1, index + step))])
+
     def zoom_by(self, factor: float, anchor_view_x: float | None = None):
         self.set_zoom(PX_PER_BEAT * factor, anchor_view_x)
 
@@ -1933,7 +2277,8 @@ class ArrangementView(AudioClipActions, QWidget):
         track = self.host.project.get_track(track_name)
         host = self.host.project
         preview = Project(name="preview", tempo_bpm=host.tempo_bpm, time_sig=host.time_sig,
-                          metrica_changes=list(host.metrica_changes))
+                          metrica_changes=list(host.metrica_changes), key=host.key,
+                          key_changes=list(host.key_changes))
         lead = 0.0
         if isinstance(clip, AudioClip):
             if audio_tracks.clip_is_missing(clip):
@@ -2039,7 +2384,8 @@ class ArrangementView(AudioClipActions, QWidget):
     def _duplicate_clip(self, track_name: str, clip: Clip):
         track = self.host.project.get_track(track_name)
         duration = self.clip_length_beats(track_name, clip)
-        new_clip = dataclasses.replace(clip, name=f"{clip.name} (copia)", start_beat=clip.start_beat + duration)
+        new_clip = dataclasses.replace(clip, name=tr("{name} (copia)", name=clip.name),
+                                       start_beat=clip.start_beat + duration)
         new_clip.start_beat = _snap(self.resolve_free_slot(track_name, new_clip, new_clip.start_beat))
         (track.audio_clips if track.is_audio else track.clips).append(new_clip)
         self.on_clip_changed(track_name)
@@ -2069,6 +2415,40 @@ class ArrangementView(AudioClipActions, QWidget):
             self.host.statusBar().showMessage(tr("Box esportato: {path}", path=path), 4000)
         except OSError as e:
             QMessageBox.critical(self, tr("Errore salvataggio"), str(e))
+
+    def _export_clip_wav(self, track_name: str, clip: Clip):
+        """Esporta in un WAV il solo box, come si sente in Solo con la sua
+        traccia (strumento, plugin, effetti, volume e pan), dal suo inizio
+        alla sua fine: lungo esattamente quanto il box."""
+        track = self.host.project.get_track(track_name)
+        ok, msg = validate_track_text(clip.text, self.host.project.patterns,
+                                      default_octave=track.instrument.default_octave)
+        if not ok:
+            QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile esportare il box:\n{msg}", msg=msg))
+            return
+        host = self.host.project
+        preview = Project(name=clip.name, tempo_bpm=host.tempo_bpm, time_sig=host.time_sig,
+                          metrica_changes=list(host.metrica_changes), key=host.key,
+                          key_changes=list(host.key_changes))
+        preview.patterns = host.patterns
+        # Con le ancore bar=N il box suona dal suo punto del brano: la pausa
+        # davanti si toglie dal WAV
+        text, lead = anchored_preview_text(clip.text, clip.start_beat, host.patterns)
+        box_track = dataclasses.replace(track, text=text, clips=[], mute=False, solo=False,
+                                        effects=[dataclasses.replace(e) for e in track.effects],
+                                        synth_params=dict(track.synth_params))
+        preview.tracks.append(box_track)
+        from core.tempo_map import seconds_for_beats
+        tempo_map = build_tempo_beat_map(preview)
+        lead_seconds = seconds_for_beats(tempo_map, lead)
+        beats = clip_duration_beats(clip.text, host.patterns, track.instrument.default_octave,
+                                    start_beat=clip.start_beat, meter=host.meter())
+        safe_name = re.sub(r'[\\/:*?"<>|]', "_", f"{track.name}_{clip.name}").strip() or "box"
+        start_dir = os.path.dirname(self.host._default_export_path(".wav"))
+        self.host.wav_export.render(tr("Esporta il box come WAV"), os.path.join(start_dir, safe_name + ".wav"),
+                                     None, tr("Box '{name}' esportato", name=clip.name), project=preview,
+                                     skip_seconds=lead_seconds,
+                                     length_seconds=seconds_for_beats(tempo_map, lead + beats) - lead_seconds)
 
     def _import_clip(self, track_name: str, beat: float):
         path, _ = QFileDialog.getOpenFileName(self, tr("Importa box"), ensure_songs_dir(), tr("Box (*.box)"),

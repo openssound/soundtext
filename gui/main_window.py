@@ -5,9 +5,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QFont, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QScrollArea, QSlider, QSpinBox, QToolBar, QStatusBar, QProgressBar,
-    QComboBox, QApplication, QStackedWidget, QMessageBox, QToolButton, QButtonGroup, QFrame,
-    QSizePolicy, QMenu, QDialog, QDoubleSpinBox,
+    QLabel, QPushButton, QScrollArea, QToolBar, QStatusBar, QComboBox, QApplication, QStackedWidget, QMessageBox, QToolButton, QButtonGroup, QFrame,
+    QSizePolicy, QMenu, QDialog, QDoubleSpinBox, QCheckBox,
 )
 from core.i18n import tr
 
@@ -22,27 +21,42 @@ from core import settings as app_settings
 from .voicing_picker import NotationEditor
 from .tempo_spin import TempoSpinBox
 from .highlighter import NotationHighlighter
-from .theme import ACCENT, ACCENT_DIM, BAD, TEXT_DIM, get_active_theme, palette_for, stylesheet_for, set_active_theme
+from .theme import (ACCENT, ACCENT_DIM, BAD, VALIDATION_STYLE, dim, get_active_theme, palette_for, stylesheet_for,
+                    set_active_theme)
 from .icons import icon
 from .main_window_mixer import MixerMixin
 from .main_window_project import ProjectMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
-from .arrangement_view import HEADER_WIDTH, ROW_GAP, ArrangementView
+from .level_monitor import LevelMonitor
+from .wav_export import WavExport
+from .track_generators import TrackGenerators
+from .soundfont_menu import SoundFontMenu
+from .loop_region import LoopRegion
+from .play_highlight import TrackPlayHighlight
+from .project_autosave import ProjectAutosave
+from .arrangement_view import HEADER_WIDTH, ROW_GAP, RULER_HEIGHT, ArrangementView
 from .track_header import make_add_track_button, refresh_add_track_icon
 from .effects_panel import EffectsPanel
+
+# Velocita' d'ascolto in percento (tendina della barra e Riproduzione -> Velocita' d'ascolto)
+LISTENING_SPEEDS = (100, 90, 80, 75, 70, 60, 50)
 
 
 class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def __init__(self):
         super().__init__()
+        self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
+        self.wav_export = WavExport(self)  # mix, tracce e stem in WAV, congelamento
+        self.soundfont = SoundFontMenu(self)   # menu Suoni -> SoundFont
+        self.generators = TrackGenerators(self)  # batteria, basso, giro, accompagnamento, tastiera
         # Va fatto prima di costruire qualunque testata di traccia (vedi
         # refresh_mixer): quelle testate leggono il tema attivo per colorarsi,
         # non seguono automaticamente lo QSS globale (vedi
         # theme.track_card_colors/_apply_theme).
         set_active_theme(app_settings.get_theme())
         self.setWindowTitle(self.APP_TITLE)
-        self.resize(1200, 720)
+        self.resize(*self._initial_size())
 
         self.project = Project(name=tr("Nuovo progetto"))
         self.current_path = None
@@ -53,8 +67,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # riposo") e da save_project/save_project_as.
         self._dirty = False
         # Copia di recupero delle modifiche non salvate (vedi
-        # gui.main_window_project._init_autosave e core.autosave).
-        self._init_autosave()
+        # gui.project_autosave e core.autosave).
+        self.autosave = ProjectAutosave(self)
         self.playback = PlaybackEngine()
         # Cronologia di Annulla/Ripeti dell'intero progetto (vedi _mark_dirty)
         self.history = ProjectHistory()
@@ -73,9 +87,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._playback_timer = QTimer(self)
         self._playback_timer.setInterval(100)
         self._playback_timer.timeout.connect(self._update_playback_progress)
-        # (chiave, span) dell'ultima traccia evidenziata durante la
-        # riproduzione, vedi _update_playback_highlight.
-        self._highlight_spans_cache = None
+        self.track_highlight = TrackPlayHighlight(self)   # il token che si sta ascoltando nell'editor
         # Debounce del riavvio playback su modifica Mute/Solo/Volume/Pan/Master:
         # ogni modifica riarma questo timer invece di riavviare subito, cosi'
         # un trascinamento rapido di uno slider (molti valueChanged ravvicinati)
@@ -112,10 +124,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # programma (non e' un'impostazione persistente tra sessioni).
         self.metronome_engine = MetronomeEngine(self)
         self.metronome_engine.set_position_source(self._stream_position_beats)
-        # Sezione in loop (beat di inizio/fine, vedi set_loop_start/set_loop_end
-        # in gui.main_window_playback): None finche' non viene impostata.
-        self._loop_a_beat = None
-        self._loop_b_beat = None
+        self.loop = LoopRegion(self)       # la sezione A-B da ripetere (menu Riproduzione -> Loop)
 
         self._build_ui()
         self._build_menu()
@@ -128,6 +137,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
     # ------------------------------------------------------------------ UI
 
+    @staticmethod
+    def _initial_size():
+        """All'apertura: l'85% dello schermo disponibile, almeno 1200 x 720
+        (e mai piu' dello schermo), cosi' la barra dei comandi ha spazio."""
+        from PySide6.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return 1200, 720
+        area = screen.availableGeometry()
+        width = min(area.width(), max(1200, int(area.width() * 0.85)))
+        height = min(area.height(), max(720, int(area.height() * 0.85)))
+        return width, height
+
     def _build_ui(self):
         splitter = QSplitter(Qt.Horizontal)
 
@@ -138,17 +160,25 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # traccia di cui modificare il testo.
         left = QWidget()
         self.mixer_panel = left
+        # Stesse posizioni e dimensioni della colonna delle testate nella
+        # vista Struttura: passando da una vista all'altra le tracce non si
+        # spostano. Il titolo sta dove la' c'e' il righello (sotto il bordo di
+        # 1 px della tela), le testate sono larghe HEADER_WIDTH e, come la',
+        # la colonna non ha una sua barra di scorrimento (si scorre con la
+        # rotella).
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 4, 0)
-        left_layout.setSpacing(8)
+        left_layout.setContentsMargins(1, 1, 0, 0)
+        left_layout.setSpacing(0)
         title = QLabel(tr("Tracce"))
-        title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 2px 4px;")
+        title.setFixedHeight(RULER_HEIGHT)
+        title.setStyleSheet("font-size: 13px; font-weight: bold; padding: 0 6px;")
         left_layout.addWidget(title)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.mixer_container = QWidget()
         self.mixer_layout = QVBoxLayout(self.mixer_container)
         self.mixer_layout.setContentsMargins(0, 0, 0, 0)
@@ -157,7 +187,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("Nessuna traccia nel progetto.\n\nUsa '+ Aggiungi traccia' qui sotto\nper iniziare a comporre.")
         )
         self.empty_state_label.setAlignment(Qt.AlignCenter)
-        self.empty_state_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 13px; padding: 30px 10px;")
+        dim(self.empty_state_label, "font-size: 13px; padding: 30px 10px;")
         self.empty_state_label.setWordWrap(True)
         self.mixer_layout.addWidget(self.empty_state_label)
         # Come nella vista Struttura: un solo pulsante, subito sotto l'ultima
@@ -168,9 +198,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.mixer_layout.addStretch()
         self.scroll.setWidget(self.mixer_container)
         left_layout.addWidget(self.scroll)
-        # Larga quanto le testate (piu' la barra di scorrimento): il resto
-        # della finestra va all'editor.
-        left.setFixedWidth(HEADER_WIDTH + self.scroll.verticalScrollBar().sizeHint().width() + 6)
+        # Larga quanto le testate (piu' il bordo): il resto della finestra va
+        # all'editor.
+        self._tracks_column_width = HEADER_WIDTH
+        left.setFixedWidth(HEADER_WIDTH + 1)
 
         # --- Colonna destra: editor notazione ---------------------------
         right = QWidget()
@@ -179,15 +210,81 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self.track_title = QLabel(tr("Nessuna traccia selezionata"))
         self.track_title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 2px 0;")
-        # Senza word-wrap, il suffisso "vista Struttura brano attiva: ..."
-        # (select_track, per una traccia con box) rende il testo cosi' lungo
-        # da far crescere il minimumSizeHint della finestra oltre la sua
-        # larghezza corrente: Qt/il window manager sono allora costretti a
-        # ridimensionarla (osservato dopo ogni import MIDI, che porta sempre
-        # le tracce in modalita' box), perdendo anche il doppio click sulla
-        # barra del titolo su alcuni window manager.
+        # Con word-wrap un titolo lungo non fa crescere il minimumSizeHint
+        # della finestra oltre la sua larghezza (che il window manager
+        # sarebbe costretto ad allargare).
         self.track_title.setWordWrap(True)
-        right_layout.addWidget(self.track_title)
+        title_row = QHBoxLayout()
+        title_row.addWidget(self.track_title, 1)
+        # Strumenti sul testo della traccia: pulsanti piccoli in alto, della
+        # loro larghezza (prima erano una fila larga quanto la finestra sotto l'editor)
+        freeze_btn = QToolButton()
+        freeze_btn.setText(tr("Congela accordi"))
+        freeze_btn.setToolTip(
+            tr("Sostituisce ogni accordo astratto (es. Cmaj7) con il blocco di note concrete\n"
+            "generato dal motore di voicing per lo strumento di questa traccia.")
+        )
+        freeze_btn.clicked.connect(self.freeze_chords)
+        relative_btn = QToolButton()
+        relative_btn.setText(tr("Altezze relative e tonalità"))
+        relative_btn.setToolTip(
+            tr("Riscrive le note della traccia con le ottave relative (rel:) e, se il brano ha una\n"
+               "tonalità, con le sue alterazioni (key=): stesse note, testo più corto.")
+        )
+        relative_btn.clicked.connect(self.rewrite_relative)
+        self.text_tool_buttons = (freeze_btn, relative_btn)
+        # i comandi sul testo stanno in un contenitore: nella vista Partitura
+        # spariscono tutti insieme (vedi _apply_text_page)
+        self.text_tools = QWidget()
+        tools_layout = QHBoxLayout(self.text_tools)
+        tools_layout.setContentsMargins(0, 0, 0, 0)
+        for button in self.text_tool_buttons:
+            button.setObjectName("textTool")
+            tools_layout.addWidget(button, 0, Qt.AlignTop)
+        title_row.addWidget(self.text_tools, 0, Qt.AlignTop)
+        # Come nel dialogo del box: la traccia con il contenuto dei pattern al
+        # posto dei %Nome, in sola lettura, in un secondo editor (quello vero
+        # resta com'e'). Visibile solo se la traccia usa dei pattern.
+        self.expand_patterns_check = QCheckBox(tr("Espandi i pattern"))
+        self.expand_patterns_check.setToolTip(tr("Mostra il contenuto dei pattern usati nella traccia "
+                                                 "(in sola lettura)"))
+        self.expand_patterns_check.toggled.connect(self._on_expand_patterns_toggled)
+        self.expand_patterns_check.hide()
+        tools_layout.addWidget(self.expand_patterns_check, 0, Qt.AlignTop)
+        right_layout.addLayout(title_row)
+
+        # Sotto il titolo, il testo della traccia oppure la sua partitura
+        # (pulsante Partitura, vedi _apply_text_page): due pagine
+        text_page = QWidget()
+        text_layout = QVBoxLayout(text_page)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(8)
+        self.text_stack = QStackedWidget()
+        self.text_stack.addWidget(text_page)
+        self.score_panel = None             # gui.score_view.ScoreView, creata la prima volta che serve
+        self._score_mode = False
+        right_layout.addWidget(self.text_stack, 1)
+
+        # Traccia fatta di box: qui si legge il testo completo, ma si modifica
+        # aprendo un box (prima lo diceva il titolo, in una frase lunga)
+        self.boxes_banner = QFrame()
+        self.boxes_banner.setObjectName("boxesBanner")
+        banner_layout = QHBoxLayout(self.boxes_banner)
+        banner_layout.setContentsMargins(10, 4, 6, 4)
+        self.boxes_banner_label = QLabel(tr("Questa traccia e' fatta di box: qui si legge il testo completo, "
+                                            "per modificarlo apri un box nella vista Struttura."))
+        self.boxes_banner_label.setWordWrap(True)
+        banner_layout.addWidget(self.boxes_banner_label, 1)
+        to_structure = QToolButton()
+        to_structure.setText(tr("Vai alla vista Struttura"))
+        to_structure.setObjectName("textTool")
+        to_structure.clicked.connect(lambda: self.arrangement_action.setChecked(True))
+        banner_layout.addWidget(to_structure)
+        self.boxes_banner.setStyleSheet(
+            f"QFrame#boxesBanner {{ border-left: 3px solid {ACCENT}; border-radius: 4px; "
+            "background-color: rgba(90,169,230,28); }")
+        self.boxes_banner.hide()
+        text_layout.addWidget(self.boxes_banner)
 
         self.editor = NotationEditor()
         # Ctrl+Z/Ctrl+Y dell'editor vanno alla cronologia unica del progetto
@@ -211,29 +308,25 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.editor.on_double_click_token = self._on_editor_double_click
         self.editor.on_selection_context_menu = self._on_editor_selection_context_menu
         self.editor.on_completion_request = self._editor_completions
+        self.editor.on_token_context_menu = self._on_editor_token_context_menu
+        self.editor.enable_reference_preview(self._on_editor_reference_preview)
         self.highlighter = NotationHighlighter(self.editor.document())
-        right_layout.addWidget(self.editor)
+        self.editor.enable_line_numbers()
+        text_layout.addWidget(self.editor)
 
+        self.expanded_editor = NotationEditor()
+        self.expanded_editor.setFont(QFont("Monospace", 11))
+        self.expanded_editor.setReadOnly(True)
+        self._expanded_highlighter = NotationHighlighter(self.expanded_editor.document())
+        self.expanded_editor.hide()
+        text_layout.addWidget(self.expanded_editor)
+
+        # Riga sottile in fondo all'editor: sintassi valida, avvisi sulle
+        # battute (un clic porta al primo) o errore (vedi _validate_current)
         self.validation_label = QLabel("")
-        self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
-        right_layout.addWidget(self.validation_label)
-
-        freeze_btn = QPushButton(tr("Congela accordi in note esplicite (voicing automatico)"))
-        freeze_btn.setToolTip(
-            tr("Sostituisce ogni accordo astratto (es. Cmaj7) con il blocco di note concrete\n"
-            "generato dal motore di voicing per lo strumento di questa traccia.")
-        )
-        freeze_btn.clicked.connect(self.freeze_chords)
-        relative_btn = QPushButton(tr("Altezze relative e tonalità"))
-        relative_btn.setToolTip(
-            tr("Riscrive le note della traccia con le ottave relative (rel:) e, se il brano ha una\n"
-               "tonalità, con le sue alterazioni (key=): stesse note, testo più corto.")
-        )
-        relative_btn.clicked.connect(self.rewrite_relative)
-        tools_row = QHBoxLayout()
-        tools_row.addWidget(freeze_btn, 1)
-        tools_row.addWidget(relative_btn)
-        right_layout.addLayout(tools_row)
+        self.validation_label.setStyleSheet(VALIDATION_STYLE)
+        self.validation_label.installEventFilter(self)
+        text_layout.addWidget(self.validation_label)
 
         # Area centrale: due pagine intercambiabili (vedi
         # _toggle_arrangement_view) - l'editor di testo classico (sopra) e la
@@ -255,7 +348,18 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # si preme FX su una traccia.
         self.effects_panel = EffectsPanel(self)
         outer_splitter = QSplitter(Qt.Vertical)
-        outer_splitter.addWidget(splitter)
+        # Sotto le due viste, la riga del Master (allineata alla colonna delle
+        # tracce) con la barra di avanzamento accanto: vedi _build_bottom_row.
+        main_area = QWidget()
+        main_layout = QVBoxLayout(main_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(splitter, 1)
+        self._bottom_row = QHBoxLayout()
+        self._bottom_row.setContentsMargins(0, 0, 0, 0)
+        self._bottom_row.setSpacing(0)
+        main_layout.addLayout(self._bottom_row)
+        outer_splitter.addWidget(main_area)
         outer_splitter.addWidget(self.effects_panel)
         outer_splitter.setStretchFactor(0, 3)
         outer_splitter.setStretchFactor(1, 1)
@@ -264,13 +368,9 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self.setCentralWidget(outer_splitter)
         self.setStatusBar(QStatusBar())
-        # Promemoria delle scorciatoie della vista Struttura brano, a destra
-        # nella barra di stato (visibile solo in quella vista).
-        self.shortcuts_hint = QLabel(
-            tr("Spazio Play · R Registra · Shift+Spazio ascolta il box · Canc elimina · "
-            "Ctrl+D duplica · S dividi · Ctrl+rotella zoom · Ctrl+K cerca un comando"))
-        self.shortcuts_hint.setStyleSheet(f"color: {TEXT_DIM}; padding-right: 8px;")
-        self.statusBar().addPermanentWidget(self.shortcuts_hint)
+        # La barra di stato e' solo per i messaggi: le scorciatoie della vista
+        # Struttura stanno in "? Come si usa" (gui.arrangement_view.HELP_TEXT),
+        # nei suggerimenti dei pulsanti e nella ricerca dei comandi (Ctrl+K).
 
     def _build_menu(self):
         menubar = self.menuBar()
@@ -303,11 +403,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                                "con i tempi in quarti): una traccia per canale, come un MIDI.")))
         export_menu = file_menu.addMenu(tr("Esporta"))
         export_menu.addAction(self._action(
-            tr("Mix audio (WAV)..."), self.export_mix_wav,
+            tr("Mix audio (WAV)..."), self.wav_export.mix,
             tooltip=tr("Esporta il brano come si sente (tracce udibili, comprese le tracce audio) "
             "in un file WAV 48 kHz / 24 bit.")))
         export_menu.addAction(self._action(
-            tr("Tutte le tracce, una per file (stem)..."), self.export_stems,
+            tr("Tutte le tracce, una per file (stem)..."), self.wav_export.stems,
             tooltip=tr("Un WAV per traccia (quelle non silenziate), tutti dall'inizio del brano e lunghi "
                        "uguale: per mixare in un altro programma o mandare le parti a un altro musicista.")))
         export_menu.addAction(self._action(tr("MIDI..."), self.export_midi, "Ctrl+Shift+E",
@@ -329,6 +429,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tr("MTXT..."), self.export_mtxt,
             tooltip=tr("Esporta le tracce udibili in MTXT (testo, un evento per riga): note, strumenti, "
             "automazioni, tempo e metrica, come nel MIDI.")))
+        file_menu.addSeparator()
+        file_menu.addAction(self._action(
+            tr("Cache su disco..."), self.manage_disk_cache,
+            tooltip=tr("Quanto spazio occupano i rendering salvati accanto ai progetti, e i pulsanti per "
+                       "svuotarli.")))
         file_menu.addSeparator()
         file_menu.addAction(self._action(tr("Esci"), self.close, "Ctrl+Q"))
 
@@ -367,6 +472,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                               ["Ctrl+=", "Ctrl++"]))
         view_menu.addAction(self._view_action(tr("Riduci (zoom)"), self.arrangement_view.zoom_out, ["Ctrl+-"]))
         view_menu.addAction(self._view_action(tr("Zoom normale"), self.arrangement_view.zoom_reset, ["Ctrl+0"]))
+        row_height_menu = view_menu.addMenu(tr("Altezza delle tracce"))
+        row_height_menu.setToolTip(tr("Nella vista Struttura brano: righe piu' alte mostrano meglio le note "
+                                      "dentro i box (anche Ctrl+Maiusc+rotellina)."))
+        self._row_height_group = QActionGroup(self)
+        self._row_height_actions = {}
+        from .arrangement_view import ROW_HEIGHTS
+        for height, label in zip(ROW_HEIGHTS, (tr("Normale"), tr("Alta"), tr("Molto alta"))):
+            act = QAction(label, self, checkable=True)
+            act.triggered.connect(lambda _checked=False, h=height: self.arrangement_view.set_row_height(h))
+            self._row_height_group.addAction(act)
+            row_height_menu.addAction(act)
+            self._row_height_actions[height] = act
+        self.sync_row_height_actions()
         view_menu.addSeparator()
         # dimensione del testo: scorciatoie valide col fuoco nell'editor (vedi gui.text_zoom)
         view_menu.addActions(self.editor.text_zoom_actions)
@@ -417,40 +535,49 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             tooltip=tr("Esporta la traccia senza effetti, riverbero/chorus e pan, da far passare "
             "in un simulatore di amplificatore esterno.")
         ))
+        track_menu.addAction(self._action(
+            tr("Congela tutte le trasformazioni"), self.freeze_all_transforms,
+            tooltip=tr("Scrive per esteso le note di tutti i richiami con funzioni della traccia.")
+        ))
         track_menu.addSeparator()
         track_menu.addAction(self._action(
             tr("Registra nella traccia audio..."), self.record_into_audio_track, "Ctrl+R",
             tooltip=tr("Registra voce, chitarra o tastiera dalla scheda audio mentre suona il resto del brano.")
         ))
         track_menu.addAction(self._action(
-            tr("Suona con la tastiera in questa traccia..."), self.play_keyboard_into_selected_track,
+            tr("Suona con la tastiera in questa traccia..."), self.generators.play_keyboard,
             tooltip=tr("Registra una performance suonata con la tastiera del computer e la converte in notazione.")
         ))
 
         compose_menu = menubar.addMenu(tr("&Componi"))
         generate_menu = compose_menu.addMenu(tr("Genera nella traccia selezionata"))
         generate_menu.addAction(self._action(
-            tr("Batteria..."), self.generate_drums_into_selected_track,
+            tr("Batteria..."), self.generators.drums,
             tooltip=tr("Genera un giro di batteria per genere (rock, funk, disco, reggae, punk, soul, bossa nova, rock'n'roll, shuffle, swing), senza IA: "
             "istantaneo, con variabilita' regolabile, nessun modello. Richiede una traccia percussiva.")
         ))
         generate_menu.addAction(self._action(
-            tr("Basso da accordi..."), self.generate_bass_into_selected_track,
+            tr("Basso da accordi..."), self.generators.bass,
             tooltip=tr("Genera una linea di basso che segue gli accordi gia' scritti in un'altra traccia "
             "del progetto (fondamentale, walking, blues, ottavi, reggae, bossa, shuffle...), senza IA.")
         ))
         generate_menu.addAction(self._action(
-            tr("Giro armonico..."), self.generate_progression_into_selected_track,
+            tr("Giro armonico..."), self.generators.progression,
             tooltip=tr("Genera una progressione di accordi (pop, rock, blues, jazz, cadenza andalusa...) "
             "nella tonalita' scelta, da cui far derivare poi basso e accompagnamento, senza IA. "
             "Richiede uno strumento polifonico.")
         ))
         generate_menu.addAction(self._action(
-            tr("Accompagnamento o riff..."), self.generate_melody_into_selected_track,
+            tr("Accompagnamento o riff..."), self.generators.melody,
             tooltip=tr("Genera un accompagnamento (strumenti polifonici: accordi battuti, arpeggio, "
             "accordo spezzato, sostenuto, montuno) o un riff/melodia (strumenti monofonici: riff, "
             "botta e risposta, note guida, passaggio scalare, lick blues) che segue gli accordi gia' "
             "scritti in un'altra traccia del progetto, senza IA. Non per tracce percussive.")
+        ))
+        compose_menu.addAction(self._action(
+            tr("Tonalità del brano..."), self.change_song_key,
+            tooltip=tr("Alza o abbassa tutto il brano di semitoni, con l'ascolto: per trovare la tonalità "
+                       "giusta per chi canta.")
         ))
         compose_menu.addAction(self._action(
             tr("Arrangia il brano..."), self.arrange_song,
@@ -459,17 +586,28 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                        "sezione e il finale.")))
         styles_menu = compose_menu.addMenu(tr("Stili dei generatori"))
         styles_menu.addAction(self._action(
-            tr("Salva la traccia come stile..."), self.save_selected_track_as_style,
+            tr("Salva la traccia come stile..."), self.generators.save_as_style,
             tooltip=tr("Ricava dalla traccia selezionata un nuovo stile per Genera batteria/basso/"
             "accompagnamento/riff (giro base, alternative, fill; note come gradi dell'accordo).")
         ))
         styles_menu.addAction(self._action(
-            tr("Stili personali..."), self.manage_user_styles,
+            tr("Stili personali..."), self.generators.manage_styles,
             tooltip=tr("Rinomina o elimina gli stili salvati dai tuoi box, tracce o file MIDI.")
         ))
         compose_menu.addSeparator()
         compose_menu.addAction(self._action(tr("Gestisci libreria pattern (%Nome)..."), self.manage_patterns))
         compose_menu.addAction(self._action(tr("Gestisci libreria MIDI (&Nome)..."), self.manage_midi_library))
+        compose_menu.addAction(self._action(
+            tr("Trasforma..."), self.transform_reference,
+            tooltip=tr("Sceglie una funzione per un pattern (.invert, .retro, .sequence...), con l'ascolto "
+                       "prima e dopo.")
+        ))
+        freeze_comment = QAction(tr("Congela con il commento d'origine"), self)
+        freeze_comment.setCheckable(True)
+        freeze_comment.setChecked(app_settings.get_freeze_comment())
+        freeze_comment.setToolTip(tr("Congela la trasformazione scrive sopra le note da quale richiamo vengono."))
+        freeze_comment.toggled.connect(app_settings.set_freeze_comment)
+        compose_menu.addAction(freeze_comment)
         compose_menu.addAction(self._action(
             tr("Estrai pattern dalle tracce..."), self.extract_patterns_action,
             tooltip=tr("Individua blocchi ripetuti in tutte le tracce e li converte in pattern riutilizzabili.")
@@ -516,6 +654,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.loop_action.setEnabled(False)
         loop_menu.addAction(self.loop_action)
         loop_menu.addAction(self._action(tr("Cancella loop"), self.clear_loop))
+        # Le stesse velocita' della tendina della barra (vedi speed_combo):
+        # scegliere qui cambia la tendina, e la tendina spunta la voce qui.
+        speed_menu = playback_menu.addMenu(tr("Velocita' d'ascolto"))
+        speed_menu.setToolTipsVisible(True)
+        self.speed_actions = QActionGroup(self)
+        for percent in LISTENING_SPEEDS:
+            action = QAction(f"{percent}%", self, checkable=True)
+            action.setData(percent / 100.0)
+            action.setChecked(percent == 100)
+            action.setToolTip(tr("Rallenta il brano senza cambiarne l'intonazione, per esercitarsi (anche con "
+                                 "il loop A-B). Non cambia il brano ne' l'esportazione."))
+            action.triggered.connect(lambda _checked=False, i=len(self.speed_actions.actions()):
+                                     self.speed_combo.setCurrentIndex(i))
+            self.speed_actions.addAction(action)
+            speed_menu.addAction(action)
         # Nome storico (era una casella nella barra dei comandi): e' un'azione
         # spuntabile con la stessa interfaccia (isChecked/setChecked/toggled).
         self.humanize_checkbox = QAction(tr("Umanizza"), self, checkable=True)
@@ -533,27 +686,44 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         sounds_menu.addAction(self._action(tr("Gestisci strumenti..."), self.manage_instruments,
                                            tooltip=tr("Crea o rimuovi strumenti personalizzati.")))
         soundfont_menu = sounds_menu.addMenu(tr("SoundFont"))
-        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2)..."), self.choose_soundfont))
-        soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.reset_soundfont))
-        soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.show_soundfont_info))
+        soundfont_menu.addAction(self._action(tr("Scegli SoundFont (.sf2/.sf3)..."), self.soundfont.choose))
+        soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.soundfont.reset))
+        soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.soundfont.show_info))
         sounds_menu.addAction(self._action(
             tr("Volume di sintesi (gain)..."), self.show_playback_gain_settings,
             tooltip=tr("Regola il guadagno del sintetizzatore: troppo alto puo' causare "
                     "crepitii/distorsione nei passaggi piu' densi.")
         ))
         sounds_menu.addAction(self._action(
-            tr("Cartelle dei plugin VST3..."), self.show_plugin_dirs,
+            tr("Cartelle dei plugin VST3 e AU...") if sys.platform == "darwin" else tr("Cartelle dei plugin VST3..."),
+            self.show_plugin_dirs,
             tooltip=tr("Le cartelle in cui cercare i plugin VST3, oltre a quelle standard del sistema.")))
+        from core import jack_output
+        if jack_output.jack_supported():
+            # Uscita audio: il dispositivo del sistema (PortAudio) o SoundText
+            # come client JACK, con le sue porte (vedi core.jack_output).
+            output_menu = sounds_menu.addMenu(tr("Uscita audio"))
+            output_group = QActionGroup(self)
+            output_group.setExclusive(True)
+            current_output = app_settings.get_audio_output()
+            for value, label, tip in (
+                    (jack_output.OUTPUT_SYSTEM, tr("Dispositivo del sistema"),
+                     tr("L'audio esce dal dispositivo predefinito del sistema (PipeWire, PulseAudio o ALSA).")),
+                    (jack_output.OUTPUT_JACK, tr("JACK"),
+                     tr("SoundText diventa un client JACK con le sue porte, da collegare con "
+                        "qjackctl, Carla o Ardour. Serve un server JACK in funzione."))):
+                act = QAction(label, self, checkable=True)
+                act.setChecked(current_output == value)
+                act.setToolTip(tip)
+                act.triggered.connect(lambda _checked=False, v=value: self.set_audio_output(v))
+                output_group.addAction(act)
+                output_menu.addAction(act)
+            output_menu.setToolTipsVisible(True)
         sounds_menu.addSeparator()
-        download_menu = sounds_menu.addMenu(tr("Scarica"))
-        download_menu.addAction(self._action(
-            tr("Scarica profili NAM consigliati..."), self.download_nam_profiles,
-            tooltip=tr("Scarica nella cartella profili_nam una trentina di profili NAM di amplificatori "
-                    "e pedali famosi, da usare con l'effetto Profilo NAM.")))
-        download_menu.addAction(self._action(
-            tr("Scarica casse IR per gli amplificatori NAM..."), self.download_cab_irs,
-            tooltip=tr("Scarica una ventina di casse per chitarra (risposte all'impulso) da abbinare "
-                    "ai profili NAM di sola testata, con Cassa → File IR…")))
+        sounds_menu.addAction(self._action(
+            tr("Scarica e installa..."), self.open_download_dialog,
+            tooltip=tr("Strumenti campionati SFZ, plugin VST3, profili e casse NAM, il motore NAM veloce e "
+                    "il motore SFZ interno, in un'unica finestra.")))
 
         options_menu = menubar.addMenu(tr("&Opzioni"))
         options_menu.addAction(self._action(
@@ -563,6 +733,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         options_menu.addAction(self._action(
             tr("Umanizza..."), self.show_humanize_settings,
             tooltip=tr("Imposta l'intensita' della variazione casuale di timing/velocity.")
+        ))
+        options_menu.addAction(self._action(
+            tr("Sorgenti dei download..."), self.edit_download_sources,
+            tooltip=tr("Gli indirizzi da cui \"Scarica e installa\" prende strumenti, plugin e SoundFont.")
         ))
 
         midi_import_menu = options_menu.addMenu(tr("Import MIDI"))
@@ -624,8 +798,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         palette_btn = QPushButton(tr("Cerca un comando…   Ctrl+K"))
         palette_btn.setObjectName("paletteButton")
         palette_btn.setToolTip(tr("Trova qualsiasi funzione scrivendone il nome (Ctrl+K)"))
-        palette_btn.setStyleSheet(f"QPushButton#paletteButton {{ color: {TEXT_DIM}; padding: 2px 14px; "
-                                  "text-align: left; min-width: 220px; }")
+        dim(palette_btn, "QPushButton#paletteButton { padding: 2px 14px; text-align: left; min-width: 220px; }")
         palette_btn.clicked.connect(self.open_command_palette)
         menubar.setCornerWidget(palette_btn, Qt.TopRightCorner)
         self.palette_btn = palette_btn
@@ -650,6 +823,10 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         toolbar.setObjectName("mainToolbar")
         self.addToolBar(toolbar)
 
+        # --- Master: effetti e volume (il livello e' nella riga sotto) -----
+        # Il Master non sta piu' qui: e' la riga in fondo alla colonna delle
+        # tracce (gui.master_strip, vedi _build_bottom_row).
+
         # --- Trasporto ---------------------------------------------------
         self.rewind_btn = self._tool_button("rewind", tr("Torna all'inizio del brano"), lambda: self.seek_to_beat(0.0))
         toolbar.addWidget(self.rewind_btn)
@@ -659,7 +836,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.play_pause_btn.setToolTip(tr("Riproduce l'ensemble, o riprende dal punto di pausa (F5)"))
         self.play_pause_btn.setStyleSheet(
             f"QPushButton#playButton {{ font-weight: bold; color: #10151a; background: {ACCENT}; "
-            f"border: 1px solid {ACCENT}; border-radius: 6px; padding: 5px 14px; }}")
+            f"border: 1px solid {ACCENT}; border-radius: 6px; padding: 5px 10px; }}")
         self.play_pause_btn.clicked.connect(self.toggle_play_pause)
         toolbar.addWidget(self.play_pause_btn)
         self._toolbar_icons.append((self.play_pause_btn, "play", "#10151a"))
@@ -690,7 +867,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         # Rallenta l'ascolto (per esercitarsi, anche con il loop A-B)
         self.speed_combo = QComboBox()
-        for percent in (100, 90, 80, 75, 70, 60, 50):
+        for percent in LISTENING_SPEEDS:
             self.speed_combo.addItem(f"{percent}%", percent / 100.0)
         self.speed_combo.setToolTip(tr("Velocita' d'ascolto: rallenta il brano senza cambiarne l'intonazione, "
                                        "per esercitarsi (anche con il loop A-B). Non cambia il brano ne' "
@@ -700,13 +877,19 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         toolbar.addSeparator()
 
+        # --- Display del tempo (gui.time_display) ------------------------
+        from .time_display import TimeDisplay
+        self.time_display = TimeDisplay()
+        toolbar.addWidget(self.time_display)
+        toolbar.addSeparator()
+
         # --- Brano: tempo, metrica, tonalita' ------------------------------
         song_box = QFrame()
         song_box.setObjectName("songBox")
         song_box.setStyleSheet("QFrame#songBox { border: 1px solid palette(mid); border-radius: 6px; }")
         song_layout = QHBoxLayout(song_box)
-        song_layout.setContentsMargins(8, 2, 8, 2)
-        song_layout.setSpacing(12)
+        song_layout.setContentsMargins(4, 2, 4, 2)
+        song_layout.setSpacing(6)        # stretti: la barra deve stare in 1200 px (test_main_layout_gui)
 
         self.tempo_spin = TempoSpinBox()               # con un decimale (101,4), vedi gui.tempo_spin
         self.tempo_spin.setValue(self.project.tempo_bpm)
@@ -717,7 +900,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.metrica_combo.setEditable(True)
         self.metrica_combo.addItems(["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"])
         self.metrica_combo.setCurrentText(self.project.time_sig)
-        self.metrica_combo.setFixedWidth(70)
+        self.metrica_combo.setFixedWidth(64)
         self.metrica_combo.setToolTip(
             tr("Metrica (indicazione di tempo) del progetto, es. 4/4, 3/4, 6/8.\n"
             "Durante la riproduzione mostra la metrica in vigore in quel punto, "
@@ -732,7 +915,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             "Am", "Em", "Bm", "F#m", "C#m", "G#m", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm",
         ])
         self.key_combo.setCurrentText(self.project.key)
-        self.key_combo.setFixedWidth(70)
+        self.key_combo.setFixedWidth(64)
         self.key_combo.setToolTip(
             tr("Tonalita' del brano, es. C, Am, G, Em... (vuota = non impostata).\n"
             "Importando un file MIDI viene riconosciuta e impostata automaticamente, se presente.\n"
@@ -759,17 +942,27 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             column = QVBoxLayout()
             column.setSpacing(0)
             label = QLabel(caption.upper())
-            label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 9px; letter-spacing: 1px;")
+            dim(label, "font-size: 10px; letter-spacing: 1px;")
             column.addWidget(label)
             column.addWidget(widget)
             song_layout.addLayout(column)
-        toolbar.addWidget(song_box)
+        # Il riquadro Brano sta in uno "slot" della prima riga o, se la
+        # prima riga non entra nella finestra, in uno della seconda (vedi
+        # _place_song_box): Struttura/Testo/Partitura non finiscono mai nel
+        # menu ». Se non basta, scendono anche loro (stesso metodo).
+        self._song_box = song_box
+        self._main_toolbar = toolbar
+        self._song_slot_top = QWidget()
+        top_layout = QHBoxLayout(self._song_slot_top)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.addWidget(song_box)
+        self._song_top_action = toolbar.addWidget(self._song_slot_top)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         toolbar.addWidget(spacer)
 
-        # --- Vista: Struttura / Testo ------------------------------------
+        # --- Vista: Struttura / Testo / Partitura -------------------------
         self.view_structure_btn = QToolButton()
         self.view_structure_btn.setText(tr("Struttura"))
         self.view_structure_btn.setToolTip(tr("Vista Struttura brano: tutte le tracce a box sullo stesso "
@@ -777,63 +970,78 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.view_text_btn = QToolButton()
         self.view_text_btn.setText(tr("Testo"))
         self.view_text_btn.setToolTip(tr("Vista Testo: la notazione della traccia selezionata (Ctrl+Shift+B)"))
+        self.view_score_btn = QToolButton()
+        self.view_score_btn.setText(tr("Partitura"))
+        self.view_score_btn.setToolTip(tr("Vista Partitura: la traccia selezionata su pentagramma, al posto "
+                                          "del testo; durante l'ascolto le note che suonano diventano rosse"))
         self._view_group = QButtonGroup(self)
         self._view_group.setExclusive(True)
-        for b in (self.view_structure_btn, self.view_text_btn):
+        self._view_box = QWidget()
+        view_layout = QHBoxLayout(self._view_box)
+        view_layout.setContentsMargins(0, 0, 0, 0)
+        view_layout.setSpacing(toolbar.layout().spacing())
+        for b in (self.view_structure_btn, self.view_text_btn, self.view_score_btn):
             b.setCheckable(True)
             b.setObjectName("viewToggle")
             self._view_group.addButton(b)
-            toolbar.addWidget(b)
+            view_layout.addWidget(b)
+        self._view_slot_top = QWidget()
+        view_top_layout = QHBoxLayout(self._view_slot_top)
+        view_top_layout.setContentsMargins(0, 0, 0, 0)
+        view_top_layout.addWidget(self._view_box)
+        self._view_top_action = toolbar.addWidget(self._view_slot_top)
         self.view_structure_btn.clicked.connect(lambda: self.arrangement_action.setChecked(True))
-        self.view_text_btn.clicked.connect(lambda: self.arrangement_action.setChecked(False))
+        self.view_text_btn.clicked.connect(lambda: self.show_score_page(False))
+        self.view_score_btn.clicked.connect(lambda: self.show_score_page(True))
         self.view_text_btn.setChecked(True)
 
-        toolbar.addSeparator()
-        toolbar.addWidget(QLabel(" Master "))
-        # Catena di effetti sul master (mix finale): apre il pannello Effetti.
-        self.master_fx_btn = QPushButton("FX")
-        self.master_fx_btn.setMinimumWidth(52)
-        self.master_fx_btn.setAccessibleName(tr("Effetti sul master"))
-        self.master_fx_btn.clicked.connect(lambda: self.effects_panel.open_master())
-        toolbar.addWidget(self.master_fx_btn)
-        self.master_vol_slider = QSlider(Qt.Horizontal)
-        self.master_vol_slider.setRange(0, 200)
-        self.master_vol_slider.setValue(self.project.master_volume)
-        self.master_vol_slider.setFixedWidth(100)
-        self.master_vol_slider.setToolTip(
-            tr("Volume master: scala il volume di tutte le tracce insieme, "
-            "in aggiunta al volume di ciascuna (100% = guadagno originale).")
-        )
-        self.master_vol_slider.valueChanged.connect(self._on_master_volume_changed)
-        toolbar.addWidget(self.master_vol_slider)
-        self.master_vol_value_label = QLabel(f"{self.project.master_volume}%")
-        self.master_vol_value_label.setFixedWidth(38)
-        toolbar.addWidget(self.master_vol_value_label)
+        self._build_bottom_row()
+        self._refresh_toolbar_icons()
 
-        # --- Avanzamento: riga propria, a tutta larghezza -----------------
-        self.addToolBarBreak()
-        progress_bar = QToolBar("Avanzamento")
-        progress_bar.setMovable(False)
-        progress_bar.setObjectName("progressToolbar")
-        self.addToolBar(progress_bar)
-        self.playback_progress = QProgressBar()
+    def _build_bottom_row(self):
+        """In fondo, sotto le due viste: la riga del Master (gui.master_strip),
+        larga quanto la colonna delle tracce, e la barra di avanzamento
+        sottile, cliccabile per saltare (vedi eventFilter). Il tempo in cifre
+        lo mostra il display nella barra dei comandi."""
+        from .master_strip import MASTER_STRIP_HEIGHT, MasterStrip
+        from .time_display import PlaybackProgress
+        strip = MasterStrip(self._tracks_column_width + 1, self.project.master_volume,
+                            self._on_master_volume_changed, lambda: self.effects_panel.open_master())
+        self.master_strip = strip
+        self.master_fx_btn = strip.fx_btn
+        self.master_vol_slider = strip.vol_slider
+        self.master_vol_value_label = strip.vol_label
+        self.level_meter = strip.meter
+        self._bottom_row.addWidget(strip)
+
+        self.playback_progress = PlaybackProgress()
         self.playback_progress.setRange(0, 100)
         self.playback_progress.setValue(0)
-        self.playback_progress.setMinimumWidth(200)
+        self.playback_progress.setTextVisible(False)
+        self.playback_progress.setFixedHeight(8)
         self.playback_progress.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.playback_progress.setTextVisible(True)
-        self.playback_progress.setFormat("00:00 / 00:00")
         self.playback_progress.setToolTip(tr("Avanzamento della riproduzione: clicca per saltare in quel punto."))
         self.playback_progress.installEventFilter(self)
-        progress_bar.addWidget(self.playback_progress)
-        # Livello del master e spia di clipping (vedi gui.level_meter)
-        from .level_meter import LevelMeter
-        self.level_meter = LevelMeter()
-        self._clip_detail_for = None    # (id dei livelli, testo con le battute)
-        self._track_peaks = {}          # nome traccia -> core.levels.TrackPeak (Analizza livelli)
-        progress_bar.addWidget(self.level_meter)
-
-        self._refresh_toolbar_icons()
+        self.playback_progress.textChanged.connect(self.time_display.set_time_text)
+        self.playback_progress.setFormat("00:00 / 00:00")
+        progress_box = QWidget()
+        progress_box.setFixedHeight(MASTER_STRIP_HEIGHT)
+        progress_layout = QVBoxLayout(progress_box)
+        progress_layout.setContentsMargins(12, 0, 12, 0)
+        progress_layout.addWidget(self.playback_progress, 0, Qt.AlignVCenter)
+        self._bottom_row.addWidget(progress_box, 1)
+        # qui scende il riquadro Brano se la barra dei comandi non entra (_place_song_box)
+        self._song_slot_bottom = QWidget()
+        bottom_layout = QHBoxLayout(self._song_slot_bottom)
+        bottom_layout.setContentsMargins(0, 0, 8, 0)
+        self._song_slot_bottom.setVisible(False)
+        self._bottom_row.addWidget(self._song_slot_bottom, 0, Qt.AlignVCenter)
+        # e, se non basta, anche i pulsanti Struttura/Testo/Partitura
+        self._view_slot_bottom = QWidget()
+        view_bottom_layout = QHBoxLayout(self._view_slot_bottom)
+        view_bottom_layout.setContentsMargins(0, 0, 8, 0)
+        self._view_slot_bottom.setVisible(False)
+        self._bottom_row.addWidget(self._view_slot_bottom, 0, Qt.AlignVCenter)
 
     def _tool_button(self, icon_name, tooltip, slot, color=None, checkable=False):
         """Pulsante a icona della barra dei comandi (vedi gui.icons)."""
@@ -852,7 +1060,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         text_color = "#333333" if get_active_theme() == "light" else "#e0e0e0"
         for button, name, color in self._toolbar_icons:
             if button is self.play_pause_btn:
-                name = "pause" if self.play_pause_btn.text() == "Pausa" else "play"
+                name = "pause" if self.play_pause_btn.text() == tr("Pausa") else "play"
             ic = icon(name, color or text_color)
             # Pulsanti legati a un'azione checkable (loop): a ogni toggle
             # QToolButton ricopia l'icona dall'azione, e se questa ne e'
@@ -861,6 +1069,91 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             if action is not None:
                 action.setIcon(ic)
             button.setIcon(ic)
+        self._fit_play_button()
+
+    def _fit_play_button(self):
+        """Play e Pausa larghi uguali: altrimenti, partendo l'ascolto, la
+        barra dei comandi si allarga e Struttura/Testo finiscono nel menu »
+        (la barra deve stare in 1200 px, vedi test_main_layout_gui)."""
+        button = self.play_pause_btn
+        current = button.text()
+        button.setMinimumWidth(0)
+        widths = []
+        for text in (tr("Play"), tr("Pausa")):
+            button.setText(text)
+            widths.append(button.sizeHint().width())
+        button.setText(current)
+        button.setMinimumWidth(max(widths))
+        self._place_song_box()
+
+    def song_box_in_first_row(self) -> bool:
+        return self._song_box.parent() is self._song_slot_top
+
+    def view_buttons_in_first_row(self) -> bool:
+        return self._view_box.parent() is self._view_slot_top
+
+    def _moved_width(self, widget) -> int:
+        return widget.sizeHint().width() + self._main_toolbar.layout().spacing()
+
+    def first_row_full_width(self) -> int:
+        """La larghezza che chiede la prima riga della barra con dentro il
+        riquadro Brano e i pulsanti di vista."""
+        need = self._main_toolbar.sizeHint().width()
+        if not self.song_box_in_first_row():
+            need += self._moved_width(self._song_box)
+        if not self.view_buttons_in_first_row():
+            need += self._moved_width(self._view_box)
+        return need
+
+    def _place_song_box(self):
+        """Il riquadro Brano nella barra dei comandi se la barra intera entra
+        nella finestra, altrimenti nella riga in fondo, accanto alla barra di
+        avanzamento (con caratteri larghi, come quello di sistema di macOS, o
+        una finestra stretta). Se senza il riquadro la barra ancora non entra
+        (i controlli di Windows sono piu' larghi), in fondo scendono anche i
+        pulsanti Struttura/Testo/Partitura, che cosi' non finiscono mai nel
+        menu ». Il conto si fa sempre sulla barra completa, cosi' non si
+        ribalta avanti e indietro."""
+        if not hasattr(self, "_view_slot_bottom"):
+            return
+        # Spostare un pezzo cambia il conto dell'altro (i pulsanti di vista che
+        # risalgono fanno posto al riquadro Brano): si rifa' finche' non cambia
+        # piu' niente, al massimo qualche volta
+        for _ in range(3):
+            if not self._place_toolbar_parts_once():
+                break
+
+    def _place_toolbar_parts_once(self) -> bool:
+        """Un passo di _place_song_box: True se ha spostato qualcosa."""
+        full = self.first_row_full_width()
+        song_top = full <= self.width()
+        view_top = full - self._moved_width(self._song_box) <= self.width()
+        moved = False
+        for widget, top_now, want_top, top_slot, bottom_slot, action in (
+                (self._song_box, self.song_box_in_first_row(), song_top,
+                 self._song_slot_top, self._song_slot_bottom, self._song_top_action),
+                (self._view_box, self.view_buttons_in_first_row(), view_top,
+                 self._view_slot_top, self._view_slot_bottom, self._view_top_action)):
+            if want_top == top_now:
+                continue
+            source, target = (bottom_slot, top_slot) if want_top else (top_slot, bottom_slot)
+            source.layout().removeWidget(widget)
+            target.layout().addWidget(widget)
+            widget.show()
+            action.setVisible(want_top)
+            bottom_slot.setVisible(not want_top)
+            moved = True
+        if moved:
+            # le misure della barra si aggiornano con il suo layout
+            self._main_toolbar.layout().activate()
+        return moved
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._place_song_box()
+        # e di nuovo a layout assestato: subito dopo un ridimensionamento la
+        # barra puo' riportare ancora le misure di prima
+        QTimer.singleShot(0, self, self._place_song_box)
 
     def _apply_theme(self, name: str):
         app_settings.set_theme(name)
@@ -877,6 +1170,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             header.sync_from_track()
         refresh_add_track_icon(self.mixer_add_track_btn)
         self.effects_panel.theme_changed()
+        self.master_strip.refresh_style()
         # I colori dell'evidenziazione sintattica (es. [ ... ] in giallo/ambra,
         # vedi highlighter.py) dipendono dal tema attivo ma i QTextCharFormat
         # vengono creati solo alla costruzione del NotationHighlighter: un
@@ -886,6 +1180,11 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # Il canvas a box ha uno sfondo esplicito (vedi ArrangementView.refresh).
         self.arrangement_view.refresh()
         self._refresh_toolbar_icons()
+
+    def sync_row_height_actions(self):
+        from . import arrangement_view
+        for height, act in self._row_height_actions.items():
+            act.setChecked(height == arrangement_view.ROW_HEIGHT)
 
     def _view_action(self, label, slot, shortcuts, tooltip=None):
         """Azione le cui scorciatoie valgono solo con la vista Struttura
@@ -912,9 +1211,18 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self._command_palette.exec()
 
     def _toggle_arrangement_view(self, checked):
+        # Le testate stanno negli stessi punti nelle due viste: anche lo
+        # scorrimento della colonna passa da una vista all'altra.
+        canvas_bar = self.arrangement_view.canvas.verticalScrollBar()
+        text_bar = self.scroll.verticalScrollBar()
+        offset = (text_bar if checked else canvas_bar).value()
+        target = canvas_bar if checked else text_bar
+        QTimer.singleShot(0, target, lambda: target.setValue(offset))
         self.center_stack.setCurrentIndex(1 if checked else 0)
-        (self.view_structure_btn if checked else self.view_text_btn).setChecked(True)
-        self.shortcuts_hint.setVisible(checked)
+        if checked:
+            self._sync_view_buttons()
+        else:
+            self._apply_text_page()
         # Colonna delle tracce solo nella vista Testo: nella Struttura le
         # stesse testate stanno gia' a sinistra delle righe.
         self.mixer_panel.setVisible(not checked)
@@ -926,6 +1234,37 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             # fermata esplicitamente, altrimenti resterebbe a suonare in
             # sottofondo senza alcun controllo piu' raggiungibile.
             self.arrangement_view._preview_playback.stop()
+
+    # ------------------------------------------------------- vista Partitura
+
+    def show_score_page(self, on: bool):
+        """Pulsanti Testo e Partitura: la traccia selezionata come testo o
+        come partitura (gui.score_view.ScoreView), nello stesso posto. Dalla
+        Struttura si passa prima alla vista Testo."""
+        if on and self._score_unavailable():       # manca Verovio: resta dov'era
+            self._sync_view_buttons()
+            return
+        self._score_mode = on
+        if self.arrangement_action.isChecked():
+            self.arrangement_action.setChecked(False)   # _toggle_arrangement_view -> _apply_text_page
+        else:
+            self._apply_text_page()
+
+    def _apply_text_page(self):
+        score = self._score_mode
+        if score and self.score_panel is None:
+            from .score_view import ScoreView
+            self.score_panel = ScoreView(self, only_current=True)
+            self.text_stack.addWidget(self.score_panel)
+        self.text_stack.setCurrentIndex(1 if score else 0)
+        self.text_tools.setVisible(not score)
+        self._sync_view_buttons()
+
+    def _sync_view_buttons(self):
+        if self.arrangement_action.isChecked():
+            self.view_structure_btn.setChecked(True)
+        else:
+            (self.view_score_btn if self._score_mode else self.view_text_btn).setChecked(True)
 
     def refresh_master_fx_button(self):
         """Pulsante FX accanto al Master: acceso con la catena del master
@@ -955,7 +1294,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         le modifiche a raffica dello stesso tipo (digitazione in una
         traccia, trascinamento di uno slider)."""
         self._dirty = True
-        self._autosave_generation += 1
+        self.autosave.changed()
         if not self._restoring_history:
             # le clip audio che seguono il tempo del brano si riadattano
             # (time-stretch) prima che la modifica entri nella cronologia
@@ -963,8 +1302,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             if adapt_clips_to_tempo(self.project) and hasattr(self, "arrangement_view"):
                 # al giro dopo, come in ArrangementView.on_clip_changed: un box puo'
                 # essere ancora in mezzo alla gestione di un evento
-                QTimer.singleShot(0, self.arrangement_view.refresh)
-        self._forget_track_peaks()
+                QTimer.singleShot(0, self.arrangement_view, self.arrangement_view.refresh)
+        self.levels.forget_track_peaks()
         self.schedule_playback_prepare()
         if not self._restoring_history:
             self.history.record(self.project, self.current_track_name, merge_key)
@@ -986,6 +1325,21 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
             self._restart_requested = True
             if not self.close():          # chiusura annullata (modifiche da salvare)
                 self._restart_requested = False
+
+    def set_audio_output(self, value: str):
+        """Suoni > Uscita audio: vale dalla prossima riproduzione."""
+        from core import jack_output
+        app_settings.set_audio_output(value)
+        if value == jack_output.OUTPUT_JACK and not jack_output.jack_available():
+            QMessageBox.information(
+                self, tr("Uscita audio"),
+                tr("Nessun server JACK risponde: finche' non ne parte uno (jackd, o PipeWire con "
+                   "pipewire-jack) l'audio continua a uscire dal dispositivo del sistema."))
+            return
+        self.statusBar().showMessage(
+            tr("Uscita audio su JACK: client «SoundText», dalla prossima riproduzione.")
+            if value == jack_output.OUTPUT_JACK
+            else tr("Uscita audio sul dispositivo del sistema, dalla prossima riproduzione."), 5000)
 
     def show_plugin_dirs(self, *_):
         from .plugin_dialogs import PluginDirsDialog

@@ -24,7 +24,7 @@ WARN = "#e0a030"   # avvisi che non bloccano (es. controlli di battuta)
 
 _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_PANEL,
              BG_FIELD=BG_FIELD, BG_HOVER=BG_HOVER, BORDER=BORDER, TEXT=TEXT, TEXT_DIM=TEXT_DIM,
-             LINK=ACCENT)
+             LINK=ACCENT, CONTROL_BORDER="#808086")
 
 # ACCENT resta lo stesso blu in entrambi i temi: e' abbastanza chiaro da
 # restare leggibile come bordo/handle/sfondo di stato "attivo" (col testo
@@ -33,9 +33,14 @@ _DARK = dict(ACCENT=ACCENT, ACCENT_DIM=ACCENT_DIM, BG_BASE=BG_BASE, BG_PANEL=BG_
 # (sfondi/bordi/testo) e ACCENT_DIM (sfondo di hover/selezione, che deve
 # restare in contrasto col TEXT del tema). LINK (i link della guida e dei
 # QTextBrowser) invece cambia: ACCENT su bianco come testo si legge poco.
-_LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#cfe3f5", BG_BASE="#f5f5f5", BG_PANEL="#ffffff",
-              BG_FIELD="#ffffff", BG_HOVER="#e8f0f8", BORDER="#d3d3d6", TEXT="#1c1c1e",
-              TEXT_DIM="#6b6b6f", LINK="#1d5f99")
+# Niente bianco pieno: grigi tenui, il piu' chiaro per i campi di testo
+# (editor), cosi' il tema non abbaglia e il testo resta ben contrastato.
+_LIGHT = dict(ACCENT=ACCENT, ACCENT_DIM="#c6dcef", BG_BASE="#e4e4e7", BG_PANEL="#ececee",
+              BG_FIELD="#f4f4f5", BG_HOVER="#dce5ee", BORDER="#c4c4c9", TEXT="#1c1c1e",
+              TEXT_DIM="#55555a", LINK="#1d5f99", CONTROL_BORDER="#7a7a80")
+# CONTROL_BORDER: il bordo delle caselle di spunta e dei pulsanti tondi. Con
+# BORDER (quello dei riquadri) una casella vuota quasi non si vedeva: 1,2:1
+# sul campo nel tema scuro, contro i 3:1 consigliati per i controlli.
 
 
 # Stato del tema attivo, usato dai widget che si disegnano con un
@@ -56,6 +61,40 @@ def get_active_theme() -> str:
     return _active_theme
 
 
+def tooltip_style() -> str:
+    """Il foglio di stile dei suggerimenti (QToolTip) nel tema attivo, per
+    chi ne disegna uno da se' (vedi gui.level_meter.HoverTip)."""
+    p = _LIGHT if _active_theme == "light" else _DARK
+    return (f"background-color: {p['BG_PANEL']}; color: {p['TEXT']}; border: 1px solid {p['ACCENT_DIM']}; "
+            "padding: 4px 6px; border-radius: 4px;")
+
+
+def text_dim() -> str:
+    """Il grigio del testo secondario nel tema attivo, per chi disegna da se'
+    (QPainter): TEXT_DIM e' quello del tema scuro."""
+    return (_LIGHT if _active_theme == "light" else _DARK)["TEXT_DIM"]
+
+
+def warn_text() -> str:
+    """L'ambra degli avvisi come colore di testo nel tema attivo: WARN su uno
+    sfondo chiaro si legge poco."""
+    return "#8a5a00" if _active_theme == "light" else WARN
+
+
+def good_text() -> str:
+    """Il verde di "tutto bene" come colore di testo nel tema attivo."""
+    return "#2e7d32" if _active_theme == "light" else GOOD
+
+
+def dim(widget, style: str = ""):
+    """Testo secondario: il colore lo da' il foglio di stile globale (regola
+    [dim="true"]), cosi' segue il tema anche quando lo si cambia; 'style'
+    sono gli altri attributi del widget (dimensione, margini...)."""
+    widget.setProperty("dim", True)
+    widget.setStyleSheet(style)      # anche vuoto: toglie un colore messo prima
+    return widget
+
+
 def track_card_colors() -> dict:
     """Colori per le 'card' del mixer (testate delle tracce, gui.track_header), che si disegnano
     con uno sfondo scuro fisso indipendente dal foglio di stile globale:
@@ -63,7 +102,7 @@ def track_card_colors() -> dict:
     restare illeggibili (sfondo scuro fisso + testo scuro del tema chiaro)
     quando l'utente passa al tema chiaro."""
     if _active_theme == "light":
-        return dict(bg="#ffffff", border="#d3d3d6", text_dim="#6b6b6f")
+        return dict(bg="#ededef", border="#c4c4c9", text_dim="#55555a")
     return dict(bg="#232323", border="#3a3a3a", text_dim="#999999")
 
 
@@ -71,6 +110,7 @@ def _build_stylesheet(p: dict) -> str:
     ACCENT, ACCENT_DIM = p["ACCENT"], p["ACCENT_DIM"]
     BG_BASE, BG_PANEL, BG_FIELD, BG_HOVER = p["BG_BASE"], p["BG_PANEL"], p["BG_FIELD"], p["BG_HOVER"]
     BORDER, TEXT, TEXT_DIM = p["BORDER"], p["TEXT"], p["TEXT_DIM"]
+    CONTROL_BORDER = p["CONTROL_BORDER"]
     return f"""
 QMainWindow, QDialog {{
     background-color: {BG_BASE};
@@ -84,6 +124,12 @@ QWidget {{
 
 QLabel {{
     background: transparent;
+}}
+
+/* Testo secondario (didascalie, suggerimenti): il grigio del tema attivo,
+   vedi dim() */
+*[dim="true"] {{
+    color: {TEXT_DIM};
 }}
 
 QMenuBar {{
@@ -169,6 +215,19 @@ QToolButton:checked {{
     font-weight: bold;
     border-color: {ACCENT};
 }}
+/* Barra dei comandi: pulsanti piu' stretti, cosi' la barra intera sta in
+   una finestra di 1200 px anche con DejaVu Sans (vedi tests/test_main_layout_gui.py) */
+QToolBar#mainToolbar {{
+    spacing: 3px;
+}}
+QToolBar#mainToolbar QToolButton {{
+    padding: 5px 4px;
+}}
+/* Pulsanti piccoli sopra l'editor della vista Testo (Congela accordi...) */
+QToolButton#textTool {{
+    border: 1px solid {BORDER};
+    padding: 3px 8px;
+}}
 
 /* Dialogo file di Qt (Linux, vedi gui.file_dialogs): col padding generico
 dei QToolButton le icone di Indietro/Avanti/Su/Nuova cartella/vista si
@@ -236,7 +295,7 @@ QCheckBox {{
 }}
 QCheckBox::indicator {{
     width: 15px; height: 15px;
-    border: 1px solid {BORDER};
+    border: 1px solid {CONTROL_BORDER};
     border-radius: 3px;
     background: {BG_FIELD};
 }}
@@ -254,7 +313,7 @@ QRadioButton {{
 }}
 QRadioButton::indicator {{
     width: 15px; height: 15px;
-    border: 1px solid {BORDER};
+    border: 1px solid {CONTROL_BORDER};
     border-radius: 8px;
     background: {BG_FIELD};
 }}
@@ -362,6 +421,24 @@ QTreeView, QListView {{
 QTreeView::item, QListView::item {{
     padding: 3px 4px;
 }}
+/* Le caselle negli elenchi (Scarica e installa...): come le QCheckBox */
+QTreeView::indicator, QListView::indicator {{
+    width: 14px; height: 14px;
+    border: 1px solid {CONTROL_BORDER};
+    border-radius: 3px;
+    background: {BG_FIELD};
+}}
+QTreeView::indicator:checked, QListView::indicator:checked {{
+    background: {ACCENT};
+    border-color: {ACCENT};
+}}
+QTreeView::indicator:indeterminate, QListView::indicator:indeterminate {{
+    background: {ACCENT_DIM};
+    border-color: {ACCENT};
+}}
+QTreeView::indicator:disabled, QListView::indicator:disabled {{
+    border-color: {BORDER};
+}}
 QTreeView::item:selected, QListView::item:selected {{
     background-color: {ACCENT_DIM};
 }}
@@ -434,3 +511,8 @@ def stylesheet_for(theme_name: str) -> str:
     (vedi core.settings.get_theme/set_theme): 'light' o, per qualunque altro
     valore (incluso quello predefinito 'dark'), il tema scuro."""
     return LIGHT_STYLESHEET if theme_name == "light" else DARK_STYLESHEET
+
+
+# Riga della sintassi sotto l'editor della vista Testo: sottile, il colore
+# lo aggiunge lo stato (gui.main_window_mixer._validate_current)
+VALIDATION_STYLE = "padding: 2px 8px; font-size: 12px;"

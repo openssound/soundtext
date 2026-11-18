@@ -53,17 +53,10 @@ def _window():
 
 
 def _menu_actions(open_menu_fn):
-    captured = {}
-
-    def check_and_close():
-        menu = QApplication.activePopupWidget()
-        if menu is not None:
-            captured["actions"] = [a.text() for a in menu.actions() if a.text()]
-            menu.close()
-
-    QTimer.singleShot(50, check_and_close)
-    open_menu_fn()
-    return captured.get("actions", [])
+    from _menus import scripted_menus
+    with scripted_menus() as menus:
+        open_menu_fn()
+    return menus.actions
 
 
 def test_add_audio_track_from_mixer(monkeypatch):
@@ -181,8 +174,8 @@ def test_notation_actions_are_refused_on_audio_tracks(monkeypatch):
     w.select_track("Voce")
     shown = []
     monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a[1])))
-    for action in (w.export_selected_track_midi, w.play_keyboard_into_selected_track,
-                   w.generate_drums_into_selected_track, w.generate_progression_into_selected_track,
+    for action in (w.export_selected_track_midi, w.generators.play_keyboard,
+                   w.generators.drums, w.generators.progression,
                    w.freeze_chords):
         action()
     assert shown == ["Traccia audio"] * 5
@@ -365,8 +358,8 @@ def test_export_track_wav_renders_only_that_track(tmp_path, monkeypatch):
         return str(tmp_path / "out"), ""
 
     monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(fake_dialog))
-    w.export_track_wav("Chitarra")
-    w._export_wav_worker.wait()
+    w.wav_export.track("Chitarra")
+    w.wav_export.worker.wait()
     _app.processEvents()
     assert proposed["path"] == str(tmp_path / "Chitarra.wav")
     from core.audio_tracks import read_wav_info
@@ -900,9 +893,9 @@ def test_export_stems_from_the_file_menu(tmp_path, monkeypatch):
         next(b for b in box.buttons() if b.text() == "Asciutte").click()
     monkeypatch.setattr(QMessageBox, "exec", press)
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(tmp_path / "esportate"))
-    w.export_stems()
+    w.wav_export.stems()
     deadline = time.time() + 20
-    while w._export_wav_worker is not None and time.time() < deadline:
+    while w.wav_export.worker is not None and time.time() < deadline:
         _app.processEvents()
         time.sleep(0.01)
     folder = next((tmp_path / "esportate").iterdir())
@@ -915,18 +908,18 @@ def test_freeze_and_unfreeze_from_the_track_menu(tmp_path):
     from PySide6.QtWidgets import QMenu
     w, t, clip, _item = _window_with_clip(tmp_path)
     menu = QMenu()
-    action = w.add_freeze_action(menu, "Voce")
+    action = w.wav_export.add_freeze_action(menu, "Voce")
     assert action.text() == "Congela in audio"
     action.trigger()
     deadline = time.time() + 20
-    while getattr(w, "_freeze_worker", None) is not None and time.time() < deadline:
+    while w.wav_export.freeze_worker is not None and time.time() < deadline:
         _app.processEvents()
         time.sleep(0.01)
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
     assert t.mute and t.frozen == "Voce (congelata)"
-    assert w.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela
-    assert w.add_freeze_action(QMenu(), "Voce").text().startswith("Scongela")
-    w.toggle_freeze("Voce")
+    assert w.wav_export.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela
+    assert w.wav_export.add_freeze_action(QMenu(), "Voce").text().startswith("Scongela")
+    w.wav_export.toggle_freeze("Voce")
     assert [x.name for x in w.project.tracks] == ["Voce"] and not t.mute
     w.undo()
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
@@ -971,7 +964,6 @@ def test_gain_curve_points_on_the_box(tmp_path):
     assert clip.gain_points[0][0] == pytest.approx(1.0, abs=0.02)
     assert clip.gain_points[0][1] == pytest.approx(-20.0, abs=1.0)
     item = next(it for it in canvas._scene.items() if isinstance(it, AudioBoxItem))
-    import gui.arrangement_view as av
     renamed = []
     w.arrangement_view._rename_clip = lambda *a: renamed.append(a)     # mai una finestra modale nei test
     QTest.mouseDClick(vp, Qt.LeftButton, Qt.NoModifier, low)

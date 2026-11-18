@@ -216,6 +216,7 @@ def _pitch_change_onsets(centers, freqs, confs, threshold: float, rate: int, hop
         if diff >= 0.8:
             marks.append((i, diff))
     out: List[int] = []
+    out_diff = 0.0
     last_i = -10 ** 9
     for i, diff in marks:
         if i - last_i < k:                       # stessa transizione: tiene la piu' netta
@@ -324,7 +325,6 @@ def detect_melodic_notes(wav_path: str, hop_size: Optional[int] = None,
         if not confident:
             continue  # segmento silenzioso/non intonato (respiro, consonante...): nessuna nota
         freqs = sorted(f[1] for f in confident)
-        median_freq = freqs[len(freqs) // 2]
         seg_freqs = freqs
         seg_frames = [(f[0], f[1]) for f in confident]      # in ordine di tempo
         a, b = bisect.bisect_left(peak_pos, seg_start), bisect.bisect_left(peak_pos, seg_end)

@@ -37,6 +37,7 @@ from .chords import parse_chord_symbol
 from .import_lyrics import midi_text_bytes
 from .notation import DYNAMICS_TO_VELOCITY
 from .i18n import tr
+from st_language.midi import midi_time_signature
 
 TICKS_PER_QUARTER = 960
 DEFAULT_TEMPO = 120.0
@@ -725,7 +726,12 @@ def write_midi(score: ScoreData, path: str) -> Dict[int, str]:
     for at, bpm in tempos:
         events.append((tick(at), 0, mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm), time=0)))
     for at, num, den in score.time_sigs:
-        events.append((tick(at), 1, mido.MetaMessage("time_signature", numerator=num, denominator=den, time=0)))
+        # Il MIDI scrive solo denominatori potenza di 2 (vedi core.midi_export):
+        # 3/3 diventa 4/4, e una metrica senza battuta non si scrive.
+        signature = midi_time_signature(int(num), int(den))
+        if signature:
+            events.append((tick(at), 1, mido.MetaMessage("time_signature", numerator=signature[0],
+                                                         denominator=2 ** signature[1], time=0)))
     if score.key:
         events.append((0, 2, mido.MetaMessage("key_signature", key=score.key, time=0)))
     events.append((tick(score.end), 3, mido.MetaMessage("end_of_track", time=0)))

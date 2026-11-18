@@ -9,7 +9,6 @@ import math
 import os
 from typing import Callable, Dict, List, Optional
 
-from .audio_decode import decode_audio_file_to_wav
 from .audio_quantize import AudioEvent, QuantizeSettings, audio_events_to_validated_text, grid_slot_beats
 from .notation import Pattern
 from .i18n import tr
@@ -89,6 +88,21 @@ def align_to_first_event(events: List[AudioEvent]) -> List[AudioEvent]:
     return events
 
 
+def fit_to_octave(events: List[AudioEvent], octave: int) -> List[AudioEvent]:
+    """Sposta tutta la melodia di ottave intere finche' la sua nota mediana
+    cade nell'ottava data (4 = quella del do centrale): chi canticchia una
+    parte di basso o di flauto la canta nella propria voce."""
+    pitches = sorted(ev.midi_pitch for ev in events if ev.midi_pitch is not None)
+    if not pitches:
+        return events
+    centre = 12 * (octave + 1) + 6
+    shift = 12 * round((centre - pitches[len(pitches) // 2]) / 12.0)
+    for ev in events:
+        if ev.midi_pitch is not None:
+            ev.midi_pitch = max(0, min(127, ev.midi_pitch + shift))
+    return events
+
+
 def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm: float,
                                  grid_denominator: int, ternary: bool,
                                  patterns: Dict[str, Pattern], default_octave: int = 4,
@@ -105,7 +119,8 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
                                  chords: bool = False, sevenths: bool = False,
                                  beats_per_bar: float = 4.0,
                                  quantize: Optional[QuantizeSettings] = None,
-                                 beats_of_seconds: Optional[Callable[[float], float]] = None) -> str:
+                                 beats_of_seconds: Optional[Callable[[float], float]] = None,
+                                 fit_octave: Optional[int] = None) -> str:
     """Converte un file audio (o un WAV gia' registrato dal microfono, se
     already_wav=True) nel testo di notazione da inserire nella traccia
     corrente. Solleva RuntimeError se il file non si puo' leggere (vedi
@@ -145,6 +160,10 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
     griglia segue quella mappa invece di un tempo fisso (non per gli
     accordi).
 
+    fit_octave: l'ottava in cui portare la melodia (vedi fit_to_octave),
+    per la voce che canticchia la parte di uno strumento; None = le altezze
+    cantate. Non conta per batteria e accordi.
+
     chords=True riconosce gli accordi invece delle note (vedi
     core.audio_chords): un accordo per quarto al tempo del brano, scritto a
     battute di beats_per_bar quarti; sevenths=True cerca anche le settime.
@@ -160,6 +179,9 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
     cleanup = False
     try:
         if not already_wav:
+            # qui e non in cima: la decodifica usa Qt, che nel motore di
+            # SoundText Mobile non c'e' (li' l'audio arriva gia' in WAV)
+            from .audio_decode import decode_audio_file_to_wav
             wav_path = decode_audio_file_to_wav(source_path)
             cleanup = True
         _report(1.0, 0.0, 0.2)
@@ -194,6 +216,8 @@ def convert_audio_to_track_text(source_path: str, is_percussion: bool, tempo_bpm
 
         events = drop_background_noise(events)
         normalize_velocities(events)
+        if fit_octave is not None and not is_percussion:
+            fit_to_octave(events, fit_octave)
         if align_to_first_note:
             align_to_first_event(events)
         if beats_of_seconds is not None:

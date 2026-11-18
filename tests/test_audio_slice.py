@@ -9,7 +9,6 @@ Esecuzione:
 import _config_isolation  # noqa: F401  (isola la configurazione: prima di importare core)
 
 import numpy as np
-import pytest
 
 from core.audio_quantize import QuantizeSettings
 from core.audio_slice import clip_attacks, detect_attacks, quantize_clip

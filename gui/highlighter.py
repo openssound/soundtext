@@ -4,7 +4,7 @@ Evidenziazione sintattica per l'editor della notazione testuale.
 Riusa le regex di classificazione di core.notation: cosi' i colori
 mostrati nell'editor corrispondono sempre a come il parser interpreta il
 testo. La suddivisione in token e' invece riga per riga e tollerante
-(_LEX): un gruppo N(...) o un blocco di voci { ; } puo' andare a capo,
+(core.syntax._LEX): un gruppo N(...) o un blocco di voci { ; } puo' andare a capo,
 e ogni riga va colorata anche se da sola non e' un testo completo; dentro
 gruppi e voci ogni token ha il suo colore.
 
@@ -15,31 +15,11 @@ a far da confine. Lo stato fra le righe (le voci aperte, una pila per i
 blocchi annidati) passa da una riga all'altra con lo stato del blocco Qt.
 """
 
-import re
-
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 
-from core.notation import (
-    strip_comments, comment_spans, split_note_value, RE_PATTERN_REF, RE_MIDI_REF, RE_GRID,
-    RE_VELOCITY, RE_REST, RE_NOTE, RE_CHORD, RE_PERC, RE_SLIDE,
-    RE_TEMPO_SET, RE_RAMP_UP, RE_RAMP_DOWN, RE_CONTROL, RE_SWING, RE_SHIFT, RE_PITCH_MODE,
-    RE_KEY_MODE, RE_BAR_ANCHOR, RE_TRANSPOSE, RESET_TOKEN, RE_NAVIGATION, RE_HARMONY,
-)
-from .theme import get_active_theme
+from core.syntax import LineState, line_spans
 
-# Token di una riga, per colorarla: testo cantato, blocco [...] (col suo
-# eventuale valore di nota), aperture e chiusure di gruppi e voci, la
-# stanghetta e i token semplici.
-_LEX = re.compile(r"""
-    (?P<text>\$"[^"\n]*"?)
-  | (?P<midiref>\d*&"[^"\n]*"?(?:[+-]\d+)?)
-  | (?P<lyric>"[^"\n]*"?)
-  | (?P<block>\d*\[[^\]\n]*\]?(?:'[^\s|"(){};]*)?(?:\$[a-z]+)*[<>]?~?\(?)
-  | (?P<group>\d*\(|\))
-  | (?P<voices>[{};])
-  | (?P<bar>:\|(?:[1-9]\.)?|\|(?::|\||[1-9]\.)?)
-  | (?P<plain>(?:[^\s|"(){};\[\]:]|:(?!\|))+\(?)
-""", re.VERBOSE)
+from .theme import get_active_theme
 
 # Colori per categoria sintattica: versioni sature/luminose per lo sfondo
 # scuro (prima colonna: dei pastelli resterebbero leggibili ma "spenti") e
@@ -63,6 +43,7 @@ _COLORS = {
     "lyric":      ("#ffb0d0", "#a0306a"),  # "testo cantato" - rosa
     "bar":        ("#b8b8b8", "#4a4a4a"),  # | controllo di battuta - grigio chiaro
     "bar_error":  ("#ff5050", "#c00000"),  # | che non cade su una stanghetta - rosso
+    "transform":  ("#9fb4ff", "#3b4fc0"),  # .retro, .arpeggio(...): funzioni - indaco
 }
 
 # Sfondi delle voci di un blocco { ; }, a rotazione: prima voce azzurra,
@@ -81,9 +62,12 @@ _MAX_DEPTH = 6
 _VOICE_BITS = 4
 
 
-def _pack_voices(stack) -> int:
+_ARP_BIT = 1 << 28           # dopo la pila: un arp= e' attivo a fine riga
+
+
+def _pack_voices(stack, arp: bool = False) -> int:
     stack = stack[-_MAX_DEPTH:]
-    state = len(stack)
+    state = len(stack) | (_ARP_BIT if arp else 0)
     for level, voice in enumerate(stack):
         state |= min(voice, 2 ** _VOICE_BITS - 1) << (3 + _VOICE_BITS * level)
     return state
@@ -154,11 +138,17 @@ class NotationHighlighter(QSyntaxHighlighter):
         self.fmt_voices = _fmt(color("voices"), bold=True)
         self.fmt_lyric = _fmt(color("lyric"), italic=True)
         self.fmt_bar = _fmt(color("bar"), bold=True)
+        self.fmt_transform = _fmt(color("transform"), bold=True)
+        # un accordo sotto un arp= attivo: si sente spezzato
+        self.fmt_chord_arp = _fmt(color("chord"), bold=True)
+        self.fmt_chord_arp.setUnderlineStyle(QTextCharFormat.DotLine)
+        self.fmt_chord_arp.setUnderlineColor(QColor(color("transform")))
         self.fmt_bar_error = _fmt(color("bar_error"), bold=True)
         self.fmt_bar_error.setUnderlineStyle(QTextCharFormat.WaveUnderline)
         self.fmt_bar_error.setUnderlineColor(QColor(color("bar_error")))
         self.voice_backgrounds = [QColor(light_c if light else dark_c)
                                   for dark_c, light_c in _VOICE_BACKGROUNDS]
+        self._category_formats = self._formats()
 
     def update_theme(self):
         """Da richiamare quando l'utente cambia tema con l'editor gia'
@@ -169,42 +159,15 @@ class NotationHighlighter(QSyntaxHighlighter):
         self._apply_theme_colors()
         self.rehighlight()
 
-    def _voice_background(self, stack):
-        """Lo sfondo della voce piu' interna aperta (None fuori dai blocchi):
-        un blocco annidato parte da un altro colore di quello che lo contiene."""
-        if not stack:
-            return None
-        palette = self.voice_backgrounds
-        return palette[(stack[-1] + 2 * (len(stack) - 1)) % len(palette)]
-
     def highlightBlock(self, text: str):
-        stripped = strip_comments(text)
-        lexemes = list(_LEX.finditer(stripped))
-
-        # Sfondo di ogni carattere: quello della voce aperta in quel punto.
-        stack = _unpack_voices(self.previousBlockState())
-        backgrounds = [None] * len(text)
-        pos = 0
-        for m in lexemes:
-            background = self._voice_background(stack)
-            for i in range(pos, m.start()):
-                backgrounds[i] = background
-            tok = m.group()
-            if m.lastgroup == "voices":
-                if tok == "{":
-                    stack.append(0)
-                elif tok == ";" and stack:
-                    stack[-1] += 1
-                elif tok == "}" and stack:
-                    stack.pop()
-            else:
-                for i in range(m.start(), m.end()):
-                    backgrounds[i] = background
-            pos = m.end()
-        background = self._voice_background(stack)
-        for i in range(pos, len(text)):
-            backgrounds[i] = background
-        self.setCurrentBlockState(_pack_voices(stack))
+        previous = self.previousBlockState()
+        state = LineState(_unpack_voices(previous), previous >= 0 and bool(previous & _ARP_BIT))
+        block_start = self.currentBlock().position()
+        errors = [p - block_start for p in self._bar_errors if block_start <= p < block_start + len(text)]
+        spans, voices, after = line_spans(text, state, errors)
+        self.setCurrentBlockState(_pack_voices(after.stack, after.arp))
+        backgrounds = [None if v is None else self.voice_backgrounds[v] for v in voices]
+        formats = self._category_formats
 
         def apply(start, length, fmt):
             """fmt sui caratteri [start, start+length), con lo sfondo della voce."""
@@ -224,63 +187,17 @@ class NotationHighlighter(QSyntaxHighlighter):
                 start = run
 
         apply(0, len(text), None)
-        for start, end in comment_spans(text):
-            apply(start, end - start, self.fmt_comment)
-        block_start = self.currentBlock().position()
-        # ')' chiude un gruppo N(...) o una legatura di portamento c( ... f):
-        # vale il gruppo aperto per ultimo sulla riga (se non ce n'e', la
-        # legatura aperta sulla riga, altrimenti un gruppo di una riga prima).
-        opened = []
-        for m in lexemes:
-            kind, tok = m.lastgroup, m.group()
-            if kind == "group" and tok != ")":
-                opened.append("group")
-            elif kind in ("plain", "block") and tok.endswith("("):
-                opened.append("slur")
-            elif tok == ")" and opened and opened.pop() == "slur":
-                kind = "slur_close"
-            if kind == "slur_close":
-                fmt = self.fmt_note
-            elif kind == "bar":
-                fmt = self.fmt_bar_error if block_start + m.start() in self._bar_errors else self.fmt_bar
-            elif kind in ("lyric", "text"):
-                fmt = self.fmt_lyric
-            elif kind == "block":
-                fmt = self.fmt_block
-            elif kind == "group":
-                fmt = self.fmt_repeat
-            elif kind == "voices":
-                fmt = self.fmt_voices
-            else:
-                fmt = self._classify(split_note_value(tok)[0])
-            if kind != "bar" and block_start + m.start() in self._bar_errors:
-                fmt = self.fmt_bar_error     # avviso sul testo cantato o su un blocco di voci
-            if fmt:
-                apply(m.start(), len(tok), fmt)
+        for start, length, category in spans:
+            apply(start, length, formats[category])
 
-    def _classify(self, tok: str):
-        if RE_PATTERN_REF.match(tok) or RE_MIDI_REF.match(tok):
-            return self.fmt_ref
-        if tok in ("SON", "SOFF"):
-            return self.fmt_sustain
-        if RE_TEMPO_SET.match(tok) or RE_RAMP_UP.match(tok) or RE_RAMP_DOWN.match(tok):
-            return self.fmt_tempo_ramp
-        if RE_GRID.match(tok) or RE_VELOCITY.match(tok) or RE_CONTROL.match(tok) or RE_SWING.match(tok) \
-                or RE_SHIFT.match(tok) or RE_PITCH_MODE.match(tok) or RE_KEY_MODE.match(tok) \
-                or RE_BAR_ANCHOR.match(tok) or RE_TRANSPOSE.match(tok) or tok == RESET_TOKEN:
-            return self.fmt_state
-        if RE_NAVIGATION.match(tok):
-            return self.fmt_repeat        # $segno, $dc...: struttura, come i ritornelli
-        if RE_HARMONY.match(tok):
-            return self.fmt_chord         # $Am7: sigla senza suono
-        if RE_REST.match(tok):
-            return self.fmt_rest
-        if RE_SLIDE.match(tok):
-            return self.fmt_slide
-        if RE_NOTE.match(tok):
-            return self.fmt_note
-        if RE_CHORD.match(tok):
-            return self.fmt_chord
-        if RE_PERC.match(tok):
-            return self.fmt_perc
-        return None
+    def _formats(self) -> dict:
+        """Categoria di core.syntax -> formato Qt del tema attivo (si
+        prepara una volta per tema, in _apply_theme_colors)."""
+        return {
+            "note": self.fmt_note, "chord": self.fmt_chord, "chord_arp": self.fmt_chord_arp,
+            "perc": self.fmt_perc, "state": self.fmt_state, "ref": self.fmt_ref, "rest": self.fmt_rest,
+            "block": self.fmt_block, "repeat": self.fmt_repeat, "slide": self.fmt_slide,
+            "sustain": self.fmt_sustain, "tempo_ramp": self.fmt_tempo_ramp, "comment": self.fmt_comment,
+            "voices": self.fmt_voices, "lyric": self.fmt_lyric, "bar": self.fmt_bar,
+            "bar_error": self.fmt_bar_error, "transform": self.fmt_transform,
+        }

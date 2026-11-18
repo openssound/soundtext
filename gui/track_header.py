@@ -60,6 +60,7 @@ class TrackHeaderWidget(QFrame):
         self.track = track
         self.track_name = track.name
         self._active = False
+        self._fx_open = False             # il pannello Effetti e' aperto su questa traccia
         self.setFixedSize(width, height)
         self.setObjectName("trackHeader")
 
@@ -142,7 +143,8 @@ class TrackHeaderWidget(QFrame):
         outer.addWidget(self.meter)
 
         self.sync_from_track()
-        self.set_peak(getattr(host, "_track_peaks", {}).get(track.name))
+        levels = getattr(host, "levels", None)
+        self.set_peak(levels.peak_for(track.name) if levels is not None else None)
 
     def _small_button(self, text: str, tooltip: str) -> QToolButton:
         b = QToolButton()
@@ -164,8 +166,26 @@ class TrackHeaderWidget(QFrame):
             subtitle = f"{display_name(t.synth)} ({'SFZ' if t.synth.startswith('sfz:') else 'plugin'})"
         if t.frozen:
             subtitle = tr("❄ congelata in '{audio}'", audio=t.frozen)
+        unknown = not t.is_audio and not t.synth and not t.frozen and not t.instrument.resolved
+        # note che il .sfz della traccia non suona (core.sfz_coverage)
+        silent = None
+        project = getattr(self.host, "project", None)
+        if not unknown and project is not None:
+            from core.sfz_coverage import silent_notes_cached
+            silent = silent_notes_cached(project, t)
+        warn = unknown or silent is not None
         self._set_elided(self.name_label, t.name)
-        self._set_elided(self.instr_label, subtitle)
+        self._set_elided(self.instr_label, ("⚠ " + subtitle) if warn else subtitle)
+        # lo strumento non si riconosce e suona come pianoforte, o suona solo
+        # una parte delle note: in ambra (vedi _refresh_style), col perche' nel tooltip
+        self._unknown_instrument = warn
+        if unknown:
+            from core.instruments import unknown_instrument_message
+            self.instr_label.setToolTip(unknown_instrument_message(t.instrument_name))
+        elif silent is not None:
+            self.instr_label.setToolTip(silent.message())
+        # "Bass / Bass": lo strumento si scrive solo se dice qualcosa in piu' del nome
+        self.instr_label.setVisible(warn or subtitle.strip().lower() != t.name.strip().lower())
         for widget, value in ((self.mute_btn, t.mute), (self.solo_btn, t.solo)):
             widget.blockSignals(True)
             widget.setChecked(value)
@@ -178,7 +198,8 @@ class TrackHeaderWidget(QFrame):
         self._update_knob_tooltips()
         self.fx_btn.setText(fx_button_text(t))
         self.fx_btn.setToolTip(fx_summary(t))
-        self.fx_btn.setObjectName("fxBtnOn" if has_fx(t) else "fxBtn")
+        self._has_fx = has_fx(t)
+        self._refresh_fx_name()
         self._refresh_style()
 
     def _set_elided(self, label: QLabel, text: str):
@@ -191,7 +212,7 @@ class TrackHeaderWidget(QFrame):
     def _update_knob_tooltips(self):
         t = self.track
         self.vol_knob.setToolTip(tr("Volume: {volume}%\nTrascina su/giu' o usa la rotellina; doppio clic: 100%", volume=t.volume))
-        self.pan_knob.setToolTip(tr("Pan: {0} (sinistra L - centro C - destra R)\nTrascina su/giu' o usa la rotellina; doppio clic: centro", _pan_label(t.pan)))
+        self.pan_knob.setToolTip(tr("Pan: {0} (sinistra S - centro C - destra D)\nTrascina su/giu' o usa la rotellina; doppio clic: centro", _pan_label(t.pan)))
 
     def set_peak(self, peak):
         """Picco della traccia suonata da sola (core.levels.TrackPeak), o
@@ -214,14 +235,35 @@ class TrackHeaderWidget(QFrame):
         self._active = active
         self._refresh_style()
 
+    def set_fx_open(self, open_: bool):
+        if open_ != self._fx_open:
+            self._fx_open = open_
+            self._refresh_fx_name()
+            self._refresh_style()
+
+    def _refresh_fx_name(self):
+        """FX: in accento pieno solo se il pannello Effetti e' aperto su
+        questa traccia; con effetti ma chiuso, solo il contorno e il numero
+        (prima era pieno: si confondeva con un pulsante premuto)."""
+        self.fx_btn.setObjectName("fxBtnOpen" if self._fx_open else
+                                  "fxBtnOn" if getattr(self, "_has_fx", False) else "fxBtn")
+
     def _refresh_style(self):
         colors = theme.track_card_colors()
         stripe = _family_color(self.track.instrument_name)
         bg = colors["bg"]
+        if self._active:
+            # la traccia selezionata: lo sfondo appena tinto del suo colore
+            from PySide6.QtGui import QColor
+            base, tint = QColor(bg), QColor(stripe)
+            mix = 0.16
+            bg = QColor(round(base.red() * (1 - mix) + tint.red() * mix),
+                        round(base.green() * (1 - mix) + tint.green() * mix),
+                        round(base.blue() * (1 - mix) + tint.blue() * mix)).name()
         border = theme.ACCENT if self._active else colors["border"]
         light = theme.get_active_theme() == "light"
         text_color = "#333333" if light else "#e0e0e0"
-        field = "#f0f0f2" if light else "#2d2d30"
+        field = "#e2e2e5" if light else "#2d2d30"
         # Il foglio di stile globale da' ai QToolButton un padding pensato
         # per la barra dei comandi: in questi pulsanti da 24x20 non
         # resterebbe spazio per la lettera o l'icona.
@@ -233,12 +275,14 @@ class TrackHeaderWidget(QFrame):
             f"border-radius: 4px; background: {field}; color: {text_color}; font-size: 11px; font-weight: bold; }}"
             "QFrame#trackHeader QToolButton#muteBtn:checked { background: #e05555; color: white; border-color: #e05555; }"
             "QFrame#trackHeader QToolButton#soloBtn:checked { background: #e8c96d; color: #222; border-color: #e8c96d; }"
-            f"QFrame#trackHeader QToolButton#fxBtnOn {{ background: {theme.ACCENT_DIM}; color: white; "
+            f"QFrame#trackHeader QToolButton#fxBtnOn {{ color: {theme.ACCENT}; border-color: {theme.ACCENT}; }}"
+            f"QFrame#trackHeader QToolButton#fxBtnOpen {{ background: {theme.ACCENT}; color: #10151a; "
             f"border-color: {theme.ACCENT}; }}"
             "QFrame#trackHeader QToolButton#menuBtn { border: none; background: transparent; }"
             f"QFrame#trackHeader QToolButton#menuBtn:hover {{ background: {field}; }}"
         )
-        self.instr_label.setStyleSheet(f"color: {colors['text_dim']};")
+        dim = theme.warn_text() if getattr(self, "_unknown_instrument", False) else colors['text_dim']
+        self.instr_label.setStyleSheet(f"color: {dim};")
         self.menu_btn.setIcon(icon("more", text_color, 24))
 
     # ------------------------------------------------------------ modifiche

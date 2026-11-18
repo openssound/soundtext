@@ -18,9 +18,8 @@ from st_language.midi import (  # noqa: F401  (note e articolazioni: nella libre
     SLIDE_PITCH_BEND_RANGE_SEMITONES, _ARTICULATION_DURATION_FACTOR, _apply_articulation, _resolve_event_notes,
     _assign_channels, midi_ports_needed, MIDI_CHANNELS, control_points, PITCH_BEND, TUNE, tune_controls,
     effective_articulation, sounding_span, shift_ticks, needs_bend_range, decorated_velocity, ornament_spans,
-    sounding_events,
+    sounding_events, midi_time_signature,
 )
-from st_language.timing import fermata_spans, with_fermatas
 
 TICKS_PER_BEAT = 480
 
@@ -182,13 +181,14 @@ def _note_messages(note_spans: List[Tuple[int, int, int, int]], channel: int
 
 def _build_global_tempo_map(project: Project, tracks: List[Track], events_by_track: Dict[str, List[Event]],
                              start_offset_beats: float = 0.0) -> List[Tuple[int, int]]:
-    """Mappa di tempo (tick, bpm) ordinata, derivata da core.tempo_map.
-    build_tempo_beat_map (beat -> bpm, vedi la' per le due sorgenti di cambi
-    combinate) convertendo i beat in tick MIDI."""
-    from .tempo_map import build_tempo_beat_map
+    """Mappa di tempo (tick, bpm) ordinata, derivata da core.tempo_map
+    (beat -> bpm, con le corone) convertendo i beat in tick MIDI. Il tempo e'
+    del brano: i cambi e le corone di tutte le tracce, anche se se ne
+    esporta una sola (il rendering di una traccia alla volta) o se sono in
+    mute."""
+    from .tempo_map import song_tempo_beat_map_heard
 
-    beat_map = build_tempo_beat_map(project, tracks=tracks, events_by_track=events_by_track)
-    beat_map = with_fermatas(beat_map, fermata_spans(events_by_track))
+    beat_map = song_tempo_beat_map_heard(project, events_by_track=events_by_track)
     beat_map = _shift_beat_map(beat_map, start_offset_beats)
     return [(round(beat * TICKS_PER_BEAT), bpm) for beat, bpm in beat_map]
 
@@ -207,7 +207,8 @@ def _control_messages(cc: int, value: int, channel: int) -> List[mido.Message]:
 def export_project_to_midi(project: Project, path: str, only_audible: bool = True,
                             tracks: Optional[List[Track]] = None, midi_dir: Optional[str] = None,
                             start_offset_beats: float = 0.0,
-                            humanize: bool = False, humanize_amount: int = 50):
+                            humanize: bool = False, humanize_amount: int = 50,
+                            volume_as_gain: bool = False):
     """Esporta il progetto (o un sottoinsieme esplicito di tracce, funzionalita' 3)
     in un file MIDI standard multitraccia.
 
@@ -226,7 +227,14 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
     fisso: e' proprio l'incoerenza fra un ascolto e l'altro a suonare
     'umana'). Non tocca eventi di tipo slide/sustain/tempo_marker/rest, ne'
     la timeline logica (il cursore/le durate 'di griglia' restano quelli
-    nominali, cambia solo il tick MIDI effettivo scritto nel file)."""
+    nominali, cambia solo il tick MIDI effettivo scritto nel file).
+
+    volume_as_gain: per le tracce suonate da uno strumento plugin (SFZ,
+    VST3, LV2) il volume di traccia e il master non toccano le note: le
+    velocity restano quelle scritte (scelgono gli strati dinamici dei
+    campioni) e CC7 resta al valore neutro dello strumento; il volume lo
+    applica chi renderizza, come guadagno sull'audio (vedi
+    core.effect_render.StemRequest.gain)."""
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_BEAT)
 
     if tracks is None:
@@ -253,9 +261,13 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
     tempo_track_events = []
     for beat, sig in _shift_beat_map(build_metrica_beat_map(project), start_offset_beats):
         m = RE_METRICA_VALUE.match(sig or "")
-        if m:
+        # Il MIDI scrive solo denominatori potenza di 2: 3/3 diventa 4/4,
+        # 4/6 diventa 5/8, e una metrica senza battuta (4/0) non si scrive.
+        signature = midi_time_signature(int(m.group(1)), int(m.group(2))) if m else None
+        if signature:
+            numerator, exponent = signature
             tempo_track_events.append((max(0, round(beat * TICKS_PER_BEAT)), 0, mido.MetaMessage(
-                "time_signature", numerator=int(m.group(1)), denominator=int(m.group(2)))))
+                "time_signature", numerator=numerator, denominator=2 ** exponent)))
     for tick, bpm in tempo_map:
         tempo_track_events.append((tick, 1, mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm))))
     last_tempo_tick = 0
@@ -299,9 +311,10 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
         # Il volume master (project.master_volume) scala ulteriormente questo
         # fattore, applicandosi uniformemente a tutte le tracce.
         volume_factor = (track.volume / 100.0) * master_factor
-        midi_track.append(mido.Message("control_change", control=7,
-                                        value=max(0, min(127, round(track.volume * master_factor))),
-                                        channel=channel, time=0))
+        cc7 = max(0, min(127, round(track.volume * master_factor)))
+        if volume_as_gain and track.synth and not track.is_audio:
+            volume_factor, cc7 = 1.0, 100
+        midi_track.append(mido.Message("control_change", control=7, value=cc7, channel=channel, time=0))
         midi_track.append(mido.Message("control_change", control=10, value=track.pan,
                                         channel=channel, time=0))
         # Invio al riverbero (CC91) e al chorus (CC93) del synth: scritti solo
@@ -335,7 +348,7 @@ def export_project_to_midi(project: Project, path: str, only_audible: bool = Tru
         # Automazioni (vol=, expr=, pan=...): i valori scritti prima del
         # punto di partenza valgono comunque, si applica l'ultimo al tick 0.
         controls_before: Dict[int, Tuple[float, int]] = {}
-        volume_scale = track.volume * master_factor / 100.0
+        volume_scale = volume_factor
 
         # le note di abbellimento (d'g) suonano subito prima della loro nota
         for ev in sounding_events(events):

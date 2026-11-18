@@ -36,7 +36,11 @@ def repair_sidebar_shortcuts(extra_dirs=()):
     store = QSettings(QSettings.Scope.UserScope, "QtProject")
     saved = store.value("FileDialog/shortcuts")
     if saved is None:
-        return                      # mai aperto: Qt usa gia' le cartelle predefinite
+        if not store.contains("FileDialog/shortcuts"):
+            return                  # mai aperto: Qt usa gia' le cartelle predefinite
+        # salvato vuoto ("@Invalid()"): il pannello a sinistra restava senza
+        # cartelle, e Qt non lo riempie piu' da solo
+        saved = []
     if isinstance(saved, str):
         saved = [saved]
 

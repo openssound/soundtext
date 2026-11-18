@@ -1,6 +1,6 @@
 """
-Processo separato che carica ed esegue i plugin VST3 (con pedalboard) e
-LV2 (con core.lv2_host), e gli strumenti SFZ del motore interno
+Processo separato che carica ed esegue i plugin VST3 e Audio Unit (AU, solo
+macOS; entrambi con pedalboard) e LV2 (con core.lv2_host), e gli strumenti SFZ del motore interno
 (core.sfz_engine, riferimento "sfz:/percorso/file.sfz"). Gira fuori dall'app perche' un plugin puo'
 bloccarsi o andare in crash (alcuni synth VST3 si piantano gia' al
 caricamento): se succede, core.plugins uccide questo processo e ne avvia
@@ -16,11 +16,12 @@ Richieste (tuple con il nome dell'operazione in testa):
     ("ping",)
     ("list_lv2",)                              -> [descrittore, ...]
     ("describe", ref)                           -> descrittore con i parametri
+    ("au_names", percorso)                      -> nomi dei plugin di un bundle .component
     ("process", ref, rate, params, state, audio) -> audio (effetto)
     ("render", ref, rate, params, state, events, seconds) -> audio (strumento)
     ("warm", ref, rate, params, state)          -> None (carica e configura in anticipo)
     ("strings", ref, params, state)             -> {parametro: testo mostrato dal plugin}
-    ("editor", ref, params, state)              -> {"params": ..., "state": ...}
+    ("editor", ref, params, state)              -> {"params": ..., "state": ...} (VST3, AU, CLAP)
     ("live_start", ref, rate, params, state, blocksize, pan) -> {"hostapi": ..., "latency_ms": ...}
     ("live_midi", data)                         -> nessuna risposta
 Risposta: ("ok", valore) oppure ("error", messaggio).
@@ -35,6 +36,7 @@ chi suona.
 
 import base64
 import collections
+import logging
 import os
 import pickle
 import struct
@@ -47,6 +49,25 @@ from core.i18n import tr
 # Parametri "tecnici" che alcuni VST3 (quelli fatti con DPF) espongono come
 # parametri normali: non hanno senso da regolare a mano.
 HIDDEN_VST3_PARAMS = {"buffer_size_frames", "sample_rate_frames"}
+
+# Formati caricati con pedalboard: da qui in poi un AU si usa come un VST3
+# (parametri normalizzati 0-1, stato in base64, finestra, MIDI).
+PEDALBOARD_FORMATS = ("vst3", "au")
+
+
+def is_pedalboard_format(fmt: str) -> bool:
+    return fmt in PEDALBOARD_FORMATS
+
+
+def running_on_macos() -> bool:
+    """Gli Audio Unit esistono solo su macOS. Una funzione a parte perche' i
+    test la sostituiscono: cambiare sys.platform in tutto il processo rompe
+    altre librerie (sysconfig su Linux)."""
+    return sys.platform == "darwin"
+
+
+def au_only_on_macos() -> str:
+    return tr("I plugin Audio Unit funzionano solo su macOS")
 
 
 # Architetture dei VST3 per Windows: cartella dentro il bundle
@@ -126,11 +147,12 @@ def windows_load_diagnosis(bundle: str) -> str:
 
 def parse_ref(ref: str):
     """'vst3:/percorso/X.vst3' o 'vst3:/percorso/X.vst3|Nome' (bundle con piu'
-    plugin), 'sfz:/percorso/file.sfz', 'lv2:uri' -> (formato, percorso o uri,
-    nome o None). Un percorso che comincia con "~" e' nella cartella
-    dell'utente."""
+    plugin), 'au:/percorso/X.component[|Nome]' (Audio Unit, macOS),
+    'sfz:/percorso/file.sfz', 'lv2:uri' -> (formato, percorso o uri, nome o
+    None); 'clap:/percorso/X.clap|id.del.plugin' -> ("clap", percorso, id).
+    Un percorso che comincia con "~" e' nella cartella dell'utente."""
     fmt, _, rest = ref.partition(":")
-    if fmt == "vst3":
+    if is_pedalboard_format(fmt) or fmt == "clap":
         path, _, name = rest.partition("|")
         return fmt, _expand_home(path), name or None
     if fmt == "sfz":
@@ -258,7 +280,7 @@ class _Live:
         msgs = []
         while self.pending:
             msgs.append(self.pending.popleft())
-        if self.fmt == "vst3":
+        if is_pedalboard_format(self.fmt):
             y = self.inst.process([(m, 0.0) for m in msgs], duration=frames / self.rate,
                                   sample_rate=float(self.rate), num_channels=2, buffer_size=frames,
                                   reset=False).T
@@ -278,6 +300,18 @@ class _Live:
             outdata.fill(0)
 
     def start(self, blocksize: int) -> dict:
+        from core import jack_output, settings
+        settings._cache = None          # la scelta dell'uscita puo' essere cambiata dopo l'avvio del processo
+        if jack_output.use_jack():
+            try:
+                self.stream = jack_output.JackOutputStream(
+                    samplerate=self.rate, channels=2, dtype="float32", blocksize=int(blocksize),
+                    latency=4 * int(blocksize) / self.rate, callback=self._callback,
+                    client_name=jack_output.CLIENT_NAME + "-live")
+                self.stream.start()
+                return {"hostapi": "JACK", "latency_ms": round(self.stream.latency * 1000)}
+            except Exception:
+                self.stream = None      # JACK non apribile: PortAudio, come sempre
         import sounddevice as sd
         self.stream = sd.OutputStream(samplerate=self.rate, channels=2, dtype="float32",
                                       blocksize=int(blocksize), latency=4 * int(blocksize) / self.rate,
@@ -297,6 +331,7 @@ class _Worker:
         self.instances = {}          # (ref, rate) -> istanza
         self.applied_state = {}      # (ref, rate) -> stato gia' applicato
         self.live = None             # _Live, dopo "live_start"
+        self.fresh_sfz = {}          # (file .sfz, rate) -> FreshSfz, per il rendering
 
     # -- caricamento -----------------------------------------------------
     def _vst3(self, ref: str):
@@ -315,15 +350,40 @@ class _Worker:
                     raise RuntimeError(f"{e} — {reason}") from e
             raise
 
+    @staticmethod
+    def _au_class():
+        """pedalboard.AudioUnitPlugin, che c'e' solo su macOS."""
+        import pedalboard
+        cls = getattr(pedalboard, "AudioUnitPlugin", None)
+        if cls is None or not running_on_macos():
+            raise RuntimeError(au_only_on_macos())
+        return cls
+
+    def _au(self, ref: str):
+        _fmt, path, name = parse_ref(ref)
+        cls = self._au_class()
+        if not os.path.exists(path):
+            raise RuntimeError(tr("plugin non trovato: {path}", path=path))
+        return cls(path, plugin_name=name) if name else cls(path)
+
+    def au_names(self, path: str) -> list:
+        """I nomi dei plugin di un bundle .component (di solito uno)."""
+        return [str(n) for n in self._au_class().get_plugin_names_for_file(path)]
+
     def instance(self, ref: str, rate: int):
         key = (ref, int(rate))
         if key not in self.instances:
             fmt, target, _name = parse_ref(ref)
             if fmt == "vst3":
                 self.instances[key] = self._vst3(ref)
+            elif fmt == "au":
+                self.instances[key] = self._au(ref)
             elif fmt == "lv2":
                 from core.lv2_host import LV2Instance
                 self.instances[key] = LV2Instance(target, int(rate))
+            elif fmt == "clap":
+                from core.clap_host import ClapInstance
+                self.instances[key] = ClapInstance(f"{target}|{_name}" if _name else target, int(rate))
             elif fmt == "sfz":
                 from core.sfz_engine import SfzInstance
                 self.instances[key] = SfzInstance(target, int(rate))
@@ -331,11 +391,29 @@ class _Worker:
                 raise RuntimeError(tr("formato di plugin sconosciuto: {fmt}", fmt=fmt))
         return self.instances[key]
 
+    def _fresh_sfz(self, target: str, rate: int):
+        from core.sfz_engine import FreshSfz
+        key = (target, int(rate))
+        fresh = self.fresh_sfz.get(key)
+        if fresh is None:
+            fresh = self.fresh_sfz[key] = FreshSfz(target, int(rate))
+        return fresh
+
+    def _drop_instance(self, ref: str, rate: int):
+        key = (ref, int(rate))
+        inst = self.instances.pop(key, None)
+        self.applied_state.pop(key, None)
+        if inst is not None and hasattr(inst, "close"):
+            try:
+                inst.close()
+            except Exception:
+                pass
+
     def configure(self, ref: str, rate: int, params: dict, state: str):
         inst = self.instance(ref, rate)
         key = (ref, int(rate))
         fmt = parse_ref(ref)[0]
-        if fmt == "vst3":
+        if is_pedalboard_format(fmt):
             if state and self.applied_state.get(key) != state:
                 try:
                     inst.raw_state = base64.b64decode(state)
@@ -360,6 +438,19 @@ class _Worker:
                 inst = self.instance(ref, rate)
             inst.set_values(params or {})
             inst.set_files(files)
+        elif fmt == "clap":
+            if (state or "") != self.applied_state.get(key, ""):
+                if not state:
+                    # lo stato caricato non si "toglie": si riparte da un plugin nuovo
+                    self._drop_instance(ref, rate)
+                    inst = self.instance(ref, rate)
+                else:
+                    try:
+                        inst.load_state(base64.b64decode(state))
+                    except Exception as e:       # stato di un'altra versione del plugin: si suona senza
+                        logging.getLogger(__name__).warning("Stato CLAP non caricato (%s): %s", ref, e)
+                    self.applied_state[key] = state
+            inst.set_values(params or {})
         return inst
 
     # -- descrizione -----------------------------------------------------
@@ -371,6 +462,8 @@ class _Worker:
             if info is None:
                 raise RuntimeError(tr("plugin LV2 non trovato: {target}", target=target))
             return _lv2_descriptor(info)
+        if fmt == "clap":
+            return _clap_descriptor(self.instance(ref, 48000))
         if fmt == "sfz":
             self.instance(ref, 48000)      # un file che non si carica si scopre qui
             return {"ref": ref, "format": "sfz", "name": os.path.splitext(os.path.basename(target))[0],
@@ -403,19 +496,34 @@ class _Worker:
             state = base64.b64encode(inst.raw_state).decode("ascii")
         except Exception:
             state = ""          # senza stato iniziale si usa lo stesso
-        return {"ref": ref, "format": "vst3", "name": inst.name, "vendor": inst.manufacturer_name or "",
+        return {"ref": ref, "format": fmt, "name": inst.name, "vendor": inst.manufacturer_name or "",
                 "category": inst.category or "", "instrument": bool(inst.is_instrument),
                 "params": params, "state": state, "problem": ""}
 
     def strings(self, ref: str, params: dict, state: str) -> dict:
-        if parse_ref(ref)[0] != "vst3":
+        if not is_pedalboard_format(parse_ref(ref)[0]):
             return {}
         inst = self.configure(ref, 48000, params, state)
         return {k: p.string_value for k, p in inst.parameters.items() if k not in HIDDEN_VST3_PARAMS}
 
+    def _clap_editor(self, ref: str, params: dict, state: str) -> dict:
+        """L'interfaccia di un plugin CLAP (core.clap_gui): alla chiusura lo
+        stato che il plugin salva e i valori dei suoi parametri."""
+        from core.clap_gui import run_editor
+        inst = self.configure(ref, 48000, params, state)
+        run_editor(inst)
+        data = inst.save_state()
+        new_state = base64.b64encode(data).decode("ascii") if data else ""
+        values = inst.adopt_values(as_baseline=bool(new_state))
+        if new_state:
+            self.applied_state[(ref, 48000)] = new_state
+        return {"params": values, "state": new_state or state}
+
     def editor(self, ref: str, params: dict, state: str) -> dict:
-        if parse_ref(ref)[0] != "vst3":
-            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3"))
+        if parse_ref(ref)[0] == "clap":
+            return self._clap_editor(ref, params, state)
+        if not is_pedalboard_format(parse_ref(ref)[0]):
+            raise RuntimeError(tr("l'interfaccia grafica e' disponibile solo per i plugin VST3, AU e CLAP"))
         inst = self.configure(ref, 48000, params, state)
         if sys.platform == "win32":
             import threading
@@ -441,9 +549,19 @@ class _Worker:
     def process(self, ref, rate, params, state, audio):
         if parse_ref(ref)[0] == "sfz":
             raise RuntimeError(tr("uno strumento SFZ non elabora audio"))
+        if parse_ref(ref)[0] == "lv2":
+            cached = self.instances.get((ref, int(rate)))
+            if cached is not None and not getattr(cached, "files", None):
+                # un'istanza nuova (meno di 1 ms): deactivate/activate non
+                # svuota sempre lo stato del plugin (la modulazione di ACE
+                # Reverb continuava), e lo stesso audio usciva ogni volta un
+                # po' diverso. Non per i plugin con file caricati (profili NAM,
+                # risposte all'impulso): ricaricarli costa a ogni pezzo, e il
+                # loro stato si rifa' con l'audio che precede (vedi core.nam_plugin)
+                self._drop_instance(ref, rate)
         inst = self.configure(ref, rate, params, state)
         audio = np.ascontiguousarray(audio, dtype=np.float32)
-        if parse_ref(ref)[0] == "vst3":
+        if is_pedalboard_format(parse_ref(ref)[0]):
             y = inst.process(np.ascontiguousarray(audio.T), float(rate), reset=True).T
             if y.ndim == 1:
                 y = y[:, None]
@@ -456,8 +574,15 @@ class _Worker:
         return inst.process(audio)
 
     def render(self, ref, rate, params, state, events, seconds):
+        fmt, target, _name = parse_ref(ref)
+        if fmt == "sfz":
+            # un'istanza mai suonata, con una copia sua della libreria: le
+            # scelte casuali (lorand/hirand) ripartono dallo stesso seme, lo
+            # stesso brano suona sempre uguale (vedi core.sfz_engine.FreshSfz)
+            return self._fresh_sfz(target, rate).render([(float(t), bytes(d)) for t, d in events],
+                                                         float(seconds))
         inst = self.configure(ref, rate, params, state)
-        if parse_ref(ref)[0] == "vst3":
+        if is_pedalboard_format(parse_ref(ref)[0]):
             y = inst.process([(bytes(data), float(t)) for t, data in events], duration=float(seconds),
                              sample_rate=float(rate), num_channels=2, reset=True)
             return np.ascontiguousarray(y.T[:, :2], dtype=np.float32)
@@ -497,8 +622,13 @@ class _Worker:
         if op == "list_lv2":
             from core.lv2_host import list_lv2_plugins
             return [_lv2_descriptor(i, with_params=False) for i in list_lv2_plugins()]
+        if op == "list_clap":
+            from core.clap_host import list_clap_plugins
+            return [_clap_info_dict(i) for i in list_clap_plugins(request[1])]
         if op == "describe":
             return self.describe(request[1])
+        if op == "au_names":
+            return self.au_names(request[1])
         if op == "strings":
             return self.strings(*request[1:])
         if op == "editor":
@@ -508,7 +638,13 @@ class _Worker:
         if op == "render":
             return self.render(*request[1:])
         if op == "warm":
-            self.configure(*request[1:])
+            ref, rate = request[1], request[2]
+            fmt, target, _name = parse_ref(ref)
+            if fmt == "sfz":
+                # il rendering usa le istanze di FreshSfz, non quella condivisa
+                self._fresh_sfz(target, rate).prepare()
+            else:
+                self.configure(*request[1:])
             return None
         raise RuntimeError(tr("richiesta sconosciuta: {op}", op=op))
 
@@ -523,6 +659,22 @@ def _lv2_descriptor(info, with_params: bool = True) -> dict:
                           "toggled": p.toggled, "integer": p.integer, "logarithmic": p.logarithmic,
                           "choices": p.choices} for p in info.params]
         out["files"] = [{"key": f.uri, "label": f.label} for f in info.files]
+    return out
+
+
+def _clap_info_dict(info) -> dict:
+    return {"ref": info.ref, "format": "clap", "name": info.name, "vendor": info.vendor,
+            "category": info.category, "instrument": info.instrument, "problem": info.problem,
+            "params": [], "state": ""}
+
+
+def _clap_descriptor(inst) -> dict:
+    out = _clap_info_dict(inst.info)
+    out["editor"] = inst.has_gui()
+    out["params"] = [{"key": p.key, "label": p.name, "minimum": p.minimum, "maximum": p.maximum,
+                      "default": p.default, "raw": False, "text": "", "units": "",
+                      "toggled": p.toggled, "integer": p.integer, "logarithmic": False,
+                      "choices": p.choices} for p in inst.params]
     return out
 
 

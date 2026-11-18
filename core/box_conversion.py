@@ -9,6 +9,7 @@ suoni ESATTAMENTE come prima (stessi messaggi MIDI agli stessi tick): una
 traccia che cambierebbe anche di poco resta com'era.
 """
 
+import logging
 import os
 import tempfile
 from typing import List, Tuple
@@ -86,7 +87,9 @@ def convert_project_to_boxes(project: Project) -> Tuple[List[str], List[str]]:
                     converted.append(track.name)
                     break
             except Exception:
-                pass
+                # si prova la conversione successiva; il motivo resta nel log
+                logging.getLogger(__name__).info("Conversione in box non riuscita per %s (%s)", track.name,
+                                                 getattr(convert, "__name__", convert), exc_info=True)
             track.text, track.clips = text, []
         else:
             kept.append(track.name)

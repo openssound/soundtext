@@ -42,7 +42,7 @@ def test_source_installers_copy_only_what_the_program_needs():
         for unwanted in ("st_language", "tests", "midi", "songs", "SoundText_Manuale_Utente.docx", "README.md", *BUILD_SCRIPTS):
             assert unwanted not in items, f"{script}: {unwanted} non va copiato"
         assert "examples/*" in text and "*.wav) continue" in text     # esempi senza i render audio
-        assert "FluidR3_GM.sf2" in text
+        assert "FluidR3_GM.sf2" not in text                    # il SoundFont lo propone l'app al primo avvio
         # la pulizia delle installazioni precedenti sta DENTRO il ramo "copia i sorgenti":
         # lanciato dalla cartella di installazione stessa, lo script non cancella file del repository
         start = text.index('if [ "$SRC_DIR" != "$INSTALL_DIR" ]; then')
@@ -50,8 +50,11 @@ def test_source_installers_copy_only_what_the_program_needs():
         block = text[start:end]
         assert 'rm -rf "$INSTALL_DIR/docs/guida_brano"' in block, script
         assert "PUBBLICARE_SU_PYPI.md" in block, script
-        assert re.search(r'cp -a .*SoundText_Guida_dal_primo_accordo_al_WAV\.pdf "\$INSTALL_DIR/docs/"', block), script  # la guida PDF in docs/
-        assert "SoundText_Manuale_Utente.docx" in block and "SoundText_Guida_dal_primo_accordo_al_WAV.pdf" in block
+        # la guida PDF non va nell'installazione: si toglie quella copiata dalle versioni precedenti
+        assert not re.search(r'cp -a .*SoundText_Guida_dal_primo_accordo_al_WAV\.pdf', text), script
+        assert "SoundText_Manuale_Utente.docx" in block
+        assert '"$INSTALL_DIR/SoundText_Guida_dal_primo_accordo_al_WAV.pdf"' in block, script
+        assert '"$INSTALL_DIR/docs/SoundText_Guida_dal_primo_accordo_al_WAV.pdf"' in block, script
         for name in BUILD_SCRIPTS:
             assert f'"$INSTALL_DIR/{name}"' in block, f"{script}: {name} non viene tolto da un'installazione precedente"
         for name in KEPT_SCRIPTS:
@@ -92,6 +95,10 @@ def test_the_midi_library_is_shipped_empty_and_the_users_files_are_never_deleted
     workflow = _read(".github", "workflows", "build-release.yml")
     assert 'New-Item -ItemType Directory -Force -Path "dist\\SoundText\\midi"' in workflow
     assert "mkdir -p AppDir/usr/bin/midi" in workflow
+    # "Scarica e installa" cerca lo script accanto all'eseguibile: dentro l'AppImage
+    assert "cp scarica_strumenti.py AppDir/usr/bin/" in workflow
+    release_files = workflow[workflow.index("SoundText-linux-*.AppImage"):].split("\n\n")[0]
+    assert "scarica_strumenti" not in release_files                  # non piu' allegati a parte
     assert 'test -z "$(find AppDir/usr/bin/midi -mindepth 1 -print -quit)"' in workflow
 
 
@@ -108,26 +115,64 @@ def test_macos_installer_works_without_the_repository_and_reports_failures():
     assert os.access(os.path.join(ROOT, "install-macos.sh"), os.X_OK)
 
 
-def test_macos_installer_downloads_the_soundfont_and_checks_it():
-    """Il SoundFont GM non e' in git: l'installer macOS lo scarica dalla release
-    "resources" (come le build Windows/Linux) e ne verifica lo SHA-256."""
-    text = _read("install-macos.sh")
-    assert "releases/download/resources/FluidR3_GM.sf2" in text
-    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
-    assert 'mv "$part" "$SOUNDFONT"' in text                     # il file resta solo se l'hash torna
-    assert "incluso nel repository" not in text
+def test_no_installer_or_build_ships_the_soundfont():
+    """SoundText non include un SoundFont: lo propone al primo avvio e lo si
+    scarica da Suoni -> Scarica e installa (core.soundfont_downloads, con
+    lo SHA-256). Ne' gli installer ne' le build lo copiano o lo scaricano."""
+    for name in ("install.sh", "install-macos.sh", "build-linux-portable.sh", "build-windows-portable.ps1",
+                 "package-for-linux.ps1", os.path.join(".github", "workflows", "build-release.yml")):
+        text = _read(name)
+        assert "FluidR3_GM.sf2" not in text and "releases/download/resources" not in text, name
+    for name in ("install.sh", "setup-appimage.sh", "setup-portable-linux.sh"):   # neanche quello della distribuzione
+        text = _read(name)
+        assert "fluid-soundfont-gm" not in text and "soundfont-fluid" not in text, name
+    from core.soundfont_downloads import find
+    fluid = find("sf-fluidr3")
+    assert fluid.url.startswith("https://deb.debian.org/") and len(fluid.sha256) == 64   # non dal GitHub di SoundText
 
 
 def test_linux_installer_works_without_the_repository_and_reports_failures():
-    """Come install-macos.sh: sorgenti scaricati se mancano, SoundFont GM
-    scaricato (e verificato) se il sistema non ne fornisce uno, rtmidi
+    """Come install-macos.sh: sorgenti scaricati se mancano, rtmidi
     facoltativo, PATH aggiornato e avviso se l'avvio dal menu fallisce."""
     text = _read("install.sh")
     assert "has_sources \"$SRC_DIR\"" in text and "archive/refs/heads/main.tar.gz" in text
     assert '"$INSTALL_DIR/$needed"' in text
-    assert "releases/download/resources/FluidR3_GM.sf2" in text
-    assert re.search(r'SOUNDFONT_SHA256="[0-9a-f]{64}"', text)
     assert "grep -v '^python-rtmidi'" in text
     assert 'export PATH="$HOME/.local/bin:$PATH"' in text and ".bashrc" in text
     assert "soundtext.log" in text and "notify-send" in text
     assert "incluso nel repository" not in text
+
+
+def test_every_licence_file_named_in_the_notices_exists():
+    """THIRD_PARTY_NOTICES.md rimanda ai testi in licenses/: devono esserci
+    tutti, tranne quelli che ogni build genera mentre la si costruisce."""
+    generated = {"licenses/COMPONENTI.txt", "licenses/librerie-linux/", "licenses/librerie-linux"}
+    notices = open(os.path.join(ROOT, "THIRD_PARTY_NOTICES.md"), encoding="utf-8").read()
+    named = set(re.findall(r"`(licenses/[^`\s]+)`", notices))
+    assert "licenses/sfizioso.txt" in named and "licenses/fluidsynth-windows.txt" in named
+    missing = [p for p in named - generated if not os.path.exists(os.path.join(ROOT, p))]
+    assert not missing, missing
+    sfizioso = open(os.path.join(ROOT, "licenses", "sfizioso.txt"), encoding="utf-8").read()
+    for library in ("Abseil", "WavPack", "kiss_fft", "pugixml", "SIMDe", "ThreadPool"):
+        assert library in sfizioso
+
+
+def test_every_build_writes_the_list_of_its_components():
+    workflow = open(os.path.join(ROOT, ".github", "workflows", "build-release.yml"), encoding="utf-8").read()
+    assert workflow.count("avvisi_build.py") == 2                 # Windows e AppImage
+    for script in ("build-linux-portable.sh", "build-windows-portable.ps1"):
+        assert "avvisi_build.py" in open(os.path.join(ROOT, script), encoding="utf-8").read()
+    assert "licenze_sfizioso.py" in open(os.path.join(ROOT, ".github", "workflows", "libsfizz.yml"),
+                                          encoding="utf-8").read()
+
+
+def test_the_components_file_lists_python_and_the_packages(tmp_path):
+    import subprocess
+    import sys
+    out = tmp_path / "COMPONENTI.txt"
+    subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", "avvisi_build.py"), str(out),
+                    "FluidSynth 2.4.7"], check=True, capture_output=True)
+    text = out.read_text(encoding="utf-8")
+    assert re.search(r"^Python 3\.\d+", text, re.M) and re.search(r"^st-language \d", text, re.M)
+    assert "FluidSynth 2.4.7" in text and "LICENSE.txt dell'interprete" in text
+    assert not re.search(r"^pyinstaller ", text, re.M | re.I)    # strumento di build, non incluso

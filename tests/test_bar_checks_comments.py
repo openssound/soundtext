@@ -202,6 +202,7 @@ def test_editor_label_and_highlighter_show_the_warning(monkeypatch):
     w._dirty = False
     w.editor.setPlainText("4: c d e | f g a |")
     assert w.project.tracks[0].text == "4: c d e | f g a |"
+    w.flush_validation()               # mentre si scrive la validazione aspetta una pausa
     assert "Sintassi valida" in w.validation_label.text()
     assert w.highlighter._bar_errors == frozenset()
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Discard)

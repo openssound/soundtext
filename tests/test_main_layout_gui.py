@@ -17,11 +17,12 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6.QtCore import QPoint, Qt, QTimer
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from core.i18n import tr
 from gui.main_window import MainWindow
 from gui.track_header import TrackHeaderWidget
 
@@ -43,29 +44,215 @@ def _window(width=1200, height=720, tracks=(("Piano", "Piano"),), audio=("Voce",
 
 
 def _menu_texts(open_menu_fn):
-    captured = {}
-
-    def grab():
-        menu = QApplication.activePopupWidget()
-        if menu is not None:
-            captured["actions"] = [a.text() for a in menu.actions() if a.text()]
-            menu.close()
-
-    QTimer.singleShot(50, grab)
-    open_menu_fn()
-    return captured.get("actions", [])
+    from _menus import scripted_menus
+    with scripted_menus() as menus:
+        open_menu_fn()
+    return menus.actions
 
 
 # --------------------------------------------------------------- barra dei comandi
 
+@pytest.mark.parametrize("theme_name", ["dark", "light"])
+def test_toolbar_fits_a_1200_px_window_with_the_theme(theme_name):
+    """Con il foglio di stile vero del tema (i padding dei pulsanti) e un
+    carattere da 10 punti, come su un desktop Linux: la barra intera sta in
+    una finestra di 1200 px, Struttura e Testo compresi."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for(theme_name))
+    try:
+        w = _window(width=1200)
+        # anche durante l'ascolto (Pausa e' piu' largo di Play) e in vista Struttura (testo in grassetto)
+        for playing, structure in ((False, False), (True, False), (True, True)):
+            w.play_pause_btn.setText(tr("Pausa") if playing else tr("Play"))
+            w.arrangement_action.setChecked(structure)
+            _app.processEvents()
+            for widget in (w.view_structure_btn, w.view_text_btn, w.metronome_checkbox, w.master_vol_slider):
+                assert widget.isVisible(), (playing, structure)
+                assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+def test_song_box_moves_to_the_second_row_when_the_first_does_not_fit():
+    """Con un carattere piu' largo (come quello di sistema di macOS) o una
+    finestra stretta, Tempo/Metrica/Levare/Tonalita' scendono nella seconda
+    riga invece di spingere Struttura/Testo nel menu »; tornano su appena
+    c'e' spazio."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark"))
+    try:
+        w = _window(width=1600)
+        # sulla larghezza vera: lo schermo della CI di Windows e' piu' stretto di 1600 px
+        assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width()), w.width()
+        for width in (1000, 1600, 1000):
+            w.resize(width, 720)
+            _app.processEvents()
+            # la regola, sulla larghezza vera (Windows puo' non stringere la finestra fino a 1000 px)
+            assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width()), (width, w.width())
+            for widget in (w.view_structure_btn, w.view_text_btn, w.tempo_spin, w.key_combo):
+                assert widget.isVisible(), (width, widget)
+                assert widget.mapTo(w, QPoint(widget.width(), 0)).x() <= w.width()
+        # un carattere piu' largo, a 1200 px (il tema fissa 13 px per tutti i widget)
+        _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 16px; }")
+        w.close()
+        w = _window(width=1600)
+        w.resize(w.first_row_full_width() - 120, 720)       # la barra intera non ci sta piu'
+        _app.processEvents()
+        assert w.song_box_in_first_row() == (w.first_row_full_width() <= w.width())
+        if w.width() < w.first_row_full_width():
+            assert not w.song_box_in_first_row()
+            assert w._song_slot_bottom.isVisible()           # scende nella riga in fondo, accanto al Master
+        assert w.view_structure_btn.isVisible() and w.view_text_btn.isVisible() and w.tempo_spin.isVisible()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+def test_view_buttons_move_to_the_second_row_when_even_that_does_not_fit():
+    """Se la barra non entra neanche senza il riquadro Brano (i controlli di
+    Windows sono piu' larghi), scendono anche Struttura/Testo/Partitura,
+    invece di finire nascosti nel menu »; tornano su appena c'e' spazio."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 26px; }")   # una barra molto larga
+    try:
+        w = _window(width=3600)
+        full = w.first_row_full_width()
+        without_song = full - w._moved_width(w._song_box)
+        w.resize(without_song - 40, 720)                     # non entra neanche senza il riquadro Brano
+        _app.processEvents()
+        if w.width() < without_song:                         # la finestra si e' davvero stretta
+            assert not w.song_box_in_first_row() and not w.view_buttons_in_first_row()
+            assert w._view_slot_bottom.isVisible()
+        for b in (w.view_structure_btn, w.view_text_btn, w.view_score_btn):
+            assert b.isVisible()
+            assert b.mapTo(w, QPoint(b.width(), 0)).x() <= w.width()
+        w.view_text_btn.click()
+        assert w.view_text_btn.isChecked()                   # funzionano anche in basso
+        w.resize(3600, 720)
+        _app.processEvents()
+        if w.width() >= full:
+            assert w.song_box_in_first_row() and w.view_buttons_in_first_row()
+            assert not w._view_slot_bottom.isVisible()
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+def test_toolbar_parts_go_back_up_after_a_narrow_window():
+    """Una finestra nuova nasce stretta, con riquadro Brano e pulsanti di
+    vista nella riga in fondo; allargata quanto basta per la barra intera,
+    devono risalire tutti e due, anche se il conto fatto da giu' era piu'
+    largo (su Windows il riquadro restava giu': la CI lo vedeva con la barra
+    larga 1591 px in una finestra di 1600)."""
+    from PySide6.QtGui import QFont
+    from gui.theme import stylesheet_for
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark") + "QWidget { font-size: 19px; }")
+    try:
+        probe = _window(width=3600)
+        full = probe.first_row_full_width()                  # la barra intera, misurata tutta in alto
+        probe.close()
+        w = MainWindow()
+        if w.song_box_in_first_row() or w.view_buttons_in_first_row():
+            w.close()
+            pytest.skip("la finestra nuova non nasce abbastanza stretta")
+        w.resize(full + 5, 720)
+        w.show()
+        _app.processEvents()
+        _app.processEvents()
+        assert w.width() >= full
+        assert w.song_box_in_first_row() and w.view_buttons_in_first_row(), (full, w.first_row_full_width())
+        assert all(b.isVisible() for b in (w.view_structure_btn, w.view_text_btn, w.view_score_btn))
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+@pytest.mark.parametrize("family", ["DejaVu Sans", "Noto Sans"])
+def test_toolbar_has_room_to_spare_with_wide_fonts(family):
+    """DejaVu Sans (comune su Linux, quello della CI) e' piu' largo di Noto
+    Sans: la barra deve starci con un po' di margine, non al pixel."""
+    from PySide6.QtGui import QFont, QFontDatabase
+    from PySide6.QtWidgets import QToolBar
+    from gui.theme import stylesheet_for
+    if family not in QFontDatabase.families():
+        pytest.skip(f"carattere {family} non installato")
+    old_font = _app.font()
+    font = QFont(old_font)
+    font.setFamily(family)
+    font.setPointSize(10)
+    _app.setFont(font)
+    _app.setStyleSheet(stylesheet_for("dark"))
+    try:
+        w = _window(width=1200)
+        toolbar = w.findChild(QToolBar, "mainToolbar")
+        assert toolbar.sizeHint().width() <= 1200 - 20
+        play_width = w.play_pause_btn.width()
+        w.play_pause_btn.setText(tr("Pausa"))
+        _app.processEvents()
+        assert w.play_pause_btn.width() == play_width            # la barra non si allarga durante l'ascolto
+        line = w.tempo_spin.lineEdit()                            # il tempo piu' largo si legge tutto
+        assert line.width() >= line.fontMetrics().horizontalAdvance("288,8 BPM") + 2
+        w.close()
+    finally:
+        _app.setStyleSheet("")
+        _app.setFont(old_font)
+
+
+def test_window_opens_with_room_for_the_toolbar():
+    width, height = MainWindow._initial_size()
+    screen = _app.primaryScreen().availableGeometry()
+    assert width >= min(1200, screen.width()) and height >= min(720, screen.height())
+    assert width <= screen.width() and height <= screen.height()
+
+
 def test_toolbar_fits_a_1200_px_window():
     w = _window(width=1200)
-    for widget in (w.master_vol_slider, w.master_vol_value_label, w.view_text_btn, w.metronome_checkbox):
+    for widget in (w.master_vol_slider, w.master_vol_value_label, w.level_meter, w.view_text_btn,
+                   w.metronome_checkbox):
         assert widget.isVisible()
         right = widget.mapTo(w, QPoint(widget.width(), 0)).x()
         assert right <= w.width()
-    # l'avanzamento ha una riga tutta sua, larga quasi quanto la finestra
-    assert w.playback_progress.isVisible() and w.playback_progress.width() > 900
+    # il Master e' la riga in fondo alla colonna delle tracce, larga uguale e
+    # sotto le viste; accanto la barra di avanzamento, nel resto della riga
+    strip = w.master_strip
+    corner = strip.mapTo(w, QPoint(0, 0))
+    assert corner.x() == 0 and abs(strip.width() - w.mixer_panel.width()) <= 2
+    assert corner.y() > w.arrangement_view.mapTo(w, QPoint(0, w.arrangement_view.height() - 1)).y()
+    assert w.level_meter.parentWidget() is strip and w.master_vol_slider.parentWidget() is strip
+    progress = w.playback_progress.mapTo(w, QPoint(0, 0))
+    assert progress.x() > corner.x() + strip.width()
+    # tutto il resto della riga, tolto il riquadro Brano se e' sceso qui
+    # (succede su Windows, dove i caratteri sono piu' larghi: _place_song_box)
+    song = w._song_slot_bottom.width() if w._song_slot_bottom.isVisible() else 0
+    assert w.playback_progress.isVisible()
+    assert w.playback_progress.width() >= w.width() - strip.width() - song - 40
+    # il tempo in cifre sta nel display della barra dei comandi
+    assert w.time_display.isVisible()
+    assert w.time_display.mapTo(w, QPoint(w.time_display.width(), 0)).x() <= w.width()
 
 
 def test_view_buttons_switch_view_and_tracks_column():
@@ -89,9 +276,11 @@ def test_no_separate_mixer_button_or_menu_item():
 def test_text_view_column_uses_the_same_headers_as_the_structure_view():
     from gui.arrangement_view import HEADER_WIDTH, ROW_HEIGHT
     w = _window()
-    w.view_text_btn.click()
-    text_headers = w.track_headers
     structure_headers = w.arrangement_view.canvas.header_widgets
+    in_structure = {name: (h.mapTo(w, QPoint(0, 0)), h.size()) for name, h in structure_headers.items()}
+    w.view_text_btn.click()
+    _app.processEvents()
+    text_headers = w.track_headers
     assert list(text_headers) == list(structure_headers) == ["Piano", "Voce"]
     for name, header in text_headers.items():
         assert isinstance(header, TrackHeaderWidget)
@@ -99,9 +288,28 @@ def test_text_view_column_uses_the_same_headers_as_the_structure_view():
         other = structure_headers[name]
         assert header.name_label.text() == other.name_label.text()
         assert header.instr_label.text() == other.instr_label.text()
+        # passando da Struttura a Testo la testata resta dov'era, grande uguale
+        assert (header.mapTo(w, QPoint(0, 0)), header.size()) == in_structure[name]
     assert text_headers["Voce"].record_btn is not None
-    # La colonna e' larga quanto le testate: il resto va all'editor.
-    assert w.mixer_panel.width() < HEADER_WIDTH + 40
+    # La colonna e' larga quanto le testate (piu' il bordo): il resto va all'editor.
+    assert w.mixer_panel.width() == HEADER_WIDTH + 1
+
+
+def test_switching_view_keeps_the_scrolled_headers_in_place():
+    tracks = tuple((f"T{i}", "Piano") for i in range(12))
+    w = _window(height=600, tracks=tracks, audio=())
+    w.view_text_btn.click()
+    _app.processEvents()
+    w.scroll.verticalScrollBar().setValue(200)
+    _app.processEvents()
+    in_text = {name: h.mapTo(w, QPoint(0, 0)) for name, h in w.track_headers.items()}
+    w.view_structure_btn.click()
+    for _ in range(3):
+        _app.processEvents()
+    canvas = w.arrangement_view.canvas
+    assert canvas.verticalScrollBar().value() == 200
+    for name in ("T4", "T6"):
+        assert canvas.header_widgets[name].mapTo(w, QPoint(0, 0)) == in_text[name]
 
 
 def test_transport_buttons(monkeypatch):
@@ -176,7 +384,7 @@ def test_header_pan_knob_changes_the_track_and_the_text_view_header():
     header.pan_knob.setValue(20)
     assert w.project.get_track("Piano").pan == 20
     assert w.track_headers["Piano"].pan_knob.value() == 20
-    assert "L" in header.pan_knob.toolTip()
+    assert "S70" in header.pan_knob.toolTip()           # S = sinistra, nella lingua dell'interfaccia
     assert w.history.can_undo()
 
 
@@ -298,11 +506,11 @@ class _FakeGenerator:
 
 
 def test_generated_track_is_created_only_when_confirmed(monkeypatch):
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
     w = _window(tracks=(), audio=())
     _FakeGenerator.seen = []
     monkeypatch.setattr(mixer, "DrumGenerateDialog", _FakeGenerator)
-    w.add_generated_track("drums")
+    w.generators.new_track("drums")
     track = w.project.get_track("Batteria")
     assert track.instrument_name == "Drums" and [c.name for c in track.clips] == ["Groove"]
     assert _FakeGenerator.seen[0]["track_name"] == "Batteria"
@@ -313,12 +521,12 @@ def test_generated_track_is_created_only_when_confirmed(monkeypatch):
             return 0
 
     monkeypatch.setattr(mixer, "ChordProgressionDialog", Cancelled)
-    w.add_generated_track("progression")
+    w.generators.new_track("progression")
     assert [t.name for t in w.project.tracks] == ["Batteria"]
 
 
 def test_generated_track_in_text_view_is_free_text(monkeypatch):
-    import gui.main_window_mixer as mixer
+    import gui.track_generators as mixer
     from PySide6.QtWidgets import QInputDialog
     w = _window(tracks=(("Piano", "Piano"),), audio=())
     w.project.get_track("Piano").text = "4: Am F C G"
@@ -326,7 +534,7 @@ def test_generated_track_in_text_view_is_free_text(monkeypatch):
     monkeypatch.setattr(mixer, "MelodyGenerateDialog", _FakeGenerator)
     monkeypatch.setattr(QInputDialog, "getItem", staticmethod(lambda *a, **k: ("Trumpet", True)))
     _FakeGenerator.seen = []
-    w.add_generated_track("melody")
+    w.generators.new_track("melody")
     track = w.project.get_track("Trumpet")
     assert track.clips == [] and track.text == "4: c d e f"
     assert _FakeGenerator.seen[0]["polyphonic"] is False
@@ -358,15 +566,11 @@ def test_header_menu_on_free_text_track_writes_into_the_text(monkeypatch):
     assert "Suona con la tastiera..." in texts and "Rimuovi traccia" in texts
 
     called = []
-    monkeypatch.setattr(w, "play_keyboard_into_selected_track", lambda: called.append(w.current_track_name))
+    monkeypatch.setattr(w.generators, "play_keyboard", lambda: called.append(w.current_track_name))
 
-    def pick():
-        menu = QApplication.activePopupWidget()
-        menu.setActiveAction(next(a for a in menu.actions() if a.text() == "Suona con la tastiera..."))
-        QTest.keyClick(menu, Qt.Key_Return)
-
-    QTimer.singleShot(50, pick)
-    w.show_track_actions_menu("Piano", header.mapToGlobal(QPoint(0, 0)))
+    from _menus import scripted_menus
+    with scripted_menus("Suona con la tastiera..."):
+        w.show_track_actions_menu("Piano", header.mapToGlobal(QPoint(0, 0)))
     assert called == ["Piano"]
 
 
@@ -644,7 +848,7 @@ def test_menus_group_import_and_export_in_submenus(monkeypatch):
 
     # Traccia → Esporta questa traccia: MIDI, WAV e WAV asciutto della traccia selezionata
     exported = []
-    monkeypatch.setattr(w, "export_track_wav", lambda name, dry=False: exported.append((name, dry)))
+    monkeypatch.setattr(w.wav_export, "track", lambda name, dry=False: exported.append((name, dry)))
     w.current_track_name = "Voce"
     commands[("Traccia › Esporta questa traccia", "WAV...")].trigger()
     commands[("Traccia › Esporta questa traccia", "WAV asciutto (per il re-amping)...")].trigger()
@@ -673,4 +877,61 @@ def test_support_entry_appears_only_with_a_support_url(monkeypatch):
     assert "Sostieni SoundText..." in _help_actions(w)
     w.support_action.trigger()
     assert opened == ["https://example.org/sostieni"]
+    w.close()
+
+
+def test_expand_patterns_in_text_mode():
+    """Modalita' testo: Espandi i pattern c'e' solo per una traccia che usa
+    dei pattern e mostra, in sola lettura, il loro contenuto al posto dei
+    %Nome; l'editor vero resta com'e'."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.notation import Pattern
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    w.show()
+    w.project.patterns["Giro"] = Pattern("Giro", ["c*4", "e*4"])
+    w.project.add_track("Con pattern", "Piano", "4: 2%Giro g*4")
+    w.project.add_track("Senza", "Piano", "4: c*4 d*4")
+    w.refresh_mixer()
+    w.select_track("Senza")
+    assert not (not w.expand_patterns_check.isHidden())
+    w.select_track("Con pattern")
+    assert (not w.expand_patterns_check.isHidden())
+    w.expand_patterns_check.setChecked(True)
+    assert (not w.expanded_editor.isHidden()) and not (not w.editor.isHidden())
+    assert w.expanded_editor.toPlainText() == "4: c*4 e*4 c*4 e*4 g*4"
+    assert w.expanded_editor.isReadOnly()
+    assert w.editor.toPlainText() == "4: 2%Giro g*4"
+    w.select_track("Senza")                    # una traccia senza pattern: torna l'editor vero
+    assert not (not w.expand_patterns_check.isHidden()) and not w.expand_patterns_check.isChecked()
+    assert (not w.editor.isHidden()) and not (not w.expanded_editor.isHidden())
+    w.close()
+
+
+def test_expanded_patterns_highlight_the_playing_note():
+    """Con Espandi i pattern l'evidenziazione della nota che suona passa
+    all'editor espanso (e torna a quello vero togliendo la spunta)."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.notation import Pattern
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    w.project.patterns["Giro"] = Pattern("Giro", ["c*4", "e*4"])
+    w.project.add_track("Con pattern", "Piano", "4: 2%Giro g*4")
+    w.refresh_mixer()
+    w.select_track("Con pattern")
+    w.expand_patterns_check.setChecked(True)
+    w.track_highlight.update(1.5)           # la seconda nota: e*4 del primo giro
+    selections = w.expanded_editor.extraSelections()
+    assert len(selections) == 1 and selections[0].cursor.selectedText() == "e*4"
+    assert w.editor.extraSelections() == []
+    w.expand_patterns_check.setChecked(False)
+    w.track_highlight.update(1.5)
+    assert w.editor.extraSelections()[0].cursor.selectedText() == "2%Giro"
+    assert w.expanded_editor.extraSelections() == []
     w.close()

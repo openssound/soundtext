@@ -7,7 +7,7 @@
 #
 # Va eseguito DENTRO una copia completa del repository SoundText (serve
 # main.py, requirements.txt, soundtext.spec, core/, gui/, midi/, assets/,
-# docs/, songs/, examples/, soundfonts/), perche' PyInstaller compila per
+# docs/, songs/, examples/), perche' PyInstaller compila per
 # la piattaforma su cui gira: il risultato funziona solo su Linux con
 # un'architettura e una libc compatibili con quelle della macchina di
 # build (in genere: stessa distro/versione o piu' recente).
@@ -18,8 +18,8 @@
 #      pacchetti da requirements.txt + PyInstaller;
 #   2. lancia PyInstaller con soundtext.spec (modalita' onedir);
 #   3. affianca all'eseguibile le cartelle dati dell'app (assets, docs,
-#      songs demo, libreria midi, esempi) e, se presente, il SoundFont GM
-#      incluso nel repository (soundfonts/FluidR3_GM.sf2);
+#      songs demo, libreria midi, esempi); il SoundFont non e' incluso:
+#      SoundText lo propone al primo avvio (Suoni -> Scarica e installa);
 #   4. cerca libfluidsynth.so di sistema (ldconfig) e, se la trova, la
 #      copia insieme alle sue dipendenze non di sistema (via ldd) in una
 #      cartella lib/ accanto all'eseguibile; rinomina l'eseguibile vero
@@ -140,15 +140,6 @@ else
     warn "Verovio non trovato: la build non avra' la vista Partitura."
 fi
 
-SF2_SRC="$ROOT/soundfonts/FluidR3_GM.sf2"
-if [ -f "$SF2_SRC" ]; then
-    info "Includo il SoundFont GM (FluidR3_GM.sf2)..."
-    mkdir -p "$DIST_DIR/soundfonts"
-    cp "$SF2_SRC" "$DIST_DIR/soundfonts/FluidR3_GM.sf2"
-else
-    warn "soundfonts/FluidR3_GM.sf2 non trovato nel repository: la build non avra' un SoundFont incluso."
-fi
-
 # ---------------------------------------------------------------------------
 # FluidSynth: individua libfluidsynth.so di sistema e le sue dipendenze non
 # di sistema, le copia in lib/ accanto all'eseguibile, e trasforma
@@ -205,6 +196,51 @@ else
     warn "libfluidsynth non trovata sul sistema di build: la build non avra' audio finche' non installi"
     warn "fluidsynth (col package manager della distro di destinazione) prima di lanciare SoundText."
 fi
+
+# Il motore SFZ interno gia' compilato (release libsfizz di SoundText), in
+# lib/ dove SoundText lo cerca (core.sfz_engine): lo strumento SFZ interno
+# funziona senza "scarica_strumenti libreria". Senza rete si va avanti.
+info "Includo il motore SFZ interno (libsfizz)..."
+python3 "$ROOT/scarica_strumenti.py" libreria --in "$DIST_DIR/lib" \
+    || warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria"
+
+# Licenze delle librerie copiate in lib/ dal sistema di build (FluidSynth e
+# le sue dipendenze): il file copyright del loro pacchetto Debian/Ubuntu, in
+# licenses/librerie-linux/, con l'elenco pacchetto e versione (i sorgenti
+# sono i pacchetti sorgente di quella distribuzione, "apt-get source").
+if [ -d "$DIST_DIR/lib" ] && command -v dpkg-query >/dev/null 2>&1; then
+    info "Raccolgo le licenze delle librerie incluse..."
+    LIC_DIR="$DIST_DIR/licenses/librerie-linux"
+    mkdir -p "$LIC_DIR"
+    : > "$LIC_DIR/ELENCO.txt"
+    for lib in "$DIST_DIR"/lib/*.so*; do
+        name="$(basename "$lib")"
+        case "$name" in libsfizz*) continue ;; esac      # licenses/sfizioso.txt
+        # (set -e e pipefail: ogni ricerca che non trova niente non deve fermare la build)
+        path="$(ldconfig -p 2>/dev/null | awk -v n="$name" '$1 == n {print $NF; exit}' || true)"
+        pkg=""
+        if [ -n "$path" ]; then
+            pkg="$( { dpkg -S "$(readlink -f "$path")" 2>/dev/null || dpkg -S "$path" 2>/dev/null || true; } \
+                    | head -n1 | cut -d: -f1)"
+        fi
+        if [ -z "$pkg" ]; then
+            warn "pacchetto di $name non trovato: aggiungine la licenza a mano"
+            echo "$name: pacchetto non trovato" >> "$LIC_DIR/ELENCO.txt"
+            continue
+        fi
+        echo "$name: $pkg $(dpkg-query -W -f='${Version}\n' "$pkg" 2>/dev/null | head -n1 || true)" \
+            >> "$LIC_DIR/ELENCO.txt"
+        if [ -f "/usr/share/doc/$pkg/copyright" ]; then
+            cp "/usr/share/doc/$pkg/copyright" "$LIC_DIR/$pkg.copyright"
+        else
+            warn "$pkg: /usr/share/doc/$pkg/copyright non c'e': aggiungine la licenza a mano"
+        fi
+    done
+fi
+"$VENV_PYTHON" "$ROOT/.github/scripts/avvisi_build.py" "$DIST_DIR/licenses/COMPONENTI.txt" \
+    "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses/sfizioso.txt)" \
+    "FluidSynth e le sue dipendenze in lib/: licenses/librerie-linux/ELENCO.txt" \
+    || warn "licenses/COMPONENTI.txt non generato"
 
 info "Comprimo in SoundText-portable-linux-x64.tar.gz..."
 TAR_OUT="$ROOT/SoundText-portable-linux-x64.tar.gz"

@@ -41,7 +41,7 @@ import tempfile
 import threading
 import time
 import wave
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import audio_stream
 from .effects import DEFAULT_REVERB_ROOM, DRY_SYNTH_ROOM, apply_reverb, reverb_cli_options
@@ -307,6 +307,18 @@ class _PersistentSynth:
             for synth in self._override_synths.values():
                 synth.set_gain(value)
 
+    def preload(self, soundfont: str) -> bool:
+        """Carica in anticipo il synth del SoundFont (vedi preload_soundfont):
+        con il lock dei render, cosi' un ascolto che parte nel frattempo
+        aspetta questo caricamento invece di farne un secondo."""
+        with self._lock:
+            try:
+                self._ensure_font_loaded(soundfont)
+                return True
+            except Exception:
+                log.warning("Caricamento anticipato del SoundFont fallito: %s", soundfont, exc_info=True)
+                return False
+
     def _ensure_font_loaded(self, soundfont: str):
         """Il synth del SoundFont generale (usato quando non ci sono override
         attivi, o per il gruppo di canali 'di default' del rendering
@@ -352,6 +364,9 @@ class _PersistentSynth:
         # slider con il mouse che raggiungendo lo stesso valore con le
         # frecce, da cui la differenza percepita a parita' di valore finale.
         synth.system_reset()
+        # riverbero e chorus dallo stato iniziale: lo stesso brano da' lo stesso
+        # audio, campione per campione, a ogni render (vedi Synth.reset_effects)
+        synth.reset_effects()
         # L'ambiente del riverbero (vedi core.effects) va reimpostato a ogni
         # render: il synth e' condiviso, e un brano con un'altra sala non
         # deve lasciarla a chi suona dopo (anteprima della libreria MIDI...).
@@ -569,6 +584,29 @@ _shared_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
 _stem_synth = _PersistentSynth() if _FLUID_AVAILABLE else None
 
 
+PRELOAD_MIN_FREE_RAM = 1024 ** 3      # con meno RAM libera non si carica in anticipo
+
+
+def preload_soundfont() -> Optional[threading.Thread]:
+    """All'avvio (finestra gia' visibile): carica in un thread il SoundFont
+    generale nel synth della riproduzione, cosi' il primo Play non aspetta
+    (un SoundFont GM da 150 MB richiede alcuni secondi). Niente se manca la
+    libreria FluidSynth, il SoundFont o la RAM libera."""
+    if _shared_synth is None:
+        return None
+    from .memory import available_ram
+    free = available_ram()
+    if free is not None and free < PRELOAD_MIN_FREE_RAM:
+        return None
+    soundfont = _find_soundfont()
+    if not soundfont:
+        return None
+    thread = threading.Thread(target=_shared_synth.preload, args=(soundfont,), daemon=True,
+                              name="soundfont-preload")
+    thread.start()
+    return thread
+
+
 def _side_synth():
     """Il synth per le sintesi a parte; None se non si usa la libreria
     FluidSynth (anche quando _shared_synth e' stato disattivato)."""
@@ -601,13 +639,14 @@ def _find_soundfont() -> Optional[str]:
     if env_path and os.path.exists(env_path):
         return env_path
 
-    # 3) SoundFont incluso a fianco dell'eseguibile (build portable Windows,
-    # install.sh/install-macos.sh): cartella soundfonts/ nella radice
-    # dell'app, vedi DEFAULT_SOUNDFONTS_DIR in project_io.py.
-    from .version import get_app_root
-    candidates = [
-        os.path.join(get_app_root(), "soundfonts", "FluidR3_GM.sf2"),
-    ]
+    # 3) un SoundFont General MIDI scaricato con "Scarica e installa"
+    # (core.soundfont_downloads: SoundText non ne include nessuno) nella
+    # cartella soundfonts/ dell'utente o accanto all'app, vedi
+    # DEFAULT_SOUNDFONTS_DIR e USER_SOUNDFONTS_DIR in project_io.py.
+    from .project_io import DEFAULT_SOUNDFONTS_DIR, USER_SOUNDFONTS_DIR
+    from .soundfont_downloads import general_midi_files
+    candidates = [os.path.join(folder, name) for name in general_midi_files()
+                  for folder in (USER_SOUNDFONTS_DIR, DEFAULT_SOUNDFONTS_DIR)]
 
     # 4) percorsi comuni delle principali distribuzioni Linux, piu' un paio
     # di posizioni idiomatiche su Windows e macOS (nessun SoundFont e'
@@ -662,6 +701,10 @@ def render_midi_file_to_samples(midi_path: str, channel_overrides=None, reverb_r
                                            channel_overrides=channel_overrides, reverb_room=reverb_room)
         if not rendered and fluidsynth_bin and soundfont and not stop_check():
             from .settings import get_playback_gain
+            # il comando ricarica il SoundFont ogni volta: lo si annota, per
+            # sapere su quali sistemi succede (vedi le segnalazioni)
+            log.info("Render con il comando fluidsynth (libreria %s): %s",
+                     "non disponibile" if synth is None else "fallita", os.path.basename(soundfont))
             gain = get_playback_gain()
             result = subprocess.run(
                 [fluidsynth_bin, "-ni", "-r", "48000", "-g", str(gain),
@@ -763,7 +806,8 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
                     pass
     requests = [prepare_stem(project, track, tempo_map) for track in fx]
     try:
-        stems = [(samples, 0.0) for samples in render_stems(requests, stop_check) if samples is not None]
+        stems = [(samples, 0.0) for samples in render_stems(requests, stop_check, frames=len(base) or None)
+                 if samples is not None]
     finally:
         for request in requests:
             request.cleanup()
@@ -774,14 +818,73 @@ def render_project_mix(project: Project, stop_check=None, include_midi: bool = T
     return mixed, rate
 
 
+END_FADE_SECONDS = 0.01
+
+
 def render_project_mix_to_wav(project: Project, out_path: str, stop_check=None,
-                              tracks: Optional[List[Track]] = None, dry: bool = False) -> None:
+                              tracks: Optional[List[Track]] = None, dry: bool = False,
+                              skip_seconds: float = 0.0, length_seconds: Optional[float] = None,
+                              tempo: Optional[float] = None) -> None:
     """Esporta in out_path (WAV 48 kHz, 24 bit, stereo) il mix delle tracce
     udibili, o solo di tracks, eventualmente asciutte (vedi
-    render_project_mix, di cui solleva gli stessi errori)."""
+    render_project_mix, di cui solleva gli stessi errori), senza i primi
+    'skip_seconds'. Con 'length_seconds' il WAV dura esattamente tanto: la
+    coda dopo la fine (rilascio delle note, riverbero) si taglia con una
+    dissolvenza di END_FADE_SECONDS, cosi' un box esportato dura quanto il box.
+    Con 'tempo' (vedi constant_tempo) il WAV porta il suo tempo (blocco
+    "acid", vedi core.audio_tracks.write_acid_tempo), con la metrica del brano."""
+    import numpy as np
     from .audio_tracks import write_wav
+    import time
+    started = time.monotonic()
     mixed, rate = render_project_mix(project, stop_check, tracks=tracks, dry=dry)
-    write_wav(out_path, mixed, rate, bits=24)
+    # fette senza copia e dissolvenza sul posto: il mix e' gia' nostro
+    if skip_seconds > 0:
+        mixed = mixed[int(round(skip_seconds * rate)):]
+    if length_seconds is not None:
+        frames = max(0, int(round(length_seconds * rate)))
+        if len(mixed) > frames:
+            mixed = mixed[:frames]
+            fade = min(frames, int(END_FADE_SECONDS * rate))
+            if fade:
+                if not mixed.flags.writeable:
+                    mixed = np.array(mixed, dtype=np.float32)
+                mixed[frames - fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)[:, None]
+        elif len(mixed) < frames:
+            padded = np.zeros((frames, mixed.shape[1]), np.float32)
+            padded[:len(mixed)] = mixed
+            mixed = padded
+    write_wav(out_path, mixed, rate, bits=24, tempo=tempo, meter=_wav_meter(project))
+    _log_export(out_path, len(mixed) / float(rate), time.monotonic() - started)
+
+
+def _log_export(path: str, seconds: float, elapsed: float) -> None:
+    """Una riga nel log per ogni export: durata, thread dei render, picco
+    di memoria (utile nelle segnalazioni)."""
+    from . import effect_render
+    from .memory import peak_rss_mb
+    peak = peak_rss_mb()
+    log.info("Export %s: %.1f s di audio in %.1f s, %d thread per le tracce con effetti, picco di memoria %s MB",
+             os.path.basename(path), seconds, elapsed, effect_render.last_render_workers,
+             f"{peak:.0f}" if peak is not None else "?")
+
+
+def _wav_meter(project: Project) -> tuple:
+    """(numeratore, denominatore) della metrica del brano, per il blocco "acid"."""
+    try:
+        num, den = (int(x) for x in str(project.time_sig).split("/"))
+        return num, den
+    except ValueError:
+        return 4, 4
+
+
+def constant_tempo(project: Project) -> Optional[float]:
+    """Il tempo del brano se e' lo stesso dall'inizio alla fine (nessun cambio
+    per battuta ne' marcatore tempo= diverso); None altrimenti: un WAV con
+    il tempo che cambia dentro non ha un tempo solo da scrivere."""
+    from .tempo_map import build_tempo_beat_map
+    values = {float(bpm) for _beat, bpm in build_tempo_beat_map(project)}
+    return values.pop() if len(values) == 1 else None
 
 
 def stem_tracks(project: Project) -> List[Track]:
@@ -805,6 +908,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
     if not tracks:
         raise RuntimeError(tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
     os.makedirs(out_dir, exist_ok=True)
+    tempo, meter = constant_tempo(project), _wav_meter(project)
     paths, lengths, longest = [], [], 0
     for i, track in enumerate(tracks):
         if stop_check and stop_check():
@@ -812,7 +916,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
         mixed, rate = render_project_mix(project, stop_check, tracks=[track], dry=dry, allow_empty=True)
         safe = re.sub(r'[\\/:*?"<>|]', "_", track.name).strip() or "traccia"
         path = os.path.join(out_dir, f"{i + 1:02d} {safe}{' (asciutta)' if dry else ''}.wav")
-        write_wav(path, mixed, rate, bits=24)
+        write_wav(path, mixed, rate, bits=24, tempo=tempo, meter=meter)
         paths.append(path)
         lengths.append(len(mixed))
         longest = max(longest, len(mixed))
@@ -822,7 +926,7 @@ def render_stems_to_dir(project: Project, out_dir: str, stop_check=None, dry: bo
         if length < longest:                       # coda di silenzio fino alla fine del brano
             samples, rate = read_wav(path)
             pad = np.zeros((longest - length, samples.shape[1]), dtype=np.float32)
-            write_wav(path, np.concatenate([samples, pad]), rate, bits=24)
+            write_wav(path, np.concatenate([samples, pad]), rate, bits=24, tempo=tempo, meter=meter)
     return paths
 
 
@@ -977,21 +1081,29 @@ class LiveSynth:
                 # in ambienti offscreen/CI. Come si traduce in buffer dipende
                 # dal driver, vedi _live_buffer_settings.
                 level = get_live_period_size()
-                driver = _preferred_live_audio_driver()
-                period_size, periods = _live_buffer_settings(driver, level)
-                self._synth.setting('audio.period-size', period_size)
-                self._synth.setting('audio.periods', periods)
-                if driver == "wasapi":
-                    self._timer_resolution_raised = _raise_windows_timer_resolution()
-                self._synth.start_audio(driver)
-                fallback = _fallback_live_audio_driver()
-                if not self._synth.audio_driver and fallback is not None:
-                    # driver non disponibile: si riprova con quello di ripiego
-                    log.warning("Driver audio %r non disponibile, provo %r", driver, fallback)
-                    period_size, periods = _live_buffer_settings(fallback, level)
+                # Con l'uscita su JACK (Suoni > Uscita audio) anche la
+                # tastiera dal vivo e' un client JACK, "SoundText-keys",
+                # collegato alle uscite fisiche; se non si apre si prosegue
+                # con i driver di sempre.
+                from . import jack_output
+                drivers = [jack_output.fluidsynth_jack_driver(), _preferred_live_audio_driver(),
+                           _fallback_live_audio_driver()]
+                drivers = [d for i, d in enumerate(drivers) if i == 1 or (d is not None and d not in drivers[:i])]
+                for attempt, driver in enumerate(drivers):
+                    if attempt:
+                        # driver non disponibile: si riprova con il successivo
+                        log.warning("Driver audio %r non disponibile, provo %r", drivers[attempt - 1], driver)
+                    period_size, periods = _live_buffer_settings(driver, level)
                     self._synth.setting('audio.period-size', period_size)
                     self._synth.setting('audio.periods', periods)
-                    self._synth.start_audio(fallback)
+                    if driver == "jack":
+                        self._synth.setting('audio.jack.id', jack_output.CLIENT_NAME + "-keys")
+                        self._synth.setting('audio.jack.autoconnect', 1)
+                    if driver == "wasapi":
+                        self._timer_resolution_raised = _raise_windows_timer_resolution()
+                    self._synth.start_audio(driver)
+                    if self._synth.audio_driver:
+                        break
                 if not self._synth.audio_driver:
                     raise RuntimeError(tr("impossibile aprire un driver audio in tempo reale"))
                 self.driver_name = self._synth.get_setting('audio.driver')
@@ -1253,6 +1365,186 @@ def slowed_entry(entry: tuple, speed: float) -> tuple:
     return np.clip(np.round(y * 32767.0), -32768, 32767).astype(np.int16), rate
 
 
+class SlowedMix:
+    """Il mix rallentato a 'speed' riempito un pezzo alla volta in un thread
+    (vedi slowed_entry, che lo fa tutto insieme): l'ascolto parte appena e'
+    pronto il pezzo da cui si comincia, invece di aspettare tutto il brano
+    (Rubber Band rallenta tre minuti di mix in quasi un minuto). Si comincia
+    dal pezzo di 'start_seconds' e si va avanti fino in fondo, poi si torna
+    all'inizio; i pezzi si sovrappongono di CROSSFADE con una dissolvenza
+    incrociata, cosi' alle giunture non c'e' un clic. Il riempimento va
+    piu' veloce dell'ascolto: chi suona legge 'samples' mentre si riempie."""
+
+    CHUNK_SECONDS = 8.0      # di mix originale per pezzo
+    PAD_SECONDS = 0.5        # di contesto ai lati di ogni pezzo per Rubber Band
+    CROSSFADE = 0.02         # secondi di dissolvenza fra due pezzi
+
+    def __init__(self, entry: tuple, speed: float):
+        import numpy as np
+        samples, self.rate = entry
+        self.speed = speed
+        self._source = samples
+        n = len(samples)
+        self.samples = np.zeros((int(round(n / speed)), samples.shape[1]), dtype=np.int16)
+        chunk = int(self.CHUNK_SECONDS * self.rate)
+        self._bounds = [(a, min(n, a + chunk)) for a in range(0, n, chunk)] or [(0, 0)]
+        self._done = [False] * len(self._bounds)
+        self._order: List[int] = []
+        self._cond = threading.Condition()
+        self._cancelled = False
+        self._thread: Optional[threading.Thread] = None
+
+    @property
+    def complete(self) -> bool:
+        return all(self._done)
+
+    def entry(self) -> tuple:
+        return self.samples, self.rate
+
+    def _chunk_at(self, seconds: float) -> int:
+        frame = int(max(0.0, seconds) * self.rate)
+        return min(len(self._bounds) - 1, frame // max(1, int(self.CHUNK_SECONDS * self.rate)))
+
+    def start_from(self, seconds: float):
+        """Riempie prima dal pezzo di 'seconds' (il thread parte la prima volta)."""
+        first = self._chunk_at(seconds)
+        with self._cond:
+            count = len(self._bounds)
+            # da li' in fondo, poi all'indietro verso l'inizio: cosi' ogni pezzo
+            # trova scritto un solo vicino, a cui allinearsi (vedi _fill)
+            self._order = [i for i in list(range(first, count)) + list(range(first - 1, -1, -1))
+                           if not self._done[i]]
+            if self._thread is None:
+                self._thread = threading.Thread(target=self._work, daemon=True)
+                self._thread.start()
+            self._cond.notify_all()
+
+    def wait_ready(self, seconds: float, timeout: Optional[float] = None) -> bool:
+        """Aspetta il pezzo di 'seconds' (secondi del brano); False se scade o
+        e' annullato."""
+        index = self._chunk_at(seconds)
+        with self._cond:
+            return self._cond.wait_for(lambda: self._done[index] or self._cancelled, timeout) and \
+                self._done[index]
+
+    def cancel(self):
+        with self._cond:
+            self._cancelled = True
+            self._cond.notify_all()
+
+    def _work(self):
+        while True:
+            with self._cond:
+                if self._cancelled or not self._order:
+                    return
+                index = self._order.pop(0)
+            try:
+                self._fill(index)
+            except Exception:
+                log.warning("Rallentamento dell'ascolto non riuscito", exc_info=True)
+            with self._cond:
+                self._done[index] = True
+                self._cond.notify_all()
+
+    def _fill(self, index: int):
+        import numpy as np
+        from .audio_tracks import stretched
+        a, b = self._bounds[index]
+        if b <= a:
+            return
+        pad = int(self.PAD_SECONDS * self.rate)
+        fade = int(self.CROSSFADE * self.rate / self.speed)
+        lo, hi = max(0, a - pad), min(len(self._source), b + pad)
+        x = self._source[lo:hi].astype(np.float32) / 32767.0
+        y = stretched(x, self.rate, 1.0 / self.speed)
+        y = np.clip(np.round(y * 32767.0), -32768, 32767)
+        total = len(self.samples)
+        origin = int(round(lo / self.speed))              # frame di uscita di y[0]
+        out_a = int(round(a / self.speed))
+        out_b = total if b >= len(self._source) else min(total, int(round(b / self.speed)) + fade)
+        start, stop = max(out_a, origin), min(out_b, origin + len(y))
+        if stop <= start:
+            return
+        joined = index > 0 and self._done[index - 1]
+        joined_next = index + 1 < len(self._bounds) and self._done[index + 1] and out_b < total
+        if joined or joined_next:
+            # le fasi dei due pezzi non coincidono: si sposta il pezzo (di
+            # pochi ms) dove la sua testa (o la coda) somiglia di piu' a quel
+            # che il vicino ha gia' scritto, se no la dissolvenza incrociata
+            # fa un buco di volume
+            at = start if joined else out_b - fade
+            shift = self._best_shift(y, at - origin, self.samples[at:at + fade])
+            origin -= shift
+            start, stop = max(out_a, origin), min(out_b, origin + len(y))
+            if stop <= start:
+                return
+        part = y[start - origin:stop - origin]
+        # testa e coda condivise con i pezzi vicini: se il vicino c'e' gia',
+        # dissolvenza incrociata con quel che ha scritto
+        weight = np.ones(len(part), dtype=np.float32)
+        if joined:
+            head = min(fade, len(part))
+            weight[:head] = np.linspace(0.0, 1.0, head, endpoint=False, dtype=np.float32)
+        if joined_next:
+            tail = min(fade, len(part))
+            weight[len(part) - tail:] = np.minimum(weight[len(part) - tail:],
+                                                   np.linspace(1.0, 0.0, tail, dtype=np.float32))
+        old = self.samples[start:stop].astype(np.float32)
+        mixed = part * weight[:, None] + old * (1.0 - weight[:, None])
+        self.samples[start:stop] = np.clip(np.round(mixed), -32768, 32767).astype(np.int16)
+
+    ALIGN_SECONDS = 0.012    # spostamento massimo di un pezzo per allinearne la fase
+
+    def _best_shift(self, y, at: int, previous) -> int:
+        """Lo spostamento (in frame, +/- ALIGN_SECONDS) di y per cui y[at:...]
+        somiglia di piu' a 'previous' (la coda gia' scritta del vicino)."""
+        import numpy as np
+        reach = int(self.ALIGN_SECONDS * self.rate)
+        ref = previous.astype(np.float32).sum(axis=1)
+        if len(ref) == 0 or not ref.any():
+            return 0
+        mono = y.sum(axis=1)
+        best, best_score = 0, -np.inf
+        for shift in range(-reach, reach + 1):
+            lo = at + shift
+            if lo < 0 or lo + len(ref) > len(mono):
+                continue
+            seg = mono[lo:lo + len(ref)]
+            score = float(np.dot(seg, ref)) / (float(np.linalg.norm(seg)) * float(np.linalg.norm(ref)) + 1e-9)
+            if score > best_score:
+                best, best_score = shift, score
+        return best
+
+
+def _store_when_complete(key: str, job: "SlowedMix"):
+    """Mette in cache il mix rallentato quando e' tutto pronto."""
+    with job._cond:
+        job._cond.wait_for(lambda: job.complete or job._cancelled)
+    if job.complete:
+        _cache_put(key, job.entry())
+
+
+# Il rallentamento in corso (uno solo: un brano diverso o un'altra velocita'
+# annulla quello vecchio), per chiave della cache.
+_slowed_job: Optional[Tuple[str, SlowedMix]] = None
+_slowed_job_lock = threading.Lock()
+
+
+def slowed_mix(key: str, entry: tuple, speed: float, start_seconds: float) -> SlowedMix:
+    """Il SlowedMix di 'key' (quello in corso, se e' lo stesso), che riempie
+    da 'start_seconds'."""
+    global _slowed_job
+    with _slowed_job_lock:
+        if _slowed_job is not None and _slowed_job[0] != key:
+            _slowed_job[1].cancel()
+            _slowed_job = None
+        if _slowed_job is None:
+            _slowed_job = (key, SlowedMix(entry, speed))
+        job = _slowed_job[1]
+    job.start_from(start_seconds)
+    return job
+
+
 COMPARE_MODES = ("result", "sequence", "together")
 COMPARE_GAP_SECONDS = 0.6
 
@@ -1384,6 +1676,469 @@ def describe_playback_engine() -> str:
     return tr("nessun motore di riproduzione trovato")
 
 
+class _PlayJob:
+    """Una riproduzione di PlaybackEngine.play_file, nel suo thread (run).
+
+    I passi, nell'ordine in cui run li prova: il mix gia' in cache
+    (_play_cached), il sintetizzatore persistente (_render_with_shared_synth),
+    la CLI di fluidsynth (_render_with_cli), i player MIDI esterni
+    (_play_with_external_player). Tutto controlla il token: se nel frattempo
+    stop() o un altro play_file l'hanno cambiato, la riproduzione si
+    interrompe senza toccare lo stato della nuova."""
+
+    def __init__(self, engine: "PlaybackEngine", token: int, midi_path: str, *, on_finished,
+                 delete_after, on_audio_started, channel_overrides, start_seconds, loop_seconds,
+                 cache_key, audio_layers, reverb_room, stems, stems_offset, master_effects,
+                 master_bpm, pre_master_key, track_slots, audio_track_layers):
+        self.engine = engine
+        self.token = token
+        self.midi_path = midi_path
+        self.on_finished = on_finished
+        self.delete_after = delete_after
+        self.on_audio_started = on_audio_started
+        self.channel_overrides = channel_overrides
+        self.start_seconds = start_seconds
+        self.loop_seconds = loop_seconds
+        self.cache_key = cache_key
+        self.audio_layers = audio_layers
+        self.reverb_room = reverb_room
+        self.stems = stems
+        self.stems_offset = stems_offset
+        self.master_effects = master_effects
+        self.master_bpm = master_bpm
+        self.pre_master_key = pre_master_key
+        self.track_slots = track_slots
+        self.audio_track_layers = audio_track_layers
+        self.levels_key = pre_master_key or cache_key
+        self.fluidsynth_bin = shutil.which("fluidsynth")
+        self.soundfont = _find_soundfont() if (self.fluidsynth_bin or _shared_synth) else None
+        self.wav_path = None
+        # Le tracce con effetti o strumenti plugin si renderizzano in un
+        # thread a parte, in parallelo alla sintesi del resto del brano
+        # (vedi _start_stems): i plugin lavorano nel loro processo, quindi
+        # le due cose si sovrappongono invece di sommarsi.
+        self.stem_job = {}
+
+    def alive(self) -> bool:
+        """Questa riproduzione e' ancora quella corrente."""
+        return self.engine._play_token == self.token
+
+    # ------------------------------------------------------------ processi
+
+    def _spawn(self, cmd, **kwargs):
+        """Avvia cmd come engine._proc, ma solo se questa riproduzione non
+        e' stata nel frattempo fermata o sostituita (None altrimenti):
+        controllo e avvio sono atomici rispetto a stop()."""
+        engine = self.engine
+        with engine._proc_lock:
+            if not self.alive():
+                return None
+            proc = subprocess.Popen(cmd, **kwargs)
+            engine._proc = proc
+            engine._starting = False
+            return proc
+
+    def _start(self, cmd, **kwargs):
+        proc = self._spawn(cmd, **kwargs)
+        if proc is not None and self.on_audio_started:
+            self.on_audio_started()
+        return proc
+
+    def _run_process(self, cmd, **kwargs):
+        proc = self._start(cmd, **kwargs)
+        if proc is not None:
+            proc.wait()
+
+    # ------------------------------------------------------------ streaming
+
+    def _stream_samples(self, entry) -> bool:
+        """Riproduce (bloccante) campioni gia' renderizzati con
+        core.audio_stream. False se lo stream non si apre (si ripiega
+        allora sul player esterno)."""
+        engine = self.engine
+        samples, rate = entry
+        engine.master_levels = engine._levels_of(samples, rate)
+        speed = engine.speed if self.cache_key is not None else 1.0
+        if speed < 1.0 - 1e-6:
+            samples = self._slowed_samples(entry, speed)
+            if samples is None or not self.alive():
+                return True
+        scale = rate / speed
+        player = audio_stream.PcmPlayer(samples, rate)
+        player.set_loop(None if self.loop_seconds is None else
+                        (self.loop_seconds[0] * scale, self.loop_seconds[1] * scale))
+        with engine._proc_lock:
+            if not self.alive():
+                return True
+            engine._playing_speed = speed
+            try:
+                player.start(self.start_seconds * scale)
+            except Exception:
+                log.warning("Stream audio non avviabile: si usa il player esterno", exc_info=True)
+                return False
+            engine._pcm_player = player
+            engine._starting = False
+        if self.on_audio_started:
+            self.on_audio_started()
+        player.wait()
+        return True
+
+    def _slowed_samples(self, entry, speed):
+        """Rallenta l'ascolto: il mix gia' pronto, rallentato una volta per
+        velocita' (in cache). None se nel frattempo la riproduzione e'
+        stata fermata."""
+        slow_key = f"{self.cache_key}|speed{speed:.3f}"
+        slow = _cache_get(slow_key)
+        if slow is None:
+            # si comincia appena e' pronto il pezzo da cui si parte;
+            # il resto si riempie mentre si ascolta (vedi SlowedMix)
+            job = slowed_mix(slow_key, entry, speed, self.start_seconds)
+            self.engine._rendering = self.token
+            try:
+                while not job.wait_ready(self.start_seconds, timeout=0.2):
+                    if not self.alive():
+                        return None
+            finally:
+                self.engine._rendering = None
+            if job.complete:
+                _cache_put(slow_key, job.entry())
+            else:
+                threading.Thread(target=_store_when_complete, args=(slow_key, job), daemon=True).start()
+            slow = job.entry()
+        return slow[0]
+
+    # ------------------------------------------------------------ tracce con effetti e mix
+
+    def _start_stems(self):
+        stems, stem_job = self.stems, self.stem_job
+        if not stems or stem_job:
+            return
+        stem_job["samples"] = []
+        stem_job["named"] = []
+        stem_job["interrupted"] = False
+        progress = [0, len(stems)]
+        self.engine.stem_progress = tuple(progress)
+
+        def done():
+            progress[0] += 1
+            if self.alive():
+                self.engine.stem_progress = tuple(progress)
+
+        def work():
+            from .effect_render import render_stems
+            try:
+                # Uno Stop non interrompe le tracce in preparazione: finiscono
+                # in sottofondo e vanno in cache, cosi' il Play che segue le
+                # trova pronte invece di ricominciare (con i profili NAM ci
+                # vuole anche un minuto, e lo Stop arriva spesso proprio
+                # mentre si aspetta).
+                for stem, samples in zip(stems, render_stems(stems, None, on_done=done)):
+                    if samples is not None:
+                        stem_job["samples"].append((samples, -self.stems_offset))
+                        stem_job["named"].append((stem.track_name, samples))
+            except RuntimeError:
+                stem_job["interrupted"] = True
+            except Exception:
+                log.warning("Rendering delle tracce con effetti non riuscito", exc_info=True)
+            finally:
+                # i file temporanei servono fino a qui (vedi _cleanup)
+                for stem in stems:
+                    stem.cleanup()
+
+        stem_job["thread"] = threading.Thread(target=work, daemon=True)
+        stem_job["thread"].start()
+
+    def _add_audio_layers(self, wav_path):
+        """Mixa le clip audio e le tracce con effetti (renderizzate ed
+        elaborate da _start_stems, o prese dalla cache: vedi
+        core.effect_render) sopra al WAV appena renderizzato (anche
+        vuoto, per un brano di sole tracce audio). In streaming torna il
+        mix in memoria (int16, frequenza), senza riscriverlo su disco
+        per poi rileggerlo; altrimenti lo scrive in wav_path e torna
+        None."""
+        if not (self.audio_layers or self.stems) or not os.path.exists(wav_path):
+            return None
+        stem_job = self.stem_job
+        try:
+            from .audio_tracks import float_to_int16, mix_layers_into_wav, mix_layers_with_wav
+            self._start_stems()
+            if stem_job:
+                stem_job["thread"].join()
+                if self.alive():
+                    self.engine.stem_progress = None
+                if stem_job["interrupted"]:
+                    return None
+            if not self.alive():
+                return None
+            stem_samples = stem_job.get("samples", [])
+            if audio_stream.is_available():
+                mixed, rate = mix_layers_with_wav(wav_path, self.audio_layers or [], stems=stem_samples)
+                return float_to_int16(mixed), rate
+            mix_layers_into_wav(wav_path, self.audio_layers or [], stems=stem_samples)
+        except RuntimeError:
+            return None   # interrotta
+        except Exception:
+            log.warning("Mix delle tracce audio non riuscito", exc_info=True)
+        return None
+
+    def _with_master(self, entry):
+        """Il mix (int16) con la catena del master; il mix di partenza
+        resta in cache per i ritocchi successivi del solo master."""
+        if not self.master_effects:
+            return entry
+        from .effect_render import apply_master_int16
+        _cache_put(self.pre_master_key, entry)
+        try:
+            return apply_master_int16(entry, self.master_effects, self.master_bpm)
+        except Exception:
+            log.warning("Catena del master non applicata", exc_info=True)
+            return entry
+
+    # ------------------------------------------------------------ ascolto del WAV renderizzato
+
+    def _play_rendered(self, wav_path, mixed=None) -> bool:
+        """Riproduce un WAV appena renderizzato, o il mix gia' in memoria
+        'mixed' (vedi _add_audio_layers): in streaming se possibile
+        (memorizzandolo in cache), altrimenti col player esterno. False
+        se non c'e' modo di riprodurlo."""
+        if mixed is not None and len(mixed[0]) == 0:
+            return False
+        if mixed is not None and not audio_stream.is_available():
+            mixed = None
+        if audio_stream.is_available():
+            entry = mixed
+            if entry is None:
+                try:
+                    entry = audio_stream.load_wav_samples(wav_path)
+                except Exception:
+                    log.warning("WAV renderizzato non leggibile: %s", wav_path, exc_info=True)
+            if entry is not None:
+                entry = self._with_master(entry)
+                if not self.alive():
+                    return True
+                _cache_put(self.cache_key, entry)
+                if self._stream_samples(entry):
+                    return True
+        player_cmd = _find_audio_player()
+        if player_cmd and mixed is not None:
+            # lo stream non si e' aperto: il player esterno vuole il mix su disco
+            import numpy as np
+            from .audio_tracks import write_wav
+            write_wav(wav_path, mixed[0].astype(np.float32) / 32767.0, mixed[1], bits=16)
+        if player_cmd:
+            if self.master_effects:
+                try:
+                    from .audio_tracks import mix_layers_into_wav
+                    from .effect_render import apply_master
+                    mix_layers_into_wav(wav_path, [], post=lambda x, rate: apply_master(
+                        x, rate, self.master_effects, self.master_bpm))
+                except Exception:
+                    log.warning("Catena del master non applicata", exc_info=True)
+            self._play_wav(player_cmd, wav_path)
+            return True
+        return False
+
+    def _play_wav(self, player_cmd, wav_path):
+        """Riproduce wav_path in modo bloccante. Gestisce anche il caso
+        speciale 'winsound' (Windows senza player CLI installato): non e'
+        un subprocess, quindi non passa da _start/engine._proc, ma da
+        engine._using_winsound (usato da stop() per interromperlo)."""
+        if player_cmd != _WINSOUND_MARKER:
+            self._run_process(player_cmd + [wav_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        engine = self.engine
+        with engine._proc_lock:
+            if not self.alive():
+                return
+            engine._using_winsound = True
+        if self.on_audio_started:
+            self.on_audio_started()
+        try:
+            # SND_ASYNC e' essenziale: senza, PlaySound() e' sincrona e
+            # blocca il thread chiamante fino alla fine naturale del WAV.
+            # winmm serializza le chiamate PlaySound dello stesso processo,
+            # quindi il PlaySound(None, SND_PURGE) di stop() (chiamato dal
+            # thread GUI) resterebbe A SUA VOLTA bloccato finche' quella
+            # sincrona non termina da sola - cioe' per l'intera durata del
+            # brano: il pulsante Stop (e con esso l'intera GUI, che gira
+            # sullo stesso thread) resterebbe congelato fino alla fine del
+            # brano. Con SND_ASYNC la chiamata torna subito e l'attesa del
+            # completamento (per sapere quando il brano e' finito da solo)
+            # si fa qui con un semplice polling sul token di generazione,
+            # che stop() puo' interrompere in qualunque momento.
+            _winsound.PlaySound(wav_path, _winsound.SND_FILENAME | _winsound.SND_ASYNC)
+            deadline = time.monotonic() + _wav_duration_seconds(wav_path)
+            while time.monotonic() < deadline and self.alive():
+                time.sleep(0.05)
+        finally:
+            _winsound.PlaySound(None, _winsound.SND_PURGE)
+            engine._using_winsound = False
+
+    def _play_result(self, ok: bool, wav_path: str, mixed) -> bool:
+        """Dopo un rendering (riuscito se ok): il mix in memoria, se c'e',
+        altrimenti il WAV su disco. True se e' stato riprodotto."""
+        if mixed is not None and self._play_rendered(wav_path, mixed):
+            return True
+        if ok and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
+            return self._play_rendered(wav_path)
+        return False
+
+    # ------------------------------------------------------------ i passi di run
+
+    def _play_cached(self) -> bool:
+        """Il mix gia' in cache (o quello prima del master, se e' cambiato
+        solo il master). True se e' stato riprodotto."""
+        cached = _cache_get(self.cache_key)
+        if cached is None and self.master_effects:
+            # Cambiato solo il master: si rielabora il mix gia' pronto.
+            before = _cache_get(self.pre_master_key)
+            if before is not None:
+                cached = self._with_master(before)
+                _cache_put(self.cache_key, cached)
+        if cached is None:
+            return False
+        self.engine.track_levels = _track_levels_get(self.levels_key)
+        return self._stream_samples(cached)
+
+    def _new_wav_path(self) -> str:
+        if self.wav_path is None:
+            self.wav_path = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+        self.engine._render_tmp = self.wav_path
+        return self.wav_path
+
+    def _render_with_shared_synth(self) -> bool:
+        """Il sintetizzatore persistente (libreria fluidsynth). True se la
+        riproduzione e' finita qui (suonata o interrotta)."""
+        engine = self.engine
+        wav_path = self._new_wav_path()
+        engine._rendering = self.token
+        channel_levels = {}
+        try:
+            rendered = _shared_synth.render_to_wav(
+                self.midi_path, wav_path, self.soundfont,
+                lambda: not self.alive(),
+                channel_overrides=self.channel_overrides, reverb_room=self.reverb_room,
+                channel_levels=channel_levels)
+        finally:
+            engine._rendering = None
+        if not self.alive():
+            return True
+        mixed = self._add_audio_layers(wav_path) if rendered else None
+        if rendered and self.cache_key is not None:
+            try:
+                engine.track_levels = _assemble_track_levels(
+                    channel_levels, self.track_slots, self.stem_job.get("named"), self.audio_track_layers)
+                _track_levels_put(self.levels_key, engine.track_levels)
+            except Exception:
+                log.warning("Livelli delle tracce non misurati", exc_info=True)
+        return self._play_result(rendered, wav_path, mixed)
+
+    def _render_with_cli(self) -> None:
+        """La CLI di fluidsynth: rendering offline e, se fallisce, la
+        riproduzione in tempo reale."""
+        from .settings import get_playback_gain
+        gain = get_playback_gain()
+        wav_path = self._new_wav_path()
+        render_cmd = [
+            self.fluidsynth_bin, "-ni",
+            "-r", "48000",             # sample rate
+            "-g", str(gain),             # gain (default fluidsynth e' spesso 0.2, molto basso)
+            "-o", "synth.reverb.active=1",
+            "-o", "synth.chorus.active=1",
+            *reverb_cli_options(self.reverb_room or DEFAULT_REVERB_ROOM),
+            "-o", f"synth.gain={gain}",
+            "-F", wav_path,
+            self.soundfont, self.midi_path,
+        ]
+        # Popen (non subprocess.run) e assegnato a engine._proc: per un
+        # brano lungo/complesso il rendering offline puo' richiedere diversi
+        # secondi, e senza un riferimento interrompibile stop() non avrebbe
+        # alcun processo su cui agire finche' il rendering non termina da solo.
+        render_proc = self._spawn(render_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if render_proc is None:
+            return
+        returncode = render_proc.wait()
+        if not self.alive():
+            return
+        mixed = self._add_audio_layers(wav_path) if returncode == 0 else None
+        if self._play_result(returncode == 0, wav_path, mixed) or not self.alive():
+            return
+        # rendering offline fallito: ripiega sulla riproduzione fluidsynth in tempo reale
+        self._run_process([self.fluidsynth_bin, "-ni", "-g", str(gain), self.soundfont, self.midi_path],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def _play_with_external_player(self) -> None:
+        """Senza fluidsynth: timidity, wildmidi o il programma del sistema."""
+        midi_path = self.midi_path
+        for player in ("timidity", "wildmidi"):
+            if shutil.which(player):
+                self._run_process([player, midi_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
+        opener = _system_opener()
+        if opener:
+            self._run_process([opener, midi_path])
+            return
+        if sys.platform != "win32":
+            return
+        engine = self.engine
+        handle = _win_launch_default_app(midi_path)
+        if handle:
+            engine._win_proc_handle = handle
+            if not self.alive():
+                _win_terminate_process(handle)
+                engine._win_proc_handle = None
+                return
+            if self.on_audio_started:
+                self.on_audio_started()
+            _win_wait_process(handle)
+            if engine._win_proc_handle is not None:
+                # Terminato da solo (non tramite stop(), che azzera il
+                # riferimento prima di chiudere l'handle): va comunque chiuso qui.
+                ctypes.windll.kernel32.CloseHandle(handle)
+                engine._win_proc_handle = None
+            return
+        if hasattr(os, "startfile"):
+            # ShellExecuteEx non disponibile per qualche motivo:
+            # ultima spiaggia, non interrompibile.
+            os.startfile(midi_path)
+
+    def run(self):
+        try:
+            if self._play_cached():
+                return
+            if self.soundfont and (_shared_synth or self.fluidsynth_bin):
+                self._start_stems()
+            if _shared_synth and self.soundfont:
+                if self._render_with_shared_synth():
+                    return
+                # sintesi persistente non disponibile/fallita: ripiega sul
+                # binario CLI (se presente) o oltre, come prima
+            if self.fluidsynth_bin and self.soundfont:
+                self._render_with_cli()
+                return
+            self._play_with_external_player()
+        finally:
+            self._cleanup()
+
+    def _cleanup(self):
+        for path, wanted in ((self.wav_path, True), (self.midi_path, self.delete_after)):
+            if wanted and path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        if not self.stem_job:
+            for stem in self.stems or []:
+                stem.cleanup()
+        engine = self.engine
+        with engine._proc_lock:
+            if self.alive():
+                engine._starting = False
+        if self.on_finished:
+            self.on_finished(engine.backend_available())
+
+
+
 class PlaybackEngine:
     def __init__(self):
         self._proc = None
@@ -1404,12 +2159,25 @@ class PlaybackEngine:
         # di questa race: una volta superato, un thread vecchio resta
         # per sempre "non piu' valido".
         self._play_token = 0
+        # (pronte, totale) mentre si preparano le tracce con effetti o
+        # strumenti plugin prima che parta l'audio; None altrimenti (vedi
+        # play_file/_start_stems e la barra di avanzamento)
+        self.stem_progress = None
         # Serializza "controllo del token + avvio del processo" (vedi
         # _spawn in play_file) con stop(): senza, uno stop() arrivato fra il
         # controllo del token e il Popen lasciava partire comunque l'audio
         # del thread vecchio, fuori dal controllo di Stop.
         self._proc_lock = threading.Lock()
-        self._rendering = False
+        # Token (vedi _play_token) del rendering in corso, None se nessuno:
+        # un rendering che uno Stop ha superato finisce in sottofondo, ma
+        # non conta piu' come riproduzione (vedi is_playing), altrimenti il
+        # Play subito dopo lo Stop diventava una Pausa senza effetto.
+        self._rendering = None
+        # Da play() finche' l'audio non parte davvero (o la riproduzione
+        # finisce): fra il rendering e l'apertura dello stream is_playing()
+        # non deve dire False, o chi controlla se e' finita la ferma subito
+        # (l'anteprima dei box, vedi ArrangementView._check_preview_still_playing).
+        self._starting = False
         self._using_winsound = False
         self._win_proc_handle = None
         self._pcm_player = None   # audio_stream.PcmPlayer in corso, se in streaming
@@ -1475,7 +2243,7 @@ class PlaybackEngine:
         # ancora effettivamente in corso su Windows senza un player CLI
         # installato (winsound) o senza alcun synth (player MIDI di sistema).
         player = self._pcm_player
-        return (self._rendering or self._using_winsound
+        return (self._starting or self._rendering == self._play_token or self._using_winsound
                 or (player is not None and player.is_active())
                 or self._win_proc_handle is not None
                 or (self._proc is not None and self._proc.poll() is None))
@@ -1620,370 +2388,18 @@ class PlaybackEngine:
         self.stop()
         with self._proc_lock:
             self._play_token += 1
-            my_token = self._play_token
+            token = self._play_token
             self.master_levels = None   # quelli del rendering prima non valgono piu'
             self.track_levels = None
-
-        fluidsynth_bin = shutil.which("fluidsynth")
-        soundfont = _find_soundfont() if (fluidsynth_bin or _shared_synth) else None
-
-        def _spawn(cmd, **kwargs):
-            """Avvia cmd come self._proc, ma solo se questa riproduzione non
-            e' stata nel frattempo fermata o sostituita (None altrimenti):
-            controllo e avvio sono atomici rispetto a stop()."""
-            with self._proc_lock:
-                if self._play_token != my_token:
-                    return None
-                proc = subprocess.Popen(cmd, **kwargs)
-                self._proc = proc
-                return proc
-
-        def _start(cmd, **kwargs):
-            proc = _spawn(cmd, **kwargs)
-            if proc is not None and on_audio_started:
-                on_audio_started()
-            return proc
-
-        def _run(cmd, **kwargs):
-            proc = _start(cmd, **kwargs)
-            if proc is not None:
-                proc.wait()
-
-        def _stream_samples(entry) -> bool:
-            """Riproduce (bloccante) campioni gia' renderizzati con
-            core.audio_stream. False se lo stream non si apre (si ripiega
-            allora sul player esterno)."""
-            samples, rate = entry
-            self.master_levels = self._levels_of(samples, rate)
-            speed = self.speed if cache_key is not None else 1.0
-            if speed < 1.0 - 1e-6:
-                # Rallenta l'ascolto: il mix gia' pronto, rallentato una
-                # volta per velocita' (in cache)
-                slow_key = f"{cache_key}|speed{speed:.3f}"
-                slow = _cache_get(slow_key)
-                if slow is None:
-                    self._rendering = True
-                    try:
-                        slow = slowed_entry(entry, speed)
-                    finally:
-                        self._rendering = False
-                    _cache_put(slow_key, slow)
-                if self._play_token != my_token:
-                    return True
-                samples = slow[0]
-            scale = rate / speed
-            player = audio_stream.PcmPlayer(samples, rate)
-            player.set_loop(None if loop_seconds is None else
-                            (loop_seconds[0] * scale, loop_seconds[1] * scale))
-            with self._proc_lock:
-                if self._play_token != my_token:
-                    return True
-                self._playing_speed = speed
-                try:
-                    player.start(start_seconds * scale)
-                except Exception:
-                    log.warning("Stream audio non avviabile: si usa il player esterno", exc_info=True)
-                    return False
-                self._pcm_player = player
-            if on_audio_started:
-                on_audio_started()
-            player.wait()
-            return True
-
-        # Le tracce con effetti o strumenti plugin si renderizzano in un
-        # thread a parte, in parallelo alla sintesi del resto del brano
-        # (vedi _start_stems): i plugin lavorano nel loro processo, quindi
-        # le due cose si sovrappongono invece di sommarsi.
-        stem_job = {}
-
-        def _start_stems():
-            if not stems or stem_job:
-                return
-            stem_job["samples"] = []
-            stem_job["named"] = []
-            stem_job["interrupted"] = False
-
-            def work():
-                from .effect_render import render_stems
-                try:
-                    for stem, samples in zip(stems, render_stems(stems, lambda: self._play_token != my_token)):
-                        if samples is not None:
-                            stem_job["samples"].append((samples, -stems_offset))
-                            stem_job["named"].append((stem.track_name, samples))
-                except RuntimeError:
-                    stem_job["interrupted"] = True
-                except Exception:
-                    log.warning("Rendering delle tracce con effetti non riuscito", exc_info=True)
-                finally:
-                    # i file temporanei servono fino a qui (vedi il finally di run)
-                    for stem in stems:
-                        stem.cleanup()
-
-            stem_job["thread"] = threading.Thread(target=work, daemon=True)
-            stem_job["thread"].start()
-
-        def _add_audio_layers(wav_path):
-            """Mixa le clip audio e le tracce con effetti (renderizzate ed
-            elaborate da _start_stems, o prese dalla cache: vedi
-            core.effect_render) sopra al WAV appena renderizzato (anche
-            vuoto, per un brano di sole tracce audio). In streaming torna il
-            mix in memoria (int16, frequenza), senza riscriverlo su disco
-            per poi rileggerlo; altrimenti lo scrive in wav_path e torna
-            None."""
-            if not (audio_layers or stems) or not os.path.exists(wav_path):
-                return None
-            try:
-                from .audio_tracks import float_to_int16, mix_layers_into_wav, mix_layers_with_wav
-                _start_stems()
-                if stem_job:
-                    stem_job["thread"].join()
-                    if stem_job["interrupted"]:
-                        return None
-                if self._play_token != my_token:
-                    return None
-                stem_samples = stem_job.get("samples", [])
-                if audio_stream.is_available():
-                    mixed, rate = mix_layers_with_wav(wav_path, audio_layers or [], stems=stem_samples)
-                    return float_to_int16(mixed), rate
-                mix_layers_into_wav(wav_path, audio_layers or [], stems=stem_samples)
-            except RuntimeError:
-                return None   # interrotta
-            except Exception:
-                log.warning("Mix delle tracce audio non riuscito", exc_info=True)
-            return None
-
-        def _with_master(entry):
-            """Il mix (int16) con la catena del master; il mix di partenza
-            resta in cache per i ritocchi successivi del solo master."""
-            if not master_effects:
-                return entry
-            from .effect_render import apply_master_int16
-            _cache_put(pre_master_key, entry)
-            try:
-                return apply_master_int16(entry, master_effects, master_bpm)
-            except Exception:
-                log.warning("Catena del master non applicata", exc_info=True)
-                return entry
-
-        def _play_rendered(wav_path, mixed=None) -> bool:
-            """Riproduce un WAV appena renderizzato, o il mix gia' in memoria
-            'mixed' (vedi _add_audio_layers): in streaming se possibile
-            (memorizzandolo in cache), altrimenti col player esterno. False
-            se non c'e' modo di riprodurlo."""
-            if mixed is not None and len(mixed[0]) == 0:
-                return False
-            if mixed is not None and not audio_stream.is_available():
-                mixed = None
-            if audio_stream.is_available():
-                entry = mixed
-                if entry is None:
-                    try:
-                        entry = audio_stream.load_wav_samples(wav_path)
-                    except Exception:
-                        log.warning("WAV renderizzato non leggibile: %s", wav_path, exc_info=True)
-                if entry is not None:
-                    entry = _with_master(entry)
-                    if self._play_token != my_token:
-                        return True
-                    _cache_put(cache_key, entry)
-                    if _stream_samples(entry):
-                        return True
-            player_cmd = _find_audio_player()
-            if player_cmd and mixed is not None:
-                # lo stream non si e' aperto: il player esterno vuole il mix su disco
-                import numpy as np
-                from .audio_tracks import write_wav
-                write_wav(wav_path, mixed[0].astype(np.float32) / 32767.0, mixed[1], bits=16)
-            if player_cmd:
-                if master_effects:
-                    try:
-                        from .audio_tracks import mix_layers_into_wav
-                        from .effect_render import apply_master
-                        mix_layers_into_wav(wav_path, [], post=lambda x, rate: apply_master(
-                            x, rate, master_effects, master_bpm))
-                    except Exception:
-                        log.warning("Catena del master non applicata", exc_info=True)
-                _play_wav(player_cmd, wav_path)
-                return True
-            return False
-
-        def _play_wav(player_cmd, wav_path):
-            """Riproduce wav_path in modo bloccante. Gestisce anche il caso
-            speciale 'winsound' (Windows senza player CLI installato): non e'
-            un subprocess, quindi non passa da _start/self._proc, ma da
-            self._using_winsound (usato da stop() per interromperlo)."""
-            if player_cmd == _WINSOUND_MARKER:
-                with self._proc_lock:
-                    if self._play_token != my_token:
-                        return
-                    self._using_winsound = True
-                if on_audio_started:
-                    on_audio_started()
-                try:
-                    # SND_ASYNC e' essenziale: senza, PlaySound() e' sincrona
-                    # e blocca il thread chiamante fino alla fine naturale
-                    # del WAV. winmm serializza le chiamate PlaySound dello
-                    # stesso processo, quindi il PlaySound(None, SND_PURGE)
-                    # di stop() (chiamato dal thread GUI) resterebbe A SUA
-                    # VOLTA bloccato finche' quella sincrona non termina da
-                    # sola — cioe' per l'intera durata del brano: il
-                    # pulsante Stop (e con esso l'intera GUI, che gira sullo
-                    # stesso thread) resterebbe congelato fino alla fine del
-                    # brano. Con SND_ASYNC la
-                    # chiamata torna subito e l'attesa del completamento (per
-                    # sapere quando il brano e' finito da solo) si fa qui con
-                    # un semplice polling sul token di generazione, che stop()
-                    # puo' interrompere in qualunque momento.
-                    _winsound.PlaySound(wav_path, _winsound.SND_FILENAME | _winsound.SND_ASYNC)
-                    deadline = time.monotonic() + _wav_duration_seconds(wav_path)
-                    while time.monotonic() < deadline and self._play_token == my_token:
-                        time.sleep(0.05)
-                finally:
-                    _winsound.PlaySound(None, _winsound.SND_PURGE)
-                    self._using_winsound = False
-                return
-            _run(player_cmd + [wav_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        levels_key = pre_master_key or cache_key
-
-        def run():
-            wav_path = None
-            try:
-                cached = _cache_get(cache_key)
-                if cached is None and master_effects:
-                    # Cambiato solo il master: si rielabora il mix gia' pronto.
-                    before = _cache_get(pre_master_key)
-                    if before is not None:
-                        cached = _with_master(before)
-                        _cache_put(cache_key, cached)
-                if cached is not None:
-                    self.track_levels = _track_levels_get(levels_key)
-                if cached is not None and _stream_samples(cached):
-                    return
-                if soundfont and (_shared_synth or fluidsynth_bin):
-                    _start_stems()
-                if _shared_synth and soundfont:
-                    wav_path = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
-                    self._render_tmp = wav_path
-                    self._rendering = True
-                    channel_levels = {}
-                    try:
-                        rendered = _shared_synth.render_to_wav(
-                            midi_path, wav_path, soundfont,
-                            lambda: self._play_token != my_token,
-                            channel_overrides=channel_overrides, reverb_room=reverb_room,
-                            channel_levels=channel_levels)
-                    finally:
-                        self._rendering = False
-                    if self._play_token != my_token:
-                        return
-                    mixed = _add_audio_layers(wav_path) if rendered else None
-                    if rendered and cache_key is not None:
-                        try:
-                            self.track_levels = _assemble_track_levels(
-                                channel_levels, track_slots, stem_job.get("named"), audio_track_layers)
-                            _track_levels_put(levels_key, self.track_levels)
-                        except Exception:
-                            log.warning("Livelli delle tracce non misurati", exc_info=True)
-                    if mixed is not None and _play_rendered(wav_path, mixed):
-                        return
-                    if rendered and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
-                        if _play_rendered(wav_path):
-                            return
-                    # sintesi persistente non disponibile/fallita: ripiega sul
-                    # binario CLI (se presente) o oltre, come prima
-
-                if fluidsynth_bin and soundfont:
-                    from .settings import get_playback_gain
-                    gain = get_playback_gain()
-                    wav_path = wav_path or tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
-                    self._render_tmp = wav_path
-                    render_cmd = [
-                        fluidsynth_bin, "-ni",
-                        "-r", "48000",             # sample rate
-                        "-g", str(gain),             # gain (default fluidsynth e' spesso 0.2, molto basso)
-                        "-o", "synth.reverb.active=1",
-                        "-o", "synth.chorus.active=1",
-                        *reverb_cli_options(reverb_room or DEFAULT_REVERB_ROOM),
-                        "-o", f"synth.gain={gain}",
-                        "-F", wav_path,
-                        soundfont, midi_path,
-                    ]
-                    # Popen (non subprocess.run) e assegnato a self._proc: per
-                    # un brano lungo/complesso il rendering offline puo'
-                    # richiedere diversi secondi, e senza un riferimento
-                    # interrompibile stop() non avrebbe alcun processo su cui
-                    # agire finche' il rendering non termina da solo.
-                    render_proc = _spawn(render_cmd, stdout=subprocess.DEVNULL,
-                                         stderr=subprocess.DEVNULL)
-                    if render_proc is None:
-                        return
-                    returncode = render_proc.wait()
-                    if self._play_token != my_token:
-                        return
-                    mixed = _add_audio_layers(wav_path) if returncode == 0 else None
-                    if mixed is not None and _play_rendered(wav_path, mixed):
-                        return
-                    if returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
-                        if _play_rendered(wav_path):
-                            return
-                    if self._play_token != my_token:
-                        return
-                    # rendering offline fallito: ripiega sulla riproduzione fluidsynth in tempo reale
-                    _run([fluidsynth_bin, "-ni", "-g", str(gain), soundfont, midi_path],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    return
-
-                if shutil.which("timidity"):
-                    _run(["timidity", midi_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    return
-                if shutil.which("wildmidi"):
-                    _run(["wildmidi", midi_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    return
-                opener = _system_opener()
-                if opener:
-                    _run([opener, midi_path])
-                    return
-                if sys.platform == "win32":
-                    handle = _win_launch_default_app(midi_path)
-                    if handle:
-                        self._win_proc_handle = handle
-                        if self._play_token != my_token:
-                            _win_terminate_process(handle)
-                            self._win_proc_handle = None
-                            return
-                        if on_audio_started:
-                            on_audio_started()
-                        _win_wait_process(handle)
-                        if self._win_proc_handle is not None:
-                            # Terminato da solo (non tramite stop(), che
-                            # azzera il riferimento prima di chiudere
-                            # l'handle): va comunque chiuso qui.
-                            ctypes.windll.kernel32.CloseHandle(handle)
-                            self._win_proc_handle = None
-                        return
-                    if hasattr(os, "startfile"):
-                        # ShellExecuteEx non disponibile per qualche motivo:
-                        # ultima spiaggia, non interrompibile.
-                        os.startfile(midi_path)
-            finally:
-                if wav_path and os.path.exists(wav_path):
-                    try:
-                        os.remove(wav_path)
-                    except OSError:
-                        pass
-                if delete_after and os.path.exists(midi_path):
-                    try:
-                        os.remove(midi_path)
-                    except OSError:
-                        pass
-                if not stem_job:
-                    for stem in stems or []:
-                        stem.cleanup()
-                if on_finished:
-                    on_finished(self.backend_available())
-
-        self._thread = threading.Thread(target=run, daemon=True)
+        job = _PlayJob(self, token, midi_path, on_finished=on_finished, delete_after=delete_after,
+                       on_audio_started=on_audio_started, channel_overrides=channel_overrides,
+                       start_seconds=start_seconds, loop_seconds=loop_seconds, cache_key=cache_key,
+                       audio_layers=audio_layers, reverb_room=reverb_room, stems=stems,
+                       stems_offset=stems_offset, master_effects=master_effects, master_bpm=master_bpm,
+                       pre_master_key=pre_master_key, track_slots=track_slots,
+                       audio_track_layers=audio_track_layers)
+        self._starting = True
+        self._thread = threading.Thread(target=job.run, daemon=True)
         self._thread.start()
         return self.backend_available()
 
@@ -2042,8 +2458,10 @@ class PlaybackEngine:
         return True
 
     def stop(self):
+        self.stem_progress = None
         with self._proc_lock:
             self._play_token += 1
+            self._starting = False
             if self._proc and self._proc.poll() is None:
                 self._proc.terminate()
             self._proc = None

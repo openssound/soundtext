@@ -26,8 +26,24 @@ SILENCE_DBFS = -90.0
 @dataclass
 class MixLevels:
     block_seconds: float
-    peaks: np.ndarray        # picco di ogni blocco, 0..1 del fondo scala
+    peaks: np.ndarray        # picco di ogni blocco, 0..1 del fondo scala (il piu' alto dei canali)
     clipped: np.ndarray      # True dove il blocco clippa
+    # picco di ogni blocco per canale (blocchi, 2): sinistro e destro, per il
+    # misuratore a due barre del master; None = come peaks su tutti e due
+    channel_peaks: Optional[np.ndarray] = None
+
+    def channel_peak_between(self, start_seconds: float, end_seconds: float) -> Tuple[float, float]:
+        """Picco (0..1) del canale sinistro e del destro fra i due istanti."""
+        if self.channel_peaks is None:
+            level = self.peak_between(start_seconds, end_seconds)
+            return level, level
+        a = max(0, int(start_seconds / self.block_seconds))
+        b = max(a + 1, int(math.ceil(end_seconds / self.block_seconds)))
+        chunk = self.channel_peaks[a:b]
+        if not len(chunk):
+            return 0.0, 0.0
+        left, right = chunk.max(axis=0)
+        return float(left), float(right)
 
     def peak_between(self, start_seconds: float, end_seconds: float) -> float:
         """Picco (0..1) fra i due istanti (almeno un blocco)."""
@@ -66,16 +82,21 @@ def analyze_int16(samples: np.ndarray, rate: int) -> MixLevels:
     n = len(samples)
     n_blocks = (n + block - 1) // block
     if n == 0:
-        return MixLevels(block / rate, np.zeros(0, np.float32), np.zeros(0, bool))
+        return MixLevels(block / rate, np.zeros(0, np.float32), np.zeros(0, bool), np.zeros((0, 2), np.float32))
     # Senza convertire tutto il mix (decine di milioni di campioni): massimo
-    # e minimo per blocco direttamente sugli int16, poi il picco.
+    # e minimo per blocco e per canale direttamente sugli int16, poi il picco.
     whole = (n // block) * block
-    hi = samples[:whole].reshape(-1, block, samples.shape[1]).max(axis=(1, 2)).astype(np.int32)
-    lo = samples[:whole].reshape(-1, block, samples.shape[1]).min(axis=(1, 2)).astype(np.int32)
+    shaped = samples[:whole].reshape(-1, block, samples.shape[1])
+    hi = shaped.max(axis=1).astype(np.int32)              # (blocchi, canali)
+    lo = shaped.min(axis=1).astype(np.int32)
     if whole < n:
-        hi = np.append(hi, int(samples[whole:].max()))
-        lo = np.append(lo, int(samples[whole:].min()))
-    peaks = np.maximum(hi, -lo).astype(np.float32) / 32767.0
+        hi = np.vstack([hi, samples[whole:].max(axis=0).astype(np.int32)[None, :]])
+        lo = np.vstack([lo, samples[whole:].min(axis=0).astype(np.int32)[None, :]])
+    per_channel = np.maximum(hi, -lo).astype(np.float32) / 32767.0
+    if per_channel.shape[1] == 1:                          # mono: lo stesso livello sui due lati
+        per_channel = np.repeat(per_channel, 2, axis=1)
+    channel_peaks = np.minimum(per_channel[:, :2], 1.0)
+    peaks = per_channel.max(axis=1)
     clipped = np.zeros(n_blocks, bool)
     loud = np.flatnonzero(peaks * 32767.0 >= FULL_SCALE_INT16)
     for i in loud:          # solo i blocchi che arrivano al fondo scala
@@ -85,7 +106,7 @@ def analyze_int16(samples: np.ndarray, rate: int) -> MixLevels:
         for k in range(1, CLIP_RUN):
             run &= full[k:len(full) - CLIP_RUN + 1 + k]
         clipped[i] = bool(run.any())
-    return MixLevels(block / rate, np.minimum(peaks, 1.0), clipped)
+    return MixLevels(block / rate, np.minimum(peaks, 1.0), clipped, channel_peaks)
 
 
 def peak_dbfs(samples: np.ndarray) -> float:

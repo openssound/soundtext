@@ -1,0 +1,129 @@
+{
+    "name": "python-deps",
+    "buildsystem": "simple",
+    "build-commands": [
+        "pip3 install --verbose --exists-action=i --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} --no-build-isolation \"backports.zstd==1.8.0\" \"brotli==1.2.1\" \"cffi==2.1.1\" \"inflate64==1.0.4\" \"JACK-Client==0.5.7\" \"mido==1.3.3\" \"multivolumefile==0.2.3\" \"numpy==2.5.4\" \"packaging==26.3\" \"pedalboard==0.9.26\" \"psutil==7.2.2\" \"py7zr==1.1.4\" \"pybcj==1.0.8\" \"pycparser==3.12\" \"pycryptodomex==3.24.2\" \"pyppmd==1.3.1\" \"PySide6==6.9.3\" \"PySide6_Addons==6.9.3\" \"PySide6_Essentials==6.9.3\" \"shiboken6==6.9.3\" \"sounddevice==0.5.6\" \"st-language==2.12.2\" \"texttable==1.7.3\" \"verovio==6.4.1\""
+    ],
+    "sources": [
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/5d/6d/3c422b33d40aaca6e9d9fdd47f1a047ac499de749c887ab3dab62f731fb2/backports_zstd-1.8.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "44a9004f9e809ea56910d326d21946650369db59eb86edc0c76840f21530704c"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/65/85/4c57c3cd2eee42878677b4943086e6b36cefc50214a5447028268045ce63/brotli-1.2.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "264fd5b200f6f6170cb551a4b9fcaabf8aa846ddaefe72db4d5f49f9d3743df9"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/c0/c5/038dc2593bbc4272d87eac8c9f75692267d47f834ced888f6d81995df606/inflate64-1.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "f62a13d0327631778fa2a47c308ae2b07b2659b7bb8564783259ac65949f8c0c"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/54/dd/ba4f56992e958a2b6a4a0603a7bf69f5de275538eee4041e77e1f9882719/jack_client-0.5.7-py3-none-any.whl",
+            "sha256": "395c4c6d095a95c4fde588ba3675df2d72683737c38c8790810c73bf6629dfb6"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/fd/28/45deb15c11859d2f10702b32e71de9328a9fa494f989626916db39a9617f/mido-1.3.3-py3-none-any.whl",
+            "sha256": "01033c9b10b049e4436fca2762194ca839b09a4334091dd3c34e7f4ae674fd8a"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/22/31/ec5f46fd4c83185b806aa9c736e228cb780f13990a9cf4da0beb70025fcc/multivolumefile-0.2.3-py3-none-any.whl",
+            "sha256": "237f4353b60af1703087cf7725755a1f6fcaeeea48421e1896940cd1c920d678"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/da/24/3bd070f3269dc609d8f26b2643f62ef91bb415841c0b294805aaf7fe06da/numpy-2.5.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "6ffa07666f8da0eef81d149934a626d0d95fbd6838432a33e66245423a9062c0"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+            "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/0c/70/2035222c4ecf40f4e39bb6355d4b423bca41f4699776fac6b3e7b1f72b90/pedalboard-0.9.26-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "0f138351370b7d146f97937c1cdd156616385c1d79c679afa80cd3074b83893c"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/96/bd/72bace0bf4025af8ab4bf972394fab466d4b565cdbea805281fbee9a8dbc/py7zr-1.1.4-py3-none-any.whl",
+            "sha256": "f6f868a457a6bd485b78d26e619045718bcd0b7720a6bf97d5fe86a1523423e8"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/4b/cf/c4b0248051cdb7af7f38223db63427175e755db1f1a7905e781e923f6d53/pybcj-1.0.8-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "e5e67ec32176985bbf941185319a3fe385527b6826d457a8ec67dd43b5f0b5fa"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/05/18/38963ed164a09e2de52f2f8308937254bb7c1ec42ef6a9873d793c62f1bd/pycryptodomex-3.24.2-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "e340408a601003f235b50117cd16f87b2a5b4760765aafe93340eeaadeb0414d"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/64/fd/673d429df719affa1445611288aab6111c0bc87e51eb4677fe2421a1dd64/pyppmd-1.3.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+            "sha256": "bd00522ddfcc292304577386b6c217758c0c10e1fb9ce7877ad7d3b7b821a808"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/34/0e/1e9841cc46196c55ac3eac0b8e08044a88cc70c8cc29e9dc1e33b2ced2b7/pyside6-6.9.3-cp39-abi3-manylinux_2_28_x86_64.whl",
+            "sha256": "6485aebec8eba4e55d1ec1cebe68ca1413589880cc8ccd8a49acae852ec6cfb3"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/17/fe/d5c67665f866b8859d02aa1a859f101a1b2fd348cb61746a3e16fd98fb20/pyside6_addons-6.9.3-cp39-abi3-manylinux_2_28_x86_64.whl",
+            "sha256": "68932327e1c33d729d79b2b94242f97b77601efe0427e757cd3fd588939ea479"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/85/e8/9396cf11a60f80175bb3c5c1d498d84e87b7af653ab4ea001acf821a3981/pyside6_essentials-6.9.3-cp39-abi3-manylinux_2_28_x86_64.whl",
+            "sha256": "c70d5544e892b201a677b615156fab6a0fef865e7fc287f55a0eae00a682e83f"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/be/82/c1c6932f9849bc5e75c93c38a29419505a6e3e0037261e28f3e7ecbf2751/shiboken6-6.9.3-cp39-abi3-manylinux_2_28_x86_64.whl",
+            "sha256": "f3f5337a3a8fc660ba1462265bd9a2bdda9588f8d90fbc3d5ac4ce3134c11e59"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/72/1f/62eef605172bddc1017508469a12f75bc7c4194ece35c734f822795f53b1/sounddevice-0.5.6-py3-none-any.whl",
+            "sha256": "de099612311ad81e55d31ccbd83f43ea6bf4d87b48f9b6ea55a1fbcde0eee4e0"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/cf/73/086789d36caef0de862f2edc6701aedbdd875a46bdf12ef64291ad486753/st_language-2.12.2-py3-none-any.whl",
+            "sha256": "d647dc82fa2656a67cbd61a4903d67a9b7c8219ce01a8a27bf9e53329f500bb8"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/9e/16/428cc7df8670f407c7810882cf736dbc04163ec60589f3bd8ebb6a2c263a/texttable-1.7.3-py2.py3-none-any.whl",
+            "sha256": "b8eaebd6d32565ce85b79b17e2aa52815889249b37bb6dd0894d3eca67c329f8"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/03/22/c98513dfe1d31681080ea742d8a9a8e7dc83e68d9528b35913298687824e/verovio-6.4.1-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            "sha256": "c19311ec28b113e179b547792b608b901509bbd065615d85bf38b2ad31146e12"
+        }
+    ]
+}

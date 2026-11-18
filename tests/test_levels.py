@@ -74,6 +74,37 @@ def test_level_meter_latches_clip_until_clicked():
     assert not meter.clipped
 
 
+def test_level_meter_tooltip_goes_above_it_and_stays():
+    """L'indicatore sta in fondo alla finestra: il suggerimento (HoverTip,
+    non QToolTip) va sopra, dentro lo schermo, a capo, si aggiorna se il
+    testo cambia e si chiude solo quando il cursore lascia l'indicatore."""
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QEvent, QPoint
+    from PySide6.QtGui import QHelpEvent
+    from PySide6.QtWidgets import QApplication, QWidget
+    from gui.level_meter import LevelMeter
+    app = QApplication.instance() or QApplication([])
+    window = QWidget()
+    meter = LevelMeter(window)
+    screen = app.primaryScreen().availableGeometry()
+    window.setGeometry(screen.left(), screen.bottom() - 60, 300, 40)
+    window.show()
+    app.processEvents()
+    meter.set_clipped(True, "Il master clippa alle battute: 3, 7")
+    pos = QPoint(meter.width() - 5, 10)
+    assert meter.event(QHelpEvent(QEvent.ToolTip, pos, meter.mapToGlobal(pos)))
+    tip = meter._tip
+    assert tip.isVisible() and tip.wordWrap() and "3, 7" in tip.text()
+    assert tip.geometry().bottom() < meter.mapToGlobal(QPoint(0, 0)).y()
+    assert screen.contains(tip.geometry())
+    meter.set_clipped(True, "Il master clippa alle battute: 3, 7, 12")
+    assert "12" in tip.text()
+    tip._check_cursor()                       # il cursore non e' sull'indicatore
+    assert not tip.isVisible()
+    window.close()
+
+
 def test_main_window_shows_clipping_during_playback_and_after_stop():
     from PySide6.QtWidgets import QApplication
     QApplication.instance() or QApplication([])
@@ -85,10 +116,10 @@ def test_main_window_shows_clipping_during_playback_and_after_stop():
     w.playback.master_levels = analyze_int16(_int16(x), RATE)
     position = {"s": 1.0}
     w.playback.position_seconds = lambda: position["s"]
-    w._update_level_meter()
+    w.levels.update()
     assert not w.level_meter.clipped
     position["s"] = 4.2
-    w._update_level_meter()
+    w.levels.update()
     assert w.level_meter.clipped and "3" in w.level_meter.toolTip()
     w.stop()
     assert "clippa" in w.statusBar().currentMessage()
@@ -125,7 +156,7 @@ def test_level_report_marks_track_headers_until_the_song_changes():
     original = QMessageBox.information
     QMessageBox.information = staticmethod(lambda *a, **k: shown.append(a[2]))
     try:
-        w._show_level_report(LevelReport({"Piano": TrackPeak(0.0, [3, 4]), "Basso": TrackPeak(-9.0, [])},
+        w.levels.show_report(LevelReport({"Piano": TrackPeak(0.0, [3, 4]), "Basso": TrackPeak(-9.0, [])},
                                          0.0, [3, 4], 1.5))
     finally:
         QMessageBox.information = original
@@ -161,7 +192,7 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
         app.processEvents()
         time.sleep(0.01)
     assert shown and "-6.0" in shown[0]
-    assert w._track_peaks["Piano"].peak_db == -6.0
+    assert w.levels.track_peaks["Piano"].peak_db == -6.0
     w._dirty = False
     w.close()
 
@@ -175,7 +206,6 @@ def _fluid_ready():
 def test_per_channel_synthesis_sounds_like_the_plain_mix(tmp_path):
     """Le uscite per canale sommate danno lo stesso audio di write_s16 (a
     parte il dither: al massimo pochi passi su 32767)."""
-    import os
     import pytest
     if not _fluid_ready():
         pytest.skip("serve la libreria FluidSynth con fluid_synth_process e un SoundFont")
@@ -244,10 +274,37 @@ def test_track_meters_follow_playback():
     block = 0.02
     w.playback.track_levels = TrackLevels(block, {"Piano": np.full(200, 0.5, np.float32),
                                                   "Basso": np.full(200, 1.2, np.float32)})
-    w._update_track_meters(1.0)
+    w.levels.update_tracks(1.0)
     meters = {h.track_name: h.meter for h in w.findChildren(TrackHeaderWidget)}
     assert -6.5 < meters["Piano"]._db < -5.5 and not meters["Piano"].over
     assert meters["Basso"].over                      # oltre il fondo scala: cima rossa
-    w._update_track_meters(None)                     # fermo: barre a zero, la spia resta
+    w.levels.update_tracks(None)                     # fermo: barre a zero, la spia resta
     assert meters["Piano"]._db < -40 and meters["Basso"].over
+    w.close()
+
+
+def test_left_and_right_channels_are_measured_apart():
+    x = _tone(1.0, 0.8)
+    x[:, 1] *= 0.1                                      # destra 20 dB piu' piano
+    levels = analyze_int16(_int16(x), RATE)
+    left, right = levels.channel_peak_between(0.2, 0.4)
+    assert abs(left - 0.8) < 0.01 and abs(right - 0.08) < 0.01
+    assert abs(levels.peak_between(0.2, 0.4) - left) < 1e-6     # il picco complessivo resta il piu' alto
+    mono = analyze_int16(_int16(_tone(1.0, 0.5)[:, :1]), RATE)
+    assert mono.channel_peak_between(0.2, 0.4) == mono.channel_peak_between(0.2, 0.4)[::-1]
+
+
+def test_master_meter_shows_two_channels():
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    x = _tone(2.0, 0.8)
+    x[:, 1] *= 0.1
+    w.playback.master_levels = analyze_int16(_int16(x), RATE)
+    w.playback.position_seconds = lambda: 1.0
+    w.levels.update()
+    left_db, right_db = w.level_meter.levels_db()
+    assert abs(left_db - right_db - 20.0) < 0.5
+    w.level_meter.grab()                               # si disegna senza errori
     w.close()

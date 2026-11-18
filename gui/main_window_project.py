@@ -1,9 +1,7 @@
 import os
 import re
 
-import time
-
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
 
 from core import disk_cache
@@ -11,10 +9,9 @@ from core.model import Project
 from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
-                           RE_CHORD, relative_text, key_signature_alters, NotationError)
+                           RE_ARPEGGIO_SUFFIX, RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
 from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
-from core.autosave import AUTOSAVE_INTERVAL_S, RecoverySession, find_recoverable
 from core.midi_export import export_project_to_midi
 from core.musicxml_export import export_project_to_musicxml
 from core.midi_import import import_midi_file
@@ -151,6 +148,8 @@ class ProjectMixin:
         finestra ed eventuale messaggio in barra di stato). Usato da
         nuovo/apri/importa MIDI, che condividono questa sequenza."""
         self.effects_panel.discard()      # il pannello Effetti era sul brano precedente
+        from core.memory import clear_memory_caches
+        clear_memory_caches()             # l'audio del brano precedente non serve piu'
         self.project = project
         self.schedule_playback_prepare()
         set_session_instruments(project.instruments)
@@ -161,7 +160,7 @@ class ProjectMixin:
         # sono ancora modifiche da salvare rispetto a questo stato (vedi
         # _mark_dirty/closeEvent).
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         # Loop A-B e punto di ripresa si riferiscono al brano precedente.
         self._playback_paused_beat = None
         self.clear_loop()
@@ -199,6 +198,31 @@ class ProjectMixin:
             self._load_and_apply_project(path)
         except Exception as e:
             QMessageBox.critical(self, tr("Errore apertura"), str(e))
+
+    def open_path(self, path: str, ask_to_save: bool = True) -> bool:
+        """Apre un file dato dal sistema: argomento all'avvio, o doppio clic
+        su un brano nel Finder (macOS lo manda come evento, vedi main.py).
+        .musicxml/.mxl e .abc si importano come progetto nuovo, il resto si
+        apre come progetto. Prima chiede se salvare le modifiche (non
+        all'avvio, quando non c'e' niente da perdere). False se non si e'
+        aperto."""
+        if not os.path.exists(path):
+            return False
+        if ask_to_save and not self._confirm_discard_unsaved():
+            return False
+        import logging
+        logging.getLogger("soundtext").info("Apro dal sistema: %s", path)
+        try:
+            if path.lower().endswith((".musicxml", ".mxl")):
+                self._import_musicxml_as_new_project(path)
+            elif path.lower().endswith(".abc"):
+                self._import_abc_as_new_project(path)
+            else:
+                self._load_and_apply_project(path)
+        except Exception as e:
+            QMessageBox.critical(self, tr("Errore apertura"), str(e))
+            return False
+        return True
 
     def open_example(self):
         """Apre un brano d'esempio (examples/*.st) a scopo didattico. Il
@@ -243,18 +267,17 @@ class ProjectMixin:
             QMessageBox.warning(
                 self, tr("File di una versione piu' recente"),
                 tr("Il file e' scritto con ST {0}.{1}, questa versione di SoundText conosce la {2}.{3}: "
-                   "qualcosa potrebbe non essere letto. Salvandolo, quelle parti andrebbero perse.",
+                   "qualcosa potrebbe non essere letto: una traccia che usa una notazione nuova (per esempio le "
+                   "funzioni sui pattern) non suona. Salvandolo, quelle parti andrebbero perse.",
                    *project.st_version, *LANGUAGE_VERSION))
 
         if newly_loaded:
             msg = (tr("Progetto caricato: {path}  —  strumenti personalizzati caricati automaticamente: {0}", ', '.join(newly_loaded), path=path))
             self.statusBar().showMessage(msg, 8000)
-            QMessageBox.information(
-                self, tr("Strumenti caricati automaticamente"),
-                tr("Questo progetto usa strumenti personalizzati non ancora presenti "
-                "sul tuo sistema. Sono stati registrati automaticamente dalla "
-                "definizione incorporata nel file:\n\n") + "\n".join(f"• {n}" for n in newly_loaded)
-            )
+            # Solo nella barra di stato: gli strumenti arrivati con un brano
+            # valgono per la sessione e non cambiano piu' la configurazione
+            # (core.instruments._opened_instruments), quindi una finestra a ogni
+            # apertura sarebbe solo un intralcio.
         else:
             self.statusBar().showMessage(tr("Progetto caricato: {path}", path=path), 4000)
 
@@ -268,7 +291,7 @@ class ProjectMixin:
             QMessageBox.critical(self, tr("Errore di salvataggio"), tr("Impossibile salvare '{current_path}':\n{e}", current_path=self.current_path, e=e))
             return
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         self._update_window_title(os.path.basename(self.current_path))
         self.statusBar().showMessage(tr("Salvato: {current_path}", current_path=self.current_path), 4000)
 
@@ -301,7 +324,7 @@ class ProjectMixin:
         # nome del file: cosi' le esportazioni successive lo propongono.
         self.project.name = os.path.splitext(os.path.basename(path))[0]
         self._dirty = False
-        self._clear_recovery_copy()
+        self.autosave.clear_copy()
         self._update_window_title(os.path.basename(path))
         self.statusBar().showMessage(tr("Salvato: {path}", path=path), 4000)
 
@@ -428,6 +451,8 @@ class ProjectMixin:
             path, project_name=project_name,
             recognize_chords=app_settings.get_midi_import_recognize_chords(),
             min_bend_semitones=app_settings.get_midi_import_min_bend_semitones(),
+            bend_curve=app_settings.get_midi_import_bend_curve(),
+            fine_rhythm=app_settings.get_midi_import_fine_rhythm(),
         )
         newly_created = sorted(set(list_instrument_names()) - before)
         self._split_tracks_into_boxes(project)
@@ -439,8 +464,9 @@ class ProjectMixin:
         o piu' box (vedi core.box_conversion.split_track_into_boxes), cosi'
         il contenuto e' subito visibile e strutturato anche nella vista
         Struttura brano invece di apparire come un canvas vuoto."""
-        for t in project.tracks:
-            split_track_into_boxes(project, t)
+        # le tracce importate con la curva del pitch bend la ritrovano nei box
+        from core.midi_bend_curve import split_with_curves
+        split_with_curves(project, split_track_into_boxes)
 
     def convert_to_boxes_action(self, *_):
         """Converte in box le tracce a testo libero del progetto aperto, solo
@@ -491,6 +517,7 @@ class ProjectMixin:
         )
 
     def _check_tracks_syntax(self) -> bool:
+        self.flush_validation()
         for t in self.project.tracks:
             ok, msg = validate_track_text(t.text, self.project.patterns)
             if not ok:
@@ -621,209 +648,6 @@ class ProjectMixin:
             return
         self.statusBar().showMessage(tr("Partitura esportata: {path}", path=path), 4000)
 
-    def export_mix_wav(self):
-        """Esporta il brano come si sente (tracce udibili, audio compreso)
-        in un WAV, renderizzando in un thread separato."""
-        if not self._check_tracks_syntax():
-            return
-        self._export_wav(tr("Esporta mix audio"), self._default_export_path(".wav"), None, tr("Mix audio esportato"))
-
-    def export_track_wav(self, track_name: str, dry: bool = False):
-        """Esporta in un WAV una sola traccia (con notazione o audio), come
-        si sente in Solo: ignora Solo/Mute delle altre. Con 'dry' la traccia
-        esce asciutta (senza effetti, riverbero/chorus e pan), per farla
-        passare in un simulatore di amplificatore esterno (re-amping)."""
-        track = self.project.get_track(track_name)
-        if not track.is_audio:
-            ok, msg = validate_track_text(track.text, self.project.patterns)
-            if not ok:
-                QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile esportare:\n{msg}", msg=msg))
-                return
-        start_dir = os.path.dirname(self._default_export_path(".wav"))
-        safe_name = re.sub(r'[\\/:*?"<>|]', "_", track.name).strip() or "traccia"
-        if dry:
-            self._export_wav(tr("Esporta WAV asciutto della traccia"),
-                             os.path.join(start_dir, safe_name + "_asciutto.wav"), [track],
-                             tr("Traccia '{name}' esportata asciutta (senza effetti)", name=track.name), dry=True)
-            return
-        self._export_wav(tr("Esporta WAV della traccia"), os.path.join(start_dir, safe_name + ".wav"), [track],
-                         tr("Traccia '{name}' esportata", name=track.name))
-
-    def export_stems(self):
-        """Tutte le tracce, un WAV per traccia (core.playback.render_stems_to_dir),
-        in una cartella scelta; con o senza effetti."""
-        from PySide6.QtWidgets import QDialog
-        from core.playback import render_stems_to_dir, stem_tracks
-        if not self._check_tracks_syntax():
-            return
-        tracks = stem_tracks(self.project)
-        if not tracks:
-            QMessageBox.information(self, tr("Esporta le tracce"),
-                                    tr("Niente da esportare: nessuna traccia udibile con note o clip audio."))
-            return
-        box = QMessageBox(QMessageBox.Question, tr("Esporta le tracce"), tr(
-            "{n} tracce, un file WAV ciascuna. Con gli effetti (come si sentono) o asciutte "
-            "(senza effetti, riverbero e pan, per mixarle altrove)?", n=len(tracks)), parent=self)
-        wet = box.addButton(tr("Con gli effetti"), QMessageBox.AcceptRole)
-        dry = box.addButton(tr("Asciutte"), QMessageBox.AcceptRole)
-        box.addButton(QMessageBox.Cancel)
-        box.setDefaultButton(wet)
-        box.exec()
-        if box.clickedButton() not in (wet, dry):
-            return
-        dry_choice = box.clickedButton() is dry
-        start_dir = os.path.dirname(self._default_export_path(".wav"))
-        base = QFileDialog.getExistingDirectory(self, tr("Cartella in cui salvare le tracce"), start_dir,
-                                                options=file_dialog_options())
-        if not base:
-            return
-        name = re.sub(r'[\\/:*?"<>|]', "_", os.path.splitext(os.path.basename(self.current_path or ""))[0]
-                      or self.project.name).strip() or "brano"
-        out_dir = os.path.join(base, tr("{name} - tracce", name=name))
-
-        progress_dlg = QProgressDialog(tr("Rendering delle tracce..."), tr("Annulla"), 0, len(tracks), self)
-        progress_dlg.setWindowTitle(tr("Esporta le tracce"))
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.setAutoClose(False)
-        cancelled = {"value": False}
-        worker = Worker(render_stems_to_dir, self.project, out_dir, stop_check=lambda: cancelled["value"],
-                        dry=dry_choice, progress=lambda done, total: worker.progress.emit(done),
-                        pass_progress=False)
-        self._export_wav_worker = worker
-
-        def handle_ok(paths):
-            worker.wait()
-            progress_dlg.close()
-            self._export_wav_worker = None
-            self.statusBar().showMessage(tr("{n} tracce esportate in {folder}", n=len(paths), folder=out_dir), 8000)
-
-        def handle_error(msg):
-            worker.wait()
-            progress_dlg.close()
-            self._export_wav_worker = None
-            if not cancelled["value"]:
-                QMessageBox.critical(self, tr("Errore esportazione audio"), msg)
-
-        worker.progress.connect(lambda done: progress_dlg.setValue(int(done)))
-        worker.finished_ok.connect(handle_ok)
-        worker.finished_error.connect(handle_error)
-        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
-        worker.start()
-
-    def add_freeze_action(self, menu, track_name: str):
-        """Nel menu di una traccia: Congela in audio, o Scongela se lo e'
-        gia'. Niente per la traccia audio che ne suona un'altra congelata."""
-        from core import freeze
-        project = self.project
-        track = project.get_track(track_name)
-        if any(t.frozen == track_name for t in project.tracks):
-            return None
-        if freeze.is_frozen(project, track):
-            action = menu.addAction(tr("Scongela (torna a '{name}')", name=track.name))
-            action.setToolTip(tr("Toglie la traccia audio congelata e la traccia torna a suonare com'era."))
-        else:
-            action = menu.addAction(tr("Congela in audio"))
-            action.setToolTip(tr("La traccia diventa una clip audio, calcolata una volta sola (note, strumento, "
-                                 "effetti): il computer lavora meno. La traccia resta, silenziata; "
-                                 "Scongela la fa tornare."))
-        action.triggered.connect(lambda _checked=False: self.toggle_freeze(track_name))
-        return action
-
-    def toggle_freeze(self, track_name: str):
-        """Congela in audio (in un thread, annullabile) o scongela la traccia."""
-        from core import freeze
-        from core.audio_tracks import target_audio_dir
-        track = self.project.get_track(track_name)
-        if freeze.is_frozen(self.project, track):
-            removed = freeze.unfreeze(self.project, track)
-            self._mark_dirty()
-            self.refresh_mixer()
-            self.statusBar().showMessage(tr("'{name}' scongelata: suona di nuovo dalle sue note ed effetti.",
-                                            name=track.name) if removed else
-                                         tr("'{name}' scongelata.", name=track.name), 6000)
-            return
-        if not track.is_audio:
-            ok, msg = validate_track_text(track.text, self.project.patterns)
-            if not ok:
-                QMessageBox.critical(self, tr("Errore di sintassi"), tr("Impossibile congelare:\n{msg}", msg=msg))
-                return
-        progress_dlg = QProgressDialog(tr("Congelo '{name}' in audio...", name=track.name), tr("Annulla"), 0, 0, self)
-        progress_dlg.setWindowTitle(tr("Congela in audio"))
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.setAutoClose(False)
-        cancelled = {"value": False}
-        worker = Worker(freeze.render_frozen_audio, self.project, track, target_audio_dir(self.current_path),
-                        stop_check=lambda: cancelled["value"], pass_progress=False)
-        self._freeze_worker = worker
-
-        def handle_ok(path):
-            worker.wait()
-            progress_dlg.close()
-            self._freeze_worker = None
-            if self.project.find_track(track_name) is not track:
-                return                     # la traccia e' sparita intanto
-            audio = freeze.apply_freeze(self.project, track, path)
-            self._mark_dirty()
-            self.refresh_mixer()
-            self.statusBar().showMessage(tr("'{name}' congelata in audio nella traccia '{audio}'.",
-                                            name=track.name, audio=audio.name), 6000)
-
-        def handle_error(msg):
-            worker.wait()
-            progress_dlg.close()
-            self._freeze_worker = None
-            if not cancelled["value"]:
-                QMessageBox.critical(self, tr("Congela in audio"), msg)
-
-        worker.finished_ok.connect(handle_ok)
-        worker.finished_error.connect(handle_error)
-        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
-        worker.start()
-
-    def _export_wav(self, title: str, default_path: str, tracks, done_msg: str, dry: bool = False):
-        """Chiede dove salvare e renderizza in un WAV, in un thread separato,
-        le tracce udibili (tracks=None) o solo tracks (asciutte con 'dry')."""
-        from core.playback import render_project_mix_to_wav
-        path, _ = QFileDialog.getSaveFileName(self, title, default_path,
-                                                tr("WAV (*.wav)"), options=file_dialog_options())
-        if not path:
-            return
-        if not path.lower().endswith(".wav"):
-            path += ".wav"
-
-        progress_dlg = QProgressDialog(tr("Rendering audio in corso..."), tr("Annulla"), 0, 0, self)
-        progress_dlg.setWindowTitle(title)
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.setAutoClose(False)
-        cancelled = {"value": False}
-        worker = Worker(render_project_mix_to_wav, self.project, path,
-                        stop_check=lambda: cancelled["value"], tracks=tracks, dry=dry, pass_progress=False)
-        self._export_wav_worker = worker  # riferimento forte finche' il thread e' attivo
-
-        def handle_ok(_result):
-            worker.wait()
-            progress_dlg.close()
-            self._export_wav_worker = None
-            self.statusBar().showMessage(f"{done_msg}: {path}", 6000)
-
-        def handle_error(msg):
-            worker.wait()
-            progress_dlg.close()
-            self._export_wav_worker = None
-            if not cancelled["value"]:
-                QMessageBox.critical(self, tr("Errore esportazione audio"), msg)
-
-        def handle_cancel():
-            cancelled["value"] = True
-
-        worker.finished_ok.connect(handle_ok)
-        worker.finished_error.connect(handle_error)
-        progress_dlg.canceled.connect(handle_cancel)
-        worker.start()
-
     # ------------------------------------------------------------ strumenti / libreria MIDI / aiuto
 
     def manage_instruments(self):
@@ -845,69 +669,24 @@ class ProjectMixin:
             self._mark_dirty()
         self._validate_current()
 
-    def download_nam_profiles(self, ask: bool = True):
-        """Scarica i profili NAM consigliati nella cartella profili_nam
-        (in sottofondo, con una barra di avanzamento)."""
-        from core.nam_profiles import PROFILES, SOURCE_REPO, download_profiles, ensure_nam_dir
-        folder = ensure_nam_dir()
-        self._download_in_background(
-            "_nam_download_worker", download_profiles, folder, len(PROFILES),
-            title=tr("Profili NAM consigliati"),
-            question=tr("Scarico {0} profili NAM di amplificatori e pedali famosi (circa 11 MB) dalla raccolta della comunita' di Neural Amp Modeler su GitHub ({SOURCE_REPO}, licenza GNU GPL v3)?\n\nCartella: {folder}\n\nI profili gia' presenti non vengono riscaricati.", len(PROFILES), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
-            progress_label=tr("Download dei profili NAM..."),
-            hint=tr("\nCartella: {0}\nNel pannello Effetti: + Effetto → Saturazione → Profilo NAM. Agli amplificatori senza cassa aggiungi una cassa (File IR…).", folder))
+    def edit_download_sources(self):
+        """Opzioni -> Sorgenti dei download... (gui.download_sources_dialog)."""
+        from .download_sources_dialog import DownloadSourcesDialog
+        DownloadSourcesDialog(self).exec()
 
-    def download_cab_irs(self, ask: bool = True):
-        """Scarica le casse (risposte all'impulso) per i profili NAM di sola
-        testata nella sottocartella casse dei profili NAM."""
-        from core.cab_irs import CABINETS, SOURCE_REPO, download_cabinets, ensure_cab_dir
-        folder = ensure_cab_dir()
-        self._download_in_background(
-            "_cab_download_worker", download_cabinets, folder, len(CABINETS),
-            title=tr("Casse per gli amplificatori NAM"),
-            question=tr("Scarico {0} casse per chitarra (risposte all'impulso, meno di 1 MB) da usare con i profili NAM di sola testata? Sono il pacchetto BestPlugins Mega Pack 2 di David Fau Casquel, licenza GNU GPL v2 o successiva, dal repository di Guitarix su GitHub ({SOURCE_REPO}).\n\nCartella: {folder}\n\nLe casse gia' presenti non vengono riscaricate.", len(CABINETS), SOURCE_REPO=SOURCE_REPO, folder=folder) if ask else "",
-            progress_label=tr("Download delle casse..."),
-            hint=tr("\nCartella: {0}\nNella card del Profilo NAM (o dell'Amplificatore) scegli Cassa → File IR… e apri una di queste casse. Ogni file prende il nome dell'amplificatore di cui riproduce la cassa.", folder))
-
-    def _download_in_background(self, worker_attr, download, folder, total, title, question,
-                                progress_label, hint):
-        """Chiede conferma (se question non e' vuota) e scarica in sottofondo
-        con download(folder, progress, should_stop), con barra di avanzamento
-        e riepilogo finale. worker_attr tiene il riferimento al thread."""
-        if question and QMessageBox.question(self, title, question) != QMessageBox.StandardButton.Yes:
-            return
-        cancelled = {"value": False}
-        progress_dlg = QProgressDialog(progress_label, tr("Annulla"), 0, total, self)
-        progress_dlg.setWindowModality(Qt.WindowModal)
-        progress_dlg.setMinimumDuration(0)
-        progress_dlg.canceled.connect(lambda: cancelled.__setitem__("value", True))
-        worker = Worker(download, folder, pass_progress=False,
-                        progress=lambda i, n, _name: worker.progress.emit(i / n),
-                        should_stop=lambda: cancelled["value"])
-        worker.progress.connect(lambda frac: progress_dlg.setValue(round(frac * total)))
-        setattr(self, worker_attr, worker)      # riferimento forte finche' il thread e' attivo
-
-        def handle_ok(result):
-            worker.wait()
-            progress_dlg.close()
-            setattr(self, worker_attr, None)
-            lines = [tr("Scaricati: {0}, gia' presenti: {1}.", len(result['downloaded']), len(result['present']))]
-            if result["failed"]:
-                lines.append(tr("Non riusciti (controlla la connessione e riprova):"))
-                lines += [f"  • {name}: {reason}" for name, reason in result["failed"]]
-            lines.append(hint)
-            box = QMessageBox.warning if result["failed"] else QMessageBox.information
-            box(self, title, "\n".join(lines))
-
-        def handle_error(msg):
-            worker.wait()
-            progress_dlg.close()
-            setattr(self, worker_attr, None)
-            QMessageBox.warning(self, title, tr("Download non riuscito: {msg}", msg=msg))
-
-        worker.finished_ok.connect(handle_ok)
-        worker.finished_error.connect(handle_error)
-        worker.start()
+    def open_download_dialog(self, preselect=None):
+        """Suoni -> Scarica e installa... (gui.download_dialog); preselect:
+        le voci da spuntare gia' (es. il SoundFont, se non ce n'e' nessuno)."""
+        from .download_dialog import DownloadDialog
+        dlg = DownloadDialog(self)
+        if preselect:
+            dlg.set_checked(preselect)
+        dlg.exec()
+        if dlg.changed:
+            # un plugin appena installato: i processi dei plugin ripartono al
+            # prossimo uso e rileggono i plugin installati
+            from core import plugins
+            plugins.shutdown()
 
     def show_help(self):
         dlg = HelpDialog(self)
@@ -930,23 +709,25 @@ class ProjectMixin:
 
         def freeze(tok):
             nonlocal changed
-            tok, value = split_note_value(tok)
+            arpeggio = RE_ARPEGGIO_SUFFIX.match(tok)    # le note si fissano, l'arpeggio resta
+            suffix = tok[len(arpeggio.group(1)):] if arpeggio else ""
+            tok, value = split_note_value(arpeggio.group(1) if arpeggio else tok)
             m = RE_CHORD.match(tok)
             if not m:
-                return tok + value
-            mult, letter, accidental, suffix, voicing, bass, octv, _modifier = m.groups()
-            symbol = letter + accidental + suffix
+                return tok + value + suffix
+            mult, letter, accidental, quality, voicing, bass, octv, _modifier = m.groups()
+            symbol = letter + accidental + quality
             try:
                 chord = parse_chord_symbol(symbol)
             except ValueError:
-                return tok + value
+                return tok + value + suffix
             octave = int(octv) if octv else instrument.default_octave
             notes = voice_chord(chord, octave, instrument, voicing_override=voicing)
             if bass:
                 notes = apply_bass_note(notes, bass, octave)
             note_tokens = [midi_to_token(n) for n in notes]
             changed = True
-            return ("" if not mult else mult) + "[" + " ".join(note_tokens) + "]" + value
+            return ("" if not mult else mult) + "[" + " ".join(note_tokens) + "]" + value + suffix
 
         # Solo i token cambiano: a capo e commenti restano dove sono.
         new_text = rewrite_tokens(track.text, lambda tok: map_nested_tokens(tok, freeze))
@@ -1071,7 +852,7 @@ class ProjectMixin:
             QMessageBox.information(self, tr("Nessuna traccia"), tr("Il progetto non ha tracce da riorganizzare."))
             return
         if not self.project.patterns and not any(
-            "%" in t.text or "&" in t.text for t in self.project.tracks
+            "%" in text or "&" in text for t in self.project.tracks for text in [t.text] + [c.text for c in t.clips]
         ):
             QMessageBox.information(self, tr("Niente da espandere"),
                                      tr("Nessuna traccia usa pattern (%) o riferimenti MIDI (&) al momento."))
@@ -1151,97 +932,33 @@ class ProjectMixin:
 
         worker.start()
 
-    # ------------------------------------------------------------ salvataggio automatico
+    # ------------------------------------------------------------ avvio
 
-    def _init_autosave(self):
-        """Mentre ci sono modifiche non salvate, ogni AUTOSAVE_INTERVAL_S
-        secondi ne scrive una copia di recupero (core.autosave), che al
-        prossimo avvio si puo' recuperare se SoundText non si e' chiuso
-        normalmente (vedi offer_recovery). Il file del progetto non viene
-        toccato. _autosave_generation conta le modifiche (vedi _mark_dirty):
-        la copia si riscrive solo se ce ne sono di nuove."""
-        self._recovery = RecoverySession()
-        self._autosave_generation = 0
-        self._autosaved_generation = 0
-        self._autosave_timer = QTimer(self)
-        self._autosave_timer.setInterval(AUTOSAVE_INTERVAL_S * 1000)
-        self._autosave_timer.timeout.connect(self.autosave_now)
-        self._autosave_timer.start()
+    def offer_instrument_fixes(self):
+        """All'avvio, prima di aprire un brano: gli strumenti che le versioni
+        prima della 2.11 di st-language avevano salvato in instruments.json
+        come pianoforte (o fagotto) perche' non ne riconoscevano il nome, e
+        che ora si riconoscono. Per ognuno si chiede conferma (un pianoforte
+        chiamato "Flauto" puo' averlo creato l'utente apposta); la risposta
+        vale anche per i brani che lo incorporano e non si chiede piu'."""
+        from core.instruments import (all_instruments, gm_instrument_catalog, pending_instrument_fixes,
+                                      replace_custom_instrument)
+        from core.settings import get_declined_instrument_fixes, record_instrument_fix
+        gm_names = {program: name for program, name, _family in gm_instrument_catalog()}
 
-    def autosave_now(self) -> bool:
-        """Scrive la copia di recupero se ci sono modifiche non salvate nuove
-        rispetto all'ultima copia; True se l'ha scritta."""
-        if not self._dirty or self._autosave_generation == self._autosaved_generation:
-            return False
-        if not self._recovery.save(self.project, self.current_path):
-            return False
-        self._autosaved_generation = self._autosave_generation
-        return True
+        def sound(profile):
+            return tr("Batteria") if profile.is_percussion else gm_names.get(profile.gm_program, str(profile.gm_program))
 
-    def _clear_recovery_copy(self):
-        """Progetto salvato o sostituito: la copia di recupero non serve piu'."""
-        self._recovery.clear()
-        self._autosaved_generation = self._autosave_generation
-
-    def offer_recovery(self):
-        """All'avvio: se una sessione precedente si e' chiusa male lasciando
-        modifiche non salvate, propone di recuperarle (la piu' recente; le
-        altre al prossimo avvio). Chiamata da main.py dopo aver mostrato la
-        finestra."""
-        candidates = find_recoverable()
-        if not candidates:
-            return
-        cand = candidates[0]
-        when = time.strftime("%d/%m/%Y %H:%M", time.localtime(cand.saved_at))
-        name = cand.project_name or tr("Nuovo progetto")
-        if cand.original_path:
-            where = tr("File del progetto: {path}", path=cand.original_path)
-        else:
-            where = tr("Il progetto non era mai stato salvato.")
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle(tr("Recupero del progetto"))
-        box.setText(tr("L'ultima volta SoundText non si è chiuso normalmente."))
-        box.setInformativeText(
-            tr("C'è una copia di recupero del progetto «{name}» con le modifiche non salvate "
-               "(salvata automaticamente il {when}).\n{where}\n\nVuoi recuperarla?",
-               name=name, when=when, where=where))
-        recover_btn = box.addButton(tr("Recupera"), QMessageBox.AcceptRole)
-        discard_btn = box.addButton(tr("Elimina la copia"), QMessageBox.DestructiveRole)
-        box.addButton(tr("Decidi dopo"), QMessageBox.RejectRole)
-        box.setDefaultButton(recover_btn)
-        box.exec()
-        clicked = box.clickedButton()
-        if clicked is discard_btn:
-            cand.discard()
-        elif clicked is recover_btn:
-            self.recover_project(cand)
-
-    def recover_project(self, cand) -> bool:
-        """Apre la copia di recupero cand al posto del progetto corrente,
-        come progetto con modifiche non salvate (Salva scrive sul file
-        originale, se c'era)."""
-        if not self._confirm_discard_unsaved():
-            return False
-        try:
-            project = cand.load()
-        except Exception as e:
-            QMessageBox.critical(self, tr("Recupero del progetto"),
-                                 tr("La copia di recupero non si può aprire:\n{e}", e=e))
-            return False
-        original = cand.original_path if cand.original_path and os.path.isdir(
-            os.path.dirname(cand.original_path)) else None
-        title = os.path.basename(original) if original else (project.name or tr("Nuovo progetto"))
-        self._replace_project(project, path=original, title=tr("{title} (recuperato)", title=title),
-                              status_msg=tr("Progetto recuperato: salvalo per conservare le modifiche."),
-                              status_timeout=10000)
-        cand.discard()
-        # Recuperato ma non ancora salvato: resta "modificato", e la copia
-        # passa subito a questa sessione (se si chiudesse male di nuovo).
-        self._dirty = True
-        self._autosave_generation += 1
-        self.autosave_now()
-        return True
+        for fresh in pending_instrument_fixes(get_declined_instrument_fixes()):
+            old = all_instruments()[fresh.name]
+            reply = QMessageBox.question(
+                self, tr("Strumento da aggiornare"),
+                tr("«{name}» era salvato come {old}: ora la notazione lo riconosce come {new}. Aggiorno?",
+                   name=fresh.name, old=sound(old), new=sound(fresh)))
+            accepted = reply == QMessageBox.Yes
+            if accepted:
+                replace_custom_instrument(fresh)
+            record_instrument_fix(fresh.name, accepted)
 
     # ------------------------------------------------------------ chiusura finestra
 
@@ -1278,6 +995,11 @@ class ProjectMixin:
 
         # Chiusura normale: la copia di recupero non serve piu' (sia che le
         # modifiche siano state salvate sia che si sia scelto di scartarle).
-        self._autosave_timer.stop()
-        self._recovery.close()
+        self.autosave.close()
         super().closeEvent(event)
+
+    def manage_disk_cache(self):
+        """Progetto → Cache su disco...: quanto occupano le cache dei
+        rendering e i pulsanti per svuotarle (vedi core.disk_cache)."""
+        from .disk_cache_dialog import DiskCacheDialog
+        DiskCacheDialog(self).exec()

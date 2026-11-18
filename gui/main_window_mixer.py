@@ -1,11 +1,11 @@
-import math
 import os
 
 from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox
 
 from core.notation import validate_track_text, notation_warnings, bar_issues_summary
-from core.rhythm_generate import project_has_chords, tracks_duration_beats
-from core.instruments import list_instrument_names
+from core.rhythm_generate import project_has_chords
+from core.instruments import (list_instrument_names, instrument_suggestion, make_instrument_available,
+                              unknown_instrument_message)
 from core.midi_export import export_single_track_to_midi
 from core.midi_import import import_midi_channel_into_track, list_midi_channels
 from core.completion import completions_for_word
@@ -19,12 +19,7 @@ from .voicing_picker import handle_chord_double_click
 from .pattern_editor_dialog import pattern_ref_at
 from .selection_actions import handle_selection_context_menu
 from .audio_import_dialog import AudioImportDialog
-from .keyboard_play_dialog import KeyboardPlayDialog
-from .rhythm_generate_dialog import (
-    DrumGenerateDialog, BassGenerateDialog, MelodyGenerateDialog, ChordProgressionDialog, chord_source_tracks,
-    last_box_key,
-)
-from .theme import GOOD, BAD, WARN
+from .theme import BAD, VALIDATION_STYLE, WARN, good_text, warn_text
 from core.i18n import tr
 from .file_dialogs import file_dialog_options
 
@@ -79,7 +74,8 @@ class MixerMixin:
             self.editor.setPlainText("")
             self.editor.blockSignals(False)
             self.validation_label.setText("")
-            self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
+            self.validation_label.setStyleSheet(VALIDATION_STYLE)
+            self.boxes_banner.hide()
 
     def sync_mixer_widgets(self, track_name, source=None):
         """Riallinea le due testate della traccia (colonna della vista Testo
@@ -91,6 +87,18 @@ class MixerMixin:
         header = self.arrangement_view.canvas.header_widgets.get(track_name)
         if header is not None and header is not source:
             header.sync_from_track()
+
+    def sync_fx_buttons(self):
+        """Il pulsante FX acceso pieno solo sulla traccia aperta nel pannello
+        Effetti (le altre con effetti restano in tinta tenue)."""
+        panel = getattr(self, "effects_panel", None)
+        open_track = panel.track if panel is not None and panel.isVisible() else None
+        headers = list(getattr(self, "track_headers", {}).values())
+        view = getattr(self, "arrangement_view", None)
+        if view is not None:
+            headers += list(view.canvas.header_widgets.values())
+        for header in headers:
+            header.set_fx_open(open_track is header.track)
 
     def open_effects_panel(self, track_name):
         """Pulsante FX di una traccia: la seleziona e apre il pannello
@@ -107,6 +115,7 @@ class MixerMixin:
         self.arrangement_view.set_active_track(name)
         track = self.project.get_track(name)
         if track.is_audio:
+            self._sync_expanded_patterns(track)
             self._show_audio_track_in_editor(track)
             return
         # Riaggancia la colorazione della notazione, staccata per le tracce
@@ -114,9 +123,10 @@ class MixerMixin:
         if self.highlighter.document() is not self.editor.document():
             self.highlighter.setDocument(self.editor.document())
         uses_boxes = bool(track.clips)
-        suffix = tr("   ·   vista Struttura brano attiva: apri un box per modificare il contenuto") \
-            if uses_boxes else ""
-        self.track_title.setText(f"{track.name}   ·   {track.instrument_name}{suffix}")
+        # nome e strumento, una volta sola se coincidono (come nelle testate)
+        same = track.instrument_name.strip().lower() == track.name.strip().lower()
+        self.track_title.setText(track.name if same else f"{track.name}   ·   {track.instrument_name}")
+        self.boxes_banner.setVisible(uses_boxes)
         self.editor.blockSignals(True)
         self.editor.setPlainText(track.text)
         self.editor.setReadOnly(uses_boxes)
@@ -146,6 +156,7 @@ class MixerMixin:
         lettura) l'elenco delle sue clip e come aggiungerne."""
         from core.audio_tracks import clip_is_missing, clip_play_seconds
         self.track_title.setText(tr("{name}   ·   traccia audio", name=track.name))
+        self.boxes_banner.hide()
         if track.audio_clips:
             lines = [tr("Clip audio di questa traccia (si spostano nella vista Struttura brano):"), ""]
             for c in sorted(track.audio_clips, key=lambda c: c.start_beat):
@@ -164,7 +175,8 @@ class MixerMixin:
         self.editor.blockSignals(False)
         self.validation_label.setText(tr("Traccia audio · {0} clip", len(track.audio_clips)))
         self.validation_label.setToolTip("")
-        self.validation_label.setStyleSheet("padding: 5px 10px; border-radius: 5px;")
+        self.validation_label.setStyleSheet(VALIDATION_STYLE)
+        self._validation_jump = None
 
     def _reject_audio_track(self, track, what: str) -> bool:
         """True (dopo averlo spiegato all'utente) se track e' una traccia
@@ -190,7 +202,34 @@ class MixerMixin:
             return
         track.text = self.editor.toPlainText()
         self._mark_dirty(merge_key=f"text:{track.name}")
-        self._validate_current()
+        self._schedule_validation()
+
+    # La validazione (sintassi, avvisi, note mute negli SFZ) costa decine di
+    # millisecondi nelle tracce lunghe: mentre si scrive parte quando ci si
+    # ferma per VALIDATION_DELAY_MS; gli avvisi gia' mostrati restano fino
+    # ad allora. Cambiare traccia, aprire, annullare (che chiamano
+    # _validate_current), suonare ed esportare (flush_validation) validano subito.
+    VALIDATION_DELAY_MS = 250
+
+    def _validation_timer_obj(self):
+        timer = getattr(self, "_validation_timer", None)
+        if timer is None:
+            from PySide6.QtCore import QTimer
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(self.VALIDATION_DELAY_MS)
+            timer.timeout.connect(self._validate_current)
+            self._validation_timer = timer
+        return timer
+
+    def _schedule_validation(self):
+        self._validation_timer_obj().start()
+
+    def flush_validation(self):
+        """Valida subito se una validazione ritardata e' in attesa."""
+        timer = getattr(self, "_validation_timer", None)
+        if timer is not None and timer.isActive():
+            self._validate_current()
 
     def _on_editor_double_click(self, char_offset: int, global_pos) -> bool:
         if not self.current_track_name:
@@ -221,6 +260,94 @@ class MixerMixin:
             host_project=self.project,
         )
 
+    def _editable_track(self):
+        """La traccia di note selezionata, None se non ce n'e'."""
+        if not self.current_track_name:
+            return None
+        track = self.project.get_track(self.current_track_name)
+        return None if track.is_audio else track
+
+    def _pattern_created(self):
+        self._after_patterns_edited()
+        self._mark_dirty()
+
+    def _on_editor_token_context_menu(self, pos: int, global_pos) -> bool:
+        track = self._editable_track()
+        if track is None:
+            return False
+        from .selection_actions import handle_token_context_menu
+        return handle_token_context_menu(self.editor, pos, self.project, track, self.playback, global_pos,
+                                         on_pattern_created=self._pattern_created)
+
+    def _on_editor_reference_preview(self, pos: int, global_pos):
+        track = self._editable_track()
+        if track is not None:
+            from .transform_preview import show_reference_preview
+            from .selection_actions import freeze_in_editor
+            show_reference_preview(self.editor, self.editor.toPlainText(), pos, self.project, track,
+                                   self.playback, global_pos,
+                                   freeze=lambda start, end: freeze_in_editor(self.editor, start, end, self.project, track))
+
+    def freeze_all_transforms(self, *_args):
+        """Traccia -> Congela tutte le trasformazioni: nel testo e nei box."""
+        track = self._editable_track()
+        if track is None:
+            return
+        from core.arrangement import flatten_clips_to_text
+        from core.settings import get_freeze_comment
+        from core.transform_preview import freeze_all
+        comment = get_freeze_comment()
+        done, kept = 0, []
+        if track.clips:
+            for clip in track.clips:
+                clip.text, count, left = freeze_all(clip.text, self.project, track.instrument, clip.start_beat, comment)
+                done, kept = done + count, kept + left
+            track.text = flatten_clips_to_text(track.clips, self.project.patterns, track.instrument.default_octave,
+                                               meter=self.project.meter())
+        else:
+            track.text, done, kept = freeze_all(track.text, self.project, track.instrument, 0.0, comment)
+        if done:
+            self.editor.blockSignals(True)
+            self.editor.setPlainText(track.text)
+            self.editor.blockSignals(False)
+            self._mark_dirty()
+            self.arrangement_view.refresh()
+        message = tr("Trasformazioni congelate: {0}.", done)
+        if kept:
+            QMessageBox.warning(self, tr("Congela la trasformazione"),
+                                message + "\n" + tr("Restano com'erano, perche' il suono cambierebbe: {0}",
+                                                    ", ".join(kept)))
+        else:
+            self.statusBar().showMessage(message, 4000)
+
+    def transform_reference(self, *_args):
+        """Componi -> Trasforma...: sul richiamo sotto il cursore dell'editor,
+        altrimenti su un pattern da scegliere (il risultato e' un pattern nuovo)."""
+        if not self.project.patterns:
+            QMessageBox.information(self, tr("Trasforma"), tr("Il progetto non ha pattern: le funzioni valgono "
+                                                              "solo sui pattern, quindi prima creane uno."))
+            return
+        from core.transform_preview import reference_at
+        from .selection_actions import open_transform
+        from .transform_dialog import TransformDialog
+        track = self._editable_track()
+        found = reference_at(self.editor.toPlainText(), self.editor.textCursor().position(),
+                             with_functions=False) if track is not None else None
+        if found is not None:
+            open_transform(self.editor, *found, self.project, track, self.playback,
+                           on_pattern_created=self._pattern_created)
+            return
+        instrument = track.instrument_name if track is not None else self._default_preview_instrument()
+        dialog = TransformDialog(self, self.project, self.playback, instrument, track)
+        if dialog.exec() == TransformDialog.Accepted and dialog.created_pattern:
+            self._pattern_created()
+
+    def _default_preview_instrument(self) -> str:
+        from core.instruments import list_instrument_names
+        names = list_instrument_names()
+        return self.project.tracks[0].instrument_name if self.project.tracks and not self.project.tracks[0].is_audio \
+            else names[0]
+
     def _editor_completions(self, word: str):
         if not self.current_track_name:
             return []
@@ -229,38 +356,120 @@ class MixerMixin:
             return []
         return completions_for_word(
             word, patterns=self.project.patterns, instrument=track.instrument,
-            midi_ref_names=midi_library.list_midi_library,
+            midi_ref_names=midi_library.list_midi_library, text_before=self.editor.text_before_word(),
         )
 
+    def _expanded_track_text(self, track) -> str:
+        """Il testo della traccia con il contenuto dei pattern al posto dei
+        %Nome (core.arrangement.expand_pattern_refs_text)."""
+        from core.arrangement import expand_pattern_refs_text
+        from core.notation import NotationError
+        try:
+            return expand_pattern_refs_text(track.text, self.project.patterns, track.instrument.default_octave,
+                                            self.project.meter())
+        except (NotationError, ValueError):
+            return track.text      # testo non ancora valido: niente da espandere
+
+    def _sync_expanded_patterns(self, track=None):
+        """Espandi i pattern: la casella c'e' solo se la traccia usa dei
+        pattern (o se e' gia' spuntata); spuntata, l'editor espanso mostra il
+        testo aggiornato al posto dell'editor vero."""
+        check = self.expand_patterns_check
+        expanded = None if track is None or track.is_audio or "%" not in track.text \
+            else self._expanded_track_text(track)
+        uses_patterns = expanded is not None and expanded != track.text
+        if not uses_patterns and check.isChecked():
+            check.blockSignals(True)
+            check.setChecked(False)
+            check.blockSignals(False)
+        check.setVisible(uses_patterns)
+        shown = check.isChecked()
+        if shown:
+            self.expanded_editor.setPlainText(expanded)
+        self.editor.setVisible(not shown)
+        self.expanded_editor.setVisible(shown)
+
+    def _on_expand_patterns_toggled(self, _checked: bool):
+        self._sync_expanded_patterns(self.project.find_track(self.current_track_name))
+
     def _validate_current(self):
+        timer = getattr(self, "_validation_timer", None)
+        if timer is not None:
+            timer.stop()
         if not self.current_track_name:
+            self._sync_expanded_patterns(None)
             return
         track = self.project.get_track(self.current_track_name)
+        self._sync_expanded_patterns(track)
         if track.is_audio:
             return
+        if not track.instrument.resolved:
+            # lo strumento non si riconosce: l'avviso viene prima di quelli
+            # sulle battute, e un clic lo corregge col nome suggerito
+            self._validation_jump = None
+            self._octave_fix = False
+            self._instrument_fix = instrument_suggestion(track.instrument_name)
+            message = unknown_instrument_message(track.instrument_name)
+            if self._instrument_fix:
+                message += "   " + tr("(clic: usa «{suggestion}»)", suggestion=self._instrument_fix)
+            self.highlighter.set_bar_errors([])
+            self.validation_label.setToolTip(message)
+            self.validation_label.setText("⚠  " + message)
+            self.validation_label.setStyleSheet(
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
+            return
+        self._instrument_fix = None
         ok, msg = validate_track_text(track.text, self.project.patterns)
         issues = notation_warnings(track.text, self.project.patterns, self.project.time_sig,
-                                 self.project.metrica_changes, pickup=self.project.pickup) if ok else []
+                                 self.project.metrica_changes, pickup=self.project.pickup,
+                                 key=self.project.key, key_changes=self.project.key_changes) if ok else []
+        # note che il .sfz della traccia non suona (core.sfz_coverage)
+        from core.sfz_coverage import silent_notes_cached
+        silent = silent_notes_cached(self.project, track) if ok else None
         self.highlighter.set_bar_errors(i.char_start for i in issues)
-        self.validation_label.setToolTip("\n".join(i.message for i in issues))
-        if issues:
-            self.validation_label.setText(bar_issues_summary(issues))
+        self.validation_label.setToolTip("\n".join(([silent.message()] if silent else [])
+                                                    + [i.message for i in issues]))
+        # una riga sottile: il colore dice lo stato, con un filo a sinistra per
+        # avvisi ed errori; un clic sugli avvisi porta al primo (jump_to_first_issue)
+        self._validation_jump = min(i.char_start for i in issues) if issues else None
+        self._octave_fix = silent is not None and not issues
+        if silent is not None:
+            text = "⚠  " + silent.message()
+            if issues:
+                text += "   ·   " + bar_issues_summary(issues) + "   " + tr("(clic: vai al primo)")
+            else:
+                text += "   " + tr("(clic: cambia ottava)")
+            self.validation_label.setText(text)
             self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {WARN}; "
-                f"background-color: rgba(224,160,48,30); border: 1px solid {WARN};"
-            )
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
+        elif issues:
+            self.validation_label.setText(bar_issues_summary(issues) + "   " + tr("(clic: vai al primo)"))
+            self.validation_label.setStyleSheet(
+                f"{VALIDATION_STYLE} color: {warn_text()}; border-left: 3px solid {WARN};")
         elif ok:
             self.validation_label.setText(tr("✓  Sintassi valida"))
-            self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {GOOD}; "
-                f"background-color: rgba(76,175,80,30); border: 1px solid {GOOD};"
-            )
+            self.validation_label.setStyleSheet(f"{VALIDATION_STYLE} color: {good_text()};")
         else:
             self.validation_label.setText(tr("✗  Errore di sintassi: {msg}", msg=msg))
-            self.validation_label.setStyleSheet(
-                f"padding: 5px 10px; border-radius: 5px; color: {BAD}; "
-                f"background-color: rgba(224,85,85,30); border: 1px solid {BAD};"
-            )
+            self.validation_label.setStyleSheet(f"{VALIDATION_STYLE} color: {BAD}; border-left: 3px solid {BAD};")
+
+    def jump_to_first_issue(self):
+        """Clic sulla riga della sintassi: il cursore va al primo avviso sulle
+        battute, o lo strumento sconosciuto della traccia prende il nome suggerito."""
+        if getattr(self, "_instrument_fix", None) and self.current_track_name:
+            self.use_suggested_instrument(self.current_track_name)
+            return
+        if getattr(self, "_octave_fix", False) and self.current_track_name:
+            self.change_track_octave(self.current_track_name)
+            return
+        position = getattr(self, "_validation_jump", None)
+        if position is None:
+            return
+        cursor = self.editor.textCursor()
+        cursor.setPosition(min(position, len(self.editor.toPlainText())))
+        self.editor.setTextCursor(cursor)
+        self.editor.ensureCursorVisible()
+        self.editor.setFocus()
 
     # ------------------------------------------------------------ tracce
 
@@ -362,12 +571,12 @@ class MixerMixin:
         menu.addAction(tr("Traccia con strumento virtuale (VST3)..."), self.add_plugin_track)
         menu.addAction(tr("Traccia audio (voce, chitarra, tastiera)..."), self.add_audio_track)
         menu.addSection(tr("Genera una traccia"))
-        menu.addAction(tr("Batteria..."), lambda: self.add_generated_track("drums"))
-        menu.addAction(tr("Giro armonico..."), lambda: self.add_generated_track("progression"))
+        menu.addAction(tr("Batteria..."), lambda: self.generators.new_track("drums"))
+        menu.addAction(tr("Giro armonico..."), lambda: self.generators.new_track("progression"))
         has_chords = project_has_chords(self.project, audio=True)
         for kind, label in (("bass", tr("Basso dagli accordi...")), ("melody", tr("Accompagnamento o riff..."))):
             action = menu.addAction(label if has_chords else tr("{label}  (serve un giro di accordi)", label=label),
-                                    lambda k=kind: self.add_generated_track(k))
+                                    lambda k=kind: self.generators.new_track(k))
             action.setEnabled(has_chords)
         menu.addSection(tr("Da file"))
         menu.addAction(tr("Traccia da un file MIDI..."), self.add_track_from_midi)
@@ -421,6 +630,15 @@ class MixerMixin:
             source.text = flatten_clips_to_text(source.clips, self.project.patterns,
                                                 source.instrument.default_octave, meter=self.project.meter())
             self._reload_editor_from_track()
+        for track_name, boxes in (dlg.parts().get("modulated") or {}).items():
+            # e i box della melodia (e delle altre tracce di note) nelle sezioni modulate
+            moved = {(round(c.start_beat, 6), c.name): c.text for c in boxes}
+            track = self.project.get_track(track_name)
+            for clip in track.clips:
+                clip.text = moved.get((round(clip.start_beat, 6), clip.name), clip.text)
+            track.text = flatten_clips_to_text(track.clips, self.project.patterns,
+                                               track.instrument.default_octave, meter=self.project.meter())
+            self._reload_editor_from_track()
         for kind, base, instrument in (("drums", tr("Batteria"), "Drums"), ("bass", tr("Basso"), "Bass"),
                                        ("comping", tr("Accompagnamento"), options.comping_instrument)):
             clips = dlg.parts().get(kind)
@@ -437,58 +655,6 @@ class MixerMixin:
         self._mark_dirty()
         self.refresh_mixer()
         self.statusBar().showMessage(tr("Brano arrangiato: {tracks}.", tracks=", ".join(made)), 6000)
-
-    def add_generated_track(self, kind: str):
-        """Crea una traccia gia' generata (batteria, giro armonico, basso,
-        accompagnamento/riff): prima il dialogo del generatore, la traccia
-        solo se lo si conferma."""
-        from core.instruments import get_instrument, list_instrument_names
-        from .rhythm_generate_dialog import project_bar_beats
-        other_beats = tracks_duration_beats(self.project)
-        bar_beats = project_bar_beats(self.project)
-        other_tracks = chord_source_tracks(self.project)
-        if kind == "drums":
-            instrument, base, box = "Drums", "Batteria", "Groove"
-        elif kind == "progression":
-            instrument, base, box = "Piano", "Accordi", "Giro"
-        elif kind == "bass":
-            instrument, base, box = "Bass", "Basso", "Basso"
-        else:
-            names = [n for n in list_instrument_names() if not get_instrument(n).is_percussion]
-            instrument, ok = QInputDialog.getItem(
-                self, tr("Accompagnamento o riff"), tr("Strumento della nuova traccia (polifonico = "
-                "accompagnamento, monofonico = riff/melodia):"), names,
-                names.index("Guitar") if "Guitar" in names else 0, False)
-            if not ok:
-                return
-            base = instrument
-            box = "Accompagnamento" if get_instrument(instrument).polyphonic else "Riff"
-        name = self._unique_track_name(base)
-        context = tr("nuova traccia '{name}'", name=name)
-        if kind == "drums":
-            dlg = DrumGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
-                                     default_bars=math.ceil(other_beats / bar_beats) if other_beats > 0 else 8,
-                                     track_name=name, start_beat=0.0)
-        elif kind == "progression":
-            dlg = ChordProgressionDialog(self, project=self.project, instrument_name=instrument,
-                                         context_label=context,
-                                         default_bars=round(other_beats / bar_beats) if other_beats > 0 else 0,
-                                         track_name=name)
-        elif kind == "bass":
-            dlg = BassGenerateDialog(self, project=self.project, instrument_name=instrument, context_label=context,
-                                     other_tracks=other_tracks, min_total_beats=other_beats, track_name=name,
-                                     start_beat=0.0)
-        else:
-            instr = get_instrument(instrument)
-            dlg = MelodyGenerateDialog(
-                self, project=self.project, instrument_name=instrument, context_label=context,
-                other_tracks=other_tracks, polyphonic=instr.polyphonic, default_octave=instr.default_octave,
-                range_low=instr.range_low, range_high=instr.range_high, min_total_beats=other_beats,
-                track_name=name)
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._add_filled_track(name, instrument, dlg.result_text(), box)
-        self.statusBar().showMessage(tr("Traccia '{name}' creata e generata.", name=name), 4000)
 
     def add_track_from_midi(self):
         """Nuova traccia da un canale di un file MIDI (lo strumento e' quello
@@ -518,35 +684,41 @@ class MixerMixin:
         menu = QMenu(self)
         entries = []
         if instrument.is_percussion:
-            entries.append((tr("Genera batteria..."), self.generate_drums_into_selected_track))
+            entries.append((tr("Genera batteria..."), self.generators.drums))
         elif view._is_bass_instrument(instrument):
-            entries.append((tr("Genera basso da accordi..."), self.generate_bass_into_selected_track))
+            entries.append((tr("Genera basso da accordi..."), self.generators.bass))
         if view._offers_chord_progression(track_name, instrument):
-            entries.append((tr("Genera giro armonico..."), self.generate_progression_into_selected_track))
+            entries.append((tr("Genera giro armonico..."), self.generators.progression))
         if view._offers_melody(track_name, instrument):
             entries.append((tr("Genera accompagnamento...") if instrument.polyphonic else tr("Genera riff/melodia..."),
-                            self.generate_melody_into_selected_track))
+                            self.generators.melody))
         actions = {}
         for label, slot in entries:
             actions[menu.addAction(label)] = slot
         if entries:
             menu.addSeparator()
-        for label, slot in ((tr("Suona con la tastiera..."), self.play_keyboard_into_selected_track),
+        for label, slot in ((tr("Suona con la tastiera..."), self.generators.play_keyboard),
                             (tr("Importa MIDI..."), self.import_midi_into_selected_track),
                             (tr("Importa audio → note..."), self.import_audio_into_selected_track)):
             actions[menu.addAction(label)] = slot
         menu.addSeparator()
+        # strumento che non si riconosce (suona come pianoforte): la correzione
+        suggestion = None if instrument.resolved else instrument_suggestion(track.instrument_name)
+        if suggestion:
+            actions[menu.addAction(tr("Usa «{suggestion}»", suggestion=suggestion))] = \
+                lambda: self.use_suggested_instrument(track_name)
         actions[menu.addAction(tr("Nome e strumento..."))] = lambda: self._open_edit_dialog_for(track_name)
+        actions[menu.addAction(tr("Ottava della traccia..."))] = lambda: self.change_track_octave(track_name)
         if not self.project.get_track(track_name).is_audio:
             actions[menu.addAction(tr("Strumento plugin (VST3/LV2)..."))] = lambda: self.choose_track_synth(track_name)
             if self.project.get_track(track_name).synth:
                 actions[menu.addAction(tr("Parametri dello strumento plugin..."))] = \
                     lambda: self.edit_track_synth(track_name)
-        self.add_freeze_action(menu, track_name)
+        self.wav_export.add_freeze_action(menu, track_name)
         actions[menu.addAction(tr("Esporta MIDI (solo questa)..."))] = self.export_selected_track_midi
-        actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.export_track_wav(track_name)
+        actions[menu.addAction(tr("Esporta WAV (solo questa)..."))] = lambda: self.wav_export.track(track_name)
         actions[menu.addAction(tr("Esporta WAV asciutto (per il re-amping)..."))] = \
-            lambda: self.export_track_wav(track_name, dry=True)
+            lambda: self.wav_export.track(track_name, dry=True)
         menu.addSeparator()
         actions[menu.addAction(tr("Rimuovi traccia"))] = self.remove_track
         chosen = menu.exec(global_pos)
@@ -571,8 +743,8 @@ class MixerMixin:
         position = self._position_for_markers()
         if position > 0 and preferred_beat is None:
             options.append((tr("Posizione corrente (battuta {0})", bar(position)), float(position)))
-        if getattr(self, "_loop_a_beat", None) is not None:
-            options.append((tr("Inizio del loop A (battuta {0})", bar(self._loop_a_beat)), float(self._loop_a_beat)))
+        if self.loop.a is not None:
+            options.append((tr("Inizio del loop A (battuta {0})", bar(self.loop.a)), float(self.loop.a)))
         options.append((tr("Inizio del brano"), 0.0))
         seen, unique = set(), []
         for label, beat in options:
@@ -615,8 +787,7 @@ class MixerMixin:
 
     def _make_record_dialog(self, track, options, target_dir):
         from .audio_record_dialog import AudioRecordDialog
-        a, b = getattr(self, "_loop_a_beat", None), getattr(self, "_loop_b_beat", None)
-        region = (a, b) if a is not None and b is not None else None
+        region = (self.loop.a, self.loop.b) if self.loop.complete() else None
         return AudioRecordDialog(self, self.project, track, options, target_dir, loop_region=region)
 
     def _ask_overlap_choice(self, track_name: str, count: int) -> str:
@@ -694,7 +865,7 @@ class MixerMixin:
         if track.is_audio:
             QMessageBox.information(self, tr("Traccia audio"), tr("Una traccia audio non ha note da far suonare a un plugin."))
             return
-        dialog = PluginPickerDialog(self, instrument=True, current_ref=track.synth)
+        dialog = PluginPickerDialog(self, instrument=True, current_ref=track.synth, profile=track.instrument)
         if dialog.exec() != QDialog.Accepted:
             return
         ref = dialog.selected_ref()
@@ -755,6 +926,83 @@ class MixerMixin:
             self.select_track(new_name)
             self.statusBar().showMessage(tr("Traccia aggiornata: '{new_name}' ({new_instrument})", new_name=new_name, new_instrument=new_instrument), 4000)
 
+    def change_track_octave(self, track_name: str):
+        """Ottava della traccia...: sposta tutte le note della traccia di una o
+        piu' ottave (vedi gui.track_octave_dialog e core.arrange.transpose_track)."""
+        from core.arrange import transpose_track
+        from .track_octave_dialog import TrackOctaveDialog
+        track = self.project.get_track(track_name)
+        if track.is_audio:
+            return
+        dialog = TrackOctaveDialog(self, self.project, track)
+        if dialog.exec() != QDialog.Accepted or not dialog.semitones():
+            return
+        transpose_track(self.project, track, dialog.semitones())
+        self._mark_dirty()
+        self.refresh_mixer()
+        if track.clips:
+            self.arrangement_view.refresh()
+        self.select_track(track_name)
+        octaves = dialog.semitones() // 12
+        text = (tr("Traccia '{name}' un'ottava più su", name=track_name) if octaves == 1 else
+                tr("Traccia '{name}' un'ottava più giù", name=track_name) if octaves == -1 else
+                tr("Traccia '{name}' spostata di {octaves} ottave", name=track_name, octaves=f"{octaves:+d}"))
+        self.statusBar().showMessage(text, 5000)
+
+    def change_song_key(self, *_args):
+        """Componi -> Tonalità del brano...: vedi gui.song_key_dialog."""
+        from core.song_key import apply_transposition
+        from .song_key_dialog import SongKeyDialog
+        if not self.project.tracks:
+            QMessageBox.information(self, tr("Tonalità del brano"), tr("Il progetto non ha tracce."))
+            return
+        # si prova dal punto in cui si era
+        start = self._current_elapsed_beats() if self.playback.is_playing() else (self._playback_paused_beat or 0.0)
+        self.stop()
+        dialog = SongKeyDialog(self, self.project, self.playback, start)
+        if dialog.exec() != QDialog.Accepted or dialog.result_song is None:
+            return
+        apply_transposition(self.project, dialog.result_song)
+        self._sync_tempo_metrica_fields()
+        self._reload_editor_from_track()
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.arrangement_view.refresh()
+        self._validate_current()
+        self.statusBar().showMessage(tr("Brano spostato di {n} semitoni", n=f"{dialog.semitones.value():+d}"), 5000)
+
+    def silent_tracks_message(self) -> str:
+        """Le tracce udibili il cui .sfz non suona una parte delle note
+        (core.sfz_coverage), in una riga per la barra di stato; '' se nessuna."""
+        from core.sfz_coverage import silent_notes_cached
+        soloed = any(t.solo for t in self.project.tracks)
+        parts = []
+        for track in self.project.tracks:
+            if track.mute or (soloed and not track.solo):
+                continue
+            silent = silent_notes_cached(self.project, track)
+            if silent is not None:
+                parts.append(tr("{track}: 1 nota muta", track=track.name) if silent.silent == 1 else
+                             tr("{track}: {silent} note mute", track=track.name, silent=silent.silent))
+        if not parts:
+            return ""
+        return tr("Attenzione, lo strumento SFZ non suona alcune note — {tracks} (passa il mouse sulla traccia "
+                  "per sapere quali)", tracks=", ".join(parts))
+
+    def use_suggested_instrument(self, name: str):
+        """La traccia 'name', con uno strumento che non si riconosce, prende
+        il nome noto piu' simile (Usa «flauto», vedi instrument_suggestion)."""
+        track = self.project.get_track(name)
+        suggestion = instrument_suggestion(track.instrument_name)
+        if not suggestion or not make_instrument_available(suggestion):
+            return
+        self.project.update_track(name, name, suggestion)
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.select_track(name)
+        self.statusBar().showMessage(tr("Traccia aggiornata: '{new_name}' ({new_instrument})",
+                                        new_name=name, new_instrument=suggestion), 4000)
+
     def _rename_audio_track(self, track):
         new_name, ok = QInputDialog.getText(self, tr("Rinomina traccia audio"), tr("Nome:"), text=track.name)
         new_name = new_name.strip()
@@ -814,7 +1062,7 @@ class MixerMixin:
         if not self.current_track_name:
             QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia da esportare."))
             return
-        self.export_track_wav(self.current_track_name, dry=dry)
+        self.wav_export.track(self.current_track_name, dry=dry)
 
     def _pick_midi_channel_tokens(self):
         """Punto in comune fra 'Importa MIDI (in questa/o)' e 'Importa MIDI
@@ -849,6 +1097,8 @@ class MixerMixin:
             tokens_text, guessed_instrument = import_midi_channel_into_track(
                 path, channel, recognize_chords=app_settings.get_midi_import_recognize_chords(),
                 min_bend_semitones=app_settings.get_midi_import_min_bend_semitones(),
+                bend_curve=app_settings.get_midi_import_bend_curve(),
+                fine_rhythm=app_settings.get_midi_import_fine_rhythm(),
             )
         except Exception as e:
             QMessageBox.critical(self, tr("Errore import MIDI"), str(e))
@@ -921,200 +1171,3 @@ class MixerMixin:
             self.refresh_mixer()
             self.select_track(track.name)
             self.statusBar().showMessage(tr("Audio convertito e inserito nella traccia '{name}'.", name=track.name), 4000)
-
-    def play_keyboard_into_selected_track(self):
-        track, clip = self._resolve_edit_target()
-        if track is None:
-            QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia (o un box) in cui suonare."))
-            return
-        if self._reject_audio_track(track, tr("suonare con la tastiera")):
-            return
-        label = tr("box '{name}' (traccia '{0}')", track.name, name=clip.name) if clip is not None else tr("traccia '{name}'", name=track.name)
-        dlg = KeyboardPlayDialog(self, project=self.project, instrument_name=track.instrument_name,
-                                  context_label=label, current_track_name=track.name)
-        accepted = dlg.exec() == QDialog.Accepted
-        # Il dialogo puo' aver cambiato Tempo/Metrica del progetto (stesso
-        # oggetto condiviso) anche se poi annullato: i campi in toolbar
-        # vanno comunque riallineati.
-        self._sync_tempo_metrica_fields()
-        if not accepted:
-            return
-        new_text = dlg.result_text()
-        # A differenza dei pattern (dove il corpo viene sostituito, vedi
-        # PatternEditorDialog._play_keyboard): una traccia/box puo' gia'
-        # contenere musica scritta a mano o importata prima, che andrebbe
-        # persa sostituendola invece di accodare la performance appena
-        # registrata.
-        if clip is not None:
-            clip.text = f"{clip.text.rstrip()} {new_text}" if clip.text.strip() else new_text
-            self.arrangement_view.on_clip_changed(track.name)
-            self.statusBar().showMessage(tr("Performance registrata e aggiunta al box '{name}' (traccia '{0}').", track.name, name=clip.name), 4000)
-        else:
-            track.text = f"{track.text.rstrip()} {new_text}" if track.text.strip() else new_text
-            self._mark_dirty()
-            self.refresh_mixer()
-            self.select_track(track.name)
-            self.statusBar().showMessage(tr("Performance registrata e aggiunta alla traccia '{name}'.", name=track.name), 4000)
-
-    def _append_or_replace_track_text(self, track, new_text):
-        """Accoda 'new_text' al contenuto gia' presente nella traccia (o lo
-        sostituisce se la traccia era vuota) - stessa convenzione di
-        play_keyboard_into_selected_track, per non perdere musica scritta a
-        mano o importata in precedenza."""
-        if track.text.strip():
-            track.text = f"{track.text.rstrip()} {new_text}"
-        else:
-            track.text = new_text
-        self._mark_dirty()
-
-    def generate_drums_into_selected_track(self):
-        if not self.current_track_name:
-            QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia in cui generare la batteria."))
-            return
-        track = self.project.get_track(self.current_track_name)
-        if self._reject_audio_track(track, tr("la generazione della batteria")):
-            return
-        if not track.instrument.is_percussion:
-            QMessageBox.information(
-                self, tr("Traccia non percussiva"),
-                tr("La traccia '{name}' usa lo strumento '{instrument_name}', non percussivo.\nSeleziona (o crea) una traccia con uno strumento a percussione (es. Drums).", name=track.name, instrument_name=track.instrument_name)
-            )
-            return
-        # Preimposta le battute su quelle necessarie a coprire l'estensione
-        # delle altre tracce gia' scritte (vedi core.rhythm_generate.
-        # tracks_duration_beats), cosi' la batteria generata copre di default
-        # l'intero brano invece di fermarsi a meta' - 8 se non c'e' ancora
-        # nient'altro da coprire (comportamento originale).
-        other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
-        from .rhythm_generate_dialog import project_bar_beats
-        default_bars = math.ceil(other_beats / project_bar_beats(self.project)) if other_beats > 0 else 8
-        dlg = DrumGenerateDialog(self, project=self.project, instrument_name=track.instrument_name,
-                                  context_label=tr("traccia '{name}'", name=track.name), default_bars=default_bars,
-                                  track_name=track.name)
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._append_or_replace_track_text(track, dlg.result_text())
-        self.refresh_mixer()
-        self.select_track(track.name)
-        self.statusBar().showMessage(tr("Batteria generata e aggiunta alla traccia '{name}'.", name=track.name), 4000)
-
-    def generate_bass_into_selected_track(self):
-        if not self.current_track_name:
-            QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima una traccia in cui generare il basso."))
-            return
-        track = self.project.get_track(self.current_track_name)
-        if self._reject_audio_track(track, tr("la generazione del basso")):
-            return
-        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
-        if not other_tracks:
-            QMessageBox.information(
-                self, tr("Nessuna traccia sorgente"),
-                tr("Serve un'altra traccia con degli accordi scritti da cui far derivare il basso.")
-            )
-            return
-        # Fa ripetere ciclicamente la progressione di accordi (vedi
-        # core.rhythm_generate.generate_bass_from_chords) finche' non copre
-        # l'estensione delle altre tracce gia' scritte, invece di fermarsi
-        # alla fine della sola traccia di accordi sorgente scelta.
-        other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
-        dlg = BassGenerateDialog(self, project=self.project, instrument_name=track.instrument_name,
-                                  context_label=tr("traccia '{name}'", name=track.name), other_tracks=other_tracks,
-                                  min_total_beats=other_beats, track_name=track.name)
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._append_or_replace_track_text(track, dlg.result_text())
-        self.refresh_mixer()
-        self.select_track(track.name)
-        self.statusBar().showMessage(tr("Basso generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)
-
-    def save_selected_track_as_style(self):
-        """Traccia → Salva come stile del generatore: tutta la traccia selezionata."""
-        from .save_style_dialog import SaveStyleDialog, chord_sources_of, source_for_part
-        if not self.current_track_name:
-            QMessageBox.information(self, tr("Nessuna traccia"), tr("Seleziona prima la traccia da cui ricavare lo stile."))
-            return
-        track = self.project.get_track(self.current_track_name)
-        if self._reject_audio_track(track, tr("il salvataggio come stile")):
-            return
-        if not track.text.strip():
-            QMessageBox.information(self, tr("Traccia vuota"), tr("La traccia non contiene note da cui ricavare uno stile."))
-            return
-        dlg = SaveStyleDialog(self, [source_for_part(tr("traccia '{name}'", name=track.name), track.text, track.instrument)],
-                              chord_sources_of(self.project, track.name), self.project.patterns,
-                              meter=self.project.time_sig)
-        if dlg.exec() == QDialog.Accepted and dlg.saved_style():
-            self.statusBar().showMessage(tr("Stile «{0}» salvato fra gli stili personali.", dlg.saved_style()[1]), 4000)
-
-    def manage_user_styles(self):
-        from .save_style_dialog import UserStylesDialog
-        UserStylesDialog(self).exec()
-
-    def generate_melody_into_selected_track(self):
-        if not self.current_track_name:
-            QMessageBox.information(
-                self, tr("Nessuna traccia"),
-                tr("Seleziona prima una traccia in cui generare l'accompagnamento o il riff.")
-            )
-            return
-        track = self.project.get_track(self.current_track_name)
-        if self._reject_audio_track(track, tr("la generazione di accompagnamento e riff")):
-            return
-        instrument = track.instrument
-        if instrument.is_percussion:
-            QMessageBox.information(
-                self, tr("Traccia percussiva"),
-                tr("La traccia '{name}' usa lo strumento '{instrument_name}', percussivo.\nUsa 'Genera batteria...' invece: qui le note sono altezze, non hanno senso su una traccia percussiva.", name=track.name, instrument_name=track.instrument_name)
-            )
-            return
-        if not project_has_chords(self.project, exclude_track_name=track.name, audio=True):
-            QMessageBox.information(
-                self, tr("Nessun giro di accordi"),
-                tr("L'accompagnamento e il riff seguono gli accordi di un'altra traccia, ma nel brano "
-                "non ce ne sono ancora.\nCrea prima un giro armonico in una traccia polifonica "
-                "(Traccia → Genera giro armonico in questa traccia...).")
-            )
-            return
-        other_tracks = chord_source_tracks(self.project, exclude_track_name=track.name)
-        other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
-        dlg = MelodyGenerateDialog(
-            self, project=self.project, instrument_name=track.instrument_name,
-            context_label=tr("traccia '{name}'", name=track.name), other_tracks=other_tracks,
-            polyphonic=instrument.polyphonic, default_octave=instrument.default_octave,
-            range_low=instrument.range_low, range_high=instrument.range_high,
-            min_total_beats=other_beats, track_name=track.name,
-        )
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._append_or_replace_track_text(track, dlg.result_text())
-        self.refresh_mixer()
-        self.select_track(track.name)
-        kind = "Accompagnamento" if instrument.polyphonic else "Riff/melodia"
-        self.statusBar().showMessage(tr("{kind} generato e aggiunto alla traccia '{name}'.", kind=kind, name=track.name), 4000)
-
-    def generate_progression_into_selected_track(self):
-        if not self.current_track_name:
-            QMessageBox.information(self, tr("Nessuna traccia"),
-                                    tr("Seleziona prima una traccia in cui generare il giro armonico."))
-            return
-        track = self.project.get_track(self.current_track_name)
-        if self._reject_audio_track(track, tr("la generazione del giro armonico")):
-            return
-        instrument = track.instrument
-        if instrument.is_percussion or not instrument.polyphonic:
-            QMessageBox.information(
-                self, tr("Strumento non adatto"),
-                tr("La traccia '{name}' usa lo strumento '{instrument_name}', che non suona accordi.\nScegli una traccia con uno strumento polifonico (pianoforte, chitarra, organo, pad...).", name=track.name, instrument_name=track.instrument_name)
-            )
-            return
-        from .rhythm_generate_dialog import project_bar_beats
-        other_beats = tracks_duration_beats(self.project, exclude_track_name=track.name)
-        default_bars = round(other_beats / project_bar_beats(self.project)) if other_beats > 0 else 0
-        dlg = ChordProgressionDialog(self, project=self.project, instrument_name=track.instrument_name,
-                                     context_label=tr("traccia '{name}'", name=track.name), default_bars=default_bars,
-                                     track_name=track.name, default_key=last_box_key(self.project, track))
-        if dlg.exec() != QDialog.Accepted:
-            return
-        self._append_or_replace_track_text(track, dlg.result_text())
-        self.refresh_mixer()
-        self.select_track(track.name)
-        self.statusBar().showMessage(tr("Giro armonico generato e aggiunto alla traccia '{name}'.", name=track.name), 4000)

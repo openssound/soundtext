@@ -20,7 +20,7 @@ from . import theme
 _START_ANGLE = 225.0   # gradi (convenzione Qt: 0 = ore 3, antiorario): minimo in basso a sinistra
 _SPAN = 270.0          # fino al massimo in basso a destra
 _KNOB = 34             # diametro del disco
-_CAPTION_H = 11        # altezza dell'etichetta sotto il disco
+_CAPTION_H = 12        # altezza dell'etichetta sotto il disco
 
 
 class Knob(QAbstractSlider):
@@ -96,8 +96,8 @@ class Knob(QAbstractSlider):
         light = theme.get_active_theme() == "light"
         colors = theme.track_card_colors()
         text_color = QColor("#333333" if light else "#e0e0e0")
-        groove = QColor("#d9d9dd" if light else "#3f3f44")
-        face = QColor("#f0f0f2" if light else "#2d2d30")
+        groove = QColor("#c6c6cb" if light else "#3f3f44")
+        face = QColor("#e2e2e5" if light else "#2d2d30")
         accent = QColor(theme.ACCENT)
         if not self.isEnabled():
             accent = QColor(colors["text_dim"])
@@ -135,7 +135,7 @@ class Knob(QAbstractSlider):
         p.setPen(text_color)
         p.drawText(inner, Qt.AlignCenter, text)
 
-        font.setPixelSize(9)
+        font.setPixelSize(10)
         font.setBold(False)
         p.setFont(font)
         p.setPen(QColor(colors["text_dim"]))

@@ -160,7 +160,7 @@ def test_ctrl_z_in_the_editor_undoes_typing_through_project_history():
 def test_operations_that_replace_track_text_are_undoable():
     w = _window()
     track = w.project.tracks[0]
-    w._append_or_replace_track_text(track, "Cmaj7 F")   # come dopo Genera/Importa
+    w.generators.add_text(track, "Cmaj7 F")   # come dopo Genera/Importa
     assert "Cmaj7" in w.project.tracks[0].text
     w.undo()
     assert w.project.tracks[0].text == "c d"
@@ -199,16 +199,22 @@ def test_opening_another_project_clears_the_history():
     _close(w)
 
 
-def test_opening_a_project_does_not_mark_it_modified():
+def test_opening_a_project_does_not_mark_it_modified(monkeypatch):
     """Aprire un progetto aggiorna i campi Tempo/Metrica/Tonalita' della
     toolbar: non deve risultare modificato (niente richiesta di salvataggio
     alla chiusura) ne' creare passi da annullare."""
+    from PySide6.QtWidgets import QMessageBox
     from gui.main_window import MainWindow
+    # funk_in_e.st definisce i suoi strumenti (Clavinet, Horns): il primo
+    # caricamento lo dice con una finestra modale, che nel test resterebbe
+    # aperta per sempre
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a) or QMessageBox.Ok)
     w = MainWindow()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    w._load_and_apply_project(os.path.join(root, "examples", "blues_12bar.st"))
+    w._load_and_apply_project(os.path.join(root, "examples", "funk_in_e.st"))
     _app.processEvents()
-    assert w.tempo_spin.value() == w.project.tempo_bpm == 96
+    assert w.tempo_spin.value() == w.project.tempo_bpm == 104
     assert not w._dirty
     assert not w.history.can_undo()
     w.close()

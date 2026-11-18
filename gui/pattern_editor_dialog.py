@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QListWidget,
-    QComboBox, QInputDialog, QMessageBox,
+    QComboBox, QInputDialog, QMenu, QMessageBox,
 )
 
 from core.model import Project
@@ -58,6 +58,8 @@ class PatternEditorDialog(QDialog):
         self.list_widget.currentTextChanged.connect(self._load_pattern)
         left.addWidget(QLabel(tr("Pattern definiti:")))
         left.addWidget(self.list_widget)
+        self.list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list_widget.customContextMenuRequested.connect(self._on_list_menu)
 
         btn_row = QHBoxLayout()
         add_btn = QPushButton(tr("Nuovo"))
@@ -246,7 +248,8 @@ class PatternEditorDialog(QDialog):
         self.project.patterns[self._current_name] = Pattern(
             name=self._current_name, tokens=tokenize(self.body_edit.toPlainText())
         )
-        preview = Project(name="preview", tempo_bpm=self.project.tempo_bpm)
+        preview = Project(name="preview", tempo_bpm=self.project.tempo_bpm, key=self.project.key,
+                          key_changes=list(self.project.key_changes))
         preview.patterns = self.project.patterns
         preview.add_track("Anteprima", self.instrument_combo.currentText(), f"%{self._current_name}")
 
@@ -278,11 +281,27 @@ class PatternEditorDialog(QDialog):
             self.project.tempo_bpm, self._playback, global_pos, before_play=self._play_highlight.stop,
         )
 
+    def _on_list_menu(self, pos):
+        """Tasto destro sul nome di un pattern: Crea una trasformazione..."""
+        item = self.list_widget.itemAt(pos)
+        if item is None:
+            return
+        menu = QMenu(self)
+        action = menu.addAction(tr("Crea una trasformazione..."))
+        if menu.exec(self.list_widget.mapToGlobal(pos)) is action:
+            self.create_transformation(item.text())
+
+    def create_transformation(self, name: str):
+        from .transform_dialog import TransformDialog
+        dialog = TransformDialog(self, self.project, self._playback, self.instrument_combo.currentText(), pattern=name)
+        if dialog.exec() == TransformDialog.Accepted and dialog.created_pattern:
+            self.list_widget.addItem(dialog.created_pattern)
+
     def _body_completions(self, word: str):
         instrument = get_instrument(self.instrument_combo.currentText())
         return completions_for_word(
             word, patterns=self.project.patterns, instrument=instrument,
-            midi_ref_names=midi_library.list_midi_library,
+            midi_ref_names=midi_library.list_midi_library, text_before=self.body_edit.text_before_word(),
         )
 
     def closeEvent(self, event):

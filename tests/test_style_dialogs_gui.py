@@ -227,7 +227,7 @@ def test_track_menu_and_box_menu_open_the_save_dialog(styles_file, monkeypatch):
     assert ("Componi › Stili dei generatori", "Salva la traccia come stile...") in entries
     assert ("Componi › Stili dei generatori", "Stili personali...") in entries
     w.select_track("Bass")
-    w.save_selected_track_as_style()
+    w.generators.save_as_style()
     (seen,) = _FakeSaveDialog.seen
     assert seen["sources"][0].label == "traccia 'Bass'" and seen["sources"][0].is_bass
     assert seen["chords"] == ["Piano"]

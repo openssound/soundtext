@@ -30,7 +30,7 @@ from core import settings as app_settings
 from core.instruments import DRUM_MIDI_CHANNEL, PERCUSSION_MAP
 from core.midi_input import SUSTAIN_CC, list_input_ports, midi_input_problem, open_input, pitchwheel_semitones
 from .keyboard_performance import LIVE_MELODIC_CHANNEL
-from .theme import BAD, TEXT_DIM
+from .theme import BAD, text_dim
 from core.i18n import tr
 
 NO_PORT = ""
@@ -79,7 +79,7 @@ class MidiKeyboardMixin:
 
     def _set_midi_status(self, text: str, error: bool = False):
         self.midi_status_label.setText(text)
-        self.midi_status_label.setStyleSheet(f"color: {BAD if error else TEXT_DIM};")
+        self.midi_status_label.setStyleSheet(f"color: {BAD if error else text_dim()};")
 
     def _refresh_midi_ports(self):
         problem = midi_input_problem()

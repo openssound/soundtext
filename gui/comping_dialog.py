@@ -110,7 +110,7 @@ class CompLanes(QWidget):
         p = QPainter(self)
         p.fillRect(self.rect(), self.palette().window())
         text_color = self.palette().windowText().color()
-        p.setFont(QFont("Sans", 9))
+        p.setFont(_app_font(12))
         # riga del comp
         p.setPen(text_color)
         p.drawText(QRectF(4, 0, LABEL_WIDTH - 8, COMP_ROW), Qt.AlignVCenter | Qt.AlignLeft, tr("Comp"))
@@ -249,3 +249,11 @@ class CompingDialog(QDialog):
     def done(self, result):
         self.stop_listening()
         super().done(result)
+
+
+def _app_font(pixels: int) -> QFont:
+    """Il carattere del programma a 'pixels' px (non "Sans" fisso)."""
+    from PySide6.QtWidgets import QApplication
+    font = QFont(QApplication.font())
+    font.setPixelSize(pixels)
+    return font

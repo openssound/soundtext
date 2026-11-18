@@ -14,7 +14,8 @@ import sys
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6.QtWidgets import QApplication, QFileDialog
+import pytest
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from core.project_io import EXAMPLES_DIR
 from gui.main_window import MainWindow
@@ -22,8 +23,16 @@ from gui.main_window import MainWindow
 _app = QApplication.instance() or QApplication([])
 
 
+@pytest.fixture(autouse=True)
+def _no_modal_messages(monkeypatch):
+    # Un esempio con strumenti incorporati apre un avviso modale: senza
+    # nessuno che lo chiuda il test restava fermo.
+    for name in ("information", "warning"):
+        monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: QMessageBox.Ok))
+
+
 def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
-    example = os.path.join(EXAMPLES_DIR, "blues_12bar.st")
+    example = os.path.join(EXAMPLES_DIR, "funk_in_e.st")
     with open(example, "rb") as f:
         original = f.read()
     captured = {}
@@ -39,7 +48,7 @@ def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
     assert captured["dir"] == EXAMPLES_DIR
     assert w.project.tracks
     assert w.current_path is None
-    assert "blues_12bar.st" in w.windowTitle()
+    assert "funk_in_e.st" in w.windowTitle()
 
     # Salva chiede un nuovo percorso (nella cartella dei brani) invece di
     # sovrascrivere l'esempio.
@@ -52,7 +61,7 @@ def test_open_example_starts_in_examples_and_keeps_original(monkeypatch):
     monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(fake_save))
     w.save_project()
     assert os.path.dirname(proposed["path"]) != EXAMPLES_DIR
-    assert os.path.basename(proposed["path"]) == "blues_12bar.st"
+    assert os.path.basename(proposed["path"]) == "funk_in_e.st"
     with open(example, "rb") as f:
         assert f.read() == original
 

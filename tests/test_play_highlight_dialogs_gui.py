@@ -161,34 +161,19 @@ def test_pattern_editor_highlights_the_pattern_body_while_playing():
 
 def _choose_from_context_menu(editor, sel_start, sel_end, choose=None):
     """Seleziona [sel_start, sel_end) nell'editor, apre il menu del tasto
-    destro sulla selezione e, se choose e' dato, sceglie quella voce.
-    Ritorna i testi delle voci del menu."""
-    from PySide6.QtCore import QPoint, QTimer
+    destro sulla selezione e, se choose e' dato, sceglie quella voce (vedi
+    tests/_menus.py). Ritorna i testi delle voci del menu."""
+    from PySide6.QtCore import QPoint
     from PySide6.QtGui import QContextMenuEvent, QTextCursor
-    from PySide6.QtTest import QTest
-    from PySide6.QtCore import Qt
+    from _menus import scripted_menus
     cursor = editor.textCursor()
     cursor.setPosition(sel_start)
     cursor.setPosition(sel_end, QTextCursor.KeepAnchor)
     editor.setTextCursor(cursor)
-    captured = {}
-
-    def pick():
-        menu = QApplication.activePopupWidget()
-        if menu is None:
-            return
-        captured["actions"] = [a.text() for a in menu.actions() if a.text()]
-        target = next((a for a in menu.actions() if a.text() == choose), None)
-        if target is None:
-            menu.close()
-            return
-        menu.setActiveAction(target)
-        QTest.keyClick(menu, Qt.Key_Return)
-
-    QTimer.singleShot(50, pick)
     pos = QPoint(5, 5)
-    editor.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, pos, editor.mapToGlobal(pos)))
-    return captured.get("actions", [])
+    with scripted_menus(choose) as menus:
+        editor.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, pos, editor.mapToGlobal(pos)))
+    return menus.actions
 
 
 def test_generate_dialog_preview_offers_play_of_the_selection():

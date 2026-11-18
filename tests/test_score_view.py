@@ -156,3 +156,95 @@ def test_packaged_app_uses_the_bundled_verovio_data(tmp_path, monkeypatch):
     used.clear()
     score_render._get_toolkit()
     assert used == []                     # senza la cartella: i dati del pacchetto
+
+
+def test_note_timing_follows_the_timemap():
+    pages = ['<svg><g id="n1" class="note"/><g id="n2" class="note"/></svg>', '<svg><g id="n3" class="note"/></svg>']
+    timemap = [{"qstamp": 0, "on": ["n1", "n2"]},
+               {"qstamp": 1, "off": ["n1"], "on": ["n3"]},
+               {"qstamp": 2, "off": ["n2", "n3"], "on": ["pausa"]},
+               {"qstamp": 3, "off": ["pausa"]}]
+    timing = score_render.NoteTiming(timemap, pages)
+    assert timing.notes_at(-1) == ()
+    assert timing.notes_at(0.5) == ((0, "n1"), (0, "n2"))
+    assert timing.notes_at(1) == ((0, "n2"), (1, "n3"))
+    assert timing.notes_at(2.5) == ()                          # la pausa non e' una nota
+
+
+@needs_verovio
+def test_qstamp_is_the_soundtext_beat():
+    """Le semiminime di Verovio sono i beat di SoundText, anche in 6/8 e con
+    l'anacrusi: a ogni beat suona la nota scritta li'."""
+    from core.musicxml_export import project_to_musicxml
+    p = Project(name="Sei ottavi")
+    p.add_track("Piano", "Piano", "4: c*4 d*4 e*4 f*4 g*4 a*4")
+    p.time_sig = "6/8"
+    p.pickup = 1.0
+    pages, timing = score_render.render_pages_with_timing(project_to_musicxml(p, tracks=p.tracks))
+    ids = [timing.notes_at(beat + 0.25) for beat in range(6)]
+    assert all(len(n) == 1 for n in ids) and len(set(ids)) == 6
+    assert timing.notes_at(6.5) == ()
+
+
+@needs_verovio
+def test_score_dialog_highlights_what_is_playing(monkeypatch):
+    w = _window()
+    w.show_score_view()
+    dlg = w._score_dialog
+    dlg.show_playing_beat(0.5)
+    first = dlg.pages_widget.highlighted()
+    assert len(first) == 2                                   # c della voce e c del basso
+    rect = dlg.pages_widget.set_highlight(first)
+    assert rect is not None and dlg.pages_widget.rect().contains(rect.toRect())
+    dlg.pages_widget.grab()                                  # si disegna senza errori
+    dlg.show_playing_beat(1.5)
+    assert dlg.pages_widget.highlighted() and dlg.pages_widget.highlighted() != first
+    w.project.tracks[0].text = "4: g*5 a*5"                   # ridisegnata: resta evidenziata
+    w._mark_dirty()
+    dlg.refresh()
+    assert dlg.pages_widget.highlighted()
+    w.stop()                                                 # Stop: si spegne
+    assert dlg.pages_widget.highlighted() == ()
+    dlg.close()
+    _close(w, monkeypatch)
+
+
+@needs_verovio
+def test_score_button_shows_the_selected_track_in_place_of_the_text(monkeypatch):
+    w = _window()
+    w.arrangement_action.setChecked(True)                  # dalla Struttura...
+    w.view_score_btn.click()
+    assert not w.arrangement_action.isChecked() and w.view_score_btn.isChecked()   # ...si passa alla Partitura
+    panel = w.score_panel
+    assert w.text_stack.currentWidget() is panel
+    assert w.text_stack.currentIndex() == 1 and not w.text_tools.isVisibleTo(w)
+    assert panel.status_label.text() == "1 pagina" and not panel.tracks_combo.isVisibleTo(panel)
+    assert "Basso" not in panel.pages()[0]                 # solo la traccia selezionata
+    w.select_track("Basso")
+    panel._check_changes()                                 # un'altra traccia: subito, senza attesa
+    assert "Basso" in panel.pages()[0]
+    panel.show_playing_beat(0.5)
+    assert panel.pages_widget.highlighted()
+    w.stop()                                               # Stop: le note rosse si spengono
+    assert panel.pages_widget.highlighted() == ()
+    w.view_text_btn.click()
+    assert w.text_stack.currentIndex() == 0 and w.text_tools.isVisibleTo(w) and w.view_text_btn.isChecked()
+    w.view_score_btn.click()
+    assert w.score_panel is panel                          # una vista sola, riusata
+    w.arrangement_action.setChecked(True)                  # Struttura e ritorno (Ctrl+Shift+B): di nuovo la Partitura
+    assert w.view_structure_btn.isChecked()
+    w.arrangement_action.setChecked(False)
+    assert w.view_score_btn.isChecked() and w.text_stack.currentIndex() == 1
+    _close(w, monkeypatch)
+
+
+def test_score_button_without_verovio_stays_where_it_was(monkeypatch):
+    w = _window()
+    w.arrangement_action.setChecked(False)
+    monkeypatch.setattr(score_render, "available", lambda: False)
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a[2]))
+    w.view_score_btn.click()
+    assert "pip install verovio" in shown[0]
+    assert w.view_text_btn.isChecked() and w.text_stack.currentIndex() == 0 and w.score_panel is None
+    _close(w, monkeypatch)

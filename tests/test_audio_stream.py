@@ -314,14 +314,14 @@ def test_main_window_seek_and_loop_markers_while_stopped():
     win.seek_to_beat(6)
     win.set_loop_end()
     assert win.loop_action.isChecked()
-    assert win._active_loop_beats() == (2.0, 6.0)
+    assert win.loop.active() == (2.0, 6.0)
 
     win.seek_to_beat(1)
     win.set_loop_end()                               # B prima di A: rifiutato
-    assert win._active_loop_beats() is None
+    assert win.loop.active() is None
 
     win.clear_loop()
-    assert (win._loop_a_beat, win._loop_b_beat) == (None, None)
+    assert (win.loop.a, win.loop.b) == (None, None)
     win._dirty = False
     win.close()
     app.processEvents()

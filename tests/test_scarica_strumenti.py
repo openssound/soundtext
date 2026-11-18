@@ -107,7 +107,8 @@ def test_list_and_unknown_group(capsys):
 
 def test_menu_by_number_or_name_and_empty_exits(monkeypatch, capsys):
     nomi = [nome for nome, _desc in ss.voci_elenco()]
-    assert nomi[-3:] == ["host", "libreria", "tutto"] and len(nomi) == len(set(nomi))
+    assert nomi[-9:] == ["vst3", "clap", "host", "lv2", "lilv", "libreria", "strumenti-compilazione", "nam-plugin",
+                         "tutto"] and len(nomi) == len(set(nomi))
     risposte = iter(["1 libreria", "boh", f"{len(nomi)},piano", ""])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(risposte))
     assert ss.menu() == [nomi[0], "libreria"]
@@ -156,10 +157,14 @@ def test_vst3_plugins_for_every_system(monkeypatch, sistema, macchina, chiave):
     monkeypatch.setattr(ss.platform, "machine", lambda: macchina)
     assert ss.chiave_sistema() == chiave
     nomi = {nome for nome, _d, _r, _rel, modelli in ss.PLUGIN_VST3 if chiave in modelli}
-    # LSP Plugins esiste solo per Linux; su Linux ARM Dexed e Airwindows non pubblicano build
-    attesi = {"linux-x86_64": {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "LSP Plugins"},
-              "linux-aarch64": {"Dragonfly Reverb", "LSP Plugins"}}.get(
-                  chiave, {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb"})
+    # LSP Plugins esiste solo per Linux; su Linux ARM Dexed, Airwindows e OB-Xf non pubblicano build;
+    # Wolf Shaper su Linux e' fra gli LV2 e i plugin Chow non hanno build per Linux;
+    # su Linux ARM pubblicano build solo Dragonfly, LSP, AIDA-X e Zam; NeuralRack non esiste per macOS
+    nuovi = {"AIDA-X", "Chameleon", "Proteus", "BYOD", "NeuralRack", "JC-303", "Six Sines", "ChowKick", "Zam plugins"}
+    attesi = {"linux-x86_64": {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "LSP Plugins", "OB-Xf"} | nuovi,
+              "linux-aarch64": {"Dragonfly Reverb", "LSP Plugins", "AIDA-X", "Zam plugins"}}.get(
+                  chiave, {"Dexed", "Airwindows Consolidated", "Dragonfly Reverb", "OB-Xf", "Wolf Shaper",
+                           "ChowTapeModel", "ChowCentaur", "ChowMatrix"} | nuovi - ({"NeuralRack"} if chiave == "macos" else set()))
     assert nomi == attesi
 
 
@@ -182,7 +187,9 @@ def test_vst3_install_goes_on_when_one_plugin_fails(monkeypatch, tmp_path):
     monkeypatch.setattr(ss, "scarica_file", scarica)
     assert ss.installa_plugin_vst3() == ["Dexed"]
     assert sorted(p.name for p in (tmp_path / "vst3").iterdir()) == \
-        ["airwin2rack.vst3", "dragonfly-reverb.vst3", "lsp-plugins.vst3"]
+        ["AIDA-X.vst3", "BYOD.vst3", "Chameleon.vst3", "ChowKick.vst3", "NeuralRack.vst3", "OB-Xf.vst3", "Proteus.vst3",
+         "airwin2rack.vst3", "dragonfly-reverb.vst3", "jc303.vst3", "lsp-plugins.vst3", "six-sines.vst3",
+         "zam-plugins.vst3"]
     with pytest.raises(ss.Errore, match="Dexed"):
         ss.installa_vst3()
 
@@ -196,3 +203,120 @@ def test_zip_keeps_executable_permissions(tmp_path):
         f.writestr(info, "x")
     ss.estrai(z, tmp_path / "out")
     assert os.access(tmp_path / "out" / "p.vst3" / "Contents" / "MacOS" / "p", os.X_OK)
+
+
+# ---------------------------------------------------------------- orchestra
+
+def test_orchestra_groups_are_listed_but_not_in_tutto():
+    nomi = [v[0] for v in ss.ORCHESTRA]
+    assert set(nomi) == set(ss.ORCHESTRA_SFZ)
+    assert all(ss.trova(n) is not None for n in nomi)
+    assert not set(nomi) & {v[0] for v in ss.GRUPPI}          # "tutto" scarica solo GRUPPI
+    assert not any("-KS" in f or "Keyswitch" in f for files in ss.ORCHESTRA_SFZ.values() for f in files)
+    assert {n for n, _d in ss.voci_elenco()} >= set(nomi)
+
+
+def test_samples_of_an_sfz_file():
+    testo = ("<control>\ndefault_path=Woodwinds\\Flute\\susvib\\\n<global> volume=0\n"
+             "<region> sample=LDFlute_A3.wav lokey=67 // commento sample=no.wav\n"
+             "<region>\nsample=Sotto cartella\\B 3.wav\nhikey=70\n"
+             "<region> sample=LDFlute_A3.wav\n")
+    assert ss.campioni_sfz(testo) == ["Woodwinds/Flute/susvib/LDFlute_A3.wav",
+                                      "Woodwinds/Flute/susvib/Sotto cartella/B 3.wav"]
+    assert ss.campioni_sfz("<region> sample=../Campioni/a.wav", "Idiophones/Struck") == ["Idiophones/Campioni/a.wav"]
+    with pytest.raises(ss.Errore):
+        ss.campioni_sfz("<region> sample=../../../fuori.wav", "una")
+
+
+def test_gain_goes_in_global_once():
+    con = ss._con_guadagno("<control>\ndefault_path=x/\n<global>\nvolume=0\n<region> sample=a.wav", 8)
+    assert con.index("<global>") < con.index("global_volume=8") < con.index("<region>")
+    assert ss._con_guadagno(con, 8) == con
+    senza_global = ss._con_guadagno("<control>\ndefault_path=x/\n<region> sample=a.wav", 8)
+    assert senza_global.index("default_path") < senza_global.index("global_volume=8") < senza_global.index("<region>")
+    assert ss.campioni_sfz(senza_global) == ["x/a.wav"]
+
+
+def _fake_repo(monkeypatch, files):
+    """scarica_file finto: i file del "repository" in memoria, e i download fatti."""
+    fatti = []
+
+    def scarica_file(url, dest, tentativi=3, silenzioso=False):
+        percorso = url.split("/0123abc/", 1)[1]
+        from urllib.parse import unquote
+        fatti.append(unquote(percorso))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(files[unquote(percorso)])
+    monkeypatch.setattr(ss, "scarica_file", scarica_file)
+    return fatti
+
+
+def test_orchestra_group_downloads_only_its_files_and_resumes(tmp_path, monkeypatch):
+    files = {"FluteStac.sfz": b"<control>\ndefault_path=Woodwinds\\Flute\\\n<global>\n<region> sample=a b.wav\n"
+                              b"<region> sample=c.wav\n",
+             "Woodwinds/Flute/a b.wav": b"A" * 10, "Woodwinds/Flute/c.wav": b"C" * 10,
+             "Woodwinds/Oboe/non.wav": b"no"}
+    fatti = _fake_repo(monkeypatch, files)
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    monkeypatch.setitem(ss.ORCHESTRA_SFZ, "vsco-legni", ["FluteStac.sfz"])
+    voce = ("vsco-legni", "Legni (CC0, ~1 MB)", "https://esempio/0123abc", "sfz")   # senza / finale
+    ss.scarica(voce)
+    cartella = tmp_path / "sfz" / "vsco-legni"
+    assert fatti == ["FluteStac.sfz", "Woodwinds/Flute/a b.wav", "Woodwinds/Flute/c.wav"]
+    assert (cartella / "Woodwinds" / "Flute" / "a b.wav").read_bytes() == b"A" * 10
+    assert (cartella / ".completo").exists() and not list(cartella.rglob("*.part"))
+    assert (cartella / "FluteStac.sfz").read_text().count("global_volume=8") == 1     # VSCO: +8 dB
+    # interrotto a meta': riprende solo il file che manca
+    (cartella / ".completo").unlink()
+    (cartella / "Woodwinds" / "Flute" / "c.wav").unlink()
+    fatti.clear()
+    ss.scarica(voce)
+    assert fatti == ["Woodwinds/Flute/c.wav"]
+    assert (cartella / "FluteStac.sfz").read_text().count("global_volume=8") == 1
+
+
+def test_vcsl_files_are_not_raised(tmp_path, monkeypatch):
+    files = {"Idiophones/Claves.sfz": b"<group>\n<region> sample=Claves/c.wav\n", "Idiophones/Claves/c.wav": b"x"}
+    _fake_repo(monkeypatch, files)
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    monkeypatch.setitem(ss.ORCHESTRA_SFZ, "vcsl-percussioni", ["Idiophones/Claves.sfz"])
+    ss.scarica(("vcsl-percussioni", "Percussioni", "https://esempio/0123abc/", "sfz"))
+    sfz = tmp_path / "sfz" / "vcsl-percussioni" / "Idiophones" / "Claves.sfz"
+    assert "global_volume" not in sfz.read_text()
+    assert (sfz.parent / "Claves" / "c.wav").exists()
+
+
+def test_vsco_timpani_low_drum_switches_layer_like_the_others(tmp_path):
+    """VSCO usa il campione pianissimo del timpano grave fino a dinamica 80
+    (gli altri fino a 60): SoundText sposta la soglia a 60/61."""
+    testo = ("<control>\ndefault_path=Percussion\\Timpani\\\n<global>\nvolume=0\n<group>\n"
+             "<region>\nsample=Timpani1_Hit_v1_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\nvolume=27\n"
+             "<region>\nsample=Timpani1_Hit_v1_rr2_Sum.wav\nlokey=36\nhikey=43\nlovel=0\nhivel=80\nvolume=27\n"
+             "<region>\nsample=Timpani1_Hit_v3_rr1_Sum.wav\nlokey=36\nhikey=43\nlovel=81\nhivel=127\n"
+             "<region>\nsample=Timpani2_Hit_v4_rr1_Sum.wav\nlokey=44\nhikey=47\nlovel=111\nhivel=127\n"
+             "<region>\nsample=Timpani5_Hit_v1_rr1_Sum.wav\nlokey=53\nhikey=60\nlovel=0\nhivel=80\nvolume=23\n")
+    (tmp_path / "Timpani.sfz").write_text(testo)
+    (tmp_path / "TimpaniRolls.sfz").write_text(testo)           # lo stesso testo: qui non si tocca
+    ss.ritocca_vsco(tmp_path)
+    corretto = (tmp_path / "Timpani.sfz").read_text()
+    regioni = corretto.split("<region>")[1:]
+    assert "hivel=60" in regioni[0] and "hivel=60" in regioni[1] and "lovel=61" in regioni[2]
+    assert "volume=44" in regioni[0] and "volume=36" in regioni[1]    # le due alternanze del piano, pari
+    assert "lovel=111" in regioni[3]
+    assert "hivel=80" in regioni[4] and "volume=40" in regioni[4]     # l'acuto: piu' forte, soglia uguale
+    assert corretto.count("global_volume=8") == 1
+    rolls = (tmp_path / "TimpaniRolls.sfz").read_text()
+    assert "hivel=80" in rolls.split("<region>")[1] and "global_volume=8" in rolls
+    ss.ritocca_vsco(tmp_path)                                 # rifarlo non cambia niente
+    assert (tmp_path / "Timpani.sfz").read_text() == corretto
+
+
+def test_already_downloaded_vsco_group_gets_the_new_corrections(tmp_path, monkeypatch):
+    monkeypatch.setattr(ss, "DEST", tmp_path)
+    cartella = tmp_path / "sfz" / "vsco-percussioni"
+    cartella.mkdir(parents=True)
+    (cartella / ".completo").touch()
+    (cartella / "Timpani.sfz").write_text("<global>\n<region> sample=Timpani1_Hit_v1_rr1.wav hivel=80\n")
+    monkeypatch.setattr(ss, "scarica_file", lambda *a, **k: pytest.fail("non deve scaricare"))
+    ss.scarica(ss.trova("vsco-percussioni"))
+    assert "hivel=60" in (cartella / "Timpani.sfz").read_text()

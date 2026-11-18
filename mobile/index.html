@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>SoundText Mobile</title>
+<meta name="theme-color" content="#1e1f22">
+<!-- Tutto resta sul dispositivo: script, worker, audio e dati solo da questo
+     sito (niente richieste ad altri siti: nemmeno l'audio della dettatura
+     puo' uscire). 'wasm-unsafe-eval' serve a Pyodide, FluidSynth e verovio;
+     'unsafe-eval' a Vosk (il suo codice generato da Emscripten crea funzioni da testo). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+</head>
+<!-- I testi sono in italiano: i18n.js li traduce all'avvio (data-i18n,
+     aria-label, title, placeholder), con i cataloghi di locales/. -->
+<body class="view-brani">
+<header>
+  <h1 id="title">SoundText</h1>
+  <span id="badge" class="badge" hidden></span>
+</header>
+
+<main>
+  <!-- Brani -->
+  <section id="view-brani" class="view" aria-label="Brani">
+    <div class="actions">
+      <button id="newSong" class="primary"><span aria-hidden="true">＋ </span><span data-i18n>Nuovo brano</span></button>
+      <label class="button"><span data-i18n>Apri file…</span><input id="file" type="file" accept=".st,text/plain,application/octet-stream"></label>
+    </div>
+    <h2 data-i18n>I miei brani</h2>
+    <ul id="mySongs" class="songs"></ul>
+    <p id="noSongs" class="hint" data-i18n>Ancora nessun brano: creane uno nuovo, apri un file .st o modifica un esempio.</p>
+    <h2 data-i18n>Esempi</h2>
+    <ul id="examples" class="songs"></ul>
+    <label class="language"><span data-i18n>Lingua</span>
+      <select id="language"></select>
+    </label>
+  </section>
+
+  <!-- Testo -->
+  <section id="view-testo" class="view" aria-label="Testo">
+    <div class="textbar">
+      <select id="goto" aria-label="Vai a un blocco"><option value="" data-i18n>Vai a…</option></select>
+      <button id="newTrack" class="hum-open" aria-label="Nuova traccia…" title="Nuova traccia…"><span aria-hidden="true">＋</span></button>
+      <button id="humOpen" class="hum-open" aria-label="Canta una melodia" title="Canta una melodia"><span aria-hidden="true">♪</span></button>
+      <button id="wrapToggle" class="wrap-toggle" aria-pressed="false" aria-label="A capo automatico" title="A capo automatico"><span aria-hidden="true">↵</span></button>
+      <button id="warnButton" class="warn-button" aria-expanded="false" aria-controls="warnings" hidden><span aria-hidden="true">⚠ </span><span id="warnCount">0</span></button>
+    </div>
+    <ul id="warnings" class="warnings" aria-label="Avvisi nel testo" hidden></ul>
+    <pre id="text" role="textbox" aria-multiline="true" aria-label="Testo del brano" spellcheck="false" autocapitalize="off" autocorrect="off"
+         autocomplete="off" translate="no"></pre>
+    <!-- Barra musicale: sopra la tastiera del telefono mentre si scrive -->
+    <div id="musicbar" class="musicbar" role="toolbar" aria-label="Barra musicale" hidden>
+      <!-- Dettatura: la frase capita, il testo ST e l'esito (letto dallo screen reader) -->
+      <div id="voice" class="voice" role="group" aria-label="Dettatura" hidden>
+        <p id="voiceHeard" class="voice-heard" aria-hidden="true"></p>
+        <p id="voicePieces" class="voice-pieces" aria-hidden="true" translate="no"></p>
+        <p id="voiceStatus" class="voice-status" role="status" aria-live="polite"></p>
+        <div class="voice-actions">
+          <span id="voiceConfirm" hidden>
+            <button id="voiceInsert" class="primary" data-i18n>Inserisci</button>
+            <button id="voiceDiscard" data-i18n>Scarta</button>
+          </span>
+          <button id="voiceAsk" aria-pressed="false" data-i18n>Chiedi sempre conferma</button>
+        </div>
+      </div>
+      <div id="suggest" class="suggest" role="group" aria-label="Suggerimenti"></div>
+      <div class="pagerow">
+        <div class="pages" role="tablist" aria-label="Pagine della barra">
+          <button data-page="0" role="tab" aria-selected="true" aria-controls="keys" data-i18n>Note</button>
+          <button data-page="1" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Durate</button>
+          <button data-page="2" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Accordi</button>
+          <button data-page="3" role="tab" aria-selected="false" aria-controls="keys" data-i18n>Pattern</button>
+        </div>
+        <button id="undoKey" aria-label="Annulla l'ultima modifica" title="Annulla l'ultima modifica"><span aria-hidden="true">↶</span></button>
+        <button id="redoKey" aria-label="Ripeti la modifica annullata" title="Ripeti la modifica annullata"><span aria-hidden="true">↷</span></button>
+      </div>
+      <div class="barrow">
+        <button id="mic" class="mic" aria-pressed="false" aria-label="Detta"><span aria-hidden="true">🎤</span></button>
+        <div id="keys" class="keys" role="tabpanel"></div>
+        <!-- sempre a portata: non scorrono con gli altri tasti -->
+        <div class="keys keys-fixed">
+          <button id="deleteKey" aria-label="Cancella il token" title="Cancella il token"><span aria-hidden="true">⌫</span></button>
+          <button id="playBarKey" class="play-bar" aria-label="Suona la battuta del cursore" title="Suona la battuta del cursore"><span aria-hidden="true">▶</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Crea: giro, batteria, basso, accompagnamento (generatori di SoundText) -->
+  <section id="view-crea" class="view" aria-label="Crea">
+    <div class="gentabs" role="tablist" aria-label="Generatori">
+      <button role="tab" data-gen="progression" aria-selected="true" aria-controls="genForm" data-i18n>Giro</button>
+      <button role="tab" data-gen="drums" aria-selected="false" aria-controls="genForm" data-i18n>Batteria</button>
+      <button role="tab" data-gen="bass" aria-selected="false" aria-controls="genForm" data-i18n>Basso</button>
+      <button role="tab" data-gen="comping" aria-selected="false" aria-controls="genForm" data-i18n>Accompagnamento</button>
+    </div>
+    <div class="genbody">
+      <form id="genForm" class="genform" role="tabpanel"></form>
+      <pre id="genText" class="gentext" aria-label="Parte generata" translate="no"></pre>
+      <p id="genStatus" class="hint" role="status"></p>
+    </div>
+    <div class="genactions">
+      <button id="genAgain" aria-label="Un'altra versione"><span aria-hidden="true">🎲 </span><span data-i18n>Un'altra</span></button>
+      <button id="genListen" aria-pressed="false"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+      <button id="genAdd" class="primary" data-i18n>Aggiungi al brano</button>
+    </div>
+  </section>
+
+  <!-- Struttura: le sezioni (box) del brano, le tracce in colonne -->
+  <section id="view-struttura" class="view" aria-label="Struttura">
+    <div class="structbar">
+      <button id="structUndo" disabled><span aria-hidden="true">↶ </span><span data-i18n>Annulla la modifica</span></button>
+      <button id="structSplit" hidden data-i18n>Dividi in sezioni</button>
+    </div>
+    <div id="structure" class="structure"></div>
+    <p id="structStatus" class="hint" role="status"></p>
+  </section>
+
+  <!-- Partitura: verovio, caricato alla prima apertura -->
+  <section id="view-partitura" class="view" aria-label="Partitura">
+    <div class="scorebar">
+      <select id="scoreTracks" aria-label="Tracce della partitura"></select>
+      <button id="zoomOut" aria-label="Rimpicciolisci">−</button>
+      <button id="zoomIn" aria-label="Ingrandisci">＋</button>
+    </div>
+    <div id="score" class="score" role="region" aria-label="Partitura"><p class="hint" data-i18n>Apri un brano per vederne la partitura.</p></div>
+  </section>
+
+  <!-- Lettore -->
+  <section id="view-lettore" class="view" aria-label="Lettore">
+    <div class="controls">
+      <label><span data-i18n>Velocità</span> <output id="speedOut" aria-hidden="true">100%</output>
+        <input id="speed" type="range" min="50" max="100" step="5" value="100" aria-label="Velocità" aria-valuetext="100%">
+      </label>
+      <label><span data-i18n>Trasposizione</span> <output id="transOut" aria-hidden="true">0</output>
+        <input id="trans" type="range" min="-6" max="6" step="1" value="0" aria-label="Trasposizione" aria-valuetext="0">
+      </label>
+      <label class="inline"><span data-i18n>Segui la traccia</span>
+        <select id="follow"></select>
+      </label>
+    </div>
+    <h2 id="loopTitle" data-i18n>Ripeti un tratto</h2>
+    <div class="loop" role="group" aria-labelledby="loopTitle">
+      <button id="loopA" aria-label="A: inizio della battuta che suona">A</button>
+      <button id="loopB" aria-label="B: fine della battuta che suona">B</button>
+      <span id="loopOut" class="loop-out" aria-live="polite" data-i18n>nessun tratto</span>
+      <button id="loopOn" aria-pressed="false" disabled data-i18n>Ripeti A–B</button>
+    </div>
+    <label class="check"><input id="metronome" type="checkbox"> <span data-i18n>Metronomo</span></label>
+    <h2 id="mixerTitle" data-i18n>Tracce</h2>
+    <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
+    <details class="opts">
+      <summary data-i18n>Avanzate</summary>
+      <label><input id="unlockAudio" type="checkbox" checked> <span data-i18n>elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</span></label>
+      <label><input id="audioSession" type="checkbox" checked> navigator.audioSession.type = "playback" (Safari 17+)</label>
+      <p class="hint"><a href="diagnostica.html" data-i18n>Diagnostica</a> · <span data-i18n>motore:</span> <span id="engineState"></span></p>
+    </details>
+  </section>
+</main>
+
+<!-- Mini lettore, sempre visibile -->
+<section class="player" aria-label="Ascolto">
+  <input id="seek" class="seek" type="range" min="0" max="0" step="any" value="0" disabled aria-label="Posizione nel brano">
+  <button id="play" class="play" disabled aria-label="Suona">▶</button>
+  <div class="now">
+    <div id="nowName" class="name">–</div>
+    <div id="status" role="status" class="status" data-i18n>Avvio del motore…</div>
+  </div>
+  <div id="pos" class="pos"></div>
+</section>
+
+<nav class="tabs" aria-label="Schermate">
+  <button data-view="brani" aria-current="page" data-i18n>Brani</button>
+  <button data-view="testo" data-i18n>Testo</button>
+  <button data-view="crea" data-i18n>Crea</button>
+  <button data-view="struttura" data-i18n>Struttura</button>
+  <button data-view="partitura" data-i18n>Partitura</button>
+  <button data-view="lettore" data-i18n>Lettore</button>
+</nav>
+
+<!-- Trasforma: funzioni su un richiamo di pattern, con anteprima -->
+<dialog id="transform" class="sheet tall" aria-labelledby="tfTitle">
+  <h2 id="tfTitle" data-i18n>Trasforma</h2>
+  <label class="tf-row"><span data-i18n>Richiamo</span>
+    <input id="tfToken" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" translate="no">
+  </label>
+  <select id="tfAdd" aria-label="Aggiungi una funzione"></select>
+  <p id="tfHelp" class="hint"></p>
+  <ol id="tfStages" class="tf-stages" aria-label="Passo per passo"></ol>
+  <p id="tfError" class="hint error" role="alert"></p>
+  <div class="tf-scores">
+    <figure><figcaption data-i18n>Il pattern</figcaption><div id="tfBefore" class="tf-score"></div>
+      <button id="tfPlayBefore"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta prima</span></button></figure>
+    <figure><figcaption data-i18n>Con le funzioni</figcaption><div id="tfAfter" class="tf-score"></div>
+      <button id="tfPlayAfter"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta dopo</span></button></figure>
+  </div>
+  <div class="tf-actions">
+    <button id="tfReplace" class="primary" data-i18n>Sostituisci</button>
+    <button id="tfFreeze" data-i18n>Scrivi le note</button>
+    <button id="tfClose" data-i18n>Chiudi</button>
+  </div>
+</dialog>
+
+<!-- Dettatura: avviso prima del primo uso -->
+<dialog id="voiceIntro" class="sheet" aria-labelledby="voiceIntroTitle">
+  <h2 id="voiceIntroTitle" data-i18n>Dettatura</h2>
+  <p data-i18n>La voce si riconosce sul telefono: l'audio non viene registrato e non esce dal dispositivo.</p>
+  <p data-i18n>La prima volta l'app scarica il modello della lingua (circa 50 MB); poi la dettatura funziona anche senza rete.</p>
+  <p data-i18n>Detta una frase e fai una pausa. Per esempio: «la minore, fa, do, sol», «ottavi do re mi fa», «suona la battuta», «cancella», «fine dettatura».</p>
+  <div class="sheet-actions">
+    <button id="voiceIntroStart" class="primary" data-i18n>Scarica e inizia</button>
+  </div>
+  <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
+</dialog>
+
+<!-- Canta: una melodia canticchiata diventa testo nella traccia del cursore -->
+<dialog id="humDialog" class="sheet" aria-labelledby="humTitle">
+  <h2 id="humTitle"></h2>
+  <p id="humHelp" class="hint"></p>
+  <p class="hint" data-i18n>L'audio non viene salvato e non esce dal telefono. Con le cuffie il conteggio non entra nel microfono.</p>
+  <label class="hum-grid"><span data-i18n>Nota più corta:</span>
+    <select id="humGrid">
+      <option value="4" data-i18n>quarti</option>
+      <option value="8" data-i18n>ottavi</option>
+      <option value="16" data-i18n>sedicesimi</option>
+      <option value="8T" data-i18n>terzine di ottavi</option>
+    </select>
+  </label>
+  <p id="humStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <pre id="humText" class="gentext" aria-label="Melodia riconosciuta" translate="no"></pre>
+  <div class="sheet-actions">
+    <button id="humRecord" class="primary" aria-pressed="false"></button>
+    <button id="humListen" disabled><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+    <button id="humInsert" disabled data-i18n>Inserisci nel testo</button>
+  </div>
+  <button id="humClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
+<!-- Azioni su un box o una sezione (Struttura) -->
+<dialog id="sheet" class="sheet" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle"></h2>
+  <div id="sheetActions" class="sheet-actions"></div>
+  <button id="sheetClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
+<script src="vendor/js-synthesizer/js-synthesizer.js"></script>
+<script src="i18n.js"></script>
+<script src="metrics.js"></script>
+<script src="songs.js"></script>
+<script src="app/base.js"></script>
+<script src="app/text-edits.js"></script>
+<script src="app/editor.js"></script>
+<script src="app/voice.js"></script>
+<script src="app/hum.js"></script>
+<script src="app/songs-view.js"></script>
+<script src="app/create.js"></script>
+<script src="app/structure.js"></script>
+<script src="app/player.js"></script>
+<script src="app/score.js"></script>
+<script src="app/main.js"></script>
+</body>
+</html>

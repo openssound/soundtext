@@ -6,7 +6,7 @@
 .DESCRIPTION
     Va eseguito DENTRO una copia completa del repository SoundText (serve
     main.py, requirements.txt, soundtext.spec, core/, gui/, midi/, assets/,
-    docs/, songs/, examples/, soundfonts/) su un PC/VM Windows, perche'
+    docs/, songs/, examples/) su un PC/VM Windows, perche'
     PyInstaller compila per la piattaforma su cui gira.
 
     Passi:
@@ -17,8 +17,8 @@
          da assets\icon.svg con generate_icons.py) per l'icona dell'eseguibile;
       3. lancia PyInstaller con soundtext.spec (modalita' onedir);
       4. affianca a SoundText.exe le cartelle dati dell'app (assets, docs,
-         songs demo, libreria midi, esempi) e, se presente, il SoundFont GM
-         incluso nel repository (soundfonts\FluidR3_GM.sf2);
+         songs demo, libreria midi, esempi); il SoundFont non e' incluso:
+         SoundText lo propone al primo avvio (Suoni -> Scarica e installa);
       5. scarica (con conferma) le DLL di FluidSynth dai release ufficiali
          GitHub e le affianca a SoundText.exe: Windows le trova da li'
          tramite l'ordine di ricerca DLL standard, senza toccare il PATH
@@ -140,15 +140,6 @@ if ($LASTEXITCODE -eq 0 -and $verovioData -and (Test-Path $verovioData)) {
     Write-Warning "Verovio non trovato: la build non avra' la vista Partitura."
 }
 
-$sf2Src = Join-Path $Root "soundfonts\FluidR3_GM.sf2"
-if (Test-Path $sf2Src) {
-    Write-Info "Includo il SoundFont GM (FluidR3_GM.sf2)..."
-    New-Item -ItemType Directory -Force -Path (Join-Path $DistDir "soundfonts") | Out-Null
-    Copy-Item $sf2Src (Join-Path $DistDir "soundfonts\FluidR3_GM.sf2") -Force
-} else {
-    Write-Warn "soundfonts\FluidR3_GM.sf2 non trovato nel repository: la build non avra' un SoundFont incluso."
-}
-
 # --- FluidSynth: le DLL vanno affiancate a SoundText.exe. La cartella
 # dell'eseguibile e' nell'ordine di ricerca DLL standard di Windows, quindi
 # non serve toccare il PATH di sistema come fa install.ps1. ---
@@ -191,6 +182,18 @@ if ($fluidDll) {
     Write-Warn "FluidSynth non incluso: la build compilata non produrra' audio finche' non aggiungi"
     Write-Warn "manualmente le DLL di FluidSynth nella cartella di SoundText.exe."
 }
+
+# Il motore SFZ interno gia' compilato (release libsfizz di SoundText), in
+# lib\ dove SoundText lo cerca (core.sfz_engine). Senza rete si va avanti.
+Write-Info "Includo il motore SFZ interno (libsfizz)..."
+& $venvPython (Join-Path $Root "scarica_strumenti.py") libreria --in (Join-Path $DistDir "lib")
+if ($LASTEXITCODE -ne 0) { Write-Warn "libsfizz non inclusa: si installa poi con scarica_strumenti.py libreria" }
+
+# Versioni esatte e testi di licenza di cio' che la build contiene
+& $venvPython (Join-Path $Root ".github\scripts\avvisi_build.py") (Join-Path $DistDir "licenses\COMPONENTI.txt") `
+    "FluidSynth 2.4.7, DLL della release ufficiale per Windows (licenses\fluidsynth-windows.txt)" `
+    "libsfizz: sfizioso, commit in scarica_strumenti.py (licenses\sfizioso.txt)"
+if ($LASTEXITCODE -ne 0) { Write-Warn "licenses\COMPONENTI.txt non generato" }
 
 Write-Info "Comprimo in SoundText-portable-win64.zip..."
 $zipOut = Join-Path $Root "SoundText-portable-win64.zip"

@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import shutil
@@ -28,6 +29,7 @@ def _reset_custom_instruments():
     if os.path.exists(CUSTOM_INSTRUMENTS_FILE):
         os.remove(CUSTOM_INSTRUMENTS_FILE)
     im._custom_cache = None
+    im._opened_instruments.clear()      # quelli arrivati aprendo un brano (solo sessione)
 
 
 def test_add_and_use_custom_instrument():
@@ -791,23 +793,31 @@ def test_drum_kit_type_alias_marks_percussion():
 def test_unregistered_instrument_in_track_header_is_auto_registered():
     """Bug fix: un'intestazione traccia con uno strumento non ancora
     registrato non deve far sparire silenziosamente la traccia. Va risolto
-    con resolve_instrument_type/ensure_instrument_available."""
+    con resolve_instrument_type/ensure_instrument_available; dalla 2.11 di
+    st-language si registra solo un nome che la libreria riconosce, uno
+    sconosciuto suona come pianoforte per la sola sessione."""
     from core.project_io import parse_project_text
     from core.instruments import get_instrument
 
     _reset_custom_instruments()
-    assert "AcousticGuitar" not in list_instrument_names()
-    text = """Traccia AcousticGuitar [AcousticGuitar]:
+    assert "acoustic_guitar" not in list_instrument_names()
+    text = """Traccia AcousticGuitar [acoustic_guitar]:
+  16: c*4 d*4
+
+Traccia Strano [AcousticGuitar]:
   16: c*4 d*4
 """
     try:
         p = parse_project_text(text)
-        assert "AcousticGuitar" in list_instrument_names()
-        assert len(p.tracks) == 1
+        assert "acoustic_guitar" in list_instrument_names()
+        assert len(p.tracks) == 2
         t = p.get_track("AcousticGuitar")
-        assert t.instrument_name == "AcousticGuitar"
-        instr = get_instrument("AcousticGuitar")
-        assert instr.gm_program is not None  # dedotto per fuzzy-match sul nome GM
+        assert t.instrument_name == "acoustic_guitar"
+        assert get_instrument("acoustic_guitar").gm_program == 25
+        # un nome che non si riconosce: la traccia resta, come pianoforte
+        assert "AcousticGuitar" not in list_instrument_names()
+        assert p.get_track("Strano").instrument.gm_program == 0
+        assert [line for line, _msg in p.file_warnings] == [4]
     finally:
         _reset_custom_instruments()
 
@@ -1021,6 +1031,7 @@ def test_extract_patterns_does_not_move_blocks_that_depend_on_key_or_rel():
     assert pats
 
 
+@pytest.mark.slow
 def test_extract_and_expand_all_real_songs_roundtrip():
     """Verifica su tutti i progetti reali (examples/ + songs/): l'estrazione
     non deve mai alterare il contenuto musicale ne' produrre sintassi non valida."""
@@ -1479,7 +1490,7 @@ def _channel_from_notes(notes_beats, tpb=480, program=0):
 def test_midi_import_triplets_use_8t_grid():
     tokens = midi_convert.channel_to_tokens(
         _channel_from_notes([(0, 1 / 3, 60), (1 / 3, 1 / 3, 62), (2 / 3, 1 / 3, 64), (1, 1, 65)]), 480)
-    assert tokens[:2] == ["16:", "8T:"] or tokens[0] == "16:" and "8T:" in tokens
+    assert tokens[0] == "8T:"            # parte in terzine: niente "16: 8T:"
     assert "8T:" in tokens
     # parsando i token gli attacchi cadono esattamente sui terzi di beat
     events = [e for e in parse_track_text(" ".join(tokens), {}, default_octave=4) if e.kind == "note"]
@@ -1674,8 +1685,12 @@ def test_beat_grid_thirty_seconds_for_fast_repeats():
     # accordo ribattuto a trentaduesimi (Firth of Fifth, quarto 116): con i
     # sedicesimi meta' dei colpi si sovrapponevano e si perdevano
     assert midi_convert._choose_beat_grid([0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]) == 8
-    # una sola nota "sporca" vicino a un 32esimo non basta
-    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.625]) == 4
+    # una sola nota "sporca" fra un sedicesimo e un 32esimo non basta...
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.6]) == 4
+    # ...una sola precisa sul 32esimo si' (un abbellimento: Strange Brew)
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.625]) == 8
+    # con il ritmo fedele all'esecuzione basta che i 32esimi spieghino meglio
+    assert midi_convert._choose_beat_grid([0.0, 0.25, 0.5, 0.6], fine_rhythm=True) == 8
 
 
 def test_midi_import_keeps_every_thirty_second_repeat():
@@ -1995,3 +2010,46 @@ if __name__ == "__main__":
         passed += 1
         print(f"OK  {t.__name__}")
     print(f"\n{passed}/{len(tests)} test superati.")
+
+
+def test_opening_a_song_does_not_write_the_instruments_file():
+    """Aprire un brano non cambia la configurazione: gli strumenti che porta
+    (definiti nel file o riconosciuti dalla libreria) valgono per la sessione
+    e non finiscono in instruments.json; quelli salvati dall'utente si'."""
+    from core.project_io import parse_project_text
+    _reset_custom_instruments()
+    text = ("Strumento MioSax:\n  program=66 percussione=no ottava=4 range=49-81 poly=no voicing=monophonic\n\n"
+            "Tempo: 82 BPM\n\nTraccia Sax [MioSax]:\n  16: c*4 d*4\n\nTraccia Arco [Violin]:\n  4: c d e f\n")
+    try:
+        project = parse_project_text(text)
+        assert [t.instrument_name for t in project.tracks] == ["MioSax", "Violin"]
+        assert {"MioSax", "Violin"} <= set(list_instrument_names())
+        assert get_instrument("MioSax").gm_program == 66
+        assert not os.path.exists(CUSTOM_INSTRUMENTS_FILE)
+        # lo strumento salvato dall'utente vince su quello arrivato da un brano
+        add_custom_instrument(InstrumentProfile(name="MioSax", gm_program=10))
+        assert get_instrument("MioSax").gm_program == 10
+        with open(CUSTOM_INSTRUMENTS_FILE, encoding="utf-8") as f:
+            assert list(json.load(f)) == ["MioSax"]
+        remove_custom_instrument("MioSax")
+        assert "MioSax" not in list_instrument_names()
+    finally:
+        _reset_custom_instruments()
+
+
+def test_configuration_files_are_written_atomically(tmp_path):
+    """settings.json e instruments.json: file temporaneo e os.replace, cosi'
+    un'interruzione a meta' scrittura lascia il file di prima."""
+    from core.settings import write_json_atomic
+    path = str(tmp_path / "conf.json")
+    write_json_atomic(path, {"a": 1})
+
+    class Broken:
+        pass
+
+    with pytest.raises(TypeError):
+        write_json_atomic(path, {"a": Broken()})       # non si puo' scrivere: il file resta
+    with open(path, encoding="utf-8") as f:
+        assert json.load(f) == {"a": 1}
+    assert os.listdir(tmp_path) == ["conf.json"]       # nessun file temporaneo rimasto
+

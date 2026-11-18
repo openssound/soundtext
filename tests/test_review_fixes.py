@@ -141,9 +141,9 @@ def test_token_spans_inherit_the_current_grid_in_groups_and_patterns():
     project.add_pattern("Grid", "16: c")
     spans = compute_token_spans("8: %Riff e", project.patterns)
     assert [(start, dur) for _, _, start, dur in spans] == [(0.0, 1.0), (1.0, 0.5)]
-    # Una griglia cambiata dentro il pattern vale anche per i token successivi.
+    # Dalla 2.12 una griglia cambiata dentro il pattern finisce con lui.
     spans = compute_token_spans("%Grid e", project.patterns)
-    assert [(start, dur) for _, _, start, dur in spans] == [(0.0, 0.25), (0.25, 0.25)]
+    assert [(start, dur) for _, _, start, dur in spans] == [(0.0, 0.25), (0.25, 1.0)]
     assert parse_track_text("%Grid e", project.patterns)[-1].start == 0.25
 
 

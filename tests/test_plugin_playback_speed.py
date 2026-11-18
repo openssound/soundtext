@@ -194,6 +194,7 @@ def test_float_to_int16_matches_the_16_bit_wav(tmp_path):
     assert np.array_equal(float_to_int16(x), from_disk)
 
 
+@pytest.mark.slow
 @needs_delay
 def test_warm_loads_the_plugin_in_its_render_host():
     plugins.warm(A_DELAY, {}, "", 48000)

@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from .i18n import tr
+from .memory import cache_budget
 
 # chiave -> (etichetta, room size, damping, width, level) di fluidsynth
 REVERB_ROOMS = {
@@ -77,10 +78,36 @@ def suggested_nam_cabinet(path: str) -> Optional[str]:
     return "2x12"
 
 
+def suggested_nam_ir(path: str) -> Optional[str]:
+    """Il file IR di una cassa vera per il profilo (vedi _NAM_IR_HINTS), se
+    e' una testata rock o metal senza cassa e le casse sono state scaricate
+    (core.cab_irs); altrimenti None."""
+    if suggested_nam_cabinet(path) is None:
+        return None
+    from .cab_irs import existing_cab_dir
+    from .nam import NamError, load_nam
+    folder = existing_cab_dir()
+    if not folder:
+        return None
+    try:
+        meta = load_nam(path).metadata or {}
+    except NamError:
+        return None
+    words = " ".join(str(v) for v in (meta.get("gear_make"), meta.get("gear_model"), meta.get("name"),
+                                      os.path.basename(path)) if v).lower()
+    for name, hints in _NAM_IR_HINTS:
+        candidate = os.path.join(folder, name)
+        if any(h in words for h in hints) and os.path.isfile(candidate):
+            return candidate
+    return None
+
+
 def set_nam_profile(effect, path: str):
-    """Imposta il profilo dell'effetto NAM e adatta la cassa: una cassa
-    interna per un profilo che non la comprende (se non ce n'e' gia' una),
-    "Nessuna / inclusa" per uno che la comprende (salvo un file IR scelto)."""
+    """Imposta il profilo dell'effetto NAM e adatta la cassa: per un profilo
+    che non la comprende (se non ce n'e' gia' una) la cassa vera della sua
+    famiglia (un file IR, vedi suggested_nam_ir) o, senza, una cassa
+    interna; "Nessuna / inclusa" per uno che la comprende (salvo un file IR
+    scelto)."""
     from .nam import NamError, load_nam
     effect.nam = path
     param = next(p for p in effect_params("nam") if p.key == "cassa")
@@ -91,7 +118,11 @@ def set_nam_profile(effect, path: str):
     except NamError:
         return
     suggestion = suggested_nam_cabinet(path)
-    if includes is False and current == "nessuna" and suggestion:
+    ir = suggested_nam_ir(path) if includes is False and current == "nessuna" else None
+    if ir:
+        effect.params["cassa"] = keys.index("file")
+        effect.ir = ir
+    elif includes is False and current == "nessuna" and suggestion:
         effect.params["cassa"] = keys.index(suggestion)
     elif includes is True and current != "file":
         effect.params["cassa"] = keys.index("nessuna")
@@ -168,6 +199,21 @@ _NAM_CABINET_HINTS = (
               "splawn", "sovtek", "meshuggah", "yerasov")),
     ("combo_1x12", ("vox", "ac15", "ac30", "matchless", "dr z", "princeton", "deluxe", "champ", "magnatone")),
 )
+# Cassa vera (un file IR del pacchetto di core.cab_irs) per le testate rock
+# e metal, dalla famiglia dell'amplificatore: suona molto piu' vera della
+# curva interna. Per i combo puliti (Fender, Vox, Magnatone...) nel
+# pacchetto non c'e' una cassa adatta, e si resta sulla curva interna.
+_NAM_IR_HINTS = (
+    ("EVH 5150 III.wav", ("5150", "6505", "peavey", "evh")),
+    ("Mesa Boogie Mark V.wav", ("mesa", "boogie", "rectifier", "meshuggah", "yerasov")),
+    ("Engl Retro Tube.wav", ("engl",)),
+    ("Splawn Quick Rod.wav", ("splawn",)),
+    ("Laney ironheart.wav", ("laney",)),
+    ("Krank Krankenstein.wav", ("krank",)),
+    ("Marshall JMP 2203  Jose Arredondo mod.wav", ("marshall", "jcm", "jvm", "plexi", "2203", "orange",
+                                                    "friedman", "bogner", "soldano", "diezel", "sovtek")),
+)
+
 # Profili per basso: le casse interne sono da chitarra (tagliano sotto gli
 # 80 Hz circa), quindi per questi non se ne propone nessuna.
 _NAM_BASS_HINTS = ("bass", "basso", "sansamp", "darkglass", "b7k", "dug", "svt", "ampeg")
@@ -658,11 +704,18 @@ def _convolve(x: np.ndarray, ir: np.ndarray) -> np.ndarray:
     block = 1 << 16
     nfft = 1 << int(np.ceil(np.log2(block + len(ir) - 1)))
     spectrum = np.fft.rfft(ir, nfft)[:, None]
-    out = np.zeros((frames + nfft, x.shape[1]), dtype=np.float64)
+    # uscita a 32 bit; la somma (overlap-add) in float64 solo sugli nfft
+    # frame che il blocco corrente tocca, poi spostata avanti di un blocco
+    out = np.empty((frames, x.shape[1]), dtype=np.float32)
+    acc = np.zeros((nfft, x.shape[1]), dtype=np.float64)
     for start in range(0, frames, block):
         piece = x[start:start + block]
-        out[start:start + nfft] += np.fft.irfft(np.fft.rfft(piece, nfft, axis=0) * spectrum, nfft, axis=0)
-    return out[:frames].astype(np.float32)
+        acc += np.fft.irfft(np.fft.rfft(piece, nfft, axis=0) * spectrum, nfft, axis=0)
+        n = min(block, frames - start)
+        out[start:start + n] = acc[:n]
+        acc[:-block] = acc[block:]
+        acc[-block:] = 0.0
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -834,7 +887,9 @@ def _oversampled(stages: list, factor: int = OVERSAMPLING):
                for st in stages]
         delay = (_OS_TAPS - 1) // factor               # ritardo dei due FIR, in frame originali
         padded = np.concatenate([x, np.zeros((delay, channels), dtype=x.dtype)])
-        out = []
+        # ogni pezzo in uscita va al suo posto nell'array finale a 32 bit
+        out = np.zeros((frames, channels), dtype=np.float32)
+        pos = 0                                        # posizione del pezzo nell'uscita con ritardo
         for start in range(0, len(padded), _OS_BLOCK):
             high = up.process(padded[start:start + _OS_BLOCK].astype(np.float64)).astype(np.float32)
             for op in ops:
@@ -846,8 +901,12 @@ def _oversampled(stages: list, factor: int = OVERSAMPLING):
                     high = op.process(high)
                 else:
                     high = op(np.ascontiguousarray(high.T), rate * factor, reset=start == 0).T
-            out.append(down.process(high.astype(np.float64)))
-        return np.concatenate(out)[delay:delay + frames].astype(np.float32)
+            low = down.process(high.astype(np.float64))
+            first, last = max(pos, delay), min(pos + len(low), delay + frames)
+            if last > first:
+                out[first - delay:last - delay] = low[first - pos:last - pos]
+            pos += len(low)
+        return out
     return run
 
 
@@ -871,9 +930,15 @@ def _nam_normalization_db(path: str) -> float:
 # rete e' di gran lunga la parte piu' lenta della catena (decine di secondi
 # per qualche minuto di chitarra), e toccare il Livello, la cassa o un
 # effetto che viene dopo non cambia quello che le arriva.
-_NAM_CACHE_BYTES = 256 * 1024 * 1024
+_NAM_CACHE_BYTES = cache_budget("nam")            # vedi core.memory
 _nam_out_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
 _nam_cache_lock = threading.Lock()
+
+
+def clear_caches() -> None:
+    """Svuota la cache delle uscite NAM."""
+    with _nam_cache_lock:
+        _nam_out_cache.clear()
 
 
 def _nam_stage(x: np.ndarray, rate: int, path: str) -> np.ndarray:
@@ -901,7 +966,12 @@ def _nam_stage(x: np.ndarray, rate: int, path: str) -> np.ndarray:
             y = _fft_resample(y, model.sample_rate, rate)[:len(mono)]
             y = np.concatenate([y, np.zeros(len(mono) - len(y))])
         else:
-            y = process(model, mono)
+            # il motore in C++ del plugin Neural Amp Modeler, se c'e' (4-6
+            # volte piu' veloce, vedi core.nam_plugin); altrimenti la rete in numpy
+            from . import nam_plugin
+            y = nam_plugin.process(path, mono, rate, model.receptive_field, model.loudness)
+            if y is None:
+                y = process(model, mono)
         y = np.asarray(y, dtype=np.float32)
         with _nam_cache_lock:
             _nam_out_cache[key] = y
@@ -1181,8 +1251,13 @@ def _plugins(effect, bpm: float = 120.0) -> list:
         cabinet = choice_key(effect_params(kind)[1], p["cassa"])
         if uses_ir_file(effect) and load_ir_file(effect.ir, 48000) is not None:
             stages.append(lambda x, rate, path=effect.ir: _convolve(x, load_ir_file(path, rate)))
-        elif cabinet in _CABINET_CURVES:
-            stages.append(lambda x, rate, cabinet=cabinet: _convolve(x, cabinet_ir(cabinet, rate)))
+        else:
+            if cabinet == "file":
+                # il file IR manca (le casse si scaricano a parte): meglio la
+                # cassa interna adatta al profilo che nessuna cassa
+                cabinet = suggested_nam_cabinet(effect.nam) or "nessuna"
+            if cabinet in _CABINET_CURVES:
+                stages.append(lambda x, rate, cabinet=cabinet: _convolve(x, cabinet_ir(cabinet, rate)))
         stages.append(pb.Gain(gain_db=p["livello"] + _nam_normalization_db(effect.nam)))
         return stages
     if kind == "plugin":
@@ -1280,6 +1355,42 @@ def _plugins(effect, bpm: float = 120.0) -> list:
         return [pb.Phaser(rate_hz=p["velocita"], depth=p["profondita"] / 100.0, centre_frequency_hz=1300,
                           feedback=p["ritorno"] / 100.0, mix=p["mix"] / 100.0)]
     return []
+
+
+# Invii del synth per le tracce suonate da uno strumento plugin (SFZ, VST3,
+# LV2): il loro suono non passa da fluidsynth, che con CC91/CC93 aggiunge
+# riverbero e chorus alle tracce del SoundFont. Gli stessi cursori
+# (Riverbero, Chorus dell'invio rapido) li applicano qui, con l'ambiente
+# del brano. SEND_REVERB_GAIN porta il riverbero a un livello vicino a
+# quello di fluidsynth con lo stesso invio.
+SEND_REVERB_GAIN = 0.22
+SEND_TAIL_SECONDS = 3.5
+
+
+def apply_synth_sends(samples: np.ndarray, samplerate: int, room: str, reverb: int, chorus: int) -> np.ndarray:
+    """La traccia con il chorus (in serie) e il riverbero (in parallelo)
+    dell'invio rapido: 'reverb' e 'chorus' in percentuale (0-100), 'room'
+    l'ambiente del brano (vedi REVERB_ROOMS). Senza invii o senza
+    pedalboard torna 'samples' invariato; con il riverbero la coda resta
+    (il silenzio vero in fondo si toglie)."""
+    if _pedalboard is None or len(samples) == 0 or (reverb <= 0 and chorus <= 0) or room == DRY_SYNTH_ROOM:
+        return samples
+    pb = _pedalboard
+    x = np.asarray(samples, dtype=np.float32)
+    if reverb > 0:
+        x = np.concatenate([x, np.zeros((int(SEND_TAIL_SECONDS * samplerate), x.shape[1]), dtype=np.float32)])
+    out = x
+    if chorus > 0:
+        out = pb.Chorus(rate_hz=0.3, depth=0.25, centre_delay_ms=8.0, feedback=0.0,
+                        mix=min(1.0, chorus / 100.0) * 0.5)(out.T.copy(), samplerate).T
+    if reverb > 0:
+        size, damping, width, level = reverb_params(room)
+        wet = pb.Reverb(room_size=size, damping=damping, width=width, wet_level=1.0,
+                        dry_level=0.0)(out.T.copy(), samplerate).T
+        out = out + wet * np.float32(level * SEND_REVERB_GAIN * min(1.0, reverb / 100.0))
+    loud = np.flatnonzero((np.abs(out) > 1e-5).any(axis=1))
+    end = max(len(samples), int(loud[-1]) + 1 if len(loud) else 0)
+    return np.ascontiguousarray(out[:end], dtype=np.float32)
 
 
 def apply_effect_chain(samples: np.ndarray, samplerate: int, effects,

@@ -23,7 +23,7 @@ from core.audio_recording import (
     loop_clip, loop_pass_count, punch_clip, recorded_clip, save_take, take_preview,
 )
 
-from .theme import GOOD, TEXT_DIM, WARN
+from .theme import dim, good_text, warn_text
 from .worker import Worker
 from core.i18n import tr
 
@@ -138,14 +138,14 @@ class AudioRecordDialog(QDialog):
 
         self.hint_label = QLabel()
         self.hint_label.setWordWrap(True)
-        self.hint_label.setStyleSheet(f"color: {TEXT_DIM};")
+        dim(self.hint_label)
         form.addRow("", self.hint_label)
         self.mic_warning = QLabel(tr(
             "Attenzione: questo ingresso e' probabilmente il microfono del computer, che registra anche il "
             "click e la base se escono dalle casse. Ascolta in cuffia, oppure scegli la scheda audio a cui e' "
             "collegato lo strumento."))
         self.mic_warning.setWordWrap(True)
-        self.mic_warning.setStyleSheet(f"color: {WARN};")
+        self.mic_warning.setStyleSheet(f"color: {warn_text()};")
         self.mic_warning.setVisible(False)
         form.addRow("", self.mic_warning)
 
@@ -229,7 +229,7 @@ class AudioRecordDialog(QDialog):
             tr("Per sentirti mentre suoni usa il monitoraggio diretto della scheda audio (manopola o "
             "tasto \"direct monitor\"): e' senza ritardo. SoundText manda in cuffia solo il brano."))
         monitor_note.setWordWrap(True)
-        monitor_note.setStyleSheet(f"color: {TEXT_DIM}; padding-top: 6px;")
+        dim(monitor_note, "padding-top: 6px;")
         layout.addWidget(monitor_note)
 
         self.status_label = QLabel()
@@ -421,7 +421,7 @@ class AudioRecordDialog(QDialog):
         monitor = self._monitor if self._recorder is None else None
         if monitor is None or not hasattr(monitor, "read_recent"):
             self.tuner_label.setText("—")
-            self.tuner_label.setStyleSheet(f"color: {TEXT_DIM};")
+            dim(self.tuner_label)
             return
         from core import tuning
         freq = tuning.block_pitch(monitor.read_recent(tuning.TUNER_BLOCK_SECONDS), monitor.samplerate)
@@ -431,13 +431,35 @@ class AudioRecordDialog(QDialog):
         sign = "+" if cents > 0 else "−" if cents < 0 else "±"
         self.tuner_label.setText(tr("{note}  {sign}{cents} cent  ({hz:.1f} Hz)",
                                     note=name, sign=sign, cents=abs(cents), hz=freq))
-        self.tuner_label.setStyleSheet(f"color: {GOOD if abs(cents) <= 5 else WARN};")
+        self.tuner_label.setStyleSheet(f"color: {good_text() if abs(cents) <= 5 else warn_text()};")
 
     # ------------------------------------------------------------ registrazione
+
+    def _microphone_blocked_message(self) -> bool:
+        """Su macOS, se il permesso del microfono e' negato, la scheda
+        registra silenzio senza errori: lo si dice, con dove riattivarlo.
+        True se e' bloccato (core.macos_permissions)."""
+        from core.macos_permissions import SETTINGS_URL, microphone_blocked
+        if not microphone_blocked():
+            return False
+        box = QMessageBox(QMessageBox.Warning, tr("Microfono non consentito"),
+                          tr("macOS non permette a SoundText di usare il microfono o la scheda audio, e la "
+                             "ripresa sarebbe muta.\n\nPer registrare attiva SoundText in Impostazioni di "
+                             "Sistema → Privacy e sicurezza → Microfono, poi riapri SoundText."), parent=self)
+        open_btn = box.addButton(tr("Apri le impostazioni"), QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Close)
+        box.exec()
+        if box.clickedButton() is open_btn:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl(SETTINGS_URL))
+        return True
 
     def start_recording(self):
         dev = self.selected_device()
         if dev is None or self._recorder is not None or self._worker is not None:
+            return
+        if self._microphone_blocked_message():
             return
         self.stop_listening()
         if self._take is not None:
@@ -524,7 +546,10 @@ class AudioRecordDialog(QDialog):
         take = self._recorder.stop()
         self._recorder = None
         played = take.seconds - self._backing.count_in_seconds
-        if played <= 0.05:
+        if self._microphone_blocked_message():      # negato alla richiesta di macOS, durante la ripresa
+            self._take = None
+            self._set_status(tr("Ripresa muta: il microfono non e' consentito"), error=True)
+        elif played <= 0.05:
             self._take = None
             self._set_status(tr("Ripresa troppo corta (fermata durante il conteggio)"), error=True)
         else:

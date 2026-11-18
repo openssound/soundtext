@@ -229,7 +229,7 @@ class KeyboardPerformanceMixin:
                     self._live_synth.note_on(LIVE_MELODIC_CHANNEL, midi_pitch, velocity=velocity)
                 else:
                     QTimer.singleShot(
-                        int(offsets[midi_pitch] * 1000),
+                        int(offsets[midi_pitch] * 1000), self,
                         lambda p=midi_pitch, v=velocity: self._delayed_note_on(p, v))
         self._update_piano_display()
 
@@ -254,7 +254,7 @@ class KeyboardPerformanceMixin:
                 on_complete()
             return
         QTimer.singleShot(
-            BEND_RAMP_STEP_MS,
+            BEND_RAMP_STEP_MS, self,
             lambda: self._pitch_bend_ramp(key, start_val, end_val, total_ms, on_complete, step_index + 1))
 
     def _release_bend_ramp(self, info):

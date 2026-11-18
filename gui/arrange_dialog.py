@@ -194,7 +194,8 @@ class ArrangeDialog(QDialog):
         try:
             self._options = self.options()
             self._parts = arrange(self.project, self.sections, self._options, project_bar_beats(self.project) or 4.0,
-                                  chord_octave=self.source_track().instrument.default_octave)
+                                  chord_octave=self.source_track().instrument.default_octave,
+                                  chord_track=self.source_track().name)
         except ValueError as e:
             QMessageBox.warning(self, tr("Arrangia il brano"), str(e))
             return

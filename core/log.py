@@ -19,8 +19,11 @@ import sys
 import threading
 
 from .settings import CONFIG_DIR
+from .version import macos_app_resources
 
-LOG_FILE = os.path.join(CONFIG_DIR, "soundtext.log")
+# nell'app per macOS dove li cerca Console.app (come install-macos.sh)
+LOG_FILE = (os.path.expanduser("~/Library/Logs/SoundText.log") if macos_app_resources()
+            else os.path.join(CONFIG_DIR, "soundtext.log"))
 _FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 _configured = False
@@ -38,7 +41,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     root.setLevel(level)
     try:
-        os.makedirs(CONFIG_DIR, exist_ok=True)
+        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         file_handler = logging.handlers.RotatingFileHandler(
             LOG_FILE, maxBytes=1_000_000, backupCount=2, encoding="utf-8")
         file_handler.setFormatter(logging.Formatter(_FORMAT))

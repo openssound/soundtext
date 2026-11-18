@@ -404,6 +404,13 @@ def decode_state(state: str) -> Dict[str, str]:
 
 
 _info_cache: Optional[Dict[str, LV2PluginInfo]] = None
+# lilv non e' thread-safe: due thread che leggono insieme il mondo dei plugin
+# (l'elenco, o la creazione di un'istanza) lo corrompono e il programma va in
+# crash ("added tuple during iteration", poi segmentation fault). Succedeva
+# rendendo in parallelo due tracce con plugin LV2. Ogni accesso al mondo
+# passa da qui; l'elaborazione dell'audio resta parallela (un'istanza per
+# thread).
+_world_lock = threading.RLock()
 
 
 def list_lv2_plugins() -> List[LV2PluginInfo]:
@@ -413,21 +420,24 @@ def list_lv2_plugins() -> List[LV2PluginInfo]:
     lib, world = _get_world()
     if lib is None:
         return []
-    if _info_cache is None:
-        plugins = lib.lilv_world_get_all_plugins(world)
-        out = {}
-        it = lib.lilv_plugins_begin(plugins)
-        while not lib.lilv_plugins_is_end(plugins, it):
-            info = _plugin_info(lib, lib.lilv_plugins_get(plugins, it))
-            out[info.uri] = info
-            it = lib.lilv_plugins_next(plugins, it)
-        _info_cache = out
-    return sorted(_info_cache.values(), key=lambda i: i.name.lower())
+    with _world_lock:
+        if _info_cache is None:
+            plugins = lib.lilv_world_get_all_plugins(world)
+            out = {}
+            it = lib.lilv_plugins_begin(plugins)
+            while not lib.lilv_plugins_is_end(plugins, it):
+                info = _plugin_info(lib, lib.lilv_plugins_get(plugins, it))
+                out[info.uri] = info
+                it = lib.lilv_plugins_next(plugins, it)
+            _info_cache = out
+        infos = list(_info_cache.values())
+    return sorted(infos, key=lambda i: i.name.lower())
 
 
 def lv2_plugin_info(uri: str) -> Optional[LV2PluginInfo]:
     list_lv2_plugins()
-    return (_info_cache or {}).get(uri)
+    with _world_lock:
+        return (_info_cache or {}).get(uri)
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +454,10 @@ class LV2Instance:
     thread-safe: un'istanza per thread (vedi core.plugins)."""
 
     def __init__(self, uri: str, samplerate: int):
+        with _world_lock:
+            self._init(uri, samplerate)
+
+    def _init(self, uri: str, samplerate: int):
         lib, world = _get_world()
         if lib is None:
             raise LV2Error(tr("libreria lilv non disponibile"))

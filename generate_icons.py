@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-Rigenera assets/icon.png e assets/soundtext.ico a partire da assets/icon.svg,
-l'unica sorgente dell'icona: modificare lo SVG e rilanciare questo script.
+Rigenera assets/icon.png, assets/soundtext.ico e assets/SoundText.icns a
+partire da assets/icon.svg, l'unica sorgente dell'icona: modificare lo SVG e
+rilanciare questo script.
 
 L'.ico contiene piu' dimensioni (16..256 px), ciascuna disegnata dallo SVG
 alla sua misura reale invece che rimpicciolita da un'unica bitmap: Windows
 sceglie quella adatta per barra delle applicazioni, Esplora risorse, ecc.
 Viene versionato e usato cosi' com'e' dalle build Windows (vedi
 build-windows-portable.ps1 e .github/workflows/build-release.yml).
+L'.icns (16..1024 px, anche per gli schermi Retina) e' l'icona di
+SoundText.app (soundtext.spec, packaging/macos/build-macos.sh).
 
 Uso:
     python generate_icons.py
@@ -26,6 +29,10 @@ SVG_PATH = os.path.join(ROOT, "assets", "icon.svg")
 PNG_PATH = os.path.join(ROOT, "assets", "icon.png")
 ICO_PATH = os.path.join(ROOT, "assets", "soundtext.ico")
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
+ICNS_PATH = os.path.join(ROOT, "assets", "SoundText.icns")
+# tipi ICNS con immagini PNG (macOS 10.7 e successivi): tipo -> lato in pixel
+ICNS_TYPES = (("icp4", 16), ("icp5", 32), ("ic11", 32), ("icp6", 64), ("ic12", 64), ("ic07", 128),
+              ("ic08", 256), ("ic13", 256), ("ic09", 512), ("ic14", 512), ("ic10", 1024))
 
 
 def render(renderer: QSvgRenderer, size: int) -> QImage:
@@ -61,6 +68,17 @@ def write_ico(path: str, images):
         f.write(header + directory + b"".join(data for _, data in entries))
 
 
+def write_icns(path: str, renderer: QSvgRenderer):
+    """ICNS con un PNG per ogni tipo (vedi ICNS_TYPES), disegnato dallo SVG
+    alla sua misura: non serve iconutil, va anche fuori da macOS."""
+    chunks = b""
+    for kind, size in ICNS_TYPES:
+        data = png_bytes(render(renderer, size))
+        chunks += kind.encode("ascii") + struct.pack(">I", 8 + len(data)) + data
+    with open(path, "wb") as f:
+        f.write(b"icns" + struct.pack(">I", 8 + len(chunks)) + chunks)
+
+
 def main():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QGuiApplication(sys.argv)  # noqa: F841  (necessaria per QPainter)
@@ -69,7 +87,8 @@ def main():
         sys.exit(f"SVG non valido: {SVG_PATH}")
     render(renderer, 256).save(PNG_PATH, "PNG")
     write_ico(ICO_PATH, [(size, render(renderer, size)) for size in ICO_SIZES])
-    print(f"Scritti {PNG_PATH} e {ICO_PATH}")
+    write_icns(ICNS_PATH, renderer)
+    print(f"Scritti {PNG_PATH}, {ICO_PATH} e {ICNS_PATH}")
 
 
 if __name__ == "__main__":

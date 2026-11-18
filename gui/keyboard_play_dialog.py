@@ -37,7 +37,7 @@ from .quantize_options import QuantizeOptionsWidget
 from .play_highlight import PlayHighlighter
 from .selection_actions import handle_selection_context_menu
 from .voicing_picker import NotationEditor
-from .theme import TEXT_DIM
+from .theme import dim
 from .keyboard_note_map import build_note_key_map, build_scale_key_map, build_janko_key_map
 from .keyboard_performance import (  # noqa: F401  (BEND_*: riesportati per i test)
     KeyboardPerformanceMixin, BEND_SEMITONES, BEND_RAMP_UP_MS, BEND_RAMP_DOWN_MS, LIVE_MELODIC_CHANNEL,
@@ -248,7 +248,7 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         # Driver audio aperto davvero e buffer (vedi LiveSynth.description):
         # compilato al primo Registra/Suona, quando il synth viene creato.
         self.latency_info_label = QLabel("")
-        self.latency_info_label.setStyleSheet(f"color: {TEXT_DIM};")
+        dim(self.latency_info_label)
         quant_row.addWidget(self.latency_info_label)
         layout.addLayout(quant_row)
         # forza, finestra, swing, pulizia (vedi gui.quantize_options)

@@ -31,11 +31,12 @@ import numpy as np
 from .effects import (DRY_SYNTH_ROOM, active_effects, apply_effect_chain, chain_signature, effects_available,
                       lv2_instrument_missing, plugin_substitute, synth_dry_for)
 from . import disk_cache
+from .memory import cache_budget, render_workers
 from .model import Project, Track
 
 # Memoria massima delle due cache insieme (una traccia stereo di 3 minuti a
 # 48 kHz occupa circa 70 MB).
-STEM_CACHE_BYTES = 600 * 1024 * 1024
+STEM_CACHE_BYTES = cache_budget("stem")           # vedi core.memory
 
 _cache: "OrderedDict[str, np.ndarray]" = OrderedDict()
 _cache_lock = threading.Lock()
@@ -69,6 +70,9 @@ def _cache_put(key: str, value: np.ndarray, to_disk: bool = True):
 def clear_stem_cache():
     with _cache_lock:
         _cache.clear()
+
+
+clear_caches = clear_stem_cache
 
 
 # Un lock per chiave di cache: chi chiede una traccia che un altro thread
@@ -218,6 +222,12 @@ class StemRequest:
     synth: str = ""
     synth_params: dict = field(default_factory=dict)
     synth_state: str = ""
+    # Strumento plugin: il volume (di traccia per il master) come guadagno
+    # sull'audio, e gli invii a riverbero e chorus (percentuali), vedi
+    # core.midi_export.export_project_to_midi(volume_as_gain=True)
+    gain: float = 1.0
+    reverb_send: int = 0
+    chorus_send: int = 0
     # Il pan della traccia si applica dopo la catena (vedi apply_pan): la
     # traccia asciutta e' al centro, cosi' un ampli mono (NAM) non riporta
     # al centro una chitarra spostata a sinistra.
@@ -225,7 +235,7 @@ class StemRequest:
 
     @property
     def wet_key(self) -> str:
-        return self.dry_key + "|" + chain_signature(self.effects, self.bpm) + f"|pan{self.pan}"
+        return self.dry_key + "|" + chain_signature(self.effects, self.bpm) + f"|pan{self.pan}|gain{self.gain}"
 
     def cleanup(self):
         if self.midi_path and os.path.exists(self.midi_path):
@@ -253,15 +263,25 @@ def prepare_stem(project: Project, track: Track, tempo_map) -> StemRequest:
         return StemRequest(track.name, key, effects, layers=layers, bpm=project.tempo_bpm, pan=pan)
     handle = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
     handle.close()
-    export_project_to_midi(project, handle.name, tracks=[centered])
     if track.synth and not lv2_instrument_missing(track.synth):
+        # Le velocity restano quelle scritte: con i campioni scelgono lo strato
+        # dinamico (un colpo leggero non e' un colpo forte piu' piano). Il
+        # volume si applica all'audio, come un fader.
         from .plugins import signature as plugin_signature
+        export_project_to_midi(project, handle.name, tracks=[centered], volume_as_gain=True)
+        gain = max(0, min(200, track.volume)) / 100.0 * max(0, min(200, project.master_volume)) / 100.0
+        dry_amp = synth_dry_for(effects)
+        reverb_send = 0 if dry_amp else track.reverb
+        chorus_send = 0 if dry_amp else track.chorus
         with open(handle.name, "rb") as f:
             digest = hashlib.sha1(f.read())
         digest.update(repr(plugin_signature(track.synth, track.synth_params, track.synth_state)).encode())
+        digest.update(repr((reverb_send, chorus_send, project.reverb_room)).encode())
         return StemRequest(track.name, "synth" + digest.hexdigest(), effects, midi_path=handle.name,
                            reverb_room=project.reverb_room, bpm=project.tempo_bpm, synth=track.synth, synth_params=dict(track.synth_params),
-                           synth_state=track.synth_state, pan=pan)
+                           synth_state=track.synth_state, pan=pan, gain=gain, reverb_send=reverb_send,
+                           chorus_send=chorus_send)
+    export_project_to_midi(project, handle.name, tracks=[centered])
     overrides = _resolve_channel_soundfont_overrides(project, False, tracks=[track])
     # verso un amplificatore simulato la traccia va senza riverbero e chorus del synth
     room = DRY_SYNTH_ROOM if synth_dry_for(effects) else project.reverb_room
@@ -293,6 +313,10 @@ def _render_dry_locked(request: StemRequest, stop_check=None) -> Optional[np.nda
         return dry
     if request.synth:
         dry = render_synth(request, stop_check)
+        if dry is not None:
+            from .effects import apply_synth_sends
+            dry = apply_synth_sends(dry, AUDIO_SAMPLE_RATE, request.reverb_room or "",
+                                    request.reverb_send, request.chorus_send)
     if dry is None and request.midi_path is not None:
         # traccia di testo col SoundFont (anche quando il suo strumento
         # plugin non funziona: meglio sentirla col SoundFont che non sentirla)
@@ -351,16 +375,19 @@ def apply_pan(samples: np.ndarray, request: StemRequest) -> np.ndarray:
     in un mixer: gli effetti (ampli mono compresi) lavorano sul suono al
     centro, poi lo si sposta. Tracce audio: bilanciamento, come nel mix
     delle clip; tracce di note: potenza costante, come il pan del synth
-    (al centro il livello resta quello di prima)."""
+    (al centro il livello resta quello di prima). Per le tracce suonate da
+    uno strumento plugin anche il volume (request.gain), dopo la catena come
+    un fader: non cambia quanto si spinge un amplificatore o un compressore."""
+    gain = np.float32(request.gain if request.synth else 1.0)
     if request.pan == 64:
-        return samples
+        return samples if gain == 1.0 else np.multiply(samples, gain, dtype=np.float32)
     if request.layers or request.midi_path is None:
         from .audio_tracks import _pan_gains
         left, right = _pan_gains(request.pan)
     else:
         angle = (max(0, min(127, request.pan)) / 127.0) * np.pi / 2
         left, right = np.sqrt(2.0) * np.cos(angle), np.sqrt(2.0) * np.sin(angle)
-    return np.multiply(samples, np.array([left, right], dtype=np.float32), dtype=np.float32)
+    return np.multiply(samples, np.array([left, right], dtype=np.float32) * gain, dtype=np.float32)
 
 
 def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
@@ -384,16 +411,40 @@ def render_stem(request: StemRequest, stop_check=None) -> Optional[np.ndarray]:
         return wet
 
 
-def render_stems(requests: List[StemRequest], stop_check=None) -> List[Optional[np.ndarray]]:
+last_render_workers = 0             # per il log degli export
+
+
+def stem_workers(requests: List[StemRequest], frames: Optional[int] = None) -> int:
+    """Quanti thread per render_stems: vedi core.memory.render_workers. Senza
+    la durata del brano (pre-rendering) si limita solo per core e tracce."""
+    return render_workers(frames or 0, len(requests))
+
+
+def render_stems(requests: List[StemRequest], stop_check=None, on_done=None,
+                 frames: Optional[int] = None) -> List[Optional[np.ndarray]]:
     """render_stem di ogni richiesta, in parallelo (un thread per traccia):
     i plugin lavorano nei loro processi (vedi core.plugins.render_channel)
     e la sintesi col SoundFont ha il suo lock, quindi le tracce si
-    sovrappongono invece di sommarsi. Solleva RuntimeError se annullata."""
+    sovrappongono invece di sommarsi. on_done() si chiama (da quei thread)
+    a ogni traccia pronta, per mostrare l'avanzamento. Solleva RuntimeError
+    se annullata. 'frames' (la durata del brano, se nota) serve a stimare
+    quante tracce stanno insieme nella RAM libera (vedi stem_workers)."""
+    def one(request):
+        result = render_stem(request, stop_check)
+        if on_done is not None:
+            on_done()
+        return result
+    global last_render_workers
     if len(requests) <= 1:
-        return [render_stem(r, stop_check) for r in requests]
+        last_render_workers = len(requests)
+        return [one(r) for r in requests]
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=min(8, len(requests))) as pool:
-        futures = [pool.submit(render_stem, r, stop_check) for r in requests]
+    workers = stem_workers(requests, frames)
+    last_render_workers = workers
+    if workers <= 1:
+        return [one(r) for r in requests]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(one, r) for r in requests]
         return [f.result() for f in futures]
 
 

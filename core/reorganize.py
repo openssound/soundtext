@@ -18,7 +18,12 @@ sempre limitati anche su tracce molto lunghe.
 import time
 from typing import Dict, List, Optional, Tuple, Callable
 
-from .notation import tokenize, expand_patterns, Pattern, RE_GRID, RE_VELOCITY
+from st_language import expand_to_text
+
+from .arrangement import flatten_clips_to_text
+from .i18n import tr
+from .notation import (tokenize, NotationError, Pattern, RE_ARP, RE_GRID, RE_VELOCITY, find_references,
+                       upgrade_pattern_state)
 from .model import Project
 
 # Le finestre di ricerca oltre questa lunghezza non vengono considerate: un
@@ -61,11 +66,11 @@ def _is_pattern_ref(tok: str) -> bool:
 
 
 def _is_state_command(tok: str) -> bool:
-    """Vero per i comandi di stato (N: NT: N@), che non hanno un suono
+    """Vero per i comandi di stato (N: NT: N@ arp=), che non hanno un suono
     proprio: un pattern estratto non deve mai terminare con uno di questi
     'in sospeso' (rimarrebbe un cambio di griglia/velocity senza alcun
     evento sonoro associato all'interno del pattern stesso)."""
-    return bool(RE_GRID.match(tok) or RE_VELOCITY.match(tok))
+    return bool(RE_GRID.match(tok) or RE_VELOCITY.match(tok) or RE_ARP.match(tok))
 
 
 def _is_pitch_state_command(tok: str) -> bool:
@@ -212,46 +217,83 @@ def extract_patterns_for_project(project: Project, min_window: int = 4,
             name_prefix=track.instrument_name, max_window_cap=max_window_cap,
             timeout_seconds=per_track_timeout, progress_callback=track_progress,
         )
-        if new_patterns:
-            for name, body_tokens in new_patterns.items():
-                project.patterns[name] = Pattern(name=name, tokens=body_tokens)
+        created = {name: Pattern(name=name, tokens=body_tokens) for name, body_tokens in new_patterns.items()}
+        if created:
+            project.patterns.update(created)
             summary[track.name] = new_patterns
         if new_tokens != raw_tokens:
-            track.text = " ".join(new_tokens)
+            # quello che i pattern nuovi scrivono finisce con loro: se le note
+            # dopo lo usavano si riscrive dopo il richiamo. Solo per i pattern
+            # nuovi, gli altri richiami seguono gia' la regola.
+            track.text = upgrade_pattern_state(" ".join(new_tokens), created)
 
     if progress_callback:
         progress_callback(1.0)
     return summary
 
 
-def _has_reusable_ref(tok: str) -> bool:
-    stripped = tok.lstrip("0123456789")
-    return stripped.startswith("%") or stripped.startswith("&")
+def _expanded(text: str, project: Project, instrument, midi_dir: Optional[str], origin_beat: float = 0.0) -> str:
+    """Il testo con i riferimenti scritti per esteso. expand_to_text controlla
+    il suono con il pianoforte e la tonalita' del punto d'inizio: qui si
+    controlla con lo strumento della traccia e la tonalita' di ogni battuta."""
+    from .transform_preview import sounding
+    meter = project.meter()
+    result = expand_to_text(text, project.patterns, instrument.default_octave, midi_dir,
+                            key=meter.key_at(origin_beat))
+    if sounding(text, project.patterns, instrument, meter, origin_beat, midi_dir) \
+            != sounding(result, {}, instrument, meter, origin_beat, midi_dir):
+        raise NotationError(tr("Questo testo non si puo' scrivere per esteso senza cambiarne il suono"), text[:40])
+    return result
+
+
+def _has_references(text: str) -> bool:
+    return any(reference.kind in ("pattern", "midi") for reference in find_references(text))
 
 
 def expand_patterns_for_project(project: Project, midi_dir: Optional[str] = None,
                                   progress_callback: Optional[Callable[[float], None]] = None
                                   ) -> Dict[str, Tuple[int, int]]:
-    """Espande tutti i riferimenti %pattern e &midi di ogni traccia in token
-    letterali, rendendo le tracce autosufficienti. Rimuove dal progetto i
-    pattern (ormai inutilizzati). Ritorna {nome_traccia: (n_token_prima,
-    n_token_dopo)} per le sole tracce effettivamente modificate."""
+    """Espande tutti i riferimenti %pattern e &midi di ogni traccia e di ogni
+    box in testo vero, rendendo le tracce autosufficienti, e rimuove dal
+    progetto i pattern (ormai inutilizzati). Ritorna {nome_traccia:
+    (n_token_prima, n_token_dopo)} per le sole tracce modificate. Se un testo
+    non si puo' scrivere per esteso con lo stesso suono solleva ValueError e
+    non cambia niente."""
+    written = []                    # (traccia, box o None, testo nuovo)
     summary = {}
     total = max(1, len(project.tracks))
     for idx, track in enumerate(project.tracks):
         if progress_callback:
             progress_callback(idx / total)
-        instr = track.instrument
-        raw_tokens = tokenize(track.text)
-        if not any(_has_reusable_ref(t) for t in raw_tokens):
+        if track.is_audio:
             continue
-        expanded = expand_patterns(raw_tokens, project.patterns, midi_dir=midi_dir,
-                                     default_octave=instr.default_octave)
-        summary[track.name] = (len(raw_tokens), len(expanded))
-        track.text = " ".join(expanded)
+        parts = [(clip, clip.text, clip.start_beat) for clip in track.clips] or [(None, track.text, 0.0)]
+        before = after = 0
+        for clip, text, origin in parts:
+            if not _has_references(text):
+                continue
+            try:
+                result = _expanded(text, project, track.instrument, midi_dir, origin)
+            except NotationError as e:
+                raise ValueError(tr("Traccia «{name}»: {msg}. Il brano non e' stato cambiato.",
+                                    name=track.name, msg=e)) from e
+            written.append((track, clip, result))
+            before += len(tokenize(text))
+            after += len(tokenize(result))
+        if after:
+            summary[track.name] = (before, after)
 
+    for track, clip, result in written:
+        if clip is None:
+            track.text = result
+        else:
+            clip.text = result
     if summary:
         project.patterns.clear()
+        for track in project.tracks:
+            if track.clips and not track.is_audio:
+                track.text = flatten_clips_to_text(track.clips, project.patterns, track.instrument.default_octave,
+                                                   meter=project.meter())
     if progress_callback:
         progress_callback(1.0)
     return summary

@@ -203,7 +203,7 @@ class Track:
                       meter: Optional[Meter] = None) -> List[Event]:
         instr = self.instrument
         return parse_track_text(self.text, patterns, default_octave=instr.default_octave,
-                                 midi_dir=midi_dir, meter=meter)
+                                 midi_dir=midi_dir, meter=meter, instrument=instr)
 
 
 def copy_synth(dst: "Track", src: Optional["Track"]) -> "Track":
@@ -239,6 +239,9 @@ class Project:
     # Strumenti definiti nel file del brano (blocchi "Strumento Nome:"): per
     # le tracce di questo brano valgono loro (vedi Track.instrument_def).
     instruments: Dict[str, InstrumentProfile] = field(default_factory=dict)
+    # Avvisi della lettura del file, [(riga, messaggio)]: per ora gli
+    # strumenti che non si riconoscono (vedi core.project_io); non si salvano.
+    file_warnings: List[tuple] = field(default_factory=list, compare=False)
     # Battuta in levare, in quarti (intestazione "Levare:"): la battuta 1 e'
     # la prima intera e comincia li'. 0 = nessun levare.
     pickup: float = 0.0
@@ -254,8 +257,9 @@ class Project:
     lyricist: str = ""
 
     def meter(self) -> Meter:
-        """Dove cominciano le battute del progetto (per le ancore bar=N)."""
-        return Meter(self.time_sig, self.metrica_changes, self.pickup)
+        """Dove cominciano le battute del progetto (per le ancore bar=N) e la
+        sua tonalita' (per le funzioni sui pattern che lavorano nella scala)."""
+        return Meter(self.time_sig, self.metrica_changes, self.pickup, self.key, self.key_changes)
 
     def add_track(self, name: str, instrument_name: str, text: str = "") -> Track:
         if instrument_name not in self.instruments:

@@ -24,6 +24,11 @@ from .audio_import_dialog import AudioImportDialog
 from .file_dialogs import file_dialog_options
 
 
+# Oltre questo rapporto fra il tempo del file e quello del brano l'allungamento
+# si sente: l'importazione di un loop lo dice.
+FOLLOW_WARN_RATIO = 1.25
+
+
 class AudioClipActions:
     def _show_audio_box_menu(self, track_name: str, clip: AudioClip, global_pos, at_beat=None):
         missing = audio_tracks.clip_is_missing(clip)
@@ -146,7 +151,7 @@ class AudioClipActions:
             clip.loop_length = 0.0
             self.on_clip_changed(track_name)
         elif transpose_action is not None and chosen is transpose_action:
-            self._transpose_clip(track_name, clip)
+            self._transpose_audio_clip(track_name, clip)
         elif correct_action is not None and chosen is correct_action:
             self._pitch_correct_clip(track_name, clip)
         elif tuning_action is not None and chosen is tuning_action:
@@ -248,10 +253,29 @@ class AudioClipActions:
         name = os.path.splitext(os.path.basename(src))[0]
         clip = AudioClip(name=name, file=path, start_beat=beat)
         clip.start_beat = _snap(self.resolve_free_slot(track_name, clip, beat))
+        # Un loop con il suo tempo scritto nel file (blocco "acid": i WAV
+        # esportati da SoundText, i loop delle altre DAW) segue subito il
+        # tempo del brano: dura le stesse battute. Le registrazioni senza,
+        # restano com'erano.
+        file_tempo = audio_tracks.read_wav_tempo(src) or audio_tracks.read_wav_tempo(path)
+        if file_tempo:
+            clip.source_bpm = file_tempo
         self.host.project.get_track(track_name).audio_clips.append(clip)
+        if file_tempo:
+            audio_tracks.adapt_clips_to_tempo(self.host.project)
         self.on_clip_changed(track_name)
-        self.host.statusBar().showMessage(
-            tr("Clip '{name}' aggiunta alla traccia '{track_name}' (file: {path}).", name=name, track_name=track_name, path=path), 6000)
+        message = tr("Clip '{name}' aggiunta alla traccia '{track_name}' (file: {path}).", name=name,
+                     track_name=track_name, path=path)
+        if file_tempo:
+            song_tempo = self._tempo_at(clip.start_beat)
+            message = tr("Clip '{name}' aggiunta: il file e' a {file_bpm:g} BPM e segue il tempo del brano "
+                         "({song_bpm:g} BPM): dura le stesse battute (tasto destro → Segui il tempo del brano per "
+                         "disattivarlo).",
+                         name=name, file_bpm=file_tempo, song_bpm=round(song_tempo, 2))
+            if not 1 / FOLLOW_WARN_RATIO <= clip.stretch <= FOLLOW_WARN_RATIO:
+                message += " " + tr("Attenzione: l'audio e' allungato del {percent}%, il suono puo' risentirne.",
+                                    percent=round(abs(clip.stretch - 1.0) * 100))
+        self.host.statusBar().showMessage(message, 10000)
 
     def _relink_clip(self, track_name: str, clip: AudioClip):
         src = self._pick_audio_file(tr("Ritrova il file di '{name}'", name=clip.name))
@@ -658,7 +682,7 @@ class AudioClipActions:
         clip.pitch_correct = value
         self.on_clip_changed(track_name)
 
-    def _transpose_clip(self, track_name: str, clip: AudioClip):
+    def _transpose_audio_clip(self, track_name: str, clip: AudioClip):
         """Trasposizione senza cambiare la velocita' (AudioClip.transpose):
         anche frazionaria, per correggere una ripresa scordata."""
         value, ok = QInputDialog.getDouble(

@@ -380,7 +380,7 @@ class EffectCard(QFrame):
         from core import plugins
         self.plugin_row.setEnabled(self.effect.enabled)
         ref = self.effect.plugin
-        fmt = {"vst3": "VST3", "lv2": "LV2"}.get(ref.partition(":")[0], "")
+        fmt = plugins.FORMAT_LABELS.get(ref.partition(":")[0], "")
         problem = plugins.broken_reason(ref)
         if problem:
             self.plugin_label.setText(tr("{0}: {problem}, il suono passa invariato", plugins.display_name(ref), problem=problem))
@@ -489,7 +489,7 @@ class SendsCard(QFrame):
         grid.addWidget(self.room_combo, 2, 1, 1, 2)
         layout.addLayout(grid)
         self.room_hint = QLabel(tr("Nella stanza piccola il riverbero\nsi sente appena: prova Sala."))
-        self.room_hint.setStyleSheet("color: #e8c96d; font-size: 11px;")
+        self.room_hint.setStyleSheet(f"color: {theme.warn_text()}; font-size: 11px;")
         layout.addWidget(self.room_hint)
         dim = QLabel(tr("Effetti del synth: valgono anche\nnell'export MIDI (l'ambiente no)."))
         dim.setStyleSheet(f"color: {theme.track_card_colors()['text_dim']}; font-size: 11px;")
@@ -653,7 +653,7 @@ class EffectsPanel(QFrame):
         outer.addLayout(head)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {theme.TEXT_DIM}; font-size: 11px;")
+        theme.dim(self.status_label, "font-size: 11px;")
         outer.addWidget(self.status_label)
 
         # --- corpo: card in fila, con scorrimento orizzontale
@@ -690,7 +690,7 @@ class EffectsPanel(QFrame):
         colors = theme.track_card_colors()
         light = theme.get_active_theme() == "light"
         text = "#333333" if light else "#e0e0e0"
-        base = "#f5f5f5" if light else theme.BG_BASE
+        base = "#e4e4e7" if light else theme.BG_BASE
         self.setStyleSheet(
             f"QFrame#effectsPanel {{ background: {base}; border-top: 2px solid {theme.ACCENT}; }}"
             f"QFrame#effectsPanel QLabel, QFrame#effectsPanel QCheckBox {{ color: {text}; }}"
@@ -719,6 +719,19 @@ class EffectsPanel(QFrame):
     def is_master(self) -> bool:
         return isinstance(self.track, MasterTarget)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._notify_fx_buttons()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._notify_fx_buttons()
+
+    def _notify_fx_buttons(self):
+        """Il pulsante FX della traccia aperta qui si accende (host.sync_fx_buttons)."""
+        if hasattr(self.host, "sync_fx_buttons"):
+            self.host.sync_fx_buttons()
+
     def open_master(self):
         """Apre il pannello sulla catena del master (mix finale)."""
         if self.is_master and self.track.project is self.host.project:
@@ -738,6 +751,7 @@ class EffectsPanel(QFrame):
         if self.track is not None:
             self.close_panel()
         self.track = track
+        self._notify_fx_buttons()
         self._snapshot = (copy.deepcopy(track.effects), track.reverb, track.chorus, project.reverb_room)
         self.bypass_btn.setChecked(False)
         self._apply_style()
@@ -1123,23 +1137,16 @@ class EffectsPanel(QFrame):
                             beat_at_elapsed_seconds(tempo_map, 0.0, start + length))
 
     def _set_main_loop(self, a_beat, b_beat):
-        host = self.host
+        loop = self.host.loop
         if self._saved_loop is None:
-            self._saved_loop = (host._loop_a_beat, host._loop_b_beat, host.loop_action.isChecked())
-        host._loop_a_beat, host._loop_b_beat = a_beat, b_beat
-        host.loop_action.setEnabled(True)
-        host.loop_action.setChecked(True)
-        host._loop_markers_changed()
+            self._saved_loop = loop.snapshot()
+        loop.set_region(a_beat, b_beat)
 
     def _restore_main_loop(self):
         if self._saved_loop is None:
             return
-        host = self.host
-        a, b, checked = self._saved_loop
-        self._saved_loop = None
-        host._loop_a_beat, host._loop_b_beat = a, b
-        host.loop_action.setChecked(bool(checked and a is not None and b is not None))
-        host._loop_markers_changed()
+        saved, self._saved_loop = self._saved_loop, None
+        self.host.loop.restore(saved)
 
     def _on_loop_length(self, _value):
         if self.track is None or self._region is None:

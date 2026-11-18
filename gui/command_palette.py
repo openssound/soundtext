@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMenuBar, QVBoxLayout,
 )
 
-from .theme import TEXT_DIM
+from .theme import dim
 from core.i18n import tr
 
 
@@ -116,7 +116,7 @@ class CommandPalette(QDialog):
         layout.addWidget(self.results, 1)
 
         hint = QLabel(tr("↑ ↓ scegli · Invio esegui · Esc chiudi"))
-        hint.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        dim(hint, "font-size: 11px;")
         layout.addWidget(hint)
 
         self._refresh("")
@@ -157,7 +157,7 @@ class CommandPalette(QDialog):
         self._chosen = item.data(Qt.UserRole)
         self.accept()
         # Eseguita dopo la chiusura: molte voci aprono a loro volta un dialogo.
-        QTimer.singleShot(0, self._chosen.action.trigger)
+        QTimer.singleShot(0, self._chosen.action, self._chosen.action.trigger)
 
     def chosen(self):
         return self._chosen

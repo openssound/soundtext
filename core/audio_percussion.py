@@ -103,6 +103,10 @@ BEATBOX_KICK_LOW_RATIO = 0.38
 _audio_cache = {}
 
 
+def clear_caches() -> None:
+    _audio_cache.clear()
+
+
 def _load(wav_path: str):
     """Campioni e frequenza del file (letto una volta sola, finche' non
     cambia: le finestre dei colpi si ritagliano dall'array in memoria)."""
@@ -202,7 +206,6 @@ def hit_velocity(window, samplerate: int) -> int:
 
 
 def _classify_band(window, samplerate: int, beatbox: bool = False, noise_spectrum=None):
-    import numpy as np
 
     if len(window) == 0:
         return "snare", 60

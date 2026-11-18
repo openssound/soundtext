@@ -233,6 +233,15 @@ def meter_beats(meter: str) -> float:
     return num * 4.0 / den
 
 
+def project_bar_beats(project) -> float:
+    """Durata in beat di una battuta nella metrica iniziale del progetto (4
+    se la metrica non e' leggibile)."""
+    try:
+        return meter_beats(project.time_sig)
+    except ValueError:
+        return 4.0
+
+
 def _normalize_meter(meter: str) -> str:
     return meter.replace(" ", "")
 
@@ -1181,8 +1190,9 @@ def _expand_chords_to_cover(chords: List[ChordSpan], min_total_beats: float) -> 
     usato per far seguire al basso l'intera estensione del brano anche
     quando la traccia di accordi sorgente e' piu' corta delle altre tracce
     gia' scritte nel progetto (vedi generate_bass_from_chords/
-    tracks_duration_beats). Nessun effetto (ritorna 'chords' invariata) se
-    gia' abbastanza lunga o se min_total_beats non e' positivo."""
+    tracks_duration_beats); l'ultima ripetizione si tronca a min_total_beats.
+    Nessun effetto (ritorna 'chords' invariata) se gia' abbastanza lunga o
+    se min_total_beats non e' positivo."""
     if not chords or min_total_beats <= 0:
         return chords
     last_end = chords[-1].start_beat + chords[-1].duration_beats
@@ -1197,6 +1207,14 @@ def _expand_chords_to_cover(chords: List[ChordSpan], min_total_beats: float) -> 
             span._replace(start_beat=span.start_beat + offset) for span in chords
         )
         rep += 1
+    # l'ultima ripetizione si ferma a 'min_total_beats': ripetere tutta la
+    # progressione andava oltre (una traccia audio di 32 beat con accordi
+    # riconosciuti fino al 28 dava un basso di 56)
+    if rep > 1:
+        end = min_total_beats
+        expanded = [span if span.start_beat + span.duration_beats <= end + 1e-6
+                    else span._replace(duration_beats=end - span.start_beat)
+                    for span in expanded if span.start_beat < end - 1e-6]
     return expanded
 
 
@@ -1913,10 +1931,22 @@ def _resolve_roles(role, span: ChordSpan, next_root_pc: Optional[int]) -> List[T
     """Come _resolve_role, ma 'role' puo' essere anche una lista di nomi (le
     note simultanee di un accordo di accompagnamento, vedi MELODIC_PATTERNS):
     risolve ciascun nome e scarta le pause. Un nome singolo (str o tupla
-    pre-risolta) si comporta come _resolve_role."""
+    pre-risolta) si comporta come _resolve_role. Accompagnamenti e linee
+    melodiche: la settima che l'accordo non ha diventa la quinta. In un
+    accordo, con l'ottava gia' presente, la stessa nota sarebbe uscita due
+    volte e la quinta sarebbe mancata ([g*4 b*4 g*5 g*5] su un Sol); in una
+    linea (note guida, riff) l'ottava sopra la fondamentale faceva salti di
+    due ottave (c*4 a*5 sul La minore). Il basso (_resolve_role) tiene
+    l'ottava. Le note uguali si scrivono una volta sola."""
     names = role if isinstance(role, list) else [role]
-    resolved = (_resolve_role(name, span, next_root_pc) for name in names)
-    return [r for r in resolved if r is not None]
+    if span.seventh is None:
+        names = ["fifth" if name == "seventh" else name for name in names]
+    out: List[Tuple[int, int]] = []
+    for name in names:
+        resolved = _resolve_role(name, span, next_root_pc)
+        if resolved is not None and resolved not in out:
+            out.append(resolved)
+    return out
 
 
 def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,

@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout,
 )
 
-from core.harmonize import VERSIONS, harmonize, melody_key, melody_notes
+from core.harmonize import harmonize, melody_key, melody_notes
 from core.i18n import tr
 
 from .reharmonize_dialog import KEYS

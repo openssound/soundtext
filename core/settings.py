@@ -44,10 +44,26 @@ def _load() -> dict:
     return data
 
 
+def write_json_atomic(path: str, data) -> None:
+    """Scrive un file di configurazione senza mai lasciarlo a meta': prima
+    un file temporaneo nella stessa cartella, poi os.replace (come i brani,
+    vedi core.project_io). Se il programma si chiude mentre scrive, resta il
+    file di prima."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
 def _save():
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(_cache, f, indent=2, ensure_ascii=False)
+    write_json_atomic(SETTINGS_FILE, _cache)
 
 
 def get_soundfont_path() -> Optional[str]:
@@ -307,6 +323,31 @@ def set_midi_import_slide_threshold(value: float):
     _save()
 
 
+def get_midi_import_bend_curve() -> bool:
+    """Se vero, l'import MIDI scrive il pitch bend come curva esatta
+    (automazione bend=, vedi core.midi_bend_curve) invece che come slide:
+    per il bottleneck. Predefinito falso."""
+    return bool(_load().get("midi_import_bend_curve", False))
+
+
+def set_midi_import_bend_curve(value: bool):
+    _load()
+    _cache["midi_import_bend_curve"] = bool(value)
+    _save()
+
+
+def get_midi_import_fine_rhythm() -> bool:
+    """Se vero, l'import MIDI usa i trentaduesimi dove spiegano gli attacchi
+    meglio dei sedicesimi (brani suonati dal vivo). Predefinito falso."""
+    return bool(_load().get("midi_import_fine_rhythm", False))
+
+
+def set_midi_import_fine_rhythm(value: bool):
+    _load()
+    _cache["midi_import_fine_rhythm"] = bool(value)
+    _save()
+
+
 def get_midi_import_min_bend_semitones():
     """Valore da passare a min_bend_semitones dell'import MIDI: la soglia
     scelta se l'opzione e' attiva, altrimenti None (comportamento di sempre)."""
@@ -370,6 +411,19 @@ def set_midi_input_port(value: str):
     _save()
 
 
+def get_audio_output() -> str:
+    """Dove esce l'audio: "system" (PortAudio, il dispositivo del sistema) o
+    "jack" (SoundText come client JACK, vedi core.jack_output)."""
+    value = _load().get("audio_output", "system")
+    return value if value in ("system", "jack") else "system"
+
+
+def set_audio_output(value: str):
+    _load()
+    _cache["audio_output"] = value if value in ("system", "jack") else "system"
+    _save()
+
+
 def get_plugin_dirs() -> List[str]:
     """Cartelle in piu' in cui cercare i plugin VST3 (oltre a quelle
     standard del sistema, vedi core.plugins.vst3_dirs)."""
@@ -379,6 +433,38 @@ def get_plugin_dirs() -> List[str]:
 def set_plugin_dirs(dirs: List[str]):
     _load()
     _cache["plugin_dirs"] = [d for d in dirs if d]
+    _save()
+
+
+def get_hide_plugin_twins(fmt: str) -> bool:
+    """Nell'elenco dei plugin, nascondere quelli di questo formato ("clap",
+    "au") che esistono anche come VST3: di solito si'."""
+    return bool(_load().get("hide_plugin_twins", {}).get(fmt, True))
+
+
+def set_hide_plugin_twins(fmt: str, hide: bool):
+    _load()
+    _cache["hide_plugin_twins"] = {**_cache.get("hide_plugin_twins", {}), fmt: bool(hide)}
+    _save()
+
+
+def get_accepted_instrument_fixes() -> List[str]:
+    """Strumenti salvati come ripiego dalle versioni vecchie (vedi
+    core.instruments.legacy_instrument_fix) che l'utente ha fatto correggere."""
+    return list(_load().get("instrument_fixes_accepted", []))
+
+
+def get_declined_instrument_fixes() -> List[str]:
+    """...e quelli che ha voluto tenere com'erano: non si chiede piu'."""
+    return list(_load().get("instrument_fixes_declined", []))
+
+
+def record_instrument_fix(name: str, accepted: bool):
+    _load()
+    key = "instrument_fixes_accepted" if accepted else "instrument_fixes_declined"
+    names = _cache.setdefault(key, [])
+    if name not in names:
+        names.append(name)
     _save()
 
 
@@ -392,6 +478,17 @@ def set_language(code: str):
     """Vale dal prossimo avvio (vedi core.i18n)."""
     _load()
     _cache["language"] = code
+    _save()
+
+
+def get_freeze_comment() -> bool:
+    """Se Congela la trasformazione scrive sopra le note da dove vengono."""
+    return _load().get("freeze_comment", True)
+
+
+def set_freeze_comment(enabled: bool):
+    _load()
+    _cache["freeze_comment"] = bool(enabled)
     _save()
 
 
@@ -424,4 +521,32 @@ def set_quantize_settings(values: dict):
         _cache["quantize_settings"] = dict(values)
     else:
         _cache.pop("quantize_settings", None)
+    _save()
+
+
+def get_download_sources() -> Dict[str, str]:
+    """Indirizzi cambiati dall'utente per le voci di "Scarica e installa"
+    (Opzioni -> Sorgenti dei download, vedi core.downloads.sources): solo
+    quelli diversi dall'originale."""
+    return dict(_load().get("download_sources", {}))
+
+
+def set_download_sources(values: Dict[str, str]):
+    _load()
+    if values:
+        _cache["download_sources"] = dict(values)
+    else:
+        _cache.pop("download_sources", None)
+    _save()
+
+
+def get_arrangement_row_height() -> int:
+    """Altezza delle righe della vista Struttura brano (Vista -> Altezza
+    delle tracce); 0 = quella predefinita."""
+    return int(_load().get("arrangement_row_height", 0) or 0)
+
+
+def set_arrangement_row_height(height: int):
+    _load()
+    _cache["arrangement_row_height"] = int(height)
     _save()
