@@ -45,6 +45,7 @@ async function main() {
   setupVoice();
   setupHum();
   setupQuick();
+  setupExport();
   setupCrea();
   setupStructure();
   setupTransform();

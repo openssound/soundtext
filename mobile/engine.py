@@ -770,6 +770,46 @@ def strip_comments(text: str) -> str:
     return "\n".join(out).strip("\n") + "\n"
 
 
+def chord_chart(text: str) -> list:
+    """Gli accordi del brano, per la clip video: [[battito, durata, sigla]], dalla
+    prima traccia che ne ha (scritti come sigle, Cmaj7 o Am, oppure come blocchi
+    di note, e allora la sigla si ricava dalle note); [] se non ce n'e'. Gli
+    accordi uguali di fila diventano uno solo."""
+    from core.project_io import parse_project_text
+    from core.rhythm_generate import extract_chords_from_track, parse_track_text
+    names = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+    project = parse_project_text(text, "Brano")
+
+    def merged(items):
+        chart: list = []
+        for start, duration, label in items:
+            if chart and chart[-1][2] == label and abs(chart[-1][0] + chart[-1][1] - start) < 1e-6:
+                chart[-1][1] = round(chart[-1][1] + duration, 6)
+            else:
+                chart.append([round(start, 6), round(duration, 6), label])
+        return chart
+
+    candidates = []
+    for track in project.tracks:
+        if track.is_audio:
+            continue
+        written = [(ev.start, ev.duration, ev.symbol) for ev in
+                   parse_track_text(track.text, project.patterns, default_octave=4, midi_dir=None) if ev.kind == "chord"]
+        if written:
+            candidates.append(merged(written))
+            continue
+        try:
+            spans = extract_chords_from_track(track.text, project.patterns, midi_dir=None)
+        except Exception:
+            continue
+        if spans:
+            candidates.append(merged((sp.start_beat, sp.duration_beats,
+                                      names[sp.root_pc % 12] + ("m" if sp.third == 3 else "")
+                                      + {10: "7", 11: "maj7"}.get(sp.seventh, "")) for sp in spans))
+    # la traccia che copre piu' brano
+    return max(candidates, key=lambda chart: sum(c[1] for c in chart), default=[])
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""

@@ -156,6 +156,7 @@
       <button id="loopOn" aria-pressed="false" disabled data-i18n>Ripeti A–B</button>
     </div>
     <label class="check"><input id="metronome" type="checkbox"> <span data-i18n>Metronomo</span></label>
+    <button id="exportOpen" class="export-open" disabled data-i18n>Esporta audio e clip…</button>
     <h2 id="mixerTitle" data-i18n>Tracce</h2>
     <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
     <details class="opts">
@@ -222,6 +223,48 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- Esportare l'audio (WAV, M4A) o una clip video (MP4) -->
+<dialog id="exportDialog" class="sheet" aria-labelledby="exportTitle">
+  <h2 id="exportTitle" data-i18n>Esporta audio e clip</h2>
+  <p class="hint" data-i18n>Con le scelte del lettore: trasposizione, tracce mute o in solo. Il metronomo non c'è.</p>
+  <label class="hum-grid"><span data-i18n>Parte del brano:</span>
+    <select id="exportRange">
+      <option value="all" data-i18n>tutto il brano</option>
+      <option value="loop" data-i18n>il tratto A–B</option>
+    </select>
+  </label>
+  <h3 data-i18n>Audio</h3>
+  <div class="sheet-actions columns two">
+    <button id="exportWav" class="job">WAV</button>
+    <button id="exportM4a" class="job" hidden>M4A (AAC)</button>
+  </div>
+  <h3 data-i18n>Clip video</h3>
+  <label class="hum-grid"><span data-i18n>Formato:</span>
+    <select id="clipFormat">
+      <option value="vertical" data-i18n>verticale 9:16</option>
+      <option value="square" data-i18n>quadrato</option>
+    </select>
+  </label>
+  <label class="hum-grid"><span data-i18n>Durata:</span>
+    <select id="clipSeconds">
+      <option value="15" data-i18n>15 secondi</option>
+      <option value="30" selected data-i18n>30 secondi</option>
+      <option value="60" data-i18n>60 secondi</option>
+    </select>
+  </label>
+  <label class="hum-grid"><span data-i18n>Si vede:</span>
+    <select id="clipContent">
+      <option value="chords" data-i18n>gli accordi</option>
+      <option value="text" data-i18n>il testo del brano</option>
+    </select>
+  </label>
+  <label class="check"><input id="clipSignature" type="checkbox" checked> <span data-i18n>scrivi «Fatto con SoundText» e l'indirizzo</span></label>
+  <p id="exportClipNote" class="hint"></p>
+  <div class="sheet-actions"><button id="exportClipButton" class="job primary" data-i18n>Crea la clip</button></div>
+  <p id="exportStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <button id="exportClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Un brano in 60 secondi: genere, atmosfera e durata -->
 <dialog id="quickDialog" class="sheet" aria-labelledby="quickTitle">
   <h2 id="quickTitle" data-i18n>Un brano in 60 secondi</h2>
@@ -279,12 +322,15 @@
 <script src="metrics.js"></script>
 <script src="songs.js"></script>
 <script src="share.js"></script>
+<script src="mp4.js"></script>
+<script src="wav.js"></script>
 <script src="app/base.js"></script>
 <script src="app/text-edits.js"></script>
 <script src="app/editor.js"></script>
 <script src="app/voice.js"></script>
 <script src="app/hum.js"></script>
 <script src="app/quick.js"></script>
+<script src="app/export.js"></script>
 <script src="app/songs-view.js"></script>
 <script src="app/create.js"></script>
 <script src="app/structure.js"></script>

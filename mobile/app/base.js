@@ -206,6 +206,7 @@ function showDocTitle() {
   $("badge").hidden = !(doc && (doc.kind === "example" || shared));
   $("badge").textContent = shared ? t("brano condiviso: sola lettura") : t("esempio: le modifiche creano una copia");
   $("copyShared").hidden = !shared;
+  $("exportOpen").disabled = !doc;
 }
 
 // Analizza il testo attuale, se non e' gia' quello analizzato.

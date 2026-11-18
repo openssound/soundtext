@@ -669,3 +669,17 @@ def test_quick_song_opens_in_the_structure_view():
     r = e.quick_song({"genre": "lofi", "mood": "tesa", "duration": 60, "seed": 4})
     structure = e.structure(r["text"])
     assert structure["tracks"], structure
+
+
+def test_chord_chart_reads_written_chords_and_chords_made_of_notes():
+    """La clip video mostra gli accordi: sigle scritte nel brano, oppure ricavate dai blocchi di note."""
+    e = _quick()
+    with open(os.path.join(ROOT, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+        chart = e.chord_chart(f.read())
+    assert chart and all(len(c) == 3 and c[1] > 0 and isinstance(c[2], str) for c in chart)
+    assert [c[0] for c in chart] == sorted(c[0] for c in chart)
+    made = e.quick_song({"genre": "pop", "mood": "malinconica", "duration": 30, "seed": 2, "key": "Am"})
+    chart = e.chord_chart(made["text"])
+    labels = [c[2] for c in chart]
+    assert labels and {"Am", "G", "F", "E"} & set(labels), labels          # il giro di La minore
+    assert e.chord_chart("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nDrums:\n  4: kick snare kick snare |\n") == []
