@@ -29,6 +29,9 @@
   <!-- Brani -->
   <section id="view-brani" class="view" aria-label="Brani">
     <div class="actions">
+      <button id="quickSong" class="quick-song"><span aria-hidden="true">✦ </span><span data-i18n>Un brano in 60 secondi</span></button>
+    </div>
+    <div class="actions">
       <button id="newSong" class="primary"><span aria-hidden="true">＋ </span><span data-i18n>Nuovo brano</span></button>
       <label class="button"><span data-i18n>Apri file…</span><input id="file" type="file" accept=".st,text/plain,application/octet-stream"></label>
     </div>
@@ -219,6 +222,20 @@
   <button id="voiceIntroClose" class="sheet-close" data-i18n>Non ora</button>
 </dialog>
 
+<!-- Un brano in 60 secondi: genere, atmosfera e durata -->
+<dialog id="quickDialog" class="sheet" aria-labelledby="quickTitle">
+  <h2 id="quickTitle" data-i18n>Un brano in 60 secondi</h2>
+  <p class="hint" data-i18n>Scegli genere, atmosfera e durata: l'app compone una base completa e la fa suonare. Poi la modifichi come qualunque altro brano; premendo ancora ne esce un altro.</p>
+  <label class="hum-grid"><span data-i18n>Genere:</span><select id="quickGenre"></select></label>
+  <label class="hum-grid"><span data-i18n>Atmosfera:</span><select id="quickMood"></select></label>
+  <label class="hum-grid"><span data-i18n>Durata:</span><select id="quickDuration"></select></label>
+  <p id="quickStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <div class="sheet-actions">
+    <button id="quickMake" class="primary"><span aria-hidden="true">▶ </span><span data-i18n>Crea e ascolta</span></button>
+  </div>
+  <button id="quickClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Il QR code di un brano: si legge con la fotocamera di un altro telefono -->
 <dialog id="qrDialog" class="sheet" aria-labelledby="qrTitle">
   <h2 id="qrTitle"></h2>
@@ -267,6 +284,7 @@
 <script src="app/editor.js"></script>
 <script src="app/voice.js"></script>
 <script src="app/hum.js"></script>
+<script src="app/quick.js"></script>
 <script src="app/songs-view.js"></script>
 <script src="app/create.js"></script>
 <script src="app/structure.js"></script>

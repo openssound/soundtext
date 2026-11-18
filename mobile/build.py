@@ -89,6 +89,10 @@ engine.new_track(source, engine.track_instruments()[0])
 import math, struct
 pcm = struct.pack("<8000f", *(0.3 * math.sin(2 * math.pi * 220 * i / 16000) for i in range(8000)))
 engine.hum_to_text(source, pcm, 16000, {"track": "Piano"})
+# un brano in 60 secondi (fase 3): tutte le ricette usano gli stessi moduli, la melodia compresa
+engine.strip_comments(source)
+for genre in engine.QUICK_GENRES:
+    engine.quick_song({"genre": genre, "mood": "calma", "duration": 30, "seed": 1})
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

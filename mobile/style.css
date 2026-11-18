@@ -43,6 +43,7 @@ body {
 header { display: flex; align-items: baseline; gap: 8px; padding: 8px 16px; min-width: 0; }
 h1 { font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 4em; }
 h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); margin: 18px 0 6px; }
+.quick-song { width: 100%; min-height: 48px; font-size: 16px; }
 .copy-shared { flex: none; min-height: 32px; padding: 0 10px; font-size: 13px; }
 .qr-canvas[hidden] { display: none; }
 .qr-canvas { display: block; width: min(86vw, 420px); height: auto; aspect-ratio: 1; margin: 8px auto; image-rendering: pixelated; border-radius: 4px; }

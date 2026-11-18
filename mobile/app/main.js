@@ -44,6 +44,7 @@ async function main() {
   setupMusicBar();
   setupVoice();
   setupHum();
+  setupQuick();
   setupCrea();
   setupStructure();
   setupTransform();
