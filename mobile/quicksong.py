@@ -12,7 +12,6 @@ con le stesse scelte e gli stessi semi esce lo stesso brano.
 """
 
 import json
-import math
 import random
 import re
 from typing import Dict, List, Optional, Tuple
@@ -432,7 +431,6 @@ def quick_song(options: Optional[dict] = None) -> dict:
     from core.i18n import tr as _tr
     from core.instruments import make_instrument_available
     from core.project_io import parse_project_text
-    from core import rhythm_generate as rg
     c = resolve(options)
     meter, bpm, key = c["meter"], c["bpm"], c["key"]
     header = lambda k: f"ST: 2.6\nTempo: {bpm} BPM\nMetrica: {meter}\nTonalita: {k}\n\n"

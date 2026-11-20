@@ -130,7 +130,7 @@ def test_changing_one_part_seed_changes_only_that_part(q):
 @pytest.mark.parametrize("form", ["loop", "canzone", "aaba", "blues", "ponte"])
 def test_every_form_is_valid_with_its_own_shape(q, form):
     song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "form": form, "seed": 4})
-    e = _valid(q, song)
+    _valid(q, song)
     bars = [s["bars"] for s in song["sections"]]
     if form == "loop":
         assert set(bars) == {8}

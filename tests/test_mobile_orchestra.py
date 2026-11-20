@@ -47,7 +47,7 @@ def _library(tmp_path):
                   "lovel=81", "hivel=127", "seq_length=2", "seq_position=2"]
     (src / "Harp.sfz").write_text("\n".join(lines) + "\n")
     flute = ["<global>", "ampeg_release=0.3"] + sum(
-        [["<region>", f"sample=F_{c}.wav", f"key={c}", f"lovel=0", "hivel=127"] for c in (60, 64, 67)], [])
+        [["<region>", f"sample=F_{c}.wav", f"key={c}", "lovel=0", "hivel=127"] for c in (60, 64, 67)], [])
     for c in (60, 64, 67):
         _wav(src / f"F_{c}.wav", 440 * 2 ** ((c - 69) / 12), seconds=4.0)
     (src / "Flute.sfz").write_text("\n".join(flute) + "\n")
@@ -96,7 +96,7 @@ def test_a_valid_soundfont_with_the_right_programs(tmp_path):
     assert 4 <= harp["samples"] <= 9, harp
     assert next(r for r in report if r["program"] == 73)["samples"] == 3
     # le zone coprono la tastiera senza buchi
-    inst, ibag, igen = pdta[b"inst"], pdta[b"ibag"], pdta[b"igen"]
+    ibag, igen = pdta[b"ibag"], pdta[b"igen"]
     zones = len(ibag) // 4 - 1
     ranges = []
     for z in range(zones):

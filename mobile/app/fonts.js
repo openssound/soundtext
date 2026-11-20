@@ -265,8 +265,12 @@ async function downloadPack() {
     }
     await addFont(new File([blob], PACK_NAME));
     const added = fonts.list.find((f) => f.name === PACK_NAME);
-    if (added) await setDefaultFont(added.id);
-    fontSay(t("Pacchetto orchestra pronto: è il SoundFont predefinito. Lo senti dal prossimo Play."));
+    if (added && $("sfPackDefault").checked) {
+      await setDefaultFont(added.id);
+      fontSay(t("Pacchetto orchestra pronto: è il SoundFont predefinito. Lo senti dal prossimo Play."));
+    } else {
+      fontSay(t("Pacchetto orchestra pronto. Scegli «{title}» come predefinito dall'elenco, o assegnalo a una traccia dal mixer.", { title: added ? added.title || added.name : PACK_NAME }));
+    }
   } catch (e) {
     console.error(e);
     fontSay(t("Non riesco a scaricare il pacchetto: {message}", { message: e.message || String(e) }), true);

@@ -22,7 +22,6 @@ import argparse
 import hashlib
 import json
 import math
-import posixpath
 import re
 import struct
 import subprocess
