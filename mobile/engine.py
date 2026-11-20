@@ -933,6 +933,41 @@ def track_notes(text: str, track: str) -> list:
     return [n for n in out if n[1] > 0]
 
 
+def visual_notes(text: str) -> dict:
+    """Le note di tutte le tracce, per le forme e i colori della clip: {"tracks": [{"name", "percussion",
+    "notes": [[inizio, durata, nota MIDI, dinamica]]}], "bpm"}, in battiti. Al massimo 6000 note per traccia."""
+    import mido
+    from core.project_io import parse_project_text
+    from st_language.instruments import DRUM_MIDI_CHANNEL
+    project = parse_project_text(text, "Brano")
+    mid = mido.MidiFile(file=io.BytesIO(_project_midi(project)))
+    per_beat = float(mid.ticks_per_beat)
+    drums = {t.name for t in project.tracks if not t.is_audio and t.instrument.is_percussion}
+    out = []
+    for tr in mid.tracks:
+        if not tr.name or not any(m.type == "note_on" for m in tr):
+            continue
+        at = 0
+        open_notes: dict = {}
+        notes = []
+        for msg in tr:
+            at += msg.time
+            if not hasattr(msg, "channel"):
+                continue
+            percussion = msg.channel == DRUM_MIDI_CHANNEL
+            if msg.type == "note_on" and msg.velocity > 0:
+                open_notes[(msg.channel, msg.note)] = (at, msg.velocity)
+            elif msg.type in ("note_off", "note_on") and (msg.channel, msg.note) in open_notes:
+                begin, velocity = open_notes.pop((msg.channel, msg.note))
+                notes.append([round(begin / per_beat, 4), round(max(0.05, (at - begin) / per_beat), 4), msg.note, velocity])
+                if percussion:
+                    notes[-1][1] = 0.25
+        notes.sort()
+        if notes:
+            out.append({"name": tr.name, "percussion": tr.name in drums, "notes": notes[:6000]})
+    return {"tracks": out, "bpm": float(project.tempo_bpm)}
+
+
 def speak_at(text: str, pos: int, lang: Optional[str] = None) -> dict:
     """«Leggi»: la frase che dice la battuta sotto il cursore (speech.phrase); se il cursore e' in un pattern o in una
     riga fuori dalle battute, quella riga. {"text", "bar", "track"}; lingua: quella dell'interfaccia."""

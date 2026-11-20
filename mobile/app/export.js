@@ -298,6 +298,155 @@ function drawChordsView(ctx, w, h, beat, model, top, bottom) {
   ctx.textAlign = "left";
 }
 
+// ---- la partitura nella clip
+//
+// La disegna verovio (lo stesso della vista Partitura) su una carta chiara; le pagine diventano immagini e la nota
+// che suona si evidenzia, con la carta che scorre per tenerla a un terzo dell'altezza.
+
+async function prepareScoreClip(width) {
+  const tracks = $("scoreTracks") && $("scoreTracks").value && $("scoreTracks").value !== "*" ? [$("scoreTracks").value] : null;
+  const xml = await call("musicxml", { tracks });
+  const paper = Math.round(width * 0.92);
+  const r = await scoreCall({ cmd: "render", xml: xml.xml, scale: 40, pageWidth: Math.round(paper * 100 / 40) });
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:absolute;left:-99999px;top:0;visibility:hidden";
+  holder.innerHTML = r.pages.join("");
+  document.body.append(holder);
+  const pages = [], boxes = new Map();
+  let offset = 0;
+  try {
+    const svgs = [...holder.children];
+    for (let i = 0; i < svgs.length; i++) {
+      const svg = svgs[i];
+      const rect = svg.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
+      svg.setAttribute("width", w); svg.setAttribute("height", h);
+      for (const [, on] of r.timemap.map((e) => [e[0], e[1]])) {
+        for (const id of on) {
+          if (boxes.has(id)) continue;
+          const el = svg.querySelector(`[id="${id}"]`);
+          if (!el) continue;
+          const b = el.getBoundingClientRect();
+          boxes.set(id, { x: b.left - rect.left, y: offset + b.top - rect.top, w: b.width, h: b.height });
+        }
+      }
+      const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+      const img = new Image();
+      img.src = URL.createObjectURL(blob);
+      await img.decode();
+      pages.push({ img, y: offset, w, h });
+      offset += h;
+    }
+  } finally {
+    holder.remove();
+  }
+  return { pages, boxes, timemap: r.timemap, height: offset, scroll: null, index: -1, active: new Set(), lastBeat: -1 };
+}
+
+function drawScoreView(ctx, w, h, beat, model, top, bottom) {
+  const sc = model.score;
+  const areaTop = top, areaH = bottom - top - 8, x0 = Math.round(w * 0.04);
+  ctx.save();
+  roundedBox(ctx, x0 - 6, areaTop, w - 2 * x0 + 12, areaH, 14);
+  ctx.fillStyle = "#fbfaf6";
+  ctx.fill();
+  ctx.clip();
+  if (!sc || !sc.pages.length) { ctx.restore(); return; }
+  // le note che suonano: in avanti con la mappa dei tempi, da capo se il tempo torna indietro
+  const map = sc.timemap;
+  let lo = -1, hi = map.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (map[m][0] <= beat + 1e-6) lo = m; else hi = m - 1; }
+  if (lo < sc.index) { sc.active = new Set(); sc.index = -1; }
+  for (let i = sc.index + 1; i <= lo; i++) {
+    for (const id of map[i][2]) sc.active.delete(id);
+    for (const id of map[i][1]) sc.active.add(id);
+  }
+  sc.index = lo;
+  const active = [...sc.active].map((id) => sc.boxes.get(id)).filter(Boolean);
+  const targetY = active.length ? active.reduce((n, b) => n + b.y + b.h / 2, 0) / active.length : (sc.scroll === null ? areaH / 3 : sc.scroll + areaH / 3);
+  const wanted = Math.max(0, Math.min(Math.max(0, sc.height - areaH), targetY - areaH / 3));
+  sc.scroll = sc.scroll === null ? wanted : sc.scroll + (wanted - sc.scroll) * 0.2;
+  for (const p of sc.pages) {
+    const y = areaTop + p.y - sc.scroll;
+    if (y + p.h < areaTop || y > areaTop + areaH) continue;
+    ctx.drawImage(p.img, x0, y, p.w, p.h);
+  }
+  ctx.fillStyle = CLIP_COLORS.note;
+  ctx.globalAlpha = 0.45;
+  for (const b of active) {
+    ctx.fillRect(x0 + b.x - 4, areaTop + b.y - sc.scroll - 4, b.w + 8, b.h + 8);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ---- forme e colori dalla musica
+//
+// Ogni traccia ha un colore; ogni nota e' un cerchio che nasce quando suona e si allarga e svanisce: l'altezza
+// decide dove sta (in alto le acute), la dinamica quanto e' grande, la durata quanto resta. Le percussioni sono
+// onde sul fondo. Sempre uguale per lo stesso brano: la posizione orizzontale viene dal numero della nota.
+
+function hashUnit(n) {
+  let x = (n + 0x9e3779b9) | 0;
+  x = Math.imul(x ^ (x >>> 16), 0x85ebca6b); x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35); x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+}
+
+function visualModel(data) {
+  const tracks = data.tracks.map((tr, i) => ({ ...tr, hue: (i * 137.5 + 20) % 360, index: i }));
+  return { tracks, bpm: data.bpm || 120 };
+}
+
+function drawVisualView(ctx, w, h, beat, model, top, bottom) {
+  const vm = model.visual;
+  if (!vm) return;
+  const areaH = bottom - top, cx0 = 0;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(cx0, top, w, areaH); ctx.clip();
+  ctx.globalCompositeOperation = "lighter";
+  const life = 3.0;                                          // quanti battiti dura un cerchio dopo la fine della nota
+  for (const tr of vm.tracks) {
+    // le note vicine a 'beat' (in ordine di inizio: ricerca del primo)
+    const notes = tr.notes;
+    let a = 0, b = notes.length;
+    while (a < b) { const m = (a + b) >> 1; if (notes[m][0] < beat - 16) a = m + 1; else b = m; }
+    for (let i = a; i < notes.length && notes[i][0] <= beat + 0.02; i++) {
+      const [start, dur, pitch, vel] = notes[i];
+      const age = beat - start;
+      if (age < 0 || age > dur + life) continue;
+      const seed = tr.index * 100003 + i;
+      const phase = age / (dur + life);                      // 0 appena suonata, 1 spenta
+      const alive = age <= dur;
+      if (tr.percussion) {
+        // un'onda sul fondo
+        const x = w * (0.1 + 0.8 * hashUnit(seed));
+        const r = (w / 14) * (0.4 + phase * 2.2) * (0.6 + vel / 200);
+        ctx.strokeStyle = `hsla(${tr.hue}, 85%, 62%, ${(1 - phase) * 0.55})`;
+        ctx.lineWidth = 3 + (1 - phase) * 5;
+        ctx.beginPath(); ctx.ellipse(x, bottom - areaH * 0.06, r * 1.6, r * 0.35, 0, 0, Math.PI * 2); ctx.stroke();
+        continue;
+      }
+      const y = bottom - areaH * (0.08 + 0.84 * Math.min(1, Math.max(0, (pitch - 24) / 84)));
+      const x = w * (0.08 + 0.84 * hashUnit(seed));
+      const base = (w / 22) * (0.5 + vel / 127) * (1 + Math.min(dur, 4) * 0.12);
+      const r = base * (alive ? 1 + phase * 0.3 : 1.3 + phase * 1.6);
+      const alpha = (alive ? 0.75 : 0.75 * (1 - (age - dur) / life)) * (0.5 + vel / 254);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `hsla(${tr.hue}, 90%, 65%, ${Math.max(0, alpha)})`);
+      g.addColorStop(0.55, `hsla(${tr.hue}, 90%, 55%, ${Math.max(0, alpha * 0.5)})`);
+      g.addColorStop(1, `hsla(${tr.hue}, 90%, 45%, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      if (age < 0.5) {                                       // l'attacco: un anello sottile
+        ctx.strokeStyle = `hsla(${tr.hue}, 95%, 80%, ${(1 - age / 0.5) * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, base * (1 + age * 3), 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function drawClipFrame(ctx, w, h, beat, model, content, signature) {
   const back = ctx.createLinearGradient(0, 0, 0, h);
   back.addColorStop(0, CLIP_COLORS.back2);
@@ -314,6 +463,8 @@ function drawClipFrame(ctx, w, h, beat, model, content, signature) {
   ctx.fillText(t("battuta {n}/{total}", { n: bar, total: state.timeline.bars.length }), 30, w / 8 + w / 14);
   const top = w / 8 + w / 10, bottom = h - (signature ? w / 7 : w / 14);
   if (content === "text") drawTextView(ctx, w, h, beat, model, top, bottom);
+  else if (content === "score") drawScoreView(ctx, w, h, beat, model, top, bottom);
+  else if (content === "visual") drawVisualView(ctx, w, h, beat, model, top, bottom);
   else drawChordsView(ctx, w, h, beat, model, top, bottom);
   // l'avanzamento
   const pos = model.total > 0 ? Math.min(1, Math.max(0, beat / model.total)) : 0;
@@ -412,6 +563,12 @@ async function exportClip() {
   const midi = await exportMidi();
   const chart = content === "chords" ? (await call("chord_chart", { args: [state.doc.text] })).result : [];
   const model = clipModel(chart);
+  if (content === "score") {
+    setExportStatus(t("Disegno la partitura…"));
+    model.score = await prepareScoreClip(width);
+  } else if (content === "visual") {
+    model.visual = visualModel((await call("visual_notes", { args: [state.doc.text] })).result);
+  }
   const signature = $("clipSignature").checked;
   const draw = (ctx, w, h, beat) => drawClipFrame(ctx, w, h, beat, model, content, signature);
   setExportStatus(t("Calcolo l'audio…"));

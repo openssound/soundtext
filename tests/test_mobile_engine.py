@@ -806,3 +806,15 @@ def test_track_notes_gives_the_melody_of_a_track_in_beats():
     assert e.track_notes(made["text"], "Non c'e'") == []
     drums = [n for n in tracks if "rum" in n or "Drum" in n]
     assert all(e.track_notes(made["text"], n) == [] for n in drums)
+
+
+def test_visual_notes_gives_every_track_with_its_notes_in_beats():
+    """Le forme e i colori della clip: le note di tutte le tracce, con la dinamica; le percussioni segnate."""
+    e = _quick()
+    made = e.quick_song({"genre": "rock", "mood": "tesa", "duration": 30, "seed": 2})
+    data = e.visual_notes(made["text"])
+    assert data["bpm"] > 0 and len(data["tracks"]) >= 3
+    assert any(t["percussion"] for t in data["tracks"]) and any(not t["percussion"] for t in data["tracks"])
+    for track in data["tracks"]:
+        assert track["notes"] == sorted(track["notes"])
+        assert all(n[1] > 0 and 0 <= n[2] < 128 and 0 < n[3] <= 127 for n in track["notes"])
