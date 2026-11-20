@@ -111,9 +111,22 @@ dialog.pad-sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .sf-list input[type=radio] { width: 22px; height: 22px; flex: none; }
 .sf-list small { display: block; color: var(--dim); font-size: 12px; }
 .sfsel { max-width: 46%; min-height: 34px; font-size: 12px; }
-.quick-advanced { margin: 6px 0; }
-.quick-advanced summary { cursor: pointer; padding: 6px 0; }
-.quick-advanced input[type=number] { width: 8em; min-height: 40px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.quick-genres { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
+.quick-card { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.quick-genre { flex: 1; min-height: 52px; border: none; background: none; color: var(--text); font-size: 15px; text-align: left; padding: 0 12px; }
+.quick-genre[aria-pressed=true] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.quick-preview { width: 48px; min-height: 52px; border: none; border-left: 1px solid var(--line); background: none; color: var(--text); font-size: 16px; }
+.quick-detail { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 4px; }
+.quick-detail input[type=text] { flex: 1; min-height: 40px; }
+.quick-detail input[type=range] { flex: 1; }
+.quick-parts { list-style: none; margin: 0; padding: 0; }
+.quick-parts li { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); padding: 6px 0; flex-wrap: wrap; }
+.quick-parts .tname { flex: 1 1 130px; }
+.quick-parts select { min-height: 40px; max-width: 40%; }
+.quick-parts button { min-height: 40px; }
+.quick-lock { display: flex; align-items: center; gap: 2px; }
+.quick-lock input { width: 22px; height: 22px; }
 .copy-shared { flex: none; min-height: 32px; padding: 0 10px; font-size: 13px; }
 .qr-canvas[hidden] { display: none; }
 .qr-canvas { display: block; width: min(86vw, 420px); height: auto; aspect-ratio: 1; margin: 8px auto; image-rendering: pixelated; border-radius: 4px; }

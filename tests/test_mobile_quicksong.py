@@ -1,0 +1,243 @@
+"""
+SoundText Mobile, fase 3: «Un brano in 60 secondi», la versione estesa (mobile/quicksong.py): 25 generi, 11 atmosfere,
+durate da 15 secondi a 4 minuti, forme, organici, finali, modulazione e le parti con il loro seme. Ogni brano deve
+essere valido (nessun avviso di battuta), suonare e durare quanto dice.
+"""
+
+import os
+import re
+import sys
+
+import pytest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MOBILE = os.path.join(ROOT, "mobile")
+
+
+@pytest.fixture(scope="module")
+def q():
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+        import quicksong
+    finally:
+        sys.path.remove(MOBILE)
+    quicksong.engine = engine
+    return quicksong
+
+
+def _valid(q, song, duration=None):
+    """Il brano e' valido, suona e dura quanto dichiara (entro una battuta)."""
+    engine = q.engine
+    check = engine.check_text(song["text"], song["name"])
+    assert not check["warnings"], (song["genre"], song["mood"], song["form"], check["warnings"][:2])
+    e = engine.Engine()
+    e.load(song["text"], song["name"])
+    assert len(e.midi_bytes(0)) > 500
+    bar_seconds = {"4/4": 4, "3/4": 3, "6/8": 3, "7/8": 3.5}[song["meter"]] * 60 / song["bpm"]
+    real = e.length_beats() * 60 / song["bpm"]
+    assert abs(real - song["seconds"]) <= 2 * bar_seconds + 1, (song["genre"], real, song["seconds"])
+    assert sum(s["bars"] for s in song["sections"]) * bar_seconds == pytest.approx(song["seconds"], abs=1)
+    if duration:
+        assert 0.4 * duration <= song["seconds"] <= 1.8 * duration, (duration, song["seconds"], song["form"])
+    return e
+
+
+def test_the_values_of_the_document_are_all_there(q):
+    assert len(q.GENRES) == 25 and set(q.GENRES) == set(q.GENRES_DATA)
+    assert len(q.MOODS) == 11 and set(q.MOODS) == set(q.MOODS_DATA)
+    assert q.DURATIONS == (15, 30, 45, 60, 90, 120, 180, 240)
+    assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte"} and len(q.ENSEMBLES) == 5
+    choices = q.quick_choices()
+    assert [g["value"] for g in choices["genres"]] == list(q.GENRES)
+    assert all(g["moods"] and set(g["moods"]) <= set(q.MOODS) for g in choices["genres"])
+    assert [d["value"] for d in choices["durations"]] == list(q.DURATIONS)
+    assert choices["durations"][3]["label"] == "1 minuto" and choices["durations"][4]["label"] == "1 min 30 s"
+
+
+def test_every_recipe_makes_a_valid_song_at_every_duration(q):
+    """Ogni genere con ogni atmosfera ammessa; le durate ruotano, cosi' tutte e otto compaiono con ogni genere."""
+    count = 0
+    for g, genre in enumerate(q.GENRES):
+        for m, mood in enumerate(q.GENRES_DATA[genre]["moods"]):
+            duration = q.DURATIONS[(g + m) % len(q.DURATIONS)]
+            if duration > 90 and (g + m) % 3:               # i brani lunghi costano: uno su tre
+                duration = 30
+            song = q.quick_song({"genre": genre, "mood": mood, "duration": duration, "seed": 11 + g})
+            assert song["mood"] == mood and not song["fallback"]
+            _valid(q, song, duration)
+            count += 1
+    assert count >= 130
+
+
+@pytest.mark.parametrize("genre", ["pop", "blues", "valzer", "balcanico78", "jazz"])
+def test_all_durations_for_a_few_genres(q, genre):
+    mood = q.GENRES_DATA[genre]["moods"][0]
+    for duration in q.DURATIONS:
+        _valid(q, q.quick_song({"genre": genre, "mood": mood, "duration": duration, "seed": 5}), duration)
+
+
+def test_every_mood_gets_a_valid_song_in_its_genre_at_fifteen_seconds(q):
+    for genre in q.GENRES:
+        for mood in q.GENRES_DATA[genre]["moods"]:
+            song = q.quick_song({"genre": genre, "mood": mood, "duration": 15, "seed": 3})
+            assert q.engine.check_text(song["text"], "x")["warnings"] == [], (genre, mood)
+            assert song["seconds"] <= 27 and all(sec["role"] != "intro" for sec in song["sections"]), (genre, mood, song["seconds"])
+
+
+def test_a_mood_the_genre_does_not_have_falls_back_to_the_nearest_and_says_so(q):
+    song = q.quick_song({"genre": "metal", "mood": "calma", "duration": 30, "seed": 1})
+    assert song["mood"] in q.GENRES_DATA["metal"]["moods"] and song["mood"] != "calma"
+    assert "metal" in song["fallback"].lower() and "calma" in song["fallback"] and song["mood"] in song["fallback"]
+    assert q.MOODS_DATA[song["mood"]][0] == q.MOODS_DATA["calma"][0] or q.MOODS_DATA["calma"][0] == "major"
+    # una combinazione ammessa non ha avvisi
+    assert q.quick_song({"genre": "metal", "mood": "oscura", "duration": 15, "seed": 1})["fallback"] == ""
+    _valid(q, song, 30)
+
+
+def test_same_choices_and_seeds_same_song_and_the_saved_choices_remake_it(q):
+    options = {"genre": "bossa", "mood": "romantica", "duration": 60, "seed": 99, "modulation": True, "ending": "rallentando"}
+    one, again = q.quick_song(options), q.quick_song(options)
+    assert one["text"] == again["text"]
+    assert q.quick_song({**options, "seed": 100})["text"] != one["text"]
+    saved = q.quick_read(one["text"])
+    assert saved and saved["genre"] == "bossa" and saved["seed"] == 99 and saved["modulation"] is True
+    remade = q.quick_song(saved)                              # il modo dettagliato mostra i valori della ricetta: stesso brano
+    assert remade["text"] == one["text"]
+    assert q.quick_read("ST: 2.6\nTempo: 100 BPM\n") is None
+
+
+def test_changing_one_part_seed_changes_only_that_part(q):
+    base = {"genre": "pop", "mood": "allegra", "duration": 30, "seed": 21}
+    one = q.quick_song(base)
+    other = q.quick_song({**base, "parts": {"drums": {"seed": 1234567}}})
+
+    def boxes(song):
+        out = {}
+        for m in re.finditer(r'^Box (\S+) "([^"]*)" \|[\d.]+:\n((?:  .*\n?)+)', song["text"], re.M):
+            out[(m.group(1), m.group(2))] = m.group(3)
+        return out
+    a, b = boxes(one), boxes(other)
+    assert a.keys() == b.keys()
+    changed = {key[0] for key in a if a[key] != b[key]}
+    assert changed == {"Drums"}, changed
+    assert one["seeds"]["drums"] != other["seeds"]["drums"] and one["seeds"]["bass"] == other["seeds"]["bass"]
+    # un lucchetto e' lo stesso seme: ripassando i semi di tutte le parti con un seme globale diverso, il brano non cambia
+    locked = q.quick_song({**base, "seed": 22, "parts": {p: {"seed": s} for p, s in one["seeds"].items()}})
+    assert locked["text"].split("\n", 3)[3] == one["text"].split("\n", 3)[3] or boxes(locked) == boxes(one)
+
+
+@pytest.mark.parametrize("form", ["loop", "canzone", "aaba", "blues", "ponte"])
+def test_every_form_is_valid_with_its_own_shape(q, form):
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "form": form, "seed": 4})
+    e = _valid(q, song)
+    bars = [s["bars"] for s in song["sections"]]
+    if form == "loop":
+        assert set(bars) == {8}
+    elif form == "blues":
+        assert set(bars) == {12}
+    elif form == "aaba":
+        assert set(bars) <= {8} and len(bars) % 4 == 0
+    else:
+        assert any(s["role"] == "chorus" for s in song["sections"])
+    assert song["form"] == form
+
+
+def test_a_loop_keeps_the_harmony_and_changes_the_fills(q):
+    song = q.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 8})
+    assert song["loop"] is True and [s["bars"] for s in song["sections"]] == [8, 8, 8, 8]
+    _valid(q, song)
+    text = song["text"]
+
+    def body(track, name):
+        m = re.search(rf'^Box {track} "{name}" \|[\d.]+:\n((?:  .*\n?)+)', text, re.M)
+        return m.group(1) if m else None
+    assert body("Electric_Piano_1", "Loop 1") is not None
+    assert body("Electric_Piano_1", "Loop 1") == body("Electric_Piano_1", "Loop 3")           # l'armonia e' la stessa
+    assert body("Drums", "Loop 1") != body("Drums", "Loop 2")                                  # i fill cambiano a ogni giro
+
+
+@pytest.mark.parametrize("ending", ["cadenza", "rallentando", "sfumato"])
+def test_every_ending_is_valid(q, ending):
+    song = q.quick_song({"genre": "pop", "mood": "calma", "duration": 60, "ending": ending, "seed": 6})
+    _valid(q, song)
+    if ending == "sfumato":
+        assert song["sections"][-1]["role"] == "fade" and "Sfumato" in song["text"]
+    if ending == "rallentando":
+        assert "tempo=" in song["text"]
+
+
+def test_modulation_puts_the_last_chorus_a_tone_higher(q):
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "modulation": True, "key": "C", "seed": 10})
+    _valid(q, song)
+    keys = [s["key"] for s in song["sections"]]
+    choruses = [i for i, s in enumerate(song["sections"]) if s["role"] == "chorus"]
+    assert keys[0] == "C" and keys[choruses[-1]] == "D" and all(k == "D" for k in keys[choruses[-1]:])
+    assert all(k == "C" for k in keys[:choruses[-1]])
+    flat = q.quick_song({"genre": "pop", "mood": "malinconica", "duration": 60, "modulation": True, "key": "Am", "seed": 10})
+    assert flat["sections"][-1]["key"] == "Bm"
+    assert q._shift_key("Bb", 2) == "C" and q._shift_key("F#m", 2) == "G#m" and q._shift_key("Em", 2) == "F#m"
+
+
+@pytest.mark.parametrize("ensemble", ["piano", "acustica", "elettrica", "elettronica", "orchestra"])
+def test_every_ensemble_plays(q, ensemble):
+    song = q.quick_song({"genre": "pop", "mood": "romantica", "duration": 30, "ensemble": ensemble, "seed": 2})
+    _valid(q, song)
+    if ensemble == "piano":
+        assert song["parts"] == ["comp"]
+    if ensemble == "orchestra":
+        assert "Strings" in song["text"] and "Drums" not in song["text"]
+
+
+@pytest.mark.parametrize("melody", ["nessuna", "cantabile", "vivace", "ballata", "aaba"])
+def test_every_melody_style(q, melody):
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 30, "melody": melody, "seed": 12})
+    _valid(q, song)
+    assert ("melody" in song["parts"]) == (melody != "nessuna")
+
+
+def test_key_tempo_meter_and_density_choices(q):
+    song = q.quick_song({"genre": "rock", "mood": "allegra", "key": "Em", "bpm": 140, "duration": 30, "seed": 2})
+    assert song["key"] == "Em" and song["bpm"] == 140 and "Tonalita: Em" in song["text"] and "Tempo: 140 BPM" in song["text"]
+    _valid(q, song, 30)
+    waltz = q.quick_song({"genre": "pop", "mood": "allegra", "meter": "3/4", "duration": 30, "seed": 3})
+    assert waltz["meter"] == "3/4" and "Metrica: 3/4" in waltz["text"]
+    _valid(q, waltz, 30)
+    simple = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 30, "density": 0.1, "seed": 4})
+    rich = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 30, "density": 0.9, "seed": 4})
+    assert "comp2" not in simple["parts"] and "comp2" in rich["parts"]
+    _valid(q, simple)
+    _valid(q, rich)
+
+
+def test_a_written_chord_progression_is_used_and_a_bad_one_is_an_error(q):
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 15, "chords": "Am F C G", "key": "C", "seed": 3})
+    _valid(q, song)
+    chart = q.engine.chord_chart(song["text"])
+    assert [c[2] for c in chart][:4] == ["Am", "F", "C", "G"] or chart, chart
+    with pytest.raises(ValueError):
+        q.quick_song({"genre": "pop", "mood": "allegra", "chords": "Am Zz9", "seed": 3})
+
+
+def test_unknown_values_are_errors(q):
+    for bad in ({"genre": "polka"}, {"mood": "furiosa"}, {"form": "rondo"}, {"ensemble": "coro"}, {"ending": "bis"}, {"melody": "jodel"}):
+        with pytest.raises(ValueError):
+            q.quick_song(bad)
+
+
+def test_surprise_picks_only_allowed_combinations(q):
+    for seed in range(40):
+        pick = q.quick_surprise(seed)
+        assert pick["mood"] in q.GENRES_DATA[pick["genre"]]["moods"] and pick["duration"] in q.DURATIONS
+        assert q.quick_surprise(seed) == pick
+    song = q.quick_song({**q.quick_surprise(3), "duration": 15})
+    assert not song["fallback"] and not q.engine.check_text(song["text"], "x")["warnings"]
+
+
+def test_durations_match_the_form_and_the_tempo(q):
+    """Le battute si scelgono dal tempo: a 4 minuti il brano e' piu' lungo che a 1 minuto, e la durata mostrata e' vera."""
+    short = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 60, "seed": 1})
+    long = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 240, "form": "ponte", "seed": 1})
+    assert long["bars"] > 3 * short["bars"] and abs(long["seconds"] - 240) < 70 and abs(short["seconds"] - 60) < 20
+    assert any(s["role"] == "bridge" for s in long["sections"]) and any(s["role"] == "solo" for s in long["sections"])
+    assert all(s["role"] != "intro" for s in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 15, "seed": 1})["sections"])

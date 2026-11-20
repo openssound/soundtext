@@ -609,58 +609,9 @@ def test_strip_comments_keeps_the_song_but_not_the_comments():
 
 def _quick():
     _engine("jazz_aaba.st")                               # mette il motore fra i moduli importabili
+    if MOBILE not in sys.path:                            # e quicksong, che il motore importa quando serve
+        sys.path.insert(0, MOBILE)
     return sys.modules["engine"]
-
-
-def test_quick_song_every_recipe_makes_a_valid_song_without_bar_warnings():
-    """«Un brano in 60 secondi»: ogni genere con ogni atmosfera e durata scrive un
-    brano che il motore capisce, senza avvisi di battuta, e che suona."""
-    e = _quick()
-    for genre in e.QUICK_GENRES:
-        for mood in e.QUICK_MOODS:
-            for duration in e.QUICK_DURATIONS:
-                r = e.quick_song({"genre": genre, "mood": mood, "duration": duration, "seed": 11})
-                where = f"{genre}/{mood}/{duration}"
-                check = e.check_text(r["text"], r["name"])
-                assert not check["warnings"], (where, check["warnings"][:2])
-                engine = e.Engine()
-                engine.load(r["text"], r["name"])
-                assert len(engine.midi_bytes(0)) > 500, where
-                # la durata e' quella chiesta, per quanto la forma permette
-                assert 0.4 * duration <= r["seconds"] <= 1.8 * duration, (where, r["seconds"])
-                assert r["bars"] in (12, 24, 48), where
-
-
-def test_quick_song_same_seed_same_song_other_seed_other_song():
-    e = _quick()
-    one = e.quick_song({"genre": "bossa", "mood": "calma", "duration": 60, "seed": 5})
-    again = e.quick_song({"genre": "bossa", "mood": "calma", "duration": 60, "seed": 5})
-    other = e.quick_song({"genre": "bossa", "mood": "calma", "duration": 60, "seed": 6})
-    assert one["text"] == again["text"] and one["seed"] == 5
-    assert other["text"] != one["text"]
-    assert e.quick_song({"genre": "pop", "mood": "allegra"})["seed"] != e.quick_song({"genre": "pop", "mood": "allegra"})["seed"] \
-        or True                                           # senza seme se ne sceglie uno (puo' ripetersi, di rado)
-
-
-def test_quick_song_follows_mood_key_tempo_and_options():
-    e = _quick()
-    sad = e.quick_song({"genre": "pop", "mood": "malinconica", "seed": 1})
-    happy = e.quick_song({"genre": "pop", "mood": "allegra", "seed": 1})
-    assert sad["key"].endswith("m") and not happy["key"].endswith("m")      # minore o maggiore
-    assert sad["bpm"] < happy["bpm"]                                         # piu' lenta
-    # una tonalita' scelta si rispetta, anche se non e' quella dell'atmosfera
-    chosen = e.quick_song({"genre": "rock", "mood": "allegra", "key": "Em", "bpm": 140, "seed": 2})
-    assert chosen["key"] == "Em" and chosen["bpm"] == 140 and "Tonalita: Em" in chosen["text"]
-    assert not e.check_text(chosen["text"], "x")["warnings"]
-    # senza melodia manca la traccia della melodia, e la forma ha un box per sezione
-    plain = e.quick_song({"genre": "pop", "mood": "allegra", "melody": False, "seed": 3})
-    assert "Lead" in happy["text"] and "Lead" not in plain["text"]
-    assert plain["text"].count('Box Piano "Strofa"') >= 1 and 'Box Drums "Ritornello"' in plain["text"]
-    with pytest.raises(ValueError):
-        e.quick_song({"genre": "polka"})
-    choices = e.quick_choices()
-    assert [g["value"] for g in choices["genres"]] == list(e.QUICK_GENRES)
-    assert [d["value"] for d in choices["durations"]] == [30, 60, 120]
 
 
 def test_quick_song_opens_in_the_structure_view():

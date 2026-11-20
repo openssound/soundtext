@@ -1209,93 +1209,16 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None)
 
 # ------------------------------------------------------------ un brano in 60 secondi (fase 3)
 #
-# Genere, atmosfera e durata diventano un brano completo con i generatori che
-# ci sono gia' (giro armonico, accompagnamento, basso, batteria, melodia): una
-# tabella di «ricette» dice quali, e il brano si scrive in box, uno per ogni
-# sezione di ogni traccia, come nella vista Struttura. Stesso seme, stesso
-# brano.
+# Genere, atmosfera, durata e, volendo, tutte le altre scelte diventano un brano completo con i generatori che
+# ci sono gia' (giro armonico, accompagnamento, basso, batteria, melodia). Le ricette (25 generi e 11 atmosfere),
+# la forma, la durata e le parti sono in quicksong.py; qui restano gli aiuti che usano i generatori.
 
-QUICK_GENRES = ("pop", "rock", "ballata", "bossa", "lofi", "orchestrale")
-QUICK_MOODS = ("allegra", "malinconica", "tesa", "epica", "calma")
-QUICK_DURATIONS = (30, 60, 120)
-
-# tempo base e le parti che suonano: (nome della traccia, strumento, che cosa genera, stile,
-# in quali sezioni entra). Le sezioni sono intro, verse (strofa), chorus
-# (ritornello), bridge (ponte) e end (finale).
-_ALL = ("intro", "verse", "chorus", "bridge", "end")
-_BODY = ("verse", "chorus", "bridge", "end")
-_RECIPES = {
-    "pop": {"bpm": 104, "drums": {"*": "rock", "calma": "halftime", "malinconica": "halftime"}, "melody": ("Lead", "melody_aaba"),
-            "parts": [("Piano", "Piano", "comping", "arpeggio_up", _ALL), ("Guitar", "Guitar", "comping", "block_chords", ("chorus", "bridge", "end")),
-                      ("Bass", "Bass", "bass", "root_fifth", _BODY), ("Drums", "Drums", "drums", None, _BODY)]},
-    "rock": {"bpm": 122, "drums": {"*": "rock", "tesa": "punk", "epica": "metal", "allegra": "rocknroll"}, "melody": ("Lead", "melody_lively"),
-             "parts": [("Guitar", "Distortion_Guitar", "comping", "quarter_chords", _ALL), ("Rhythm", "Clean_Guitar", "comping", "block_chords", ("chorus", "end")),
-                       ("Bass", "Bass", "bass", "eighths", _BODY), ("Drums", "Drums", "drums", None, _BODY)]},
-    "ballata": {"bpm": 72, "drums": {"*": "halftime"}, "melody": ("Flute", "melody_ballad"),
-                "parts": [("Piano", "Piano", "comping", "arpeggio_up", _ALL), ("Strings", "Strings", "comping", "sustained", ("chorus", "bridge", "end")),
-                          ("Bass", "Bass", "bass", "root", ("verse", "chorus", "bridge", "end")), ("Drums", "Drums", "drums", None, ("chorus", "bridge", "end"))]},
-    "bossa": {"bpm": 128, "drums": {"*": "bossa"}, "melody": ("Flute", "melody_period"),
-              "parts": [("Nylon", "Nylon_Guitar", "comping", "bossa_comp", _ALL), ("Piano", "Piano", "comping", "block_chords", ("chorus", "bridge", "end")),
-                        ("Bass", "Bass", "bass", "bossa", _BODY), ("Drums", "Drums", "drums", None, _BODY)]},
-    "lofi": {"bpm": 80, "drums": {"*": "hiphop"}, "melody": ("Electric_Piano_1", "melody_ballad"),
-             "parts": [("Rhodes", "Electric_Piano_1", "comping", "broken_chord", _ALL), ("Pad", "Pad", "comping", "sustained", ("chorus", "bridge")),
-                       ("Bass", "Fretless_Bass", "bass", "root", _BODY), ("Drums", "Drums", "drums", None, _BODY)]},
-    "orchestrale": {"bpm": 92, "drums": {}, "melody": ("Oboe", "melody_period"),
-                    "parts": [("Strings", "Strings", "comping", "sustained", _ALL), ("Harp", "Harp", "comping", "arpeggio_up", ("verse", "chorus", "bridge")),
-                              ("Piano", "Piano", "comping", "block_chords", ("chorus", "end")), ("Cellos", "Cello", "bass", "root", _BODY),
-                              ("Horns", "French_Horn", "comping", "sustained", ("chorus", "end"))]},
-}
-
-# giri armonici (strofa, ritornello, ponte) per genere e atmosfera; gli stili di
-# rg.PROGRESSION_STYLES hanno il loro modo, maggiore o minore
-_PROGRESSIONS = {
-    "pop": {"allegra": ("pop", "royal_road", "circle"), "malinconica": ("minor_pop", "andalusian", "minor_circle"),
-            "tesa": ("minor_rock", "minor_cadence", "phrygian"), "epica": ("minor_epic", "minor_pop", "minor_cadence"),
-            "calma": ("canon", "ballad", "pop")},
-    "rock": {"allegra": ("rock", "three_chord", "mixolydian"), "malinconica": ("minor_rock", "minor_pop", "minor_three"),
-             "tesa": ("minor_rock", "minor_three", "phrygian"), "epica": ("minor_epic", "minor_rock", "minor_cadence"),
-             "calma": ("mixolydian", "pop", "rock")},
-    "ballata": {"allegra": ("ballad", "pop", "canon"), "malinconica": ("minor_pop", "andalusian", "minor_cadence"),
-                "tesa": ("minor_cadence", "minor_pop", "phrygian"), "epica": ("minor_epic", "minor_cadence", "minor_pop"),
-                "calma": ("ballad", "canon", "pop")},
-    "bossa": {"allegra": ("jazz_251", "turnaround", "circle"), "malinconica": ("minor_251", "minor_circle", "minor_251"),
-              "tesa": ("minor_251", "minor_circle", "phrygian"), "epica": ("minor_251", "minor_epic", "minor_circle"),
-              "calma": ("jazz_251", "ballad", "turnaround")},
-    "lofi": {"allegra": ("jazz_251", "gospel", "turnaround"), "malinconica": ("minor_251", "dorian_vamp", "minor_pop"),
-             "tesa": ("dorian_vamp", "minor_251", "phrygian"), "epica": ("minor_epic", "dorian_vamp", "minor_251"),
-             "calma": ("gospel", "jazz_251", "ballad")},
-    "orchestrale": {"allegra": ("royal_road", "pop", "circle"), "malinconica": ("andalusian", "minor_epic", "minor_cadence"),
-                    "tesa": ("phrygian", "minor_epic", "minor_cadence"), "epica": ("minor_epic", "minor_cadence", "minor_epic"),
-                    "calma": ("canon", "ballad", "royal_road")},
-}
-_MOOD_TEMPO = {"allegra": 1.1, "malinconica": 0.88, "tesa": 1.0, "epica": 1.05, "calma": 0.82}
-# intensita' delle sezioni: strofa, ritornello
-_MOOD_INTENSITY = {"allegra": ("normal", "full"), "malinconica": ("light", "normal"), "tesa": ("normal", "full"),
-                   "epica": ("normal", "full"), "calma": ("light", "normal")}
-_KEYS = {"major": ("C", "G", "D", "F", "A", "Bb"), "minor": ("Am", "Em", "Dm", "Gm", "Bm", "Cm")}
-
-# la forma, per durata: (nome, ruolo, battute). La scelta e' quella piu' vicina alla durata chiesta.
-_FORMS = (
-    (("Intro", "intro", 2), ("Strofa", "verse", 4), ("Ritornello", "chorus", 4), ("Finale", "end", 2)),
-    (("Intro", "intro", 4), ("Strofa", "verse", 8), ("Ritornello", "chorus", 8), ("Finale", "end", 4)),
-    (("Intro", "intro", 4), ("Strofa", "verse", 8), ("Ritornello", "chorus", 8), ("Strofa", "verse", 8),
-     ("Ritornello", "chorus", 8), ("Ponte", "bridge", 4), ("Ritornello", "chorus", 8)),
-)
-
-
-def quick_choices() -> dict:
-    """Le scelte di «Un brano in 60 secondi», con le etichette nella lingua
-    dell'interfaccia: genere, atmosfera, durata."""
-    from core.i18n import tr
-    genres = {"pop": tr("Pop"), "rock": tr("Rock"), "ballata": tr("Ballata"), "bossa": tr("Bossa nova"),
-              "lofi": tr("Lo-fi"), "orchestrale": tr("Orchestrale")}
-    moods = {"allegra": tr("allegra"), "malinconica": tr("malinconica"), "tesa": tr("tesa"),
-             "epica": tr("epica"), "calma": tr("calma")}
-    durations = {30: tr("30 secondi"), 60: tr("1 minuto"), 120: tr("2 minuti")}
-    return {"genres": [{"value": g, "label": genres[g]} for g in QUICK_GENRES],
-            "moods": [{"value": m, "label": moods[m]} for m in QUICK_MOODS],
-            "durations": [{"value": d, "label": durations[d]} for d in QUICK_DURATIONS],
-            "keys": _KEYS["major"] + _KEYS["minor"]}
+QUICK_GENRES = ("pop", "rock", "ballata", "bossa", "jazz", "swing", "funk", "soul", "disco", "lofi", "elettronica",
+                "orchestrale", "blues", "reggae", "country", "punk", "metal", "rocknroll", "samba", "chacha", "valzer",
+                "marcia", "ballata68", "afro68", "balcanico78")
+QUICK_MOODS = ("allegra", "malinconica", "tesa", "epica", "calma", "sognante", "misteriosa", "romantica", "nostalgica",
+               "festosa", "oscura")
+QUICK_DURATIONS = (15, 30, 45, 60, 90, 120, 180, 240)
 
 
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,
@@ -1312,117 +1235,24 @@ def _quick_melody(project, source: str, instrument_name: str, style: str, key: s
         **variation)
 
 
+def quick_choices() -> dict:
+    import quicksong
+    return quicksong.quick_choices()
+
+
 def quick_song(options: Optional[dict] = None) -> dict:
-    """Un brano completo: {text, name, seed, key, bpm, bars, seconds, genre,
-    mood}. options: genre, mood, duration (30, 60 o 120 secondi), e,
-    facoltativi, seed (lo stesso seme ridà lo stesso brano), key (la
-    tonalita'), bpm (il tempo), melody (si'/no, la melodia sul ritornello)."""
-    import random
-    from core.i18n import tr
-    from core.project_io import parse_project_text
-    options = dict(options or {})
-    genre = options.get("genre", "pop")
-    mood = options.get("mood", "allegra")
-    duration = int(options.get("duration", 60))
-    if genre not in _RECIPES:
-        raise ValueError(f"genere sconosciuto: {genre}")
-    if mood not in _MOOD_TEMPO:
-        raise ValueError(f"atmosfera sconosciuta: {mood}")
-    seed = options.get("seed")
-    seed = random.randrange(2 ** 31) if seed is None else int(seed)
-    rng = random.Random(seed)
-    recipe = _RECIPES[genre]
-    from core import rhythm_generate as rg
+    import quicksong
+    return quicksong.quick_song(options)
 
-    # tonalita' e modo: quelli dell'atmosfera, o della tonalita' scelta (e allora
-    # il giro armonico e' quello dell'atmosfera piu' vicina in quel modo)
-    key = options.get("key") or ""
-    prog_mood = mood
-    if key:
-        mode = rg.parse_key(key)[1]
-        if mode != ("minor" if mood in ("malinconica", "tesa", "epica") else "major"):
-            prog_mood = "malinconica" if mode == "minor" else "allegra"
-    else:
-        mode = "minor" if mood in ("malinconica", "tesa", "epica") else "major"
-        key = rng.choice(_KEYS[mode])
-    verse_style, chorus_style, bridge_style = _PROGRESSIONS[genre][prog_mood]
-    styles = {"intro": verse_style, "verse": verse_style, "chorus": chorus_style, "bridge": bridge_style, "end": chorus_style}
-    bpm = int(options.get("bpm") or round(recipe["bpm"] * _MOOD_TEMPO[mood]))
 
-    bar_beats = 4
-    wanted_bars = duration * bpm / (60 * bar_beats)
-    form = min(_FORMS, key=lambda f: abs(sum(b for _n, _r, b in f) - wanted_bars))
-    total_bars = sum(b for _n, _r, b in form)
-    verse_intensity, chorus_intensity = _MOOD_INTENSITY[mood]
-    intensity = {"intro": "light", "verse": verse_intensity, "chorus": chorus_intensity,
-                 "bridge": verse_intensity if verse_intensity != "light" else "normal", "end": chorus_intensity}
-    drums_style = recipe["drums"].get(mood, recipe["drums"].get("*"))
-    melody = bool(options.get("melody", True))
-    # la traccia si chiama come lo strumento (intestazione breve: «Bass:», «Distortion_Guitar:»)
-    parts = [(p[1], p[1], p[2], p[3], p[4]) for p in recipe["parts"] if p[2] != "drums" or drums_style]
-    if melody:
-        name, style = recipe["melody"]
-        parts = parts + [(name if name not in {p[0] for p in parts} else name + "2", name, "melody", style, ("chorus", "end"))]
+def quick_surprise(seed: Optional[int] = None) -> dict:
+    import quicksong
+    return quicksong.quick_surprise(seed)
 
-    # nel telefono il catalogo ha solo gli strumenti di base: gli altri si rendono disponibili
-    from core.instruments import make_instrument_available
-    for instrument in {p[1] for p in parts}:
-        make_instrument_available(instrument)
 
-    header = (f"ST: 2.6\nTempo: {bpm} BPM\nMetrica: 4/4\nTonalita: {key}\n\n")
-    base = header
-    chords_track = "Piano"       # la traccia dei temporanei da cui basso e melodia prendono gli accordi
-
-    # un testo per ogni sezione diversa (nome e ruolo), per ogni parte; le sezioni
-    # che tornano (strofa, ritornello) riusano lo stesso testo
-    texts: Dict[Tuple[str, str], str] = {}
-    for n, (section, role, bars) in enumerate(form):
-        if (section, role) in texts:
-            continue
-        sseed = (seed * 1000 + n * 17) % (2 ** 31)
-        progression = generate(base, "progression", {
-            "key": key, "style": styles[role], "bars": bars, "chord_bars": 1.0, "seed": sseed,
-            "ending": role == "end", "variability": 0.0})["text"]
-        temp = add_track(base, chords_track, progression)["text"]
-        project = parse_project_text(temp, "Brano")                # non _project_for: tiene in memoria l'ultimo brano controllato
-        for p, (track, instrument, kind, style, enter) in enumerate(parts):
-            if role not in enter:
-                continue
-            pseed = sseed + p + 1
-            common = {"seed": pseed, "bars": bars, "intensity": intensity[role]}
-            if kind == "comping":
-                part = generate(temp, "comping", {**common, "source": chords_track, "style": style, "instrument": instrument})["text"]
-            elif kind == "bass":
-                part = generate(temp, "bass", {**common, "source": chords_track, "style": style, "instrument": instrument,
-                                               "ending": role == "end"})["text"]
-            elif kind == "drums":
-                part = generate(temp, "drums", {**common, "style": drums_style, "ending": role == "end"})["text"]
-            else:
-                part = _quick_melody(project, chords_track, instrument, style, key, bars, pseed, intensity[role],
-                                     _variation({"seed": pseed}))
-            texts[(section, role, track)] = part
-        texts[(section, role)] = ""
-    # i box: uno per sezione e traccia, alla sua battuta
-    boxes, beat = [], 0
-    for section, role, bars in form:
-        for track, _instrument, _kind, _style, enter in parts:
-            if role in enter:
-                body = texts[(section, role, track)].strip("\n")
-                boxes.append(_box_header(track, section, beat) + "\n" + _indent(body))
-        beat += bars * bar_beats
-    seconds = round(total_bars * bar_beats * 60 / bpm)
-
-    out = [tr("// Un brano in 60 secondi: genere {genre}, atmosfera {mood}, seme {seed}.", genre=genre, mood=mood, seed=seed),
-           "", header.rstrip("\n"), ""]
-    for track, instrument, _kind, _style, _enter in parts:
-        out += [add_track("", instrument, "", name=track)["text"].rstrip("\n").split("\n")[0].rstrip(), ""]
-    out.append(tr("// Le sezioni, ognuna in un box (vista Struttura): si spostano e si copiano."))
-    out.append("")
-    out += ["\n\n".join(boxes)]
-    name = {"pop": "Pop", "rock": "Rock", "ballata": "Ballata", "bossa": "Bossa nova", "lofi": "Lo-fi",
-            "orchestrale": "Orchestrale"}[genre]
-    return {"text": "\n".join(out).rstrip("\n") + "\n", "name": f"{tr(name)} {tr(mood)}", "seed": seed, "key": key, "bpm": bpm,
-            "bars": total_bars, "seconds": seconds, "genre": genre, "mood": mood}
+def quick_read(text: str) -> Optional[dict]:
+    import quicksong
+    return quicksong.quick_read(text)
 
 
 # ------------------------------------------------------------ pad (fase 3)

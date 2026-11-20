@@ -4,84 +4,420 @@
 
 // ------------------------------------------------------------ un brano in 60 secondi
 //
-// Genere, atmosfera e durata: il motore (engine.quick_song) scrive un brano completo
-// con i suoi generatori, un box per sezione e traccia; l'app lo salva fra i brani e
-// lo fa suonare. Ogni volta il seme e' nuovo: premere di nuovo da' un altro brano.
+// Genere, atmosfera e durata: il motore (engine.quick_song, quicksong.py) scrive un brano completo con i suoi
+// generatori, un box per sezione e traccia; l'app lo salva fra i brani e lo fa suonare. Due modi:
+//  - Semplificato (acceso di partenza): le schede dei generi con un'anteprima di qualche secondo, l'atmosfera, la durata;
+//  - Dettagliato: in piu' tonalita', tempo, metrica, forma, organico, melodia, finale, modulazione, densita', un giro
+//    scritto a mano e, dopo la generazione, ogni parte con il suo stile, il lucchetto e «Un'altra».
+// Cio' che si sceglie a mano prevale sulla ricetta del genere; il resto lo decide la ricetta (campo vuoto). Passando da
+// un modo all'altro i valori restano. Dopo la prima volta il brano e' sempre lo stesso: «Un'altra», «Sorprendimi» e le
+// parti lo aggiornano senza riempire la lista dei brani.
 
-const quick = { choices: null, busy: false };
+const quick = {
+  choices: null, busy: false, simple: true, opts: {}, parts: {}, last: null, songId: null, lastName: "", preview: new Map(),
+  previewing: null, resumed: null,
+};
 const QUICK_KEY = "stmobile.quick";
+const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop"];
 
-function quickFill(select, items, saved) {
-  select.innerHTML = "";
-  for (const item of items) select.add(new Option(item.label, String(item.value)));
-  if (saved !== undefined && items.some((i) => String(i.value) === String(saved))) select.value = String(saved);
+// 64 s -> «1:04»
+function formatClock(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function openQuick() {
-  const dialog = $("quickDialog");
-  $("quickStatus").textContent = "";
-  $("quickStatus").classList.remove("error");
-  dialog.showModal();
-  await state.booted;
-  if (!quick.choices) quick.choices = (await call("quick_choices")).result;
+function quickSave() {
+  try { localStorage.setItem(QUICK_KEY, JSON.stringify({ simple: quick.simple, opts: quick.opts })); } catch (e) {}
+}
+
+function quickLoad() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(QUICK_KEY) || "{}"); } catch (e) {}
-  quickFill($("quickGenre"), quick.choices.genres, saved.genre);
-  quickFill($("quickMood"), quick.choices.moods, saved.mood);
-  quickFill($("quickDuration"), quick.choices.durations, saved.duration === undefined ? 60 : saved.duration);
-  // le opzioni avanzate: tonalità e tempo, la melodia, il seme
-  const keySelect = $("quickKey");
-  keySelect.innerHTML = "";
-  keySelect.add(new Option(t("automatica"), ""));
-  for (const k of quick.choices.keys) keySelect.add(new Option(k, k));
-  keySelect.value = saved.key && quick.choices.keys.includes(saved.key) ? saved.key : "";
-  $("quickBpm").value = saved.bpm || "";
-  $("quickMelody").checked = saved.melody !== false;
-  $("quickSeed").value = saved.seed === undefined || saved.seed === null ? "" : saved.seed;
-  $("quickAdvanced").open = !!(saved.key || saved.bpm || saved.melody === false || saved.seed !== undefined && saved.seed !== null);
-  $("quickMake").disabled = false;
+  // la versione 1 salvava le scelte senza «opts»
+  quick.simple = saved.simple !== false;
+  quick.opts = saved.opts || (saved.genre ? saved : {});
+  quick.opts.genre = quick.opts.genre || "pop";
+  quick.opts.mood = quick.opts.mood || "allegra";
+  quick.opts.duration = quick.opts.duration || 60;
 }
 
-async function makeQuick() {
+const genreData = (id) => quick.choices.genres.find((g) => g.value === id);
+
+// ---- i controlli
+
+function quickFill(select, items, value, blank) {
+  select.innerHTML = "";
+  if (blank !== undefined) select.add(new Option(blank, ""));
+  for (const item of items) select.add(new Option(item.label === undefined ? String(item) : item.label, String(item.value === undefined ? item : item.value)));
+  select.value = value === undefined || value === null ? "" : String(value);
+  if (select.value !== (value === undefined || value === null ? "" : String(value))) select.value = blank !== undefined ? "" : select.options[0].value;
+}
+
+function quickBuildGenres() {
+  const box = $("quickGenres");
+  box.innerHTML = "";
+  for (const g of quick.choices.genres) {
+    const card = document.createElement("div");
+    card.className = "quick-card";
+    const pick = document.createElement("button");
+    pick.className = "quick-genre";
+    pick.dataset.genre = g.value;
+    pick.setAttribute("aria-pressed", String(g.value === quick.opts.genre));
+    pick.textContent = g.label;
+    pick.onclick = () => quickPickGenre(g.value);
+    const play = document.createElement("button");
+    play.className = "quick-preview";
+    play.setAttribute("aria-label", t("Anteprima di {name}", { name: g.label }));
+    play.textContent = "▶";
+    play.onclick = () => quickPreview(g.value).catch(showError);
+    card.append(pick, play);
+    box.append(card);
+  }
+}
+
+function quickPickGenre(id) {
+  quick.opts.genre = id;
+  for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === id));
+  quickDefaults();
+  quickSave();
+}
+
+// i valori che sceglie la ricetta, quando un campo e' vuoto
+function quickDefaults() {
+  const g = genreData(quick.opts.genre);
+  if (!g) return;
+  const hint = (id, text) => { $(id).setAttribute("placeholder", text); };
+  hint("quickBpm", t("{n} (della ricetta)", { n: g.bpm }));
+  for (const [id, blank] of [["quickKey", ""], ["quickMeter", g.meter], ["quickForm", g.form], ["quickEnsemble", g.ensemble], ["quickMelodyStyle", g.melody]]) {
+    const first = $(id).options[0];
+    if (first && first.value === "") first.textContent = blank ? t("{value} (della ricetta)", { value: quickLabelOf(id, blank) }) : t("della ricetta");
+  }
+}
+
+function quickLabelOf(id, value) {
+  const map = { quickMeter: null, quickForm: quick.choices.forms, quickEnsemble: quick.choices.ensembles, quickMelodyStyle: quick.choices.melodies };
+  const list = map[id];
+  if (!list) return String(value);
+  const item = list.find((x) => x.value === value);
+  return item ? item.label : String(value);
+}
+
+function quickBuildDetail() {
+  const c = quick.choices, o = quick.opts;
+  quickFill($("quickKey"), c.keys, o.key, t("della ricetta"));
+  quickFill($("quickMeter"), c.meters, o.meter, t("della ricetta"));
+  quickFill($("quickForm"), c.forms, o.form, t("della ricetta"));
+  quickFill($("quickEnsemble"), c.ensembles, o.ensemble, t("della ricetta"));
+  quickFill($("quickMelodyStyle"), c.melodies, o.melody, t("della ricetta"));
+  quickFill($("quickEnding"), c.endings, o.ending || "cadenza");
+  $("quickBpm").value = o.bpm || "";
+  $("quickModulation").checked = !!o.modulation;
+  $("quickDensity").value = o.density === undefined ? 0.5 : o.density;
+  $("quickChords").value = o.chords || "";
+  $("quickSeed").value = o.seed === undefined || o.seed === null ? "" : o.seed;
+  $("quickSeconds").value = o.seconds || "";
+  quickFill($("quickBars"), [8, 16, 32, 64].map((n) => ({ value: n, label: t("{n} battute", { n }) })), o.bars, t("a tempo"));
+  $("quickLoop").checked = !!o.loop;
+}
+
+// Le scelte a mano dai campi (vuoto = la ricetta)
+function quickReadFields() {
+  const o = quick.opts;
+  const set = (name, value) => { if (value === "" || value === undefined || value === null || value === false) delete o[name]; else o[name] = value; };
+  set("key", $("quickKey").value);
+  set("meter", $("quickMeter").value);
+  set("form", $("quickForm").value);
+  set("ensemble", $("quickEnsemble").value);
+  set("melody", $("quickMelodyStyle").value);
+  o.ending = $("quickEnding").value || "cadenza";
+  const bpm = Math.round(Number($("quickBpm").value));
+  set("bpm", bpm ? Math.min(240, Math.max(40, bpm)) : "");
+  set("modulation", $("quickModulation").checked);
+  o.density = Number($("quickDensity").value);
+  set("chords", $("quickChords").value.trim());
+  const seed = $("quickSeed").value.trim();
+  set("seed", seed !== "" && Number.isFinite(Number(seed)) && Number(seed) >= 0 ? Math.floor(Number(seed)) : "");
+  const seconds = Math.round(Number($("quickSeconds").value));
+  set("seconds", seconds > 0 ? Math.min(600, Math.max(5, seconds)) : "");
+  set("bars", Number($("quickBars").value) || "");
+  set("loop", $("quickLoop").checked);
+  o.duration = Number($("quickDuration").value) || o.duration || 60;
+  o.mood = $("quickMood").value || o.mood;
+}
+
+function quickShowMode() {
+  $("quickSimple").checked = quick.simple;
+  $("quickDetail").hidden = quick.simple;
+  $("quickPartsBox").hidden = quick.simple || !quick.last;
+}
+
+// ---- l'anteprima di un genere: quindici secondi, sempre gli stessi
+
+async function quickPreview(genre) {
+  const resumed = unlockInGesture();               // il tocco
+  if (quick.previewing === genre) { quickStopPreview(); return; }
+  quickStopPreview();
+  const req = quick.previewReq;                    // se nel frattempo si ferma o si parte con altro, questa anteprima non parte
+  const g = genreData(genre);
+  quick.opts.genre = genre;
+  quickPickGenre(genre);
+  const mood = g.moods.includes($("quickMood").value) ? $("quickMood").value : g.moods[0];
+  const key = `${genre}/${mood}`;
+  setQuickStatus(t("Preparo l'anteprima…"));
+  if (!quick.preview.has(key)) {
+    const made = (await call("quick_song", { args: [{ genre, mood, duration: 15, seed: 1 }] })).result;
+    quick.preview.set(key, (await call("preview", { text: made.text })).midi);
+  }
+  await resumed;
+  if (!state.audioReady) state.audioReady = initAudio();
+  await state.audioReady;
+  if (req !== quick.previewReq) return;
+  if (state.playing) await pause();
+  stopPreview();
+  const synth = state.synth, midi = quick.preview.get(key);
+  await synth.resetPlayer();
+  await synth.addSMFDataToPlayer(midi.slice().buffer);
+  await synth.playPlayer();
+  quick.previewing = genre;
+  setQuickStatus(t("Anteprima: {name}", { name: g.label }));
+  synth.waitForPlayerStopped().then(() => { if (quick.previewing === genre) { quick.previewing = null; setQuickStatus(""); } });
+}
+
+function quickStopPreview() {
+  quick.previewReq = (quick.previewReq || 0) + 1;
+  if (quick.previewing && state.synth) { state.synth.stopPlayer(); state.synth.midiAllSoundsOff(); }
+  quick.previewing = null;
+}
+
+function setQuickStatus(text, error = false) {
+  $("quickStatus").textContent = text;
+  $("quickStatus").classList.toggle("error", error);
+}
+
+// ---- le parti (modo dettagliato)
+
+function quickRenderParts() {
+  const list = $("quickParts");
+  list.innerHTML = "";
+  const last = quick.last;
+  if (!last) return;
+  const labels = Object.fromEntries(quick.choices.parts.map((p) => [p.value, p.label]));
+  const styleLists = { drums: quick.choices.styles.drums, bass: quick.choices.styles.bass, comp: quick.choices.styles.comp, comp2: quick.choices.styles.comp,
+                       horn: quick.choices.styles.comp, progression: quick.choices.styles.progression };
+  for (const part of ["progression", ...last.parts]) {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.className = "tname";
+    name.textContent = labels[part];
+    if (last.choices.instruments[part]) {
+      const small = document.createElement("small");
+      small.textContent = last.choices.instruments[part].replace(/_/g, " ");
+      name.append(small);
+    }
+    li.append(name);
+    const lists = styleLists[part];
+    if (lists) {
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", t("Stile di {name}", { name: labels[part] }));
+      const chosen = (quick.parts[part] && quick.parts[part].style) || "";
+      select.add(new Option(t("della ricetta"), ""));
+      for (const item of lists) select.add(new Option(item.label, item.value));
+      select.value = chosen;
+      select.onchange = () => { (quick.parts[part] = quick.parts[part] || {}).style = select.value || undefined; quickRegenerate("part", part).catch(showError); };
+      li.append(select);
+    }
+    const lock = document.createElement("label");
+    lock.className = "quick-lock";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = !!(quick.parts[part] && quick.parts[part].locked);
+    box.setAttribute("aria-label", t("Blocca {name}", { name: labels[part] }));
+    box.onchange = () => { (quick.parts[part] = quick.parts[part] || {}).locked = box.checked; };
+    lock.append(box, document.createTextNode("🔒"));
+    li.append(lock);
+    const again = document.createElement("button");
+    again.textContent = t("Un'altra");
+    again.setAttribute("aria-label", t("Un'altra {name}", { name: labels[part] }));
+    again.onclick = () => quickRegenerate("part", part).catch(showError);
+    li.append(again);
+    list.append(li);
+  }
+}
+
+// ---- generare
+
+// Le opzioni per il motore: le scelte a mano, la durata e i semi (le parti bloccate tengono il loro)
+function quickEngineOptions(seedFor) {
+  const o = { ...quick.opts };
+  const duration = o.seconds || o.duration;
+  delete o.seconds;
+  o.duration = o.bars || o.loop ? undefined : duration;
+  const parts = {};
+  for (const [part, spec] of Object.entries(quick.parts)) {
+    if (spec.style) parts[part] = { ...(parts[part] || {}), style: spec.style };
+    if (spec.locked && spec.seed !== undefined) parts[part] = { ...(parts[part] || {}), seed: spec.seed };
+  }
+  Object.assign(o, seedFor(parts));
+  o.parts = parts;
+  return o;
+}
+
+// mode: "new" (un brano nuovo), "again" (un'altra: nuovi semi tranne le parti bloccate), "part" (cambia una parte sola),
+// "surprise" (una combinazione a caso fra quelle ammesse)
+async function quickRegenerate(mode, part) {
   if (quick.busy) return;
   quick.busy = true;
-  const resumed = unlockInGesture();            // il tocco: niente await prima (iOS)
+  const resumed = unlockInGesture();               // il tocco: niente await prima (iOS)
   const tap = performance.now();
-  const choice = { genre: $("quickGenre").value, mood: $("quickMood").value, duration: Number($("quickDuration").value) };
-  // le avanzate: solo quelle scelte (vuoto = lo decide il motore)
-  const advanced = { melody: $("quickMelody").checked };
-  if ($("quickKey").value) advanced.key = $("quickKey").value;
-  const bpm = Math.round(Number($("quickBpm").value));
-  if (bpm) advanced.bpm = Math.min(240, Math.max(40, bpm));
-  const seedText = $("quickSeed").value.trim();
-  if (seedText !== "" && Number.isFinite(Number(seedText)) && Number(seedText) >= 0) advanced.seed = Math.floor(Number(seedText));
-  Object.assign(choice, advanced);
-  try { localStorage.setItem(QUICK_KEY, JSON.stringify(choice)); } catch (e) {}
-  $("quickMake").disabled = true;
-  $("quickStatus").classList.remove("error");
-  $("quickStatus").textContent = t("Compongo…");
+  quickStopPreview();
+  quickReadFields();
+  setQuickStatus(t("Compongo…"));
+  for (const b of document.querySelectorAll("#quickDialog button")) b.disabled = true;
   try {
+    if (mode === "surprise") {
+      const pick = (await call("quick_surprise")).result;
+      Object.assign(quick.opts, pick);
+      delete quick.opts.seed;
+      quick.parts = {};
+      quickSyncControls();
+    }
+    const fresh = mode === "new" || mode === "again" || mode === "surprise";
+    const options = quickEngineOptions((parts) => {
+      if (mode === "part" && quick.last) {
+        // una parte sola: tutte le altre tengono il seme di prima, e questa ne prende uno nuovo
+        for (const p of ["progression", ...quick.last.parts]) {
+          parts[p] = { ...(parts[p] || {}), seed: p === part ? Math.floor(Math.random() * 2 ** 31) : quick.last.seeds[p] };
+        }
+        return { seed: quick.last.seed };
+      }
+      return fresh && quick.opts.seed === undefined ? { seed: Math.floor(Math.random() * 2 ** 31) } : {};
+    });
+    const made = (await call("quick_song", { args: [options] })).result;
     await resumed;
-    const made = (await call("quick_song", { args: [choice] })).result;
-    const name = await Songs.freeName(made.name);
-    const song = await Songs.create({ name, text: made.text, source: "brano in 60 secondi, seme " + made.seed });
+    quick.last = made;
+    for (const p of Object.keys(made.seeds)) (quick.parts[p] = quick.parts[p] || {}).seed = made.seeds[p];
     const composed = performance.now();
-    $("quickDialog").close();
-    await openSong(song.id);
+    await quickSaveSong(made);
+    quickShowResult(made);
     await play();
-    Metrics.record("brano_veloce", { ...choice, seed: made.seed, bars: made.bars, composed_ms: Math.round(composed - tap),
-                                     to_sound_ms: Math.round(performance.now() - tap) });
+    Metrics.record("brano_veloce", { genre: made.genre, mood: made.mood, mode, seed: made.seed, bars: made.bars, seconds: made.seconds,
+                                     composed_ms: Math.round(composed - tap), to_sound_ms: Math.round(performance.now() - tap) });
   } catch (e) {
-    $("quickStatus").classList.add("error");
-    $("quickStatus").textContent = shortError(e);
-    $("quickMake").disabled = false;
+    setQuickStatus(shortError(e), true);
   } finally {
+    for (const b of document.querySelectorAll("#quickDialog button")) b.disabled = false;
     quick.busy = false;
   }
 }
 
+// Il brano si salva la prima volta e poi si aggiorna: «Un'altra» non riempie la lista
+async function quickSaveSong(made) {
+  let song = quick.songId ? await Songs.get(quick.songId) : null;
+  const source = "brano in 60 secondi, seme " + made.seed;
+  if (!song) {
+    song = await Songs.create({ name: await Songs.freeName(made.name), text: made.text, source });
+    quick.songId = song.id;
+  } else {
+    song.text = made.text;
+    song.source = source;
+    if (song.name === quick.lastName) song.name = await Songs.freeName(made.name);   // il nome che gli avevo dato io, non quello dell'utente
+    await Songs.put(song);
+  }
+  quick.lastName = song.name;
+  await openSong(song.id, false);
+  if (made.loop) {                                   // un loop suona senza fine
+    state.loop = { a: 0, b: state.timeline.length, on: true };
+    renderLoop();
+  }
+}
+
+function quickShowResult(made) {
+  const parts = [made.name, formatClock(made.seconds), made.key.replace(/m$/, " " + t("minore")), t("{n} BPM", { n: made.bpm }),
+                 made.meter, t("{n} battute", { n: made.sections.reduce((n, s) => n + s.bars, 0) })];
+  $("quickSummary").textContent = parts.join(" · ");
+  $("quickFallback").textContent = made.fallback || "";
+  $("quickFallback").hidden = !made.fallback;
+  $("quickResult").hidden = false;
+  quickShowMode();
+  quickRenderParts();
+  setQuickStatus(made.fallback ? "" : t("Pronto: {name}", { name: made.name }));
+  $("quickDuration").value = String(quick.opts.duration);
+  quickAnnounce(made);
+}
+
+// letto da chi non vede: genere e atmosfera scelti, durata vera, brano pronto
+function quickAnnounce(made) {
+  $("quickAnnounce").textContent = t("{name}, durata {clock}. Il brano è pronto.", { name: made.name, clock: formatClock(made.seconds) });
+}
+
+function quickSyncControls() {
+  quickFill($("quickMood"), quick.choices.moods, quick.opts.mood);
+  quickFill($("quickDuration"), quick.choices.durations, quick.opts.duration);
+  for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === quick.opts.genre));
+  quickBuildDetail();
+  quickDefaults();
+}
+
+// «Parti da questo brano»: le scelte salvate nel brano aperto tornano nella finestra
+async function quickFromDoc() {
+  if (!state.doc) return;
+  const saved = (await call("quick_read", { args: [state.doc.text] })).result;
+  if (!saved) { setQuickStatus(t("Questo brano non è stato fatto da «Un brano in 60 secondi»."), true); return; }
+  quick.opts = { genre: saved.genre, mood: saved.mood, duration: quick.opts.duration || 60, key: saved.key, bpm: saved.bpm, meter: saved.meter,
+                 form: saved.form, ensemble: saved.ensemble, melody: saved.melody, ending: saved.ending, modulation: saved.modulation,
+                 density: saved.density, chords: saved.chords || "", bars: saved.bars, loop: saved.loop, seed: saved.seed };
+  quick.parts = {};
+  for (const [p, seed] of Object.entries(saved.seeds || {})) quick.parts[p] = { seed, style: (saved.styles || {})[p], locked: false };
+  quick.songId = null;
+  quick.simple = false;
+  quickSyncControls();
+  quickShowMode();
+  quickSave();
+  setQuickStatus(t("Le scelte del brano sono qui: cambiale e crea."));
+}
+
+// ---- la finestra
+
+async function openQuick() {
+  const dialog = $("quickDialog");
+  setQuickStatus("");
+  dialog.showModal();
+  await state.booted;
+  if (!quick.choices) {
+    quick.choices = (await call("quick_choices")).result;
+    quickLoad();
+    quickBuildGenres();
+  }
+  quick.songId = null;
+  quick.last = null;
+  quick.parts = {};
+  $("quickResult").hidden = true;
+  quickSyncControls();
+  quickShowMode();
+  $("quickMake").disabled = false;
+}
+
+function quickClose() {
+  quickStopPreview();
+  quickReadFields();
+  quickSave();
+  $("quickDialog").close();
+}
+
 function setupQuick() {
   $("quickSong").onclick = () => openQuick().catch(showError);
-  $("quickMake").onclick = () => makeQuick();
-  $("quickClose").onclick = () => $("quickDialog").close();
+  $("quickMake").onclick = () => quickRegenerate("new");
+  $("quickAgain").onclick = () => quickRegenerate("again");
+  $("quickSurprise").onclick = () => quickRegenerate("surprise");
+  $("quickClose").onclick = quickClose;
+  $("quickPlay").onclick = () => play();
+  $("quickOpenCrea").onclick = () => { quickClose(); setView("crea"); };
+  $("quickFromDoc").onclick = () => quickFromDoc().catch(showError);
+  $("quickSimple").onchange = () => { quickReadFields(); quick.simple = $("quickSimple").checked; quickShowMode(); quickSave(); };
+  $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); };
+  $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); };
+  for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickBpm", "quickModulation",
+                    "quickDensity", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop"]) {
+    $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });
+  }
 }

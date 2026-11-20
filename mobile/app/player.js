@@ -112,6 +112,7 @@ async function startPlayer(fromTick) {
 async function play() {
   // Primo tocco: niente await prima di unlockInGesture (iOS).
   const tTap = performance.now();
+  if (state.audioReady && state.reverbKey !== reverbKey()) applyReverb();
   const resumed = unlockInGesture();
   if (state.previewing) return stopPreview();
   if (state.playing) return pause();
@@ -119,7 +120,6 @@ async function play() {
   try {
     await resumed;
     if (!state.doc) return;
-    if (state.audioReady && state.reverbKey !== reverbKey()) resetSynth();     // un altro riverbero: sintetizzatore nuovo
     // testo cambiato dall'ultima analisi: si rianalizza prima di suonare
     if (!state.song || state.song.text !== state.doc.text) {
       state.pausedTick = 0;
@@ -132,6 +132,7 @@ async function play() {
       state.audioReady = initAudio();
     }
     await state.audioReady;
+    if (state.reverbKey !== reverbKey()) applyReverb();      // gli effetti del brano si conoscono dopo l'analisi
     const loop = state.loop;
     if (loop.on && (state.pausedTick < loop.a * TICKS_PER_BEAT || state.pausedTick >= loop.b * TICKS_PER_BEAT)) {
       state.pausedTick = Math.round(loop.a * TICKS_PER_BEAT);

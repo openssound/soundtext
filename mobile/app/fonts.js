@@ -78,7 +78,13 @@ function resetSynth() {
   if (state.playing) pause();
   if (state.synthNode) { try { state.synthNode.disconnect(); } catch (e) {} }
   if (state.fxChain) { state.fxChain.dispose(); state.fxChain = null; }
-  if (state.synth) { try { state.synth.close(); } catch (e) {} }
+  // Un sintetizzatore nuovo vuole anche un contesto audio nuovo: il FluidSynth in WebAssembly vive nello spazio del
+  // contesto, e ricrearlo nello stesso si rompe («null function» al caricamento del SoundFont). Il prossimo tocco
+  // (unlockInGesture) ne crea uno.
+  // Chiudere il contesto basta a liberare il sintetizzatore: synth.close() lo fa andare in crash
+  // («memory access out of bounds» in _delete_fluid_player) mentre l'AudioWorklet lavora ancora.
+  if (state.ctx) { try { state.ctx.close(); } catch (e) {} }
+  state.ctx = null;
   state.synth = null;
   state.synthNode = null;
   state.audioReady = null;

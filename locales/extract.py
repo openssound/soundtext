@@ -32,7 +32,8 @@ def code_strings():
     out = set()
     for path in sorted(glob.glob(os.path.join(ROOT, "core", "*.py")) + glob.glob(os.path.join(ROOT, "gui", "*.py"))
                        + [os.path.join(ROOT, "scarica_strumenti.py"), os.path.join(ROOT, "mobile", "engine.py"),
-                          os.path.join(ROOT, "mobile", "exercises.py")]):
+                          os.path.join(ROOT, "mobile", "exercises.py"),
+                          os.path.join(ROOT, "mobile", "quicksong.py")]):
         tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "tr" \

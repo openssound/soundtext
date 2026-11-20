@@ -92,7 +92,14 @@ engine.hum_to_text(source, pcm, 16000, {"track": "Piano"})
 # un brano in 60 secondi (fase 3): tutte le ricette usano gli stessi moduli, la melodia compresa
 engine.strip_comments(source)
 for genre in engine.QUICK_GENRES:
-    engine.quick_song({"genre": genre, "mood": "calma", "duration": 30, "seed": 1})
+    engine.quick_song({"genre": genre, "mood": "allegra", "duration": 15, "seed": 1})
+# le altre scelte portano i loro moduli: finale che rallenta, modulazione, giro scritto, loop, anteprime
+engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "rallentando", "modulation": True, "seed": 1})
+engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "sfumato", "chords": "Am F C G", "seed": 1})
+engine.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 1})
+engine.quick_choices(); engine.quick_read("// quick: {}")
+for kind in ("intervals", "chords", "progression", "bar", "error", "rhythm"):
+    engine.exercise(kind, 1, 1); engine.exercise_check(kind, 1, 1, 0)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 
@@ -134,6 +141,7 @@ def build():
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(HERE, "engine.py"), "engine.py")
         z.write(os.path.join(HERE, "exercises.py"), "exercises.py")
+        z.write(os.path.join(HERE, "quicksong.py"), "quicksong.py")
         for name in modules:
             rel = name.replace(".", "/") + ("/__init__.py" if name == "core" else ".py")
             z.write(os.path.join(ROOT, rel), rel)
