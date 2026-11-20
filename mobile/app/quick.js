@@ -29,6 +29,16 @@ async function openQuick() {
   quickFill($("quickGenre"), quick.choices.genres, saved.genre);
   quickFill($("quickMood"), quick.choices.moods, saved.mood);
   quickFill($("quickDuration"), quick.choices.durations, saved.duration === undefined ? 60 : saved.duration);
+  // le opzioni avanzate: tonalità e tempo, la melodia, il seme
+  const keySelect = $("quickKey");
+  keySelect.innerHTML = "";
+  keySelect.add(new Option(t("automatica"), ""));
+  for (const k of quick.choices.keys) keySelect.add(new Option(k, k));
+  keySelect.value = saved.key && quick.choices.keys.includes(saved.key) ? saved.key : "";
+  $("quickBpm").value = saved.bpm || "";
+  $("quickMelody").checked = saved.melody !== false;
+  $("quickSeed").value = saved.seed === undefined || saved.seed === null ? "" : saved.seed;
+  $("quickAdvanced").open = !!(saved.key || saved.bpm || saved.melody === false || saved.seed !== undefined && saved.seed !== null);
   $("quickMake").disabled = false;
 }
 
@@ -38,6 +48,14 @@ async function makeQuick() {
   const resumed = unlockInGesture();            // il tocco: niente await prima (iOS)
   const tap = performance.now();
   const choice = { genre: $("quickGenre").value, mood: $("quickMood").value, duration: Number($("quickDuration").value) };
+  // le avanzate: solo quelle scelte (vuoto = lo decide il motore)
+  const advanced = { melody: $("quickMelody").checked };
+  if ($("quickKey").value) advanced.key = $("quickKey").value;
+  const bpm = Math.round(Number($("quickBpm").value));
+  if (bpm) advanced.bpm = Math.min(240, Math.max(40, bpm));
+  const seedText = $("quickSeed").value.trim();
+  if (seedText !== "" && Number.isFinite(Number(seedText)) && Number(seedText) >= 0) advanced.seed = Math.floor(Number(seedText));
+  Object.assign(choice, advanced);
   try { localStorage.setItem(QUICK_KEY, JSON.stringify(choice)); } catch (e) {}
   $("quickMake").disabled = true;
   $("quickStatus").classList.remove("error");

@@ -3108,5 +3108,11 @@
  "Salva sul telefono": "Enregistrer sur le téléphone",
  "Non riesco a condividere ({message}). Usa «Salva sul telefono».": "Impossible de partager ({message}). Utilisez « Enregistrer sur le téléphone ».",
  "{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.": "{name} enregistré ({size} Mo) : vous le trouverez dans les téléchargements du téléphone.",
- "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} prêt ({size} Mo) : touchez Partager ou Enregistrer sur le téléphone."
+ "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} prêt ({size} Mo) : touchez Partager ou Enregistrer sur le téléphone.",
+ "Con le stesse scelte e lo stesso seme esce lo stesso brano. Il seme di ogni brano è scritto in cima al testo.": "Avec les mêmes choix et la même graine, on obtient le même morceau. La graine de chaque morceau est écrite en haut du texte.",
+ "Melodia sul ritornello": "Mélodie sur le refrain",
+ "Seme:": "Graine :",
+ "automatica": "automatique",
+ "automatico": "automatique",
+ "nuovo ogni volta": "nouvelle à chaque fois"
 }

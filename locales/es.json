@@ -3108,5 +3108,11 @@
  "Salva sul telefono": "Guardar en el teléfono",
  "Non riesco a condividere ({message}). Usa «Salva sul telefono».": "No puedo compartir ({message}). Usa «Guardar en el teléfono».",
  "{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.": "{name} guardado ({size} MB): lo encuentras entre las descargas del teléfono.",
- "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} listo ({size} MB): toca Compartir o Guardar en el teléfono."
+ "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} listo ({size} MB): toca Compartir o Guardar en el teléfono.",
+ "Con le stesse scelte e lo stesso seme esce lo stesso brano. Il seme di ogni brano è scritto in cima al testo.": "Con las mismas opciones y la misma semilla sale la misma canción. La semilla de cada canción está escrita al principio del texto.",
+ "Melodia sul ritornello": "Melodía en el estribillo",
+ "Seme:": "Semilla:",
+ "automatica": "automática",
+ "automatico": "automático",
+ "nuovo ogni volta": "nueva cada vez"
 }

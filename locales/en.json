@@ -3108,5 +3108,11 @@
  "Salva sul telefono": "Save on the phone",
  "Non riesco a condividere ({message}). Usa «Salva sul telefono».": "I cannot share ({message}). Use “Save on the phone”.",
  "{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.": "{name} saved ({size} MB): you will find it among the phone's downloads.",
- "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} ready ({size} MB): tap Share or Save on the phone."
+ "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} ready ({size} MB): tap Share or Save on the phone.",
+ "Con le stesse scelte e lo stesso seme esce lo stesso brano. Il seme di ogni brano è scritto in cima al testo.": "With the same choices and the same seed you get the same song. Each song's seed is written at the top of its text.",
+ "Melodia sul ritornello": "Melody on the chorus",
+ "Seme:": "Seed:",
+ "automatica": "automatic",
+ "automatico": "automatic",
+ "nuovo ogni volta": "new every time"
 }

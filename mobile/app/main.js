@@ -55,13 +55,8 @@ async function main() {
   setupStructure();
   setupTransform();
   for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => setView(b.dataset.view);
-  let view = "brani";
-  try {
-    // senza un brano da riaprire si parte da Brani
-    if (localStorage.getItem("stmobile.last") && localStorage.getItem("stmobile.last") !== "null") {
-      view = localStorage.getItem("stmobile.view") || "brani";
-    }
-  } catch (e) {}
+  // si parte sempre dalla schermata Brani; l'ultimo brano resta aperto e si riprende dal tab Testo
+  const view = "brani";
   setView(view);
 
   const sw = await serviceWorker();

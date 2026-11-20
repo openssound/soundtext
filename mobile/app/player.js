@@ -15,7 +15,6 @@ function setView(name) {
     if (b.dataset.view === name) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   }
-  try { localStorage.setItem("stmobile.view", name); } catch (e) {}
 }
 
 // ------------------------------------------------------------ audio

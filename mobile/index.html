@@ -370,6 +370,18 @@
   <label class="hum-grid"><span data-i18n>Genere:</span><select id="quickGenre"></select></label>
   <label class="hum-grid"><span data-i18n>Atmosfera:</span><select id="quickMood"></select></label>
   <label class="hum-grid"><span data-i18n>Durata:</span><select id="quickDuration"></select></label>
+  <details class="opts quick-advanced" id="quickAdvanced">
+    <summary data-i18n>Avanzate</summary>
+    <label class="hum-grid"><span data-i18n>Tonalità:</span><select id="quickKey"></select></label>
+    <label class="hum-grid"><span data-i18n>Tempo (BPM):</span>
+      <input id="quickBpm" type="number" inputmode="numeric" min="40" max="240" step="1" placeholder="automatico">
+    </label>
+    <label class="check"><input id="quickMelody" type="checkbox" checked> <span data-i18n>Melodia sul ritornello</span></label>
+    <label class="hum-grid"><span data-i18n>Seme:</span>
+      <input id="quickSeed" type="number" inputmode="numeric" min="0" step="1" placeholder="nuovo ogni volta">
+    </label>
+    <p class="hint" data-i18n>Con le stesse scelte e lo stesso seme esce lo stesso brano. Il seme di ogni brano è scritto in cima al testo.</p>
+  </details>
   <p id="quickStatus" class="hum-status" role="status" aria-live="polite"></p>
   <div class="sheet-actions">
     <button id="quickMake" class="primary"><span aria-hidden="true">▶ </span><span data-i18n>Crea e ascolta</span></button>
