@@ -3103,5 +3103,10 @@
  "{name}: torni al livello {n}": "{name} : retour au niveau {n}",
  "{right} giuste su {total}": "{right} justes sur {total}",
  "Serie: 1 giorno di fila": "Série : 1 jour",
- "Esercizi di oggi · serie di 1 giorno": "Exercices du jour · série de 1 jour"
+ "Esercizi di oggi · serie di 1 giorno": "Exercices du jour · série de 1 jour",
+ "Condividi…": "Partager…",
+ "Salva sul telefono": "Enregistrer sur le téléphone",
+ "Non riesco a condividere ({message}). Usa «Salva sul telefono».": "Impossible de partager ({message}). Utilisez « Enregistrer sur le téléphone ».",
+ "{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.": "{name} enregistré ({size} Mo) : vous le trouverez dans les téléchargements du téléphone.",
+ "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} prêt ({size} Mo) : touchez Partager ou Enregistrer sur le téléphone."
 }

@@ -8,7 +8,7 @@
 //   messi in cache al primo uso. Il SoundFont si scarica solo al primo Play.
 "use strict";
 
-const CACHE = "stmobile-v47";            // pagina e bundle: si cambia a ogni versione
+const CACHE = "stmobile-v50";            // pagina e bundle: si cambia a ogni versione
 const VENDOR = "stmobile-vendor-v1";     // Pyodide, wheel, FluidSynth, SoundFont: restano
 const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide, gestita da worker.js
 // I modelli della dettatura (50 MB l'uno) li conserva gia' Vosk nel suo
@@ -25,12 +25,15 @@ const SHELL = [
 self.addEventListener("install", (ev) => {
   ev.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(SHELL);
+    // dalla rete e non dalla cache HTTP del browser (GitHub Pages dice di tenere i file per qualche minuto): una
+    // versione appena pubblicata non deve installarsi con i file della precedente
+    const fresh = (urls) => urls.map((u) => new Request(u, { cache: "reload" }));
+    await cache.addAll(fresh(SHELL));
     // gli esempi, anche quelli non ancora aperti
     const files = await (await cache.match("bundle/files.json")).json();
-    await cache.addAll(files.examples.map((n) => "bundle/examples/" + encodeURIComponent(n)));
+    await cache.addAll(fresh(files.examples.map((n) => "bundle/examples/" + encodeURIComponent(n))));
     // le traduzioni dell'interfaccia
-    await cache.addAll((files.languages || []).map((l) => `bundle/locales/${l}.json`));
+    await cache.addAll(fresh((files.languages || []).map((l) => `bundle/locales/${l}.json`)));
     await self.skipWaiting();
   })());
 });

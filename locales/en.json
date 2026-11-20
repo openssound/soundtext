@@ -3103,5 +3103,10 @@
  "{name}: torni al livello {n}": "{name}: back to level {n}",
  "{right} giuste su {total}": "{right} correct out of {total}",
  "Serie: 1 giorno di fila": "Streak: 1 day",
- "Esercizi di oggi · serie di 1 giorno": "Today's exercises · 1-day streak"
+ "Esercizi di oggi · serie di 1 giorno": "Today's exercises · 1-day streak",
+ "Condividi…": "Share…",
+ "Salva sul telefono": "Save on the phone",
+ "Non riesco a condividere ({message}). Usa «Salva sul telefono».": "I cannot share ({message}). Use “Save on the phone”.",
+ "{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.": "{name} saved ({size} MB): you will find it among the phone's downloads.",
+ "{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.": "{name} ready ({size} MB): tap Share or Save on the phone."
 }

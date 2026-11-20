@@ -351,6 +351,15 @@
   <p id="exportClipNote" class="hint"></p>
   <div class="sheet-actions"><button id="exportClipButton" class="job primary" data-i18n>Crea la clip</button></div>
   <p id="exportStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <div id="exportResult" class="export-result" hidden>
+    <p id="exportResultName" class="ex-streak"></p>
+    <video id="exportPreview" controls playsinline hidden></video>
+    <audio id="exportAudioPreview" controls hidden></audio>
+    <div class="sheet-actions columns two">
+      <button id="exportShare" class="primary" data-i18n>Condividi…</button>
+      <button id="exportSave" data-i18n>Salva sul telefono</button>
+    </div>
+  </div>
   <button id="exportClose" class="sheet-close" data-i18n>Chiudi</button>
 </dialog>
 

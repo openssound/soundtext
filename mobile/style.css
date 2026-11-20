@@ -98,6 +98,9 @@ dialog.pad-sheet::backdrop { background: rgba(0, 0, 0, .6); }
   border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); padding: 4px; }
 .pad-popover button { min-height: 44px; text-align: left; padding: 0 14px; white-space: nowrap; }
 .pad-sheet .gentext { max-height: 120px; overflow: auto; }
+.export-result { margin: 8px 0; }
+.export-result video { display: block; width: 100%; max-height: 40vh; background: #000; border-radius: 8px; margin: 6px 0; }
+.export-result audio { display: block; width: 100%; margin: 6px 0; }
 .export-open { margin: 8px 0; min-height: 44px; }
 .sheet h3 { margin: 12px 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; }
 .sheet-actions.two { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }

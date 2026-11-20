@@ -115,26 +115,57 @@ function fileBase() {
   return StFormat.fileName(state.doc ? state.doc.name : "SoundText").replace(/\.st$/, "");
 }
 
-async function deliver(bytes, name, type) {
+// Consegna: la condivisione e il salvataggio vogliono un tocco appena fatto (attivazione dell'utente), e dopo
+// il calcolo di una clip e' passato troppo tempo: il telefono rifiuta la condivisione e puo' bloccare in silenzio
+// un salvataggio partito da solo. Quindi il file si mostra qui, con la sua anteprima e due bottoni: Condividi e
+// Salva sul telefono, che sono un tocco nuovo.
+const exportResult = { file: null, url: null, name: "", size: "" };
+
+function showExportResult(bytes, name, type) {
   const blob = new Blob([bytes], { type });
-  const file = new File([blob], name, { type });
-  const size = (blob.size / 1048576).toLocaleString(I18n.locale, { maximumFractionDigits: 1 });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: state.doc ? state.doc.name : "SoundText" });
-      return t("{name} condiviso ({size} MB).", { name, size });
-    } catch (e) {
-      if (e.name === "AbortError") return t("{name} pronto ({size} MB): condivisione annullata.", { name, size });
-    }
+  if (exportResult.url) URL.revokeObjectURL(exportResult.url);
+  exportResult.file = new File([blob], name, { type });
+  exportResult.url = URL.createObjectURL(blob);
+  exportResult.name = name;
+  exportResult.size = (blob.size / 1048576).toLocaleString(I18n.locale, { maximumFractionDigits: 1 });
+  const video = type.startsWith("video/");
+  const preview = $("exportPreview");
+  preview.hidden = !video;
+  const audio = $("exportAudioPreview");
+  audio.hidden = video;
+  (video ? preview : audio).src = exportResult.url;
+  (video ? audio : preview).removeAttribute("src");
+  $("exportResultName").textContent = `${name} · ${t("{size} MB", { size: exportResult.size })}`;
+  $("exportShare").hidden = !(navigator.canShare && navigator.canShare({ files: [exportResult.file] }));
+  $("exportResult").hidden = false;
+  $("exportResult").scrollIntoView({ block: "nearest" });
+}
+
+async function shareExport() {
+  if (!exportResult.file) return;
+  try {
+    await navigator.share({ files: [exportResult.file], title: state.doc ? state.doc.name : "SoundText" });
+    setExportStatus(t("{name} condiviso ({size} MB).", { name: exportResult.name, size: exportResult.size }));
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    setExportStatus(t("Non riesco a condividere ({message}). Usa «Salva sul telefono».", { message: e.message || e.name }), true);
   }
+}
+
+function saveExport() {
+  if (!exportResult.file) return;
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
+  a.href = exportResult.url;
+  a.download = exportResult.name;
   document.body.append(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 20000);
-  return t("{name} scaricato ({size} MB).", { name, size });
+  setExportStatus(t("{name} salvato ({size} MB): lo trovi fra i file scaricati del telefono.", { name: exportResult.name, size: exportResult.size }));
+}
+
+async function deliver(bytes, name, type) {
+  showExportResult(bytes, name, type);
+  return t("{name} pronto ({size} MB): toccare Condividi o Salva sul telefono.", { name, size: exportResult.size });
 }
 
 // ---- l'audio
@@ -445,6 +476,7 @@ async function refreshExport() {
 function setupExport() {
   $("exportOpen").onclick = () => {
     setExportStatus("");
+    $("exportResult").hidden = true;
     $("exportDialog").showModal();
     refreshExport();
   };
@@ -452,4 +484,6 @@ function setupExport() {
   $("exportWav").onclick = () => runExport(() => exportAudio("wav"));
   $("exportM4a").onclick = () => runExport(() => exportAudio("m4a"));
   $("exportClipButton").onclick = () => runExport(exportClip);
+  $("exportShare").onclick = () => shareExport();
+  $("exportSave").onclick = () => saveExport();
 }
