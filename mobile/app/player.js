@@ -60,7 +60,7 @@ async function initAudio() {
   for (const url of WORKLET_MODULES) await ctx.audioWorklet.addModule(url);
   const synth = new JSSynth.AudioWorkletNodeSynthesizer();
   synth.init(ctx.sampleRate, { midiChannelCount: 32 });
-  const node = synth.createAudioNode(ctx, { outputChannelCount: [2], midiChannelCount: 32, ...reverbSettings() });
+  const node = synth.createAudioNode(ctx, { outputChannelCount: [2], ...reverbSettings() });
   state.synthNode = node;
   state.reverbKey = reverbKey();
   applyEffects();                               // sintetizzatore -> catena master -> uscita

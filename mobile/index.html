@@ -175,6 +175,12 @@
     <details class="opts sf-box" id="sfBox">
       <summary data-i18n>SoundFont</summary>
       <p class="hint" data-i18n>Un SoundFont .sf2 dal telefono suona al posto di quello incluso, e dal mixer si può dare un SoundFont diverso a una traccia. I file restano sul telefono. Le percussioni suonano sempre dal predefinito. I file .sf3 non si leggono.</p>
+      <div id="sfPack" class="sf-pack" hidden>
+        <strong data-i18n>Pacchetto orchestra</strong>
+        <p id="sfPackInfo" class="hint"></p>
+        <button id="sfPackGet" data-i18n>Scarica il pacchetto orchestra</button>
+        <progress id="sfPackProgress" max="1" value="0" hidden aria-label="Avanzamento del download"></progress>
+      </div>
       <ul id="sfList" class="sf-list"></ul>
       <p id="sfHint" class="hint" data-i18n>Ancora nessun SoundFont tuo.</p>
       <label class="button"><span data-i18n>Carica SoundFont…</span><input id="sfFile" type="file" accept=".sf2,application/octet-stream"></label>

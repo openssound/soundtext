@@ -100,4 +100,17 @@ model vosk-model-small-fr-0.22 fr 8873b1234503f6edd55f54bfff31cf3e \
 model vosk-model-small-es-0.42 es 2d5c94f9859a84881a0ef744738ebd31 \
       09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f
 
+# Il pacchetto orchestra (46 MB, CC0): un SoundFont .sf2 costruito da mobile/tools/costruisci_sf3.py (workflow
+# "Pacchetto orchestra") e pubblicato fra gli asset di una release. Sta sullo stesso sito dell'app, con il suo
+# SHA-256 in un file accanto, e l'app lo scarica solo a richiesta (app/fonts.js). Finche' la release non c'e'
+# l'app non lo offre.
+ORCH_URL=https://github.com/openssound/soundtext/releases/download/mobile-orchestra-1/soundtext-orchestra.sf2
+ORCH_SHA=
+if [ -n "$ORCH_SHA" ] && curl -fsIL "$ORCH_URL" >/dev/null 2>&1; then
+  get "$ORCH_URL" $V/soundfont/soundtext-orchestra.sf2 "$ORCH_SHA"
+  printf '{"sha256": "%s", "bytes": %s}\n' "$ORCH_SHA" "$(stat -c %s $V/soundfont/soundtext-orchestra.sf2)" > $V/soundfont/soundtext-orchestra.json
+else
+  echo "pacchetto orchestra non pubblicato: l'app non lo offre"
+fi
+
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"

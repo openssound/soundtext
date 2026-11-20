@@ -466,3 +466,6 @@ summary:focus-visible, .button:focus-within {
 .chart-bars button small { font-size: 11px; color: var(--dim); font-weight: 400; }
 .chart-bars button[aria-current=true] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .chart-bars button[aria-current=true] small { color: var(--on-accent); }
+.sf-pack { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 8px 0; }
+.sf-pack button { min-height: 44px; }
+.sf-pack progress { width: 100%; margin-top: 6px; }

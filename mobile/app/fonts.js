@@ -123,6 +123,7 @@ function renderFonts() {
         (f.size > FONT_BIG_BYTES ? " · " + t("grande: su un telefono con poca memoria può non caricarsi") : ""), del);
   }
   $("sfHint").hidden = fonts.list.length > 0;
+  if (typeof renderPack === "function") renderPack();
 }
 
 function fontSay(text, error = false) {
@@ -195,9 +196,91 @@ function fontSelectFor(track) {
   return select;
 }
 
+// ------------------------------------------------------------ il pacchetto orchestra
+//
+// Un SoundFont .sf2 leggero con archi, legni, ottoni, arpa, timpani e percussioni intonate (costruito da
+// mobile/tools/costruisci_sf3.py dalle librerie CC0 VSCO 2 CE e VCSL). Si scarica a richiesta, mai al primo avvio,
+// e dopo si usa come ogni altro SoundFont: predefinito sopra TimGM6mb, che resta per gli altri strumenti.
+// Il file sta sullo stesso sito (vendor/soundfont/), con il suo SHA-256 in un file accanto.
+
+const PACK_URL = "vendor/soundfont/soundtext-orchestra.sf2";
+const PACK_INFO = "vendor/soundfont/soundtext-orchestra.json";
+const PACK_NAME = "soundtext-orchestra.sf2";
+const pack = { info: null, busy: false };
+
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+async function loadPackInfo() {
+  try {
+    const r = await fetch(PACK_INFO, { cache: "no-cache" });
+    pack.info = r.ok ? await r.json() : null;
+  } catch (e) {
+    pack.info = null;                       // senza rete e mai scaricato: il pacchetto non si offre
+  }
+  renderPack();
+}
+
+function renderPack() {
+  const box = $("sfPack");
+  const installed = fonts.list.some((f) => f.name === PACK_NAME);
+  box.hidden = !pack.info || installed;
+  if (!pack.info) return;
+  $("sfPackInfo").textContent = t("Archi, legni, ottoni, arpa, timpani e altri strumenti d'orchestra, più vicini al suono del computer. " +
+    "{size} MB, licenza CC0 (VSCO 2 CE e VCSL). Si scarica una volta sola e resta sul telefono.", { size: fontMegabytes(pack.info.bytes) });
+  $("sfPackGet").textContent = t("Scarica il pacchetto orchestra ({size} MB)", { size: fontMegabytes(pack.info.bytes) });
+  $("sfPackGet").disabled = pack.busy;
+}
+
+async function downloadPack() {
+  if (pack.busy || !pack.info) return;
+  if (!confirm(t("Scarico il pacchetto orchestra: {size} MB. Meglio con il Wi-Fi. Continuo?", { size: fontMegabytes(pack.info.bytes) }))) return;
+  pack.busy = true;
+  renderPack();
+  const bar = $("sfPackProgress");
+  bar.hidden = false;
+  bar.value = 0;
+  try {
+    const resp = await fetch(PACK_URL);
+    if (!resp.ok) throw new Error(t("Pacchetto non trovato ({status})", { status: resp.status }));
+    const chunks = [];
+    let got = 0;
+    const reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+    if (reader) {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        got += value.length;
+        bar.value = got / pack.info.bytes;
+        fontSay(t("Scarico il pacchetto orchestra… {done} di {size} MB", { done: fontMegabytes(got), size: fontMegabytes(pack.info.bytes) }));
+      }
+    } else {
+      chunks.push(new Uint8Array(await resp.arrayBuffer()));
+    }
+    const blob = new Blob(chunks);
+    if (blob.size !== pack.info.bytes) throw new Error(t("Il file scaricato è incompleto: riprova."));
+    fontSay(t("Controllo il file…"));
+    if (hex(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())) !== pack.info.sha256) {
+      throw new Error(t("Il file scaricato non è quello atteso (controllo SHA-256): riprova."));
+    }
+    await addFont(new File([blob], PACK_NAME));
+    const added = fonts.list.find((f) => f.name === PACK_NAME);
+    if (added) await setDefaultFont(added.id);
+    fontSay(t("Pacchetto orchestra pronto: è il SoundFont predefinito. Lo senti dal prossimo Play."));
+  } catch (e) {
+    console.error(e);
+    fontSay(t("Non riesco a scaricare il pacchetto: {message}", { message: e.message || String(e) }), true);
+  }
+  pack.busy = false;
+  bar.hidden = true;
+  renderPack();
+}
+
 async function setupFonts() {
   await loadFontList();
   renderFonts();
+  $("sfPackGet").onclick = () => downloadPack().catch(showError);
+  loadPackInfo();
   $("sfFile").onchange = (ev) => {
     const f = ev.target.files[0];
     ev.target.value = "";

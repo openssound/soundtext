@@ -36,14 +36,11 @@ function reverbKey() {
   return Object.keys(s).length ? JSON.stringify(Object.values(s).map((v) => Math.round(v * 10))) : "";
 }
 
-// Un riverbero diverso si imposta sul sintetizzatore che c'e' (rifarlo da capo, dopo un'anteprima, manda in crash il wasm)
+// Un riverbero diverso (un altro brano) non rifa' il sintetizzatore: nel nodo audio non c'e' un modo di cambiarlo
+// mentre vive, e rifarlo ha dato solo guai. Resta quello con cui e' nato; il resto degli effetti (catena master)
+// segue il brano.
 function applyReverb() {
-  if (!state.synth || !state.audioReady) return;
-  const r = effectsOn() && state.fx && state.fx.reverb;
-  try {
-    state.synth.setReverb(r ? r.room : 0.2, r ? r.damp : 0, r ? r.width : 0.5, r ? r.level : 0.9);
-    state.reverbKey = reverbKey();
-  } catch (e) { console.error(e); }
+  state.reverbKey = reverbKey();
 }
 
 // Il collegamento: sintetizzatore -> catena master -> uscita

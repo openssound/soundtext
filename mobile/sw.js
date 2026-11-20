@@ -8,13 +8,15 @@
 //   messi in cache al primo uso. Il SoundFont si scarica solo al primo Play.
 "use strict";
 
-const CACHE = "stmobile-v60";            // pagina e bundle: si cambia a ogni versione
+const CACHE = "stmobile-v64";            // pagina e bundle: si cambia a ogni versione
 const VENDOR = "stmobile-vendor-v1";     // Pyodide, wheel, FluidSynth, SoundFont: restano
 const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide, gestita da worker.js
 // I modelli della dettatura (50 MB l'uno) li conserva gia' Vosk nel suo
 // archivio (IndexedDB) e non li richiede piu': tenerli anche qui
 // raddoppierebbe lo spazio occupato sul telefono.
 const VOICE_MODEL = /\/vendor\/vosk\/[^/]+\.tar\.gz$/;
+// Lo stesso per il pacchetto orchestra (50 MB): lo tiene IndexedDB (soundfonts.js) dopo il download
+const ORCHESTRA_PACK = /\/vendor\/soundfont\/soundtext-orchestra\.sf2$/;
 const SHELL = [
   "./", "index.html", "diagnostica.html", "style.css", "app/base.js", "app/text-edits.js", "app/editor.js", "app/voice.js", "app/fonts.js", "app/hum.js", "app/quick.js", "app/study.js", "app/effects.js", "app/export.js", "app/pads.js", "app/exercises.js", "app/system.js", "app/songs-view.js", "app/create.js", "app/structure.js", "app/player.js", "app/score.js", "app/main.js",
   "metrics.js", "studio.js", "midicut.js", "songs.js", "share.js", "progress.js", "fxchain.js", "soundfonts.js", "mp4.js", "wav.js", "export-worker.js", "worker.js", "score-worker.js", "voice-worklet.js", "i18n.js",
@@ -87,7 +89,7 @@ self.addEventListener("fetch", (ev) => {
   const req = ev.request;
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== self.location.origin) return;
-  if (VOICE_MODEL.test(url.pathname)) return;        // dalla rete, senza cache
+  if (VOICE_MODEL.test(url.pathname) || ORCHESTRA_PACK.test(url.pathname)) return;        // dalla rete, senza cache
   const scope = new URL(self.registration.scope);
   const path = url.pathname.slice(scope.pathname.length);
   const handler = path.startsWith("vendor/") ? cacheFirst : networkFirst;
