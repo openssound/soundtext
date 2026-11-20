@@ -105,7 +105,7 @@ model vosk-model-small-es-0.42 es 2d5c94f9859a84881a0ef744738ebd31 \
 # SHA-256 in un file accanto, e l'app lo scarica solo a richiesta (app/fonts.js). Finche' la release non c'e'
 # l'app non lo offre.
 ORCH_URL=https://github.com/openssound/soundtext/releases/download/mobile-orchestra-1/soundtext-orchestra.sf2
-ORCH_SHA=
+ORCH_SHA=cfab4a5c64d01d51de9678349f6e5950891d6591bf8dcb317e6ca837d6174fcd
 if [ -n "$ORCH_SHA" ] && curl -fsIL "$ORCH_URL" >/dev/null 2>&1; then
   get "$ORCH_URL" $V/soundfont/soundtext-orchestra.sf2 "$ORCH_SHA"
   printf '{"sha256": "%s", "bytes": %s}\n' "$ORCH_SHA" "$(stat -c %s $V/soundfont/soundtext-orchestra.sf2)" > $V/soundfont/soundtext-orchestra.json
