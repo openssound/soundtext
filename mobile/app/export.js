@@ -87,7 +87,7 @@ async function encodeAac(left, right, rate, progress) {
       chunk.copyTo(data);
       samples.push({ data, duration: chunk.duration ? Math.round(chunk.duration * rate / 1e6) : 1024 });
     },
-    error: (e) => { throw e; },
+    error: (e) => { failure = e; },
   });
   encoder.configure({ codec: "mp4a.40.2", sampleRate: rate, numberOfChannels: 2, bitrate: 128000 });
   const step = 4096;
@@ -103,8 +103,9 @@ async function encodeAac(left, right, rate, progress) {
     if (encoder.encodeQueueSize > 6) await new Promise((r) => setTimeout(r, 0));
     if (progress && (at / step) % 20 === 0) progress(at / left.length);
   }
-  await encoder.flush();
-  encoder.close();
+  if (!failure) { try { await encoder.flush(); } catch (e) { failure = failure || e; } }
+  try { encoder.close(); } catch (e) {}
+  if (failure) throw new Error(t("Il telefono non è riuscito a comprimere il video ({message}).", { message: failure.message || failure.name || String(failure) }));
   if (!config) throw new Error(t("Questo browser non ha dato la descrizione dell'audio AAC."));
   return { sampleRate: rate, channels: 2, config, bitrate: 128000, samples };
 }
@@ -335,10 +336,18 @@ async function prepareScoreClip(width) {
         systems.push({ y: offset + b.top - rect.top, h: b.height });
       }
       const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
       const img = new Image();
-      img.src = URL.createObjectURL(blob);
-      await img.decode();
-      pages.push({ img, y: offset, w, h });
+      img.src = url;
+      try { await img.decode(); } catch (e) {            // alcuni browser non sanno decode() su un SVG: si aspetta il caricamento
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error(t("La partitura non si è potuta disegnare per la clip."))); });
+      }
+      // una volta sola in pixel: disegnare ogni fotogramma dall'SVG rallenta e consuma troppo sul telefono
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      pages.push({ canvas, y: offset, w, h });
       offset += h;
     }
   } finally {
@@ -373,7 +382,7 @@ function drawScoreView(ctx, w, h, beat, model, top, bottom) {
   for (const p of sc.pages) {
     const y = areaTop + p.y - sc.scroll;
     if (y + p.h < areaTop || y > areaTop + areaH) continue;
-    ctx.drawImage(p.img, x0, y, p.w, p.h);
+    ctx.drawImage(p.canvas, x0, y, p.w, p.h);
   }
   if (active.length) {
     // il cursore: una barra sul rigo che suona, e la nota (o le note dell'accordo) colorata sopra la carta
@@ -501,7 +510,7 @@ async function encodeVideo(out, seconds, width, height, draw, progress) {
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext("2d");
   const samples = [];
-  let config = null;
+  let config = null, failure = null;
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
       if (meta && meta.decoderConfig && meta.decoderConfig.description && !config) config = new Uint8Array(meta.decoderConfig.description);
@@ -513,6 +522,7 @@ async function encodeVideo(out, seconds, width, height, draw, progress) {
   });
   encoder.configure({ codec: "avc1.42001f", width, height, bitrate: 3000000, framerate: CLIP_FPS, avc: { format: "avc" } });
   for (let i = 0; i < total; i++) {
+    if (failure) break;
     draw(ctx, width, height, beatAtSecond(out, i / CLIP_FPS));
     const frame = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / CLIP_FPS) });
     encoder.encode(frame, { keyFrame: i % (CLIP_FPS * 2) === 0 });
@@ -595,14 +605,23 @@ async function exportClip() {
   Wav.normalize([out.left, out.right]);
   Wav.fadeOut([out.left, out.right], Math.round(EXPORT_RATE * 0.3));
   const name = fileBase() + "-clip";
+  let encodeError = null;
   if (caps.h264 && caps.aac) {
-    const video = await encodeVideo(out, seconds, width, height, draw, (p) => setExportStatus(t("Disegno e comprimo il video… {p}%", { p: Math.round(p * 100) })));
-    setExportStatus(t("Comprimo l'audio…"));
-    const audio = await encodeAac(out.left.subarray(0, Math.round(seconds * out.rate)), out.right.subarray(0, Math.round(seconds * out.rate)), out.rate);
-    return deliver(Mp4.mux({ audio, video }), name + ".mp4", "video/mp4");
+    try {
+      const video = await encodeVideo(out, seconds, width, height, draw, (p) => setExportStatus(t("Disegno e comprimo il video… {p}%", { p: Math.round(p * 100) })));
+      setExportStatus(t("Comprimo l'audio…"));
+      const audio = await encodeAac(out.left.subarray(0, Math.round(seconds * out.rate)), out.right.subarray(0, Math.round(seconds * out.rate)), out.rate);
+      return deliver(Mp4.mux({ audio, video }), name + ".mp4", "video/mp4");
+    } catch (e) {
+      if (!caps.recorder) throw e;                       // niente altra strada
+      console.error(e);
+      encodeError = e;                                   // si riprova registrando in tempo reale
+    }
   }
   if (caps.recorder) {
-    setExportStatus(t("Questo browser non comprime il video da solo: registro la clip in tempo reale ({s} s)…", { s: Math.round(seconds) }));
+    setExportStatus(encodeError
+      ? t("Il video non si è compresso da solo: registro la clip in tempo reale ({s} s)…", { s: Math.round(seconds) })
+      : t("Questo browser non comprime il video da solo: registro la clip in tempo reale ({s} s)…", { s: Math.round(seconds) }));
     const rec = await recordClipRealtime(out, seconds, width, height, draw, (p) => setExportStatus(t("Registro la clip… {p}%", { p: Math.round(p * 100) })));
     return deliver(rec.bytes, name + (rec.type.includes("mp4") ? ".mp4" : ".webm"), rec.type.split(";")[0]);
   }
