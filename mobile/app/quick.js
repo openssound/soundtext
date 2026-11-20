@@ -75,11 +75,21 @@ function quickBuildGenres() {
   }
 }
 
+// letto subito a chi non vede: genere, atmosfera e durata scelti
+function quickAnnounceChoice() {
+  const genre = quick.choices.genres.find((g) => g.value === quick.opts.genre);
+  const mood = quick.choices.moods.find((m) => m.value === quick.opts.mood);
+  const dur = quick.choices.durations.find((d) => String(d.value) === String(quick.opts.duration));
+  if (genre) $("quickAnnounce").textContent = t("Scelto: {genre}, atmosfera {mood}, durata {duration}.",
+    { genre: genre.label, mood: mood ? mood.label : "", duration: dur ? dur.label : "" });
+}
+
 function quickPickGenre(id) {
   quick.opts.genre = id;
   for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === id));
   quickDefaults();
   quickSave();
+  quickAnnounceChoice();
 }
 
 // i valori che sceglie la ricetta, quando un campo e' vuoto
@@ -414,8 +424,8 @@ function setupQuick() {
   $("quickOpenCrea").onclick = () => { quickClose(); setView("crea"); };
   $("quickFromDoc").onclick = () => quickFromDoc().catch(showError);
   $("quickSimple").onchange = () => { quickReadFields(); quick.simple = $("quickSimple").checked; quickShowMode(); quickSave(); };
-  $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); };
-  $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); };
+  $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
+  $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };
   for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickBpm", "quickModulation",
                     "quickDensity", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop"]) {
     $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });

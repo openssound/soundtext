@@ -131,6 +131,10 @@ async function exAsk() {
   $("exListenAgain").hidden = true;
   exRenderInput();
   exShow("question");
+  // letto a chi non vede: dove si e', la domanda e il suo contesto; il fuoco va sulla domanda
+  announce(`${$("exProgress").textContent}. ${ex.question.prompt}. ${ex.question.context || ""}`);
+  $("exPrompt").tabIndex = -1;
+  $("exPrompt").focus({ preventScroll: true });
 }
 
 function exRenderInput() {
@@ -203,7 +207,9 @@ async function exAnswer(value, button) {
   await Progress.record({ kind: item.kind, level: item.level, seed: item.seed, correct: r.correct }).catch(() => {});
   const fb = $("exFeedback");
   fb.className = "ex-feedback " + (r.correct ? "right" : "wrong");
-  fb.textContent = r.correct ? t("Giusto!") : t("Non proprio: era «{label}».", { label: r.answer_label });
+  const so = ex.results.filter(Boolean).length;
+  fb.textContent = (r.correct ? t("Giusto!") : t("Non proprio: era «{label}».", { label: r.answer_label }))
+    + (ex.mode === "daily" ? " " + t("Finora {right} giuste su {total}.", { right: so, total: ex.results.length }) : "");
   if (button) button.classList.add(r.correct ? "right" : "wrong");
   if (!r.correct && q.input === "choice") {
     for (const b of document.querySelectorAll("#exInput .ex-choices button")) if (b.textContent === r.answer_label) b.classList.add("right");
@@ -263,6 +269,9 @@ async function exFinish() {
   const notes = await exAdjustLevels(ex.queue.map((q) => q.kind));
   $("exLevelNotes").textContent = notes.join(" · ");
   exShow("summary");
+  announce(`${$("exScore").textContent}. ${$("exSummaryStreak").textContent}. ${notes.join(". ")}`);
+  $("exScore").tabIndex = -1;
+  $("exScore").focus({ preventScroll: true });
 }
 
 async function exBackHome() {

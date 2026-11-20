@@ -19,8 +19,10 @@ async function renderSongs() {
                        () => openSong(song.id), [
       [t("Rinomina"), () => renameSong(song.id)],
       [t("Duplica"), () => duplicate(song)],
-      [t("Condividi"), () => share(song)],
-      [t("Condividi come link"), () => shareLink(song)],
+      // il link per primo: si manda con WhatsApp, la posta o i messaggi e si apre senza passaggi visivi; il QR, che
+      // si inquadra con la fotocamera, per ultimo
+      [t("Condividi il link"), () => shareLink(song)],
+      [t("Condividi il file"), () => share(song)],
       [t("Mostra QR code"), () => showQr(song)],
       [t("Elimina"), () => deleteSong(song.id), "danger"],
     ]));
@@ -32,8 +34,8 @@ async function renderSongs() {
                        state.doc && state.doc.kind === "example" && state.doc.file === file,
                        () => openExample(file, true), [
       [t("Crea una copia"), async () => duplicate(await exampleDoc(file))],
-      [t("Condividi"), async () => share(await exampleDoc(file))],
-      [t("Condividi come link"), async () => shareLink(await exampleDoc(file))],
+      [t("Condividi il link"), async () => shareLink(await exampleDoc(file))],
+      [t("Condividi il file"), async () => share(await exampleDoc(file))],
       [t("Mostra QR code"), async () => showQr(await exampleDoc(file))],
     ]));
   }
@@ -244,6 +246,7 @@ async function openSharedLink() {
   const ready = openDoc({ kind: "link", name: shared.name, text: f.text, eol: f.eol, bom: f.bom });
   setEditable(false);                          // prima l'ascolto; per modificare si fa una copia
   setView("testo");
+  announce(t("Brano condiviso aperto: {name}. Si può ascoltare; per modificarlo si fa una copia.", { name: shared.name }));
   return ready;
 }
 

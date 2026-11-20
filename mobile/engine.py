@@ -933,6 +933,42 @@ def track_notes(text: str, track: str) -> list:
     return [n for n in out if n[1] > 0]
 
 
+def speak_at(text: str, pos: int, lang: Optional[str] = None) -> dict:
+    """«Leggi»: la frase che dice la battuta sotto il cursore (speech.phrase); se il cursore e' in un pattern o in una
+    riga fuori dalle battute, quella riga. {"text", "bar", "track"}; lingua: quella dell'interfaccia."""
+    import speech
+    from core.i18n import current_language
+    lang = lang or current_language()
+    e = Engine()
+    try:
+        e.load(text)
+        spans = e.highlight_spans()
+    except Exception:
+        spans = []
+    tracks = [t.name for t in e.project.tracks if not t.is_audio] if e.project else []
+    hit = [s for s in spans if s[1] <= pos <= s[2]]
+    if hit:
+        track_i, _cs, _ce, beat, _dur, _lv = max(hit, key=lambda s: s[5])
+        bars = e.bar_list()
+        bar = max(i for i, b in enumerate(bars) if b <= beat + 1e-6)
+        start = bars[bar]
+        end = bars[bar + 1] if bar + 1 < len(bars) else e.length_beats()
+        # le note vere: i richiami di pattern (%Nome) si leggono dentro, con le loro note
+        top = [s for s in spans if s[0] == track_i and start - 1e-6 <= s[3] < end - 1e-6
+               and not text[s[1]:s[2]].startswith("%")]
+        items = [(text[s[1]:s[2]], s[4]) for s in top]
+        return {"text": speech.phrase(items, lang, bar + 1, tracks[track_i]), "bar": bar + 1, "track": tracks[track_i]}
+    # fuori dalle battute (un pattern): la riga del cursore, senza durate
+    begin = text.rfind("\n", 0, pos) + 1
+    stop = text.find("\n", pos)
+    line = text[begin: stop if stop >= 0 else len(text)]
+    if line.strip().startswith("//") or ":" in line.split("//")[0] and not re.match(r"^\s*\d+[:T]", line):
+        return {"text": speech.phrase([], lang), "bar": None, "track": None}       # un commento o un'intestazione
+    line = re.sub(r"^\s*\d+[:T]*\s*", "", line.split("//")[0])
+    items = [(w, None) for w in re.split(r"[\s|]+", line) if w]
+    return {"text": speech.phrase(items, lang), "bar": None, "track": None}
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""

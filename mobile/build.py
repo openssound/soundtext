@@ -99,7 +99,7 @@ engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "s
 engine.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 1})
 engine.quick_choices(); engine.quick_read("// quick: {}")
 # modalita' studio: le note di una traccia e gli accordi per la vista accordi
-engine.track_notes(source, "Piano"); engine.chord_chart(source)
+engine.track_notes(source, "Piano"); engine.chord_chart(source); engine.speak_at(source, 400)
 for kind in ("intervals", "chords", "progression", "bar", "error", "rhythm"):
     engine.exercise(kind, 1, 1); engine.exercise_check(kind, 1, 1, 0)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
@@ -144,6 +144,7 @@ def build():
         z.write(os.path.join(HERE, "engine.py"), "engine.py")
         z.write(os.path.join(HERE, "exercises.py"), "exercises.py")
         z.write(os.path.join(HERE, "quicksong.py"), "quicksong.py")
+        z.write(os.path.join(HERE, "speech.py"), "speech.py")
         for name in modules:
             rel = name.replace(".", "/") + ("/__init__.py" if name == "core" else ".py")
             z.write(os.path.join(ROOT, rel), rel)

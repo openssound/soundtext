@@ -46,6 +46,7 @@ async function main() {
   setupHum();
   setupQuick();
   setupStudy();
+  setupAccess();
   setupExport();
   setupPads();
   setupExercises();

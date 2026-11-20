@@ -25,6 +25,7 @@
   <button id="copyShared" class="copy-shared" hidden data-i18n>Fai una copia</button>
 </header>
 
+<p id="liveSay" class="visually-hidden" role="status" aria-live="polite"></p>
 <main>
   <!-- Brani -->
   <section id="view-brani" class="view" aria-label="Brani">
@@ -92,6 +93,7 @@
         <!-- sempre a portata: non scorrono con gli altri tasti -->
         <div class="keys keys-fixed">
           <button id="deleteKey" aria-label="Cancella il token" title="Cancella il token"><span aria-hidden="true">⌫</span></button>
+          <button id="speakKey" aria-label="Leggi a voce la battuta del cursore" title="Leggi a voce la battuta del cursore"><span aria-hidden="true">🔊</span></button>
           <button id="playBarKey" class="play-bar" aria-label="Suona la battuta del cursore" title="Suona la battuta del cursore"><span aria-hidden="true">▶</span></button>
         </div>
       </div>
@@ -155,6 +157,16 @@
         <select id="follow"></select>
       </label>
     </div>
+    <h2 id="navTitle" data-i18n>Vai a</h2>
+    <div class="studio-open" role="group" aria-labelledby="navTitle">
+      <button id="navPrevBar" data-i18n>Battuta precedente</button>
+      <button id="navNextBar" data-i18n>Battuta successiva</button>
+      <button id="navPrevSection" data-i18n>Sezione precedente</button>
+      <button id="navNextSection" data-i18n>Sezione successiva</button>
+      <button id="navGoto" data-i18n>Vai alla battuta…</button>
+    </div>
+    <p id="navSay" class="visually-hidden" role="status" aria-live="polite"></p>
+    <label class="check"><input id="speakVoice" type="checkbox" checked> <span data-i18n>Leggi con la voce del telefono (spegni se usi uno screen reader)</span></label>
     <h2 id="loopTitle" data-i18n>Ripeti un tratto</h2>
     <div class="loop" role="group" aria-labelledby="loopTitle">
       <button id="loopA" aria-label="A: inizio della battuta che suona">A</button>
@@ -565,6 +577,7 @@
 <script src="midicut.js"></script>
 <script src="studio.js"></script>
 <script src="app/study.js"></script>
+<script src="app/access.js"></script>
 <script src="app/effects.js"></script>
 <script src="app/export.js"></script>
 <script src="app/pads.js"></script>
