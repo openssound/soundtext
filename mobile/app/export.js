@@ -312,7 +312,7 @@ async function prepareScoreClip(width) {
   holder.style.cssText = "position:absolute;left:-99999px;top:0;visibility:hidden";
   holder.innerHTML = r.pages.join("");
   document.body.append(holder);
-  const pages = [], boxes = new Map();
+  const pages = [], boxes = new Map(), systems = [];
   let offset = 0;
   try {
     const svgs = [...holder.children];
@@ -330,6 +330,10 @@ async function prepareScoreClip(width) {
           boxes.set(id, { x: b.left - rect.left, y: offset + b.top - rect.top, w: b.width, h: b.height });
         }
       }
+      for (const sys of svg.querySelectorAll("g.system")) {
+        const b = sys.getBoundingClientRect();
+        systems.push({ y: offset + b.top - rect.top, h: b.height });
+      }
       const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
       const img = new Image();
       img.src = URL.createObjectURL(blob);
@@ -340,7 +344,7 @@ async function prepareScoreClip(width) {
   } finally {
     holder.remove();
   }
-  return { pages, boxes, timemap: r.timemap, height: offset, scroll: null, index: -1, active: new Set(), lastBeat: -1 };
+  return { pages, boxes, systems, timemap: r.timemap, height: offset, scroll: null, index: -1, active: new Set(), lastBeat: -1 };
 }
 
 function drawScoreView(ctx, w, h, beat, model, top, bottom) {
@@ -371,10 +375,22 @@ function drawScoreView(ctx, w, h, beat, model, top, bottom) {
     if (y + p.h < areaTop || y > areaTop + areaH) continue;
     ctx.drawImage(p.img, x0, y, p.w, p.h);
   }
-  ctx.fillStyle = CLIP_COLORS.note;
-  ctx.globalAlpha = 0.45;
-  for (const b of active) {
-    ctx.fillRect(x0 + b.x - 4, areaTop + b.y - sc.scroll - 4, b.w + 8, b.h + 8);
+  if (active.length) {
+    // il cursore: una barra sul rigo che suona, e la nota (o le note dell'accordo) colorata sopra la carta
+    const cx = x0 + Math.min(...active.map((b) => b.x)) - 8, cy = active.reduce((n, b) => n + b.y + b.h / 2, 0) / active.length;
+    const system = (sc.systems || []).find((sy) => cy >= sy.y - 4 && cy <= sy.y + sy.h + 4);
+    if (system) {
+      ctx.fillStyle = "rgba(255, 140, 0, 0.55)";
+      ctx.fillRect(cx - 2, areaTop + system.y - sc.scroll - 6, 4, system.h + 12);
+    }
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = "#ff8c00";
+    ctx.globalAlpha = 0.85;
+    for (const b of active) {
+      roundedBox(ctx, x0 + b.x - 7, areaTop + b.y - sc.scroll - 7, b.w + 14, b.h + 14, 8);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
   }
   ctx.globalAlpha = 1;
   ctx.restore();
