@@ -289,8 +289,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .keys button.wide { min-width: 64px; font-family: system-ui, sans-serif; font-size: 13px; }
 .keys button.play-bar { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .keys .sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
-/* Mentre si scrive si nasconde la barra delle schermate: piu' spazio sopra la tastiera */
-body.editing .tabs { display: none; }
+/* Mentre si scrive la barra delle schermate resta visibile (si nasconde solo l'intestazione); il lettore si fa piu' basso */
 body.editing .player { padding-top: 4px; padding-bottom: 4px; }
 body.editing .play { width: 40px; height: 40px; font-size: 17px; }
 
