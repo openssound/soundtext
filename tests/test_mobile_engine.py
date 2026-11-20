@@ -9,6 +9,7 @@ l'evidenziazione funzionino sugli esempi della fase 0.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -791,3 +792,17 @@ def test_add_pattern_goes_before_the_first_track_and_is_valid():
     assert [t.name for t in project.tracks] == ["Piano", "Bass"]                      # le tracce non cambiano
     assert e.add_pattern(out["text"], "Groove", "16: snare 15r |")["name"] == "Groove2"      # nome gia' preso
     assert e.add_pattern("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n", "G", "4: c |")["text"].endswith("  4: c |\n\n")
+
+
+def test_track_notes_gives_the_melody_of_a_track_in_beats():
+    """«Suona con la base»: le note di una traccia, una voce sola, in battiti; niente per le percussioni."""
+    e = _quick()
+    made = e.quick_song({"genre": "pop", "mood": "allegra", "duration": 30, "seed": 3})
+    tracks = [m.group(1) for m in re.finditer(r'^Box (\S+) "', made["text"], re.M)]
+    melody = next(n for n in tracks if e.track_notes(made["text"], n))
+    notes = e.track_notes(made["text"], melody)
+    assert len(notes) > 8 and all(0 <= n[2] < 128 and n[1] > 0 for n in notes)
+    assert all(a[0] + a[1] <= b[0] + 1e-9 for a, b in zip(notes, notes[1:]))         # una voce, senza sovrapposizioni
+    assert e.track_notes(made["text"], "Non c'e'") == []
+    drums = [n for n in tracks if "rum" in n or "Drum" in n]
+    assert all(e.track_notes(made["text"], n) == [] for n in drums)

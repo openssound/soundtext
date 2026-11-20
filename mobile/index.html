@@ -165,6 +165,12 @@
     <label class="check"><input id="metronome" type="checkbox"> <span data-i18n>Metronomo</span></label>
     <label class="check"><input id="effectsOn" type="checkbox"> <span data-i18n>Effetti del brano (riverbero, compressore, EQ…)</span></label>
     <label class="check"><input id="vibrate" type="checkbox"> <span data-i18n>Vibrazione leggera sul metronomo</span></label>
+    <h2 id="studioTitle" data-i18n>Studio</h2>
+    <div class="studio-open" role="group" aria-labelledby="studioTitle">
+      <button id="playAlongOpen" disabled data-i18n>Suona con la base…</button>
+      <button id="chartOpen" disabled data-i18n>Vista accordi…</button>
+      <button id="tunerOpen" data-i18n>Accordatore…</button>
+    </div>
     <button id="exportOpen" class="export-open" disabled data-i18n>Esporta audio e clip…</button>
     <details class="opts sf-box" id="sfBox">
       <summary data-i18n>SoundFont</summary>
@@ -452,6 +458,79 @@
   <button id="humClose" class="sheet-close" data-i18n>Chiudi</button>
 </dialog>
 
+<!-- Accordatore -->
+<dialog id="tunerDialog" class="pad-sheet" aria-labelledby="tunerTitle">
+  <h2 id="tunerTitle" data-i18n>Accordatore</h2>
+  <p class="hint" data-i18n>Suona una nota: l'app dice quale è e di quanti cent è calante o crescente. L'audio non esce dal telefono.</p>
+  <div class="tuner-grid">
+    <label class="hum-grid"><span data-i18n>Strumento:</span><select id="tunerPreset"></select></label>
+    <label class="hum-grid"><span data-i18n>La a (Hz):</span>
+      <input id="tunerA4" type="number" inputmode="numeric" min="415" max="466" step="1" value="440"></label>
+  </div>
+  <p id="tunerStringsHelp" class="hint" data-i18n>Tocca una corda per sentirne il tono di riferimento.</p>
+  <div id="tunerStrings" class="tuner-strings" role="group" aria-label="Corde" hidden></div>
+  <div id="tunerFace" class="tuner-face" tabindex="0" role="group" aria-label="Nota riconosciuta: tocca due volte per sentirla a voce">
+    <div id="tunerNote" class="tuner-note" aria-hidden="true">–</div>
+    <div class="tuner-scale" aria-hidden="true"><span class="tuner-needle" id="tunerNeedle"></span></div>
+    <div id="tunerCents" class="tuner-cents" aria-hidden="true"></div>
+  </div>
+  <p id="tunerSay" class="hum-status" role="status" aria-live="polite"></p>
+  <div class="pad-opts">
+    <label><input id="tunerBuzz" type="checkbox"> <span data-i18n>Vibrazione a impulsi</span></label>
+    <label><input id="tunerSpeak" type="checkbox"> <span data-i18n>Leggi a voce</span></label>
+  </div>
+  <div class="sheet-actions">
+    <button id="tunerStart" class="primary" aria-pressed="false" data-i18n>Ascolta</button>
+    <button id="tunerRead" data-i18n>Leggi la nota</button>
+  </div>
+  <button id="tunerClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
+<!-- Suona con la base -->
+<dialog id="studyDialog" class="pad-sheet" aria-labelledby="studyTitle">
+  <h2 id="studyTitle" data-i18n>Suona con la base</h2>
+  <p class="hint" data-i18n>Scegli la traccia che suoni tu: la base suona senza di lei e il microfono ascolta. Funziona per la voce e gli strumenti a una nota alla volta. Meglio con le cuffie. L'audio resta sul telefono.</p>
+  <label class="hum-grid"><span data-i18n>La mia traccia:</span><select id="studyTrack"></select></label>
+  <div class="pad-opts">
+    <label><input id="studyBeep" type="checkbox"> <span data-i18n>Suono breve se sbaglio</span></label>
+    <label><input id="studyCount" type="checkbox" checked> <span data-i18n>Conteggio di una battuta</span></label>
+    <label><input id="studyLoop" type="checkbox"> <span data-i18n>Solo il tratto A–B</span></label>
+  </div>
+  <p id="studyStatus" class="hum-status" role="status" aria-live="polite"></p>
+  <ol id="studyNotes" class="study-notes" aria-label="Le note" hidden></ol>
+  <div id="studyResult" class="study-result" hidden>
+    <p id="studySummary" class="study-summary" role="status" aria-live="assertive"></p>
+    <div id="studyReview" class="ex-picks"></div>
+  </div>
+  <div class="sheet-actions">
+    <button id="studyStart" class="primary" aria-pressed="false" data-i18n>Comincia</button>
+  </div>
+  <button id="studyClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
+<!-- Vista accordi: per chi suona dal vivo -->
+<dialog id="chartDialog" class="pad-sheet chart-sheet" aria-labelledby="chartTitle">
+  <h2 id="chartTitle" data-i18n>Vista accordi</h2>
+  <div class="pad-opts">
+    <label><span data-i18n>Capotasto</span>
+      <select id="chartCapo"></select></label>
+    <label><span data-i18n>Conteggio</span>
+      <select id="chartCount"><option value="0" data-i18n>nessuno</option><option value="1" data-i18n>una battuta</option><option value="2" data-i18n>due battute</option></select></label>
+    <label><input id="chartAwake" type="checkbox" checked> <span data-i18n>Schermo sempre acceso</span></label>
+    <label><input id="chartBuzz" type="checkbox"> <span data-i18n>Vibra a ogni battito</span></label>
+  </div>
+  <div id="chartNow" class="chart-now" role="status" aria-live="off">–</div>
+  <div id="chartNext" class="chart-next"></div>
+  <div id="chartBars" class="chart-bars" role="list" aria-label="Le battute"></div>
+  <p id="chartAnnounce" class="visually-hidden" role="status" aria-live="polite"></p>
+  <div class="pad-controls">
+    <button id="chartPrev" aria-label="Battuta precedente">⏮</button>
+    <button id="chartPlay" class="primary" aria-label="Suona">▶</button>
+    <button id="chartNextBar" aria-label="Battuta successiva">⏭</button>
+  </div>
+  <button id="chartClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Azioni su un box o una sezione (Struttura) -->
 <dialog id="sheet" class="sheet" aria-labelledby="sheetTitle">
   <h2 id="sheetTitle"></h2>
@@ -476,6 +555,9 @@
 <script src="app/fonts.js"></script>
 <script src="app/hum.js"></script>
 <script src="app/quick.js"></script>
+<script src="midicut.js"></script>
+<script src="studio.js"></script>
+<script src="app/study.js"></script>
 <script src="app/effects.js"></script>
 <script src="app/export.js"></script>
 <script src="app/pads.js"></script>

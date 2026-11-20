@@ -213,6 +213,8 @@ function showDocTitle() {
   $("badge").textContent = shared ? t("brano condiviso: sola lettura") : t("esempio: le modifiche creano una copia");
   $("copyShared").hidden = !shared;
   $("exportOpen").disabled = !doc;
+  $("playAlongOpen").disabled = !doc;
+  $("chartOpen").disabled = !doc;
   if (typeof updateMediaSession === "function") updateMediaSession();
 }
 

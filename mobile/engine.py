@@ -894,6 +894,45 @@ def chord_chart(text: str) -> list:
     return max(candidates, key=lambda chart: sum(c[1] for c in chart), default=[])
 
 
+def track_notes(text: str, track: str) -> list:
+    """Le note di una traccia, per «Suona con la base»: [[inizio, durata, nota MIDI]] in battiti, una voce sola
+    (se suonano insieme, la piu' acuta: la melodia). Le percussioni e gli accordi non servono: [] se non ci sono note."""
+    import mido
+    from core.project_io import parse_project_text
+    from st_language.instruments import DRUM_MIDI_CHANNEL
+    project = parse_project_text(text, "Brano")
+    mid = mido.MidiFile(file=io.BytesIO(_project_midi(project)))
+    per_beat = float(mid.ticks_per_beat)
+    found = []
+    for tr in mid.tracks:
+        if tr.name != track:
+            continue
+        at = 0
+        open_notes: dict = {}
+        for msg in tr:
+            at += msg.time
+            if not hasattr(msg, "channel") or msg.channel == DRUM_MIDI_CHANNEL:
+                continue
+            if msg.type == "note_on" and msg.velocity > 0:
+                open_notes[(msg.channel, msg.note)] = at
+            elif msg.type in ("note_off", "note_on") and (msg.channel, msg.note) in open_notes:
+                begin = open_notes.pop((msg.channel, msg.note))
+                found.append((begin, at, msg.note))
+    found.sort()
+    out: list = []
+    for begin, end, note in found:
+        if out and abs(out[-1][0] - begin / per_beat) < 1e-6:     # insieme a un'altra: la piu' acuta
+            if note > out[-1][2]:
+                out[-1] = [out[-1][0], round((end - begin) / per_beat, 6), note]
+            continue
+        out.append([round(begin / per_beat, 6), round((end - begin) / per_beat, 6), note])
+    # niente sovrapposizioni: una nota finisce dove comincia la successiva
+    for i in range(len(out) - 1):
+        if out[i][0] + out[i][1] > out[i + 1][0]:
+            out[i][1] = round(out[i + 1][0] - out[i][0], 6)
+    return [n for n in out if n[1] > 0]
+
+
 def dictation_words(text: str, lang: Optional[str] = None) -> list:
     """La grammatica del riconoscimento locale (core.dictation.grammar): le
     parole e le frasi della dettatura, con i nomi dei pattern del brano."""

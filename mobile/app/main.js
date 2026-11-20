@@ -45,6 +45,7 @@ async function main() {
   setupVoice();
   setupHum();
   setupQuick();
+  setupStudy();
   setupExport();
   setupPads();
   setupExercises();
@@ -112,7 +113,7 @@ async function main() {
   // fra "hidden" e "visible" si vede se la musica e' andata avanti.
   const lifecycle = async (event) => {
     let tick = null;
-    try { if (state.synth) tick = await state.synth.retrievePlayerCurrentTick(); } catch (e) {}
+    try { if (state.synth) tick = await playerTick(); } catch (e) {}
     Metrics.record("visibilita", { event, state: document.visibilityState, playing: state.playing,
                                    ctx_state: state.ctx ? state.ctx.state : null, tick });
     if (document.visibilityState === "hidden") saveDoc().catch(() => {});

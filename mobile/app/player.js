@@ -85,14 +85,22 @@ async function initAudio() {
   });
 }
 
+// Il punto del brano che suona, in tick (il file del lettore puo' cominciare piu' avanti: tickBase)
+async function playerTick() {
+  return (state.tickBase || 0) + (await state.synth.retrievePlayerCurrentTick());
+}
+
 async function startPlayer(fromTick) {
   const synth = state.synth;
   const token = ++state.playToken;
   await syncFonts(synth);                       // i SoundFont dell'utente, predefinito e per traccia
   await synth.resetPlayer();
-  await synth.addSMFDataToPlayer(state.midi.slice().buffer);
+  // Per ripartire a meta' brano si da' al lettore un file accorciato (midicut.js): seekPlayer del FluidSynth in
+  // WebAssembly ferma il sintetizzatore. 'tickBase' e' il punto da cui comincia il file.
+  const cut = fromTick > 0 ? MidiCut.from(new Uint8Array(state.midi), fromTick) : null;
+  state.tickBase = cut ? fromTick : 0;
+  await synth.addSMFDataToPlayer(cut ? cut.slice().buffer : state.midi.slice().buffer);
   synth.setPlayerTempo(0, state.speed);   // 0 = PlayerSetTempoType.Internal: moltiplicatore del tempo del file
-  if (fromTick > 0) synth.seekPlayer(fromTick);
   await synth.playPlayer();
   state.playing = true;
   setPlayButton();
@@ -156,7 +164,7 @@ async function play() {
 async function pause() {
   if (!state.synth) return;
   state.playToken++;
-  state.pausedTick = await state.synth.retrievePlayerCurrentTick();
+  state.pausedTick = await playerTick();
   state.synth.stopPlayer();
   state.synth.midiAllSoundsOff();
   state.playing = false;
@@ -188,7 +196,7 @@ async function playPreview(midi, label = t("Anteprima della parte generata")) {
   await state.audioReady;
   let from = 0;
   if (state.previewing) {
-    from = await state.synth.retrievePlayerCurrentTick();     // rigenerata mentre suona: stesso punto
+    from = await playerTick();     // rigenerata mentre suona: stesso punto
   } else {
     if (state.playing) await pause();
     state.savedMidi = state.midi;
@@ -272,7 +280,7 @@ async function renderMidi() {
   state.midi = r.midi;
   Metrics.record("lettore", { semitones: state.semitones, silent: silentTracks().length, metronome: state.metronome, ms: r.ms });
   if (state.playing && state.stopAtBeat == null) {
-    const tick = await state.synth.retrievePlayerCurrentTick();
+    const tick = await playerTick();
     state.synth.midiAllSoundsOff();
     await startPlayer(tick);
   }
@@ -374,7 +382,7 @@ function seekTo(beat) {
   lastKey = "";
   if (state.playing) {
     state.synth.midiAllNotesOff();
-    state.synth.seekPlayer(tick);
+    startPlayer(tick).catch(showError);          // ripartire da un punto: file accorciato, non seekPlayer
   } else {
     state.pausedTick = tick;
     clearHighlight();
@@ -385,7 +393,7 @@ function seekTo(beat) {
 // A e B: inizio e fine della battuta che si sente (o di quella dove il
 // lettore e' fermo).
 async function currentBeat() {
-  if (state.playing && state.synth) return heardBeat(await state.synth.retrievePlayerCurrentTick());
+  if (state.playing && state.synth) return heardBeat(await playerTick());
   return state.pausedTick / TICKS_PER_BEAT;
 }
 
@@ -425,7 +433,7 @@ function renderLoop() {
 async function watchTransport(token) {
   while (token === state.playToken && state.playing) {
     let tick;
-    try { tick = await state.synth.retrievePlayerCurrentTick(); } catch (e) { return; }
+    try { tick = await playerTick(); } catch (e) { return; }
     if (token !== state.playToken || !state.playing) return;
     let beat = tick / TICKS_PER_BEAT;
     const stop = state.stopAtBeat;
@@ -454,8 +462,9 @@ async function watchTransport(token) {
       }
     } else if (looping && beat >= loop.b) {
       state.synth.midiAllNotesOff();
-      state.synth.seekPlayer(Math.round(loop.a * TICKS_PER_BEAT));
       lastKey = "";
+      await startPlayer(Math.round(loop.a * TICKS_PER_BEAT));      // un nuovo giro: il controllo riparte con lui
+      return;
     }
     if (!state.previewing) {
       showPosition(heardBeat(tick));
@@ -500,7 +509,7 @@ async function frame() {
   if (pollBusy) return;
   pollBusy = true;
   try {
-    const tick = await state.synth.retrievePlayerCurrentTick();
+    const tick = await playerTick();
     const now = performance.now();
     if (now - lastBpmPoll > 1000) {
       lastBpmPoll = now;

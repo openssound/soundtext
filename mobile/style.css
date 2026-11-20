@@ -435,3 +435,34 @@ summary:focus-visible, .button:focus-within {
 .tf-actions { display: flex; gap: 8px; margin-top: 12px; }
 .tf-actions button { flex: 1; min-height: 44px; }
 .hint.error:empty { display: none; }
+
+/* modalita' studio */
+.studio-open { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.studio-open button { flex: 1 1 140px; min-height: 44px; }
+.tuner-grid { display: grid; gap: 8px; }
+.tuner-strings { display: flex; flex-wrap: wrap; gap: 8px; }
+.tuner-strings button { min-width: 64px; min-height: 48px; font-size: 18px; font-weight: 700; }
+.tuner-strings button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.tuner-face { border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: center; background: var(--panel, #2b2d31); }
+.tuner-note { font-size: 72px; font-weight: 800; line-height: 1.1; }
+.tuner-scale { position: relative; height: 14px; margin: 12px 8px; border-radius: 7px; background: linear-gradient(90deg, #8a3a3a, #8a7a3a 35%, #3a8a52 48%, #3a8a52 52%, #8a7a3a 65%, #8a3a3a); }
+.tuner-scale::after { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; background: var(--text); opacity: .5; }
+.tuner-needle { position: absolute; top: -6px; width: 6px; height: 26px; margin-left: -3px; border-radius: 3px; background: var(--text); transition: left .08s linear; }
+.tuner-needle.ok { background: #43b36b; box-shadow: 0 0 0 3px rgba(67, 179, 107, .4); }
+.tuner-cents { font-size: 20px; font-weight: 600; min-height: 1.4em; }
+.study-notes { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; max-height: 34vh; overflow-y: auto; }
+.study-notes li { display: flex; align-items: center; gap: 4px; border: 2px solid var(--line); border-radius: 10px; padding: 4px 8px; font-weight: 700; font-size: 15px; }
+.study-notes li small { color: var(--dim); font-weight: 400; font-size: 11px; }
+.study-notes li b { font-size: 16px; }
+.study-notes li[data-status=ok] { background: #2f7d4b; border-color: #2f7d4b; color: #fff; }
+.study-notes li[data-status=near] { background: #8a7a1c; border-color: #8a7a1c; color: #fff; }
+.study-notes li[data-status=bad], .study-notes li[data-status=missing] { background: var(--danger); border-color: var(--danger); color: #fff; }
+.study-notes li[data-status=missing] { border-style: dashed; }
+.study-summary { font-size: 17px; font-weight: 600; margin: 6px 0; }
+.chart-now { font-size: clamp(64px, 26vw, 150px); font-weight: 800; text-align: center; line-height: 1.05; outline: none; }
+.chart-next { font-size: 26px; text-align: center; color: var(--dim); min-height: 1.3em; }
+.chart-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; overflow-y: auto; flex: 1 1 auto; min-height: 120px; align-content: start; }
+.chart-bars button { display: flex; flex-direction: column; align-items: center; min-height: 56px; padding: 4px; font-size: 20px; font-weight: 700; }
+.chart-bars button small { font-size: 11px; color: var(--dim); font-weight: 400; }
+.chart-bars button[aria-current=true] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.chart-bars button[aria-current=true] small { color: var(--on-accent); }
