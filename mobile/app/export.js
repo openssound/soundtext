@@ -556,7 +556,7 @@ async function exportClip() {
   await analyze();
   if (state.song && state.song.spansReady) await state.song.spansReady;
   const range = exportRange();
-  const wanted = Number($("clipSeconds").value);
+  const wanted = $("clipSeconds").value === "all" ? 0 : Number($("clipSeconds").value);        // 0: tutto il brano (o il tratto A–B)
   const [width, height] = CLIP_SIZES[$("clipFormat").value] || CLIP_SIZES.vertical;
   const content = $("clipContent").value;
   const caps = await exportCapabilities();
@@ -575,7 +575,7 @@ async function exportClip() {
   const out = await renderOffline(midi, { fromBeat: range.fromBeat, toBeat: range.toBeat, seconds: wanted, tail: 0 },
                                   (s) => setExportStatus(t("Calcolo l'audio… {s} s", { s: Math.round(s) })));
   await applyMasterOffline(out);
-  const seconds = Math.min(wanted, out.left.length / out.rate);
+  const seconds = wanted ? Math.min(wanted, out.left.length / out.rate) : out.left.length / out.rate;
   Wav.normalize([out.left, out.right]);
   Wav.fadeOut([out.left, out.right], Math.round(EXPORT_RATE * 0.3));
   const name = fileBase() + "-clip";
