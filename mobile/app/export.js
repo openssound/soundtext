@@ -299,6 +299,121 @@ function drawChordsView(ctx, w, h, beat, model, top, bottom) {
   ctx.textAlign = "left";
 }
 
+// Se il browser non sa disegnare l'SVG della partitura in un canvas (lo fa «bianco» su certi telefoni), lo si
+// disegna a mano: verovio usa solo gruppi con trasformazioni, tracciati (glifi inclusi, richiamati con <use>),
+// poligoni, ellissi, rettangoli e un po' di testo.
+function drawSvgByHand(svg, width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const inner = svg.querySelector("svg.definition-scale") || svg;
+  const vb = (inner.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+  const scale = vb.length === 4 && vb[2] > 0 ? width / vb[2] : 1;
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#000"; ctx.strokeStyle = "#000"; ctx.lineJoin = "round";
+  const defs = new Map();
+  for (const el of svg.querySelectorAll("defs [id]")) defs.set(el.getAttribute("id"), el);
+  const num = (el, a, d = 0) => { const v = parseFloat(el.getAttribute(a)); return Number.isFinite(v) ? v : d; };
+  const matrixOf = (el) => {
+    try { const list = el.transform && el.transform.baseVal; const m = list && list.numberOfItems ? list.consolidate().matrix : null; return m || null; } catch (e) { return null; }
+  };
+  const paint = (el, path) => {
+    ctx.fill(path);
+    const w = num(el, "stroke-width", 1);
+    ctx.lineWidth = w;
+    ctx.lineCap = el.getAttribute("stroke-linecap") || "butt";
+    ctx.stroke(path);
+  };
+  const walk = (el, depth) => {
+    if (depth > 60) return;
+    const tag = el.tagName;
+    if (tag === "defs" || tag === "style" || tag === "desc") return;
+    ctx.save();
+    const m = matrixOf(el);
+    if (m) ctx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+    if (tag === "path") {
+      paint(el, new Path2D(el.getAttribute("d") || ""));
+    } else if (tag === "polygon" || tag === "polyline") {
+      const pts = (el.getAttribute("points") || "").trim().split(/[\s,]+/).map(Number);
+      const p = new Path2D();
+      for (let i = 0; i + 1 < pts.length; i += 2) { if (i === 0) p.moveTo(pts[i], pts[i + 1]); else p.lineTo(pts[i], pts[i + 1]); }
+      if (tag === "polygon") p.closePath();
+      paint(el, p);
+    } else if (tag === "ellipse") {
+      const p = new Path2D();
+      p.ellipse(num(el, "cx"), num(el, "cy"), num(el, "rx"), num(el, "ry"), 0, 0, Math.PI * 2);
+      paint(el, p);
+    } else if (tag === "rect") {
+      const p = new Path2D();
+      p.rect(num(el, "x"), num(el, "y"), num(el, "width"), num(el, "height"));
+      paint(el, p);
+    } else if (tag === "use") {
+      const ref = (el.getAttribute("xlink:href") || el.getAttribute("href") || "").replace(/^#/, "");
+      const target = defs.get(ref);
+      ctx.translate(num(el, "x"), num(el, "y"));
+      if (target) walk(target, depth + 1);
+    } else if (tag === "text") {
+      const x = num(el, "x"), y = num(el, "y"), anchor = el.getAttribute("text-anchor") || "start";
+      const italic = el.closest("g.dir, g.dynam, g.mNum") ? "italic " : "", bold = el.closest("g.tempo, g.reh, g.ending, g.fing") ? "bold " : "";
+      let at = x;
+      for (const span of el.querySelectorAll("tspan")) {
+        if (span.querySelector("tspan")) continue;
+        const size = parseFloat((span.getAttribute("font-size") || "").replace("px", "")) || 360;
+        ctx.font = `${italic}${bold}${size}px Times, serif`;
+        ctx.textAlign = "left";
+        const text = span.textContent;
+        const wide = ctx.measureText(text).width;
+        const startX = anchor === "end" ? at - wide : anchor === "middle" ? at - wide / 2 : at;
+        ctx.fillText(text, startX, y);
+        at = anchor === "start" ? at + wide : at;
+      }
+    } else {
+      for (const child of el.children) walk(child, depth + 1);
+      ctx.restore();
+      return;
+    }
+    ctx.restore();
+  };
+  for (const child of inner.children) walk(child, 0);
+  return canvas;
+}
+
+function canvasHasInk(canvas) {
+  try {
+    const d = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+    let ink = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0 && ++ink > 400) return true;
+    return false;
+  } catch (e) {
+    return true;                       // non si puo' leggere (protezione del browser): non si sa, si tiene com'e'
+  }
+}
+
+// Prima a mano (e' la strada che funziona dappertutto e costa meno); se per qualche motivo esce bianco, dall'immagine SVG.
+async function svgPageToCanvas(svg, w, h) {
+  try {
+    const canvas = drawSvgByHand(svg, w, h);
+    if (canvasHasInk(canvas)) return canvas;
+  } catch (e) {
+    console.warn("disegno a mano della partitura non riuscito", e);
+  }
+  const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    try { await img.decode(); } catch (e) {
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error(t("La partitura non si è potuta disegnare per la clip."))); });
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 // ---- la partitura nella clip
 //
 // La disegna verovio (lo stesso della vista Partitura) su una carta chiara; le pagine diventano immagini e la nota
@@ -335,18 +450,7 @@ async function prepareScoreClip(width) {
         const b = sys.getBoundingClientRect();
         systems.push({ y: offset + b.top - rect.top, h: b.height });
       }
-      const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.src = url;
-      try { await img.decode(); } catch (e) {            // alcuni browser non sanno decode() su un SVG: si aspetta il caricamento
-        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error(t("La partitura non si è potuta disegnare per la clip."))); });
-      }
-      // una volta sola in pixel: disegnare ogni fotogramma dall'SVG rallenta e consuma troppo sul telefono
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
+      const canvas = await svgPageToCanvas(svg, w, h);
       pages.push({ canvas, y: offset, w, h });
       offset += h;
     }
