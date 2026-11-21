@@ -126,5 +126,5 @@ modules:
       # aggiornati a ogni release
       - type: git
         url: https://github.com/openssound/soundtext.git
-        tag: v1.20.1
-        commit: c4df6a2e77928b1bd1113440788d9130e481f7ca
+        tag: v1.21.0
+        commit: a97e34b246539f0648920309ba32ae2b69a0869c
