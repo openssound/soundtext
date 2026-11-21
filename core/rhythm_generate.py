@@ -1051,6 +1051,8 @@ class ChordSpan(NamedTuple):
     # triade maggiore.
     third: Optional[int] = 4
     seventh: Optional[int] = None
+    # La nota di basso di un accordo rivoltato (C/E: 4): il basso suona questa al posto della fondamentale. None = la fondamentale.
+    bass_pc: Optional[int] = None
 
 
 def _third_and_seventh(intervals) -> Tuple[Optional[int], Optional[int]]:
@@ -1091,6 +1093,20 @@ def _chord_span_from_block(ev) -> Optional[ChordSpan]:
                      has_fifth=7 in intervals, third=third, seventh=seventh)
 
 
+def _pc_of_name(name) -> Optional[int]:
+    """La classe di altezza di un nome di nota (E, F#, Bb), o None."""
+    if not name:
+        return None
+    letter = re.match(r"^([A-Ga-g][#b]?)", str(name))
+    if not letter:
+        return None
+    name = letter.group(1)[0].upper() + letter.group(1)[1:]
+    for table in (_SHARP_ROOTS, _FLAT_ROOTS):
+        if name in table:
+            return table.index(name)
+    return None
+
+
 def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
                                default_octave: int = 4, midi_dir: Optional[str] = None) -> List[ChordSpan]:
     """Estrae la sequenza di accordi da una traccia esistente, ignorando note
@@ -1108,7 +1124,7 @@ def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
             spans.append(ChordSpan(
                 start_beat=ev.start, duration_beats=ev.duration,
                 root_pc=chord.root_pc, has_fifth=7 in chord.intervals,
-                third=third, seventh=seventh,
+                third=third, seventh=seventh, bass_pc=_pc_of_name(ev.bass),
             ))
         elif ev.kind == "block":
             span = _chord_span_from_block(ev)
@@ -1145,7 +1161,7 @@ def _bass_notes_for_span(span: ChordSpan, style: str, octave: int, variant: bool
     'variant' alterna un trattamento leggermente diverso ogni
     variation_every accordi (vedi generate_bass_from_chords), per evitare la
     ripetizione meccanica dello stesso disegno per tutto il brano."""
-    root = span.root_pc
+    root = span.bass_pc if span.bass_pc is not None else span.root_pc          # accordo rivoltato: il basso suona la sua nota di basso
     fifth = (span.root_pc + 7) % 12 if span.has_fifth else root
     n_beats = len(_beats_in_span(span))
 
@@ -1166,11 +1182,11 @@ def _bass_notes_for_span(span: ChordSpan, style: str, octave: int, variant: bool
         if n_beats >= 2:
             # variante: la terza VERA dell'accordo (minore su un minore) al posto della quinta;
             # senza terza (sus, quinta vuota) si resta sulla quinta
-            third = (root + span.third) % 12 if span.third is not None else fifth
+            third = (span.root_pc + span.third) % 12 if span.third is not None else fifth
             notes.append((fifth, 0) if not variant else (third, 0))
         if n_beats >= 3:
             if variant and span.seventh is not None:
-                notes.append(((root + span.seventh) % 12, 0))  # variante: la settima dell'accordo
+                notes.append(((span.root_pc + span.seventh) % 12, 0))  # variante: la settima dell'accordo
             else:
                 notes.append((root, 1 if variant else 0))
         if n_beats >= 4:
@@ -1632,6 +1648,19 @@ def _line_velocity(unit: float, bar_beats: float, amount: float, rng: random.Ran
     return velocity_at
 
 
+_LEVEL_VELOCITY = {"light": -14, "full": 8}     # l'intensita' sposta anche la velocity di basso, accompagnamento e riff
+
+
+def _with_level_velocity(velocity_at, intensity: str):
+    """La velocity di ogni attacco spostata dal livello: leggera piu' piano, piena un po' piu' forte (anche per gli stili che
+    non cambiano disegno con l'intensita'); normale resta com'e'."""
+    offset = _LEVEL_VELOCITY.get(intensity)
+    if not offset:
+        return velocity_at
+    base = velocity_at or (lambda u: _LINE_VELOCITY)
+    return lambda u: max(1, min(127, base(u) + offset))
+
+
 def _apply_line_intensity(events: list, level: str, fuller_chords: bool, octave_lift: bool) -> list:
     """Intensita' di basso/accompagnamento/riff (vedi INTENSITIES).
     'light': restano il primo attacco, le pause del disegno e gli attacchi
@@ -1788,6 +1817,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
                                anticipate=unit <= 0.5 and intensity != "light" and not kick_beats)
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
+    velocity_at = _with_level_velocity(velocity_at, intensity)
     return " ".join([grid] + _emit_line(line, end_u, render, velocity_at))
 
 
@@ -2071,6 +2101,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
                                anticipate=unit <= 0.5 and intensity != "light")
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
+    velocity_at = _with_level_velocity(velocity_at, intensity)
     return " ".join([pattern["grid"]] + _emit_line(line, end_u, render, velocity_at))
 
 
@@ -2324,7 +2355,7 @@ def _final_cadence(seq: list, mode: str, tonic_quality: str, bar: Fraction, tota
 
 def generate_chord_progression(key: str, style: str, bars: int = 0, chord_bars: float = 1.0,
                                bar_beats: float = BEATS_PER_BAR, variability=0.0,
-                               seed: Optional[int] = None, ending: bool = False) -> str:
+                               seed: Optional[int] = None, ending: bool = False, inversions: float = 0.0) -> str:
     """Genera un giro armonico nello stile scelto (vedi PROGRESSION_STYLES)
     nella tonalita' 'key' (vedi parse_key), come simboli di accordo. Ogni
     accordo dura la sua durata di stile in battute moltiplicata per
@@ -2382,6 +2413,18 @@ def generate_chord_progression(key: str, style: str, bars: int = 0, chord_bars: 
                              authentic=spec["chords"][0][0] != 0)
     chords = [((chromatic_roots if chromatic else roots)[(tonic + off) % 12] + quality, dur)
               for off, quality, dur, chromatic in seq if dur > 0]
+    # rivolti (8.5): un accordo di tre note che segue uno a distanza di quarta o di quinta si scrive con la terza al basso
+    # (F/A), cosi' la linea del basso procede per gradi congiunti; mai il primo accordo ne' l'ultimo
+    if inversions > 0 and variability > 0:
+        inv_rng = random.Random(f"{seed}/inversions")
+        played = [x for x in seq if x[2] > 0]
+        for k in range(1, len(played) - 1):
+            off, quality, _dur, chromatic = played[k]
+            if chromatic or quality not in ("", "m") or (off - played[k - 1][0]) % 12 not in (5, 7):
+                continue
+            if inv_rng.random() < inversions * min(1.0, 2 * variability):
+                bass_name = roots[(tonic + off + (3 if quality == "m" else 4)) % 12]
+                chords[k] = (chords[k][0] + "/" + bass_name, chords[k][1])
 
     unit = next(u for u in (Fraction(1), Fraction(1, 2), Fraction(1, 4), Fraction(1, 8), Fraction(1, 16))
                 if all((dur / u).denominator == 1 for _, dur in chords))

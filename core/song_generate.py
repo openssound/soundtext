@@ -116,7 +116,8 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
         style = options.get("style") or next(n for n, spec in rg.PROGRESSION_STYLES.items() if spec["mode"] == mode)
         out = rg.generate_chord_progression(key, style, bars=int(options.get("bars", 0)),
                                             chord_bars=float(options.get("chord_bars", 1.0)), bar_beats=bar_beats,
-                                            ending=bool(options.get("ending", False)), **variation)
+                                            ending=bool(options.get("ending", False)),
+                                            inversions=float(options.get("inversions", 0.0)), **variation)
     elif kind == "drums":
         styles = rg.drum_styles_for_meter(project.time_sig)
         style = options.get("style") or (styles[0] if styles else "rock")

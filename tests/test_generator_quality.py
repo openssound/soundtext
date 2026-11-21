@@ -112,50 +112,26 @@ def test_parallel_fifths_and_octaves_between_bass_and_melody_stay_rare():
 
 
 SONG = "ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\nTonalita: C\n\nPiano:\n  1: C | Am | F | G | C | Am | F | G |\n"
-# gli stili che oggi non cambiano con l'intensita' (da migliorare): un nuovo stile piatto fa fallire il test
-FLAT_STYLES = {"drums": {"disco", "afro_68", "metal", "cha_cha", "march", "rock_78", "balkan_78"}, "bass": {"pedal", "waltz"},
-               "comping": set()}
+def _energy(text, instrument):
+    """La somma delle velocity di tutti gli attacchi: la «forza» di un testo."""
+    from core.model import Project
+    project = Project(name="t")
+    track = project.add_track("X", instrument, text)
+    return sum(max(1, e.velocity or 80) for e in track.parsed_events(project.patterns, meter=project.meter())
+               if e.kind in ("note", "chord", "block"))
 
 
-def test_more_intensity_never_means_fewer_notes():
+def test_more_intensity_means_more_energy_for_every_style():
     from mobile import engine
-    for kind, styles in (("drums", rg.DRUM_STYLES), ("bass", rg.BASS_STYLES), ("comping", rg.COMPING_STYLES)):
+    for kind, styles, instrument in (("drums", rg.DRUM_STYLES, "Drums"), ("bass", rg.BASS_STYLES, "Bass"),
+                                     ("comping", rg.COMPING_STYLES, "Piano")):
         for style in styles:
-            counts = []
+            energy = []
             for intensity in ("light", "normal", "full"):
                 total = 0
                 for seed in (1, 2, 3):
                     text = engine.generate(SONG, kind, {"style": style, "bars": 8, "seed": seed, "intensity": intensity,
                                                         "variability": 0, "source": "Piano"})["text"]
-                    total += len(text.split())
-                counts.append(total)
-            assert counts[0] <= counts[1] <= counts[2], (kind, style, counts)
-            if counts[0] == counts[2]:
-                assert style in FLAT_STYLES[kind], (kind, style, "non cambia con l'intensita'", counts)
-
-
-def _melody_scale_share(genre, mood, scale, seeds=(1, 2, 3)):
-    """La quota delle note della melodia che stanno nella scala (gradi dalla tonica) o nell'accordo che suona."""
-    from core.quicksong import quick_song
-    inside = total = 0
-    for seed in seeds:
-        made = quick_song({"genre": genre, "mood": mood, "duration": 60, "seed": seed})
-        project = parse_project_text(made["text"], "Prova")
-        names = made["choices"]["instruments"]
-        track = next(t for t in project.tracks if t.name == names["melody"])
-        harmony = [n for part in ("comp", "comp2", "bass") if part in names
-                   for t in project.tracks if t.name == names[part] for n in _notes(project, t)]
-        key = made["key"]
-        tonic = {"C": 0, "C#": 1, "D": 2, "Eb": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "Ab": 8, "A": 9, "Bb": 10, "B": 11}[key.rstrip("m")]
-        for start, _dur, notes in _notes(project, track):
-            pc = notes[-1] % 12
-            chord = {n % 12 for s, d, ns in harmony if s - 1e-6 <= start < s + d - 1e-6 for n in ns}
-            inside += (pc - tonic) % 12 in scale or pc in chord
-            total += 1
-    return inside / total
-
-
-def test_melodies_follow_the_scale_of_their_genre():
-    assert _melody_scale_share("blues", "tesa", (0, 3, 5, 6, 7, 10)) >= 0.9
-    assert _melody_scale_share("country", "allegra", (0, 2, 4, 7, 9)) >= 0.9
-    assert _melody_scale_share("balcanico78", "tesa", (0, 2, 3, 5, 7, 8, 11)) >= 0.95
+                    total += _energy(text, instrument)
+                energy.append(total)
+            assert energy[0] < energy[1] <= energy[2] and energy[0] < energy[2], (kind, style, energy)

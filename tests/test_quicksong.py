@@ -334,3 +334,23 @@ def test_a_string_layer_plays_only_in_the_choruses_and_the_ending(q):
     assert names and set(names) <= {"Ritornello", "Finale"}
     assert "pad" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "density": 0.1})["parts"]
     assert "pad" not in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 60, "seed": 1})["parts"]
+
+
+def test_the_bridge_of_a_quiet_mood_has_a_pedal_bass(q):
+    song = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1})
+    assert any(s["role"] == "bridge" for s in song["sections"])
+    assert "Pedal" in song["text"]                                   # i pattern del ponte portano il nome dello stile
+    loud = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 240, "seed": 1, "form": "ponte"})
+    assert "Pedal" not in loud["text"]
+    chosen = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "parts": {"bass": {"style": "root"}}})
+    assert "Pedal" not in chosen["text"]                                # uno stile scelto a mano vince
+
+
+def test_the_last_chorus_has_a_second_voice_in_thirds(q):
+    import re as _re
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    assert "harm" in song["parts"]
+    boxes = _re.findall(r'Box Clarinet "([^"]*)" \|\d+:\n  (%MelodiaRitornello\.thirds)', song["text"])
+    assert boxes == [("Ritornello", "%MelodiaRitornello.thirds")]
+    assert "harm" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "development": False})["parts"]
+    assert "harm" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 45, "seed": 1})["parts"]      # un solo ritornello

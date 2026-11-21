@@ -32,7 +32,7 @@ ENSEMBLES = ("piano", "acustica", "elettrica", "elettronica", "orchestra")
 MELODIES = ("nessuna", "cantabile", "vivace", "ballata", "aaba")
 ENERGY_CURVES = ("sale", "picco", "cala")
 ENDINGS = ("cadenza", "rallentando", "sfumato")
-PARTS = ("progression", "comp", "comp2", "horn", "pad", "bass", "drums", "melody")
+PARTS = ("progression", "comp", "comp2", "horn", "pad", "bass", "drums", "melody", "harm")
 _MELODY_STYLE = {"cantabile": "melody_period", "vivace": "melody_lively", "ballata": "melody_ballad", "aaba": "melody_aaba"}
 
 # i parametri di ogni atmosfera: modo, fattore del tempo, intensita' (strofa, ritornello), giro armonico
@@ -170,7 +170,7 @@ _GENRE_FX = {
 # in quali sezioni suona ogni parte
 _ENTER = {
     "progression": (), "comp": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
-    "comp2": ("chorus", "bridge", "solo", "end", "loop"), "horn": ("chorus", "solo", "end"), "pad": ("chorus", "bridge", "end"),
+    "comp2": ("chorus", "bridge", "solo", "end", "loop"), "horn": ("chorus", "solo", "end"), "pad": ("chorus", "bridge", "end"), "harm": (),
     "bass": ("verse", "chorus", "bridge", "solo", "end", "loop"), "drums": ("verse", "chorus", "bridge", "solo", "end", "loop"),
     "melody": ("chorus", "solo", "end", "loop"),
 }
@@ -219,7 +219,7 @@ def _ending_labels() -> Dict[str, str]:
 
 def _part_labels() -> Dict[str, str]:
     return {"progression": tr("Giro armonico"), "comp": tr("Accompagnamento"), "comp2": tr("Secondo accompagnamento"),
-            "horn": tr("Ottoni"), "pad": tr("Archi (strato)"), "bass": tr("Basso"), "drums": tr("Batteria"), "melody": tr("Melodia")}
+            "horn": tr("Ottoni"), "pad": tr("Archi (strato)"), "harm": tr("Seconda voce"), "bass": tr("Basso"), "drums": tr("Batteria"), "melody": tr("Melodia")}
 
 
 def _duration_label(seconds: int) -> str:
@@ -571,6 +571,12 @@ def quick_song(options: Optional[dict] = None) -> dict:
     develop = (options.get("development", True) not in (False, 0, "0", "no") and "melody" in active and len(chorus_ids) >= 2
                and mod_from < 0 and chorus_ids[-1] < last and any(r == "end" for _n, r, _b in sections[chorus_ids[-1] + 1:]))
     dev_pattern = ""
+    harm_body = ""
+    if develop:                                              # la seconda voce dell'ultimo ritornello: il tema in terze (.thirds)
+        c["instruments"]["harm"] = "Flute" if c["instruments"]["melody"] == "Clarinet" else "Clarinet"
+        active.append("harm")
+        from core.instruments import make_instrument_available as _available
+        _available(c["instruments"]["harm"])
     for idx, (sname, role, bars) in enumerate(sections):
         skey = _shift_key(key, 2) if 0 <= mod_from <= idx else key
         closing = idx == last and not fading or (fading and role == "end")
@@ -578,12 +584,16 @@ def quick_song(options: Optional[dict] = None) -> dict:
         sidx = 0 if form == "loop" else idx                  # in un loop l'armonia e' sempre la stessa
         seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
         lvl = section_level.get(idx, intensity[role])
-        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl)
+        # il ponte di un'atmosfera quieta, sul pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano
+        bass_style = ("pedal" if role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2 and not (c["parts"].get("bass") or {}).get("style")
+                      and c["styles"]["bass"] not in ("walking", "blues", "shuffle") else c["styles"]["bass"])
+        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style)
         if cache not in harmony:
             written = _chord_loop(c["chords"], bars) if c["chords"] else None
             progression = written or E.generate(base, "progression", {
                 "key": skey, "style": styles[role], "bars": bars, "chord_bars": 1.0, "seed": seed_of("progression"),
-                "ending": closing and c["ending"] != "sfumato", "variability": variability})["text"]
+                "ending": closing and c["ending"] != "sfumato", "variability": variability,
+                "inversions": _float(options.get("inversions"), 0.35)})["text"]
             temp = E.add_track(base, chords_track, progression)["text"]
             project = parse_project_text(temp, "Brano")
             bodies = {}
@@ -595,7 +605,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     body = E.generate(temp, "comping", {**common, "source": chords_track, "style": c["styles"][part],
                                                         "instrument": c["instruments"][part]})["text"]
                 elif part == "bass":
-                    body = E.generate(temp, "bass", {**common, "source": chords_track, "style": c["styles"]["bass"],
+                    body = E.generate(temp, "bass", {**common, "source": chords_track, "style": bass_style,
                                                      "instrument": c["instruments"]["bass"],
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
@@ -627,7 +637,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 body = _rallentando(body, bars * beats_per_bar, bpm)
             if compact_on:                                    # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
                 from .compact_text import compact
-                label = {"melody": "Melodia"}.get(part) or c["styles"].get(part) or part
+                label = {"melody": "Melodia"}.get(part) or (bass_style if part == "bass" else c["styles"].get(part)) or part
                 made_text = compact(body, bar_beats, label, existing=raw_patterns)
                 raw_patterns.update(made_text["patterns"])
                 patterns.update({n: (humanize_drums(b, c["styles"]["drums"], human) if part == "drums" else b)
@@ -647,7 +657,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     top = _top_pitch(patterns[dev_pattern], c["instruments"]["melody"], c["meter"])
                     if top is not None and top + 12 <= get_instrument(c["instruments"]["melody"]).range_high:
                         body += ".octave(1)"
+                    harm_body = "%" + dev_pattern + ".thirds"
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
+        if harm_body and idx == chorus_ids[-1]:
+            boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent(harm_body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
 

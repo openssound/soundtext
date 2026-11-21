@@ -759,7 +759,7 @@ def test_bass_full_lifts_the_last_root_an_octave():
     normal = generate_bass_from_chords(spans, "root", octave=2, variation_every=0)
     full = generate_bass_from_chords(spans, "root", octave=2, variation_every=0, intensity="full")
     assert normal.split()[:4] == ["4:", "c*2", "c*2", "c*2"]
-    assert full.split()[4] == "c*3"
+    assert [t for t in full.split() if not t.endswith("@")][4] == "c*3"          # (senza la velocity della piena)
 
 
 def test_comping_full_adds_the_upper_octave_to_chords():
@@ -1008,3 +1008,17 @@ def test_guide_tones_on_triads_do_not_leap_two_octaves():
     from core.chords import pitch_to_midi
     pitches = [pitch_to_midi(e.letter, e.octave) for e in parse_track_text(text, {}) if e.kind == "note"]
     assert max(abs(a - b) for a, b in zip(pitches, pitches[1:])) <= 12
+
+
+def test_progression_inversions_write_slash_chords_and_the_bass_plays_them():
+    from core.rhythm_generate import extract_chords_from_track, generate_chord_progression, generate_bass_from_chords
+    plain = generate_chord_progression("C", "pop", bars=8, variability=0.8, seed=3)
+    assert "/" not in plain                                              # senza il parametro il giro e' quello di prima
+    text = generate_chord_progression("C", "pop", bars=8, variability=0.8, seed=3, inversions=1.0)
+    spans = extract_chords_from_track(text, {})
+    inverted = [s for s in spans if s.bass_pc is not None]
+    assert inverted and all(s.bass_pc != s.root_pc for s in inverted) and spans[0].bass_pc is None and spans[-1].bass_pc is None
+    assert generate_chord_progression("C", "pop", bars=8, variability=0, seed=3, inversions=1.0) == \
+        generate_chord_progression("C", "pop", bars=8, variability=0, seed=3)      # senza variabilita' niente rivolti
+    bass = generate_bass_from_chords(extract_chords_from_track("4C/E 4F", {}), "root", octave=2, min_total_beats=8)
+    assert bass.split()[1].lower().startswith("e")                       # il basso suona il mi, non il do
