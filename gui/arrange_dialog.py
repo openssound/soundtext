@@ -177,6 +177,7 @@ class ArrangeDialog(QDialog):
             for value, label in section_levels():
                 combo.addItem(label, value)
             combo.setCurrentIndex(max(0, combo.findData(section.intensity)))
+            combo.setAccessibleName(tr("Intensità della sezione {name}", name=section.name))
             self.table.setCellWidget(row, 2, combo)
             chords = QTableWidgetItem(tr("della traccia scelta") if section.text.strip() else tr("senza accordi"))
             chords.setFlags(chords.flags() & ~Qt.ItemIsEditable)

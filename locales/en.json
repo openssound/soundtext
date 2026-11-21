@@ -1242,6 +1242,7 @@
  "Intensita'": "Intensity",
  "Intensita' sconosciuta: '{intensity}' (valide: {0})": "Unknown intensity: '{intensity}' (valid: {0})",
  "Intensita':": "Intensity:",
+ "Intensità della sezione {name}": "Intensity of section {name}",
  "Intensità di {name}": "Intensity of {name}",
  "Intensità:": "Intensity:",
  "Interfaccia del plugin": "Plugin interface",
