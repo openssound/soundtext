@@ -499,6 +499,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     harmony: Dict[Tuple, dict] = {}                          # accordi, accompagnamenti, basso, melodia: uguali nelle ripetizioni
     drum_texts: Dict[Tuple, str] = {}                        # la batteria: in un loop cambia a ogni giro (i fill)
     boxes: List[str] = []
+    patterns: Dict[str, str] = {}                            # i pattern del testo compatto (core.compact_text), uno per battuta ripetuta
+    compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     out_sections: List[dict] = []
     start_bar = 0
     chords_track = "Piano"
@@ -553,6 +555,12 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 body = _scale_velocity(body, 0.55)
             if closing and c["ending"] == "rallentando" and part == "comp":
                 body = _rallentando(body, bars * beats_per_bar, bpm)
+            if compact_on:                                    # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
+                from .compact_text import compact
+                label = {"melody": "Melodia"}.get(part) or c["styles"].get(part) or part
+                made_text = compact(body, bar_beats, label, existing=patterns)
+                patterns.update(made_text["patterns"])
+                body = made_text["text"]
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
@@ -572,6 +580,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
              "", header(key).rstrip("\n"), ""]
     for part in active:
         lines += [E.add_track("", c["instruments"][part], "", name=part_track(c, part))["text"].rstrip("\n").split("\n")[0].rstrip(), ""]
+    if patterns:
+        lines.append(_tr("// I pattern: le battute che si ripetono, scritte una volta sola."))
+        lines.append("")
+        lines += ["\n\n".join(f"Pattern %{n}:\n  {b}" for n, b in patterns.items()), ""]
     lines.append(_tr("// Le sezioni, ognuna in un box (vista Struttura): si spostano e si copiano."))
     lines.append("")
     lines += ["\n\n".join(boxes)]

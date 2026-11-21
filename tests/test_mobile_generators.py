@@ -177,12 +177,30 @@ def test_choices_for_the_crea_screen():
 
 def test_add_track_keeps_the_rest_of_the_file():
     part = engine.generate(SONG, "bass", {"seed": 3, "bars": 4})["text"]
-    added = engine.add_track(SONG, "Bass", part)
+    added = engine.add_track(SONG, "Bass", part, compact=False)
     assert added["text"].startswith(SONG.rstrip("\n") + "\n\n") and added["name"] == "Bass"
     assert added["text"][added["start"]:].startswith("Bass:\n  ")
     project = parse_project_text(added["text"], "Prova")
     assert project.get_track("Bass").text == part and project.get_track("Bass").instrument_name == "Bass"
-    again = engine.add_track(added["text"], "Bass", part)
+    again = engine.add_track(added["text"], "Bass", part, compact=False)
     assert again["name"] == "Bass 2" and "Traccia Bass 2 [Bass]:" in again["text"]
     chords = engine.add_track(SONG, "Piano", "1: F | C |", name="Accordi")
     assert parse_project_text(chords["text"], "Prova").get_track("Accordi").instrument_name == "Piano"
+
+
+def test_add_track_compact_writes_bars_and_patterns_with_the_same_midi():
+    import tempfile
+    from core.midi_export import export_project_to_midi
+
+    def midi(text):
+        project = parse_project_text(text, "Prova")
+        with tempfile.TemporaryDirectory() as d:
+            export_project_to_midi(project, d + "/x.mid")
+            return open(d + "/x.mid", "rb").read()
+
+    part = engine.generate(SONG, "drums", {"seed": 3, "bars": 8, "variability": 0})["text"]
+    extended = engine.add_track(SONG, "Drums", part, name="Batteria", compact=False)
+    compact = engine.add_track(SONG, "Drums", part, name="Batteria")
+    assert "Pattern %" in compact["text"] and compact["text"][compact["start"]:].startswith("Traccia Batteria [Drums]:")
+    assert len(compact["text"]) < len(extended["text"])
+    assert midi(compact["text"]) == midi(extended["text"])

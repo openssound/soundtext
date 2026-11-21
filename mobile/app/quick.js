@@ -19,7 +19,7 @@ const quick = {
   previewing: null, resumed: null,
 };
 const QUICK_KEY = "stmobile.quick";
-const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop"];
+const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact"];
 
 // 64 s -> «1:04»
 function formatClock(seconds) {
@@ -129,6 +129,7 @@ function quickBuildDetail() {
   $("quickSeconds").value = o.seconds || "";
   quickFill($("quickBars"), [8, 16, 32, 64].map((n) => ({ value: n, label: t("{n} battute", { n }) })), o.bars, t("a tempo"));
   $("quickLoop").checked = !!o.loop;
+  $("quickCompact").checked = o.compact !== false;
 }
 
 // Le scelte a mano dai campi (vuoto = la ricetta)
@@ -152,6 +153,7 @@ function quickReadFields() {
   set("seconds", seconds > 0 ? Math.min(600, Math.max(5, seconds)) : "");
   set("bars", Number($("quickBars").value) || "");
   set("loop", $("quickLoop").checked);
+  set("compact", $("quickCompact").checked ? "" : false);
   o.duration = Number($("quickDuration").value) || o.duration || 60;
   o.mood = $("quickMood").value || o.mood;
 }
@@ -519,7 +521,7 @@ function setupQuick() {
   $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
   $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };
   for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickBpm", "quickModulation",
-                    "quickDensity", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop"]) {
+                    "quickDensity", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact"]) {
     $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });
   }
 }

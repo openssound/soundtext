@@ -1892,6 +1892,8 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
     new = text
     existing = {t.name for t in project.tracks if not t.is_audio}
     placed = []
+    made_patterns = {}
+    compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     for kind in parts:
         clips = made.get(kind) or []
         if not clips:
@@ -1915,6 +1917,18 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
                     clip.text = seen[key]
                 elif key is not None:
                     seen[key] = clip.text
+        pattern_blocks = ""
+        if compact_on:                               # battute e pattern per quelle che si ripetono (core.compact_text)
+            from core.compact_text import compact
+            label = {"drums": opts.drum_style, "bass": opts.bass_style, "comping": opts.comping_style}[kind] or kind
+            known = {n: " ".join(p.tokens) for n, p in parse_project_text(new, "Brano").patterns.items()}
+            known.update(made_patterns)
+            for clip in clips:
+                one = compact(clip.text, bar_beats, label, existing=known)
+                clip.text = one["text"]
+                for pname, pbody in one["patterns"].items():
+                    known[pname] = made_patterns[pname] = pbody
+                    pattern_blocks += f"Pattern %{pname}:\n  {pbody}\n\n"
         blocks = [_box_header(name, clip.name, clip.start_beat) + "\n" + _indent(clip.text.strip("\n")) for clip in clips]
         body = "\n\n".join(blocks)
         # una traccia nuova ha la sua intestazione (vuota, come nei brani a box): senza, il motore non la vede
@@ -1922,7 +1936,7 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
         if name not in {t.name for t in parse_project_text(new, "Brano").tracks}:
             header = (f"{name}:" if re.match(r"^[A-Za-z]\w*$", name) and _has_short_header(name)
                       else f"Traccia {name} [{name}]:") + "\n\n"
-        new = new.rstrip("\n") + "\n\n" + header + body + "\n"
+        new = new.rstrip("\n") + "\n\n" + pattern_blocks + header + body + "\n"
         placed.append(name)
     _check_overlaps(new)
     return {"text": new, "tracks": placed, "seed": seed,

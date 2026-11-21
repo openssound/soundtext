@@ -171,18 +171,23 @@ def _has_short_header(instrument: str) -> bool:
     return instrument in all_instruments() or is_instrument_name(instrument)
 
 
-def add_track(text: str, instrument: str, body: str, name: Optional[str] = None) -> dict:
+def add_track(text: str, instrument: str, body: str, name: Optional[str] = None, compact: bool = True) -> dict:
     """Il brano con una traccia nuova in fondo: {text, name, start}.
 
     Il nome e' quello dato o quello dello strumento, con un numero se c'e'
     gia' una traccia che si chiama cosi'. L'intestazione e' la forma breve
     «Bass:» quando il nome e' lo strumento, altrimenti
-    «Traccia Nome [Strumento]:». Il resto del file non cambia."""
+    «Traccia Nome [Strumento]:». Il resto del file non cambia.
+
+    compact (default): il testo dei generatori si scrive diviso in battute, e le battute che si ripetono diventano pattern
+    «Pattern %Nome:» messi subito prima della traccia (core.compact_text): il suono non cambia."""
     from core.project_io import parse_project_text
+    taken, project = set(), None
     try:
-        taken = {t.name for t in parse_project_text(text, "Brano").tracks}
+        project = parse_project_text(text, "Brano")
+        taken = {t.name for t in project.tracks}
     except Exception:
-        taken = set()
+        project = None
     base = (name or instrument).strip()
     candidate, n = base, 2
     while candidate in taken:
@@ -191,10 +196,17 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None)
         header = f"{candidate}:"
     else:
         header = f"Traccia {candidate} [{instrument}]:"
+    blocks = ""
+    if compact and project is not None:
+        from core.compact_text import compact_for_project
+        made = compact_for_project(project, body.strip(), re.sub(r"\W", "", candidate))
+        body = made["text"]
+        blocks = "".join(f"Pattern %{n}:\n  {b}\n\n" for n, b in made["patterns"].items())
     lines = "\n".join("  " + line if line.strip() else "" for line in body.strip().split("\n"))
     head = text.rstrip("\n")
-    new = (head + "\n\n" if head else "") + header + "\n" + lines + "\n"
-    return {"text": new, "name": candidate, "start": len(head) + (2 if head else 0)}
+    head_blocks = (head + "\n\n" if head else "") + blocks
+    new = head_blocks + header + "\n" + lines + "\n"
+    return {"text": new, "name": candidate, "start": len(head_blocks)}
 
 
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,

@@ -895,6 +895,23 @@ def test_arrange_song_writes_one_box_per_section_aligned_with_the_chords():
     assert e.arrange_song(SECTIONED, {"seed": 4})["text"] == r["text"]
 
 
+def test_arrange_song_compact_has_patterns_and_the_same_midi():
+    e = _quick()
+    plain = e.arrange_song(SECTIONED, {"seed": 4, "compact": False})["text"]
+    compact = e.arrange_song(SECTIONED, {"seed": 4, "variability": 0, "phrase_dynamics": False})["text"]
+    plain0 = e.arrange_song(SECTIONED, {"seed": 4, "variability": 0, "phrase_dynamics": False, "compact": False})["text"]
+    assert "Pattern %" not in plain and "Pattern %" in compact and len(compact) < len(plain0)
+    from core.midi_export import export_project_to_midi
+    from core.project_io import parse_project_text
+    import tempfile
+
+    def midi(text):
+        with tempfile.TemporaryDirectory() as d:
+            export_project_to_midi(parse_project_text(text, "Brano"), d + "/x.mid")
+            return open(d + "/x.mid", "rb").read()
+    assert midi(compact) == midi(plain0)
+
+
 def test_arrange_song_chorus_is_fuller_than_verse():
     e = _quick()
     r = e.arrange_song(SECTIONED, {"seed": 4, "parts": ["drums", "comping"]})

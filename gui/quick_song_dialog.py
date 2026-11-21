@@ -90,6 +90,9 @@ class QuickSongDialog(QDialog):
         detail.addRow(tr("Densita' (piu' semplice - piu' ricco):"), self.density)
         self.loop_check = QCheckBox(tr("Un loop senza fine"))
         detail.addRow("", self.loop_check)
+        self.compact_check = QCheckBox(tr("Testo compatto (battute e pattern)"))
+        self.compact_check.setChecked(True)
+        detail.addRow("", self.compact_check)
         self.chords_edit = QLineEdit()
         self.chords_edit.setPlaceholderText("Am F C G")
         detail.addRow(tr("Parto da un giro scritto:"), self.chords_edit)
@@ -174,6 +177,8 @@ class QuickSongDialog(QDialog):
                 o["chords"] = self.chords_edit.text().strip()
             if self.seed_spin.value():
                 self._seed = self.seed_spin.value()
+        if not self.compact_check.isChecked():
+            o["compact"] = False
         o["seed"] = self._seed if self._seed is not None else random.randrange(2 ** 31)
         return o
 

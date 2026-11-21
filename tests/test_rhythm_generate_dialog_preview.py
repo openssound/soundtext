@@ -211,6 +211,7 @@ def test_chord_progression_dialog_starts_from_project_key_and_filters_styles_by_
     dlg.bars_spin.setValue(8)
     dlg.chord_duration_combo.setCurrentIndex(0)                   # mezza battuta
     assert dlg.preview_edit.toPlainText() == "4: " + " ".join(["2G", "2D", "2Em", "2C"] * 4)
+    dlg.compact_check.setChecked(False)
     dlg.accept()
     assert dlg.result_text() == dlg.preview_edit.toPlainText()
 
@@ -384,3 +385,31 @@ def test_progression_dialog_final_cadence_checkbox():
     assert dlg.preview_edit.toPlainText() == "4: 4C 4G 4Am 4F 4C 4G 4Am 4F"
     dlg.ending_check.setChecked(True)
     assert dlg.preview_edit.toPlainText() == "4: 4C 4G 4Am 4F 4C 4G 2Am 2G7 4C"
+
+
+def test_drum_dialog_compact_text_same_midi_and_patterns_in_project():
+    from core.midi_export import export_project_to_midi
+    import tempfile
+
+    def midi_of(project, text):
+        probe = Project(name="t", tempo_bpm=100)
+        probe.patterns = dict(project.patterns)
+        probe.add_track("Drums", "Drums", text)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "x.mid")
+            export_project_to_midi(probe, path)
+            return open(path, "rb").read()
+
+    project = _project()
+    dlg = DrumGenerateDialog(None, project, "Drums", "traccia 'Drums'", default_bars=4, track_name="Drums")
+    raw = dlg.preview_edit.toPlainText()                      # lo stesso testo, esteso e compatto
+    dlg.compact_check.setChecked(False)
+    dlg.accept()
+    extended = dlg.result_text()
+    assert extended == raw and not project.patterns
+    dlg2 = DrumGenerateDialog(None, project, "Drums", "traccia 'Drums'", default_bars=4, track_name="Drums")
+    dlg2.preview_edit.setPlainText(raw)
+    dlg2.accept()
+    compact_ = dlg2.result_text()
+    assert "|" in compact_
+    assert midi_of(Project(name="t"), extended) == midi_of(project, compact_)

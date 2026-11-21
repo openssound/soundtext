@@ -260,6 +260,11 @@ class _GeneratedTrackDialogBase(QDialog):
             layout.addWidget(QLabel(f"<b style='color:#e05555'>{unsupported}</b>"))
 
         layout.addWidget(QLabel(tr("Anteprima (modificabile prima di confermare):")))
+        self.compact_check = QCheckBox(tr("Testo compatto (battute, stanghette e pattern per le battute che si ripetono)"))
+        self.compact_check.setChecked(True)
+        self.compact_check.setToolTip(tr("Alla conferma il testo si scrive diviso in battute e, dove una battuta si ripete, "
+                                         "con un pattern. Il suono resta identico. Togli la spunta per il testo esteso."))
+        layout.addWidget(self.compact_check)
         self.preview_edit = NotationEditor()
         self.preview_edit.setFont(QFont("Monospace", 10))
         self.preview_edit.on_selection_context_menu = self._on_preview_selection_context_menu
@@ -569,8 +574,21 @@ class _GeneratedTrackDialogBase(QDialog):
         if not ok:
             QMessageBox.critical(self, tr("Errore di sintassi"), tr("Correggi l'anteprima prima di confermare:\n{msg}", msg=msg))
             return
+        if self.compact_check.isChecked():
+            from core.compact_text import compact_into_project
+            text = compact_into_project(self.project, text, self._compact_label())
+            ok, msg = validate_track_text(text, self.project.patterns)
+            if not ok:
+                QMessageBox.critical(self, tr("Errore di sintassi"), msg)
+                return
         self._result_text = text
         super().accept()
+
+    def _compact_label(self) -> str:
+        """Il nome da cui prendono il loro i pattern: lo stile scelto, se il dialogo ne ha uno."""
+        combo = getattr(self, "style_combo", None)
+        data = combo.currentData() if combo is not None else ""
+        return data if isinstance(data, str) else ""
 
     def result_text(self):
         return getattr(self, "_result_text", None)
