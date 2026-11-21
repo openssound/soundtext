@@ -458,6 +458,15 @@
     </label>
     <p class="hint" data-i18n>Con le stesse scelte e lo stesso seme esce lo stesso brano. Il seme di ogni brano è scritto in cima al testo.</p>
     <button id="quickFromDoc" data-i18n>Parti dal brano aperto</button>
+    <h3 data-i18n>Parti da un'idea</h3>
+    <p class="hint" data-i18n>Canticchia una melodia con «Canta» (nel Testo), poi scegli qui la sua traccia: viene armonizzata e il brano nasce intorno a lei. Oppure scrivi il giro di accordi nel campo qui sopra.</p>
+    <label class="hum-grid"><span data-i18n>Melodia della traccia:</span><select id="quickIdeaTrack"></select></label>
+    <button id="quickIdea" data-i18n>Parti da questa melodia</button>
+    <h3 data-i18n>Stili personali</h3>
+    <p class="hint" data-i18n>Importa il file degli stili personali del computer (generator_styles.json): compaiono fra gli stili delle parti.</p>
+    <label class="button"><span data-i18n>Importa stili personali…</span><input id="quickStylesFile" type="file" accept=".json,application/json"></label>
+    <button id="quickStylesClear" hidden data-i18n>Togli gli stili personali</button>
+    <p id="quickStylesInfo" class="hint" role="status" aria-live="polite"></p>
   </div>
   <p id="quickStatus" class="hum-status" role="status" aria-live="polite"></p>
   <div class="pad-controls">

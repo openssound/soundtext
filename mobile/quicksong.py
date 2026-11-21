@@ -201,6 +201,14 @@ def quick_choices() -> dict:
               "bass": [{"value": v, "label": l} for v, l in labels["bass"]],
               "comp": [{"value": v, "label": l} for v, l in labels["comping"]],
               "progression": [{"value": v, "label": l, "mode": rg.PROGRESSION_STYLES[v]["mode"]} for v, l in labels["progression"]]}
+    # gli stili personali importati dal computer (engine.install_user_styles) si aggiungono alle liste
+    try:
+        from core import user_styles as us
+        for target, kind in (("drums", "drums"), ("bass", "bass"), ("comp", "comping")):
+            for name in us.user_style_names(kind):
+                styles[target].append({"value": us.style_key(name), "label": tr("{name} (personale)", name=name)})
+    except Exception:
+        pass
     genres = []
     for g in GENRES:
         d = GENRES_DATA[g]

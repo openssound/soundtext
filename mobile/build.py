@@ -100,6 +100,11 @@ engine.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 1})
 engine.quick_choices(); engine.quick_read("// quick: {}")
 # modalita' studio: le note di una traccia e gli accordi per la vista accordi
 engine.track_notes(source, "Piano"); engine.chord_chart(source); engine.speak_at(source, 400); engine.visual_notes(source)
+# partire da un'idea: la melodia armonizzata, gli stili personali e le parti che seguono la struttura
+melody = chr(10).join(["ST: 2.6", "Tempo: 100 BPM", "Metrica: 4/4", "", "Flute:", "  4: e*5 g*5 a*5 g*5 | e*5 d*5 c*5 2r | a*4 c*5 e*5 d*5 | c*5 4r |", ""])
+engine.quick_from_melody(melody, "Flute", {"genre": "pop", "mood": "calma", "duration": 15, "seed": 1})
+engine.install_user_styles("")
+engine.structure_sections(source); engine.arrange_song(engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "seed": 1})["text"], {"replace": True, "seed": 1})
 for kind in ("intervals", "chords", "progression", "bar", "error", "rhythm"):
     engine.exercise(kind, 1, 1); engine.exercise_check(kind, 1, 1, 0)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))

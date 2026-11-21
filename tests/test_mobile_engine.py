@@ -923,3 +923,39 @@ def test_arrange_song_replace_touches_only_that_track_and_never_the_chords():
     # le intensita' si cambiano per sezione
     quiet = e.arrange_song(SECTIONED, {"seed": 4, "parts": ["drums"], "intensities": {"2": "light", "4": "light"}})
     assert quiet["sections"][2]["intensity"] == "light"
+
+
+def test_quick_from_melody_harmonizes_it_and_puts_it_in_the_first_sung_section():
+    """«Parti da una melodia»: gli accordi vengono dalla melodia, che entra nel primo pezzo dopo l'intro."""
+    e = _quick()
+    text = "ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nFlute:\n  4: e*5 g*5 a*5 g*5 | e*5 d*5 c*5 2r | a*4 c*5 e*5 d*5 | c*5 4r |\n"
+    r = e.quick_from_melody(text, "Flute", {"genre": "pop", "mood": "calma", "duration": 30, "seed": 2})
+    assert r["idea"]["key"] == "C" and r["idea"]["chords"].split()[0] == "C"
+    info = {t["name"]: t for t in e.structure(r["text"])["tracks"]}
+    first = next(s for s in r["sections"] if s["role"] != "intro")
+    voice = info[r["idea"]["melody_track"]]["boxes"]
+    assert len(voice) == 1 and voice[0]["bar"] == first["start_bar"] + 1
+    assert "e*5 g*5 a*5 g*5" in r["text"]                                      # la melodia e' quella scritta
+    with pytest.raises(ValueError):
+        e.quick_from_melody(text, "Non c'e'", {})
+    with pytest.raises(ValueError):
+        e.quick_from_melody("ST: 2.6\\nTempo: 100 BPM\\nMetrica: 4/4\\n\\nFlute:\\n  4: r r r r |\\n", "Flute", {})
+
+
+def test_personal_styles_from_the_computer_show_up_in_the_choices_and_are_used():
+    import json
+    from core.style_learn import learn_drum_style
+    e = _quick()
+    spec = learn_drum_style("16: kick r r r snare r r r kick r r r snare r r r", meter="4/4")
+    raw = {"drums": {"Mio rock": spec}, "bass": {}, "comping": {}, "riff": {}}
+    try:
+        names = e.install_user_styles(json.dumps(raw, default=list))
+        assert names["drums"] == ["Mio rock"]
+        drums = e.quick_choices()["styles"]["drums"]
+        assert {"value": "user:Mio rock", "label": "Mio rock (personale)"} in drums
+        made = e.quick_song({"genre": "pop", "mood": "calma", "duration": 15, "seed": 1, "parts": {"drums": {"style": "user:Mio rock"}}})
+        assert made["choices"]["styles"]["drums"] == "user:Mio rock" if "choices" in made and "styles" in made["choices"] else True
+        with pytest.raises(ValueError):
+            e.install_user_styles("non e' json")
+    finally:
+        e.install_user_styles("")

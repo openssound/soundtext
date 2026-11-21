@@ -13,6 +13,7 @@
 // un modo all'altro i valori restano. Dopo la prima volta il brano e' sempre lo stesso: «Un'altra», «Sorprendimi» e le
 // parti lo aggiornano senza riempire la lista dei brani.
 
+const QUICK_STYLES_KEY = "stmobile.userstyles";
 const quick = {
   choices: null, busy: false, simple: true, opts: {}, parts: {}, last: null, songId: null, lastName: "", preview: new Map(),
   previewing: null, resumed: null,
@@ -250,8 +251,88 @@ function quickRenderParts() {
     again.setAttribute("aria-label", t("Un'altra {name}", { name: labels[part] }));
     again.onclick = () => quickRegenerate("part", part).catch(showError);
     li.append(again);
+    const crea = document.createElement("button");
+    crea.textContent = t("Apri in Crea");
+    crea.setAttribute("aria-label", t("Apri {name} in Crea", { name: labels[part] }));
+    crea.onclick = () => quickOpenPartInCrea(part).catch(showError);
+    if (CREA_KIND[part]) li.append(crea);
     list.append(li);
   }
+}
+
+// ---- «Apri in Crea»: una parte del brano generato, con stile, strumento e seme, per lavorarci a fondo
+
+const CREA_KIND = { progression: "progression", drums: "drums", bass: "bass", comp: "comping", comp2: "comping", horn: "comping" };
+
+async function quickOpenPartInCrea(part) {
+  const kind = CREA_KIND[part], made = quick.last;
+  if (!kind || !made) return;
+  await loadGenChoices();
+  const style = (quick.parts[part] && quick.parts[part].style) || (made.choices && made.choices.styles && made.choices.styles[part]) || "";
+  const instrument = made.choices && made.choices.instruments && made.choices.instruments[part];
+  const values = { ...genDefaults(kind), bars: made.bars };
+  if (style) values.style = style;
+  if (instrument && kind !== "drums" && kind !== "progression") values.instrument = instrument;
+  if (kind === "progression") values.key = made.key;
+  gen.values[kind] = values;
+  const seed = made.seeds && made.seeds[part];
+  if (seed != null) gen.seeds[kind] = seed;
+  quickClose();
+  setView("crea");
+  $("genFollow").checked = false;                  // la parte com'e' nel brano, non spezzata per sezioni
+  await setGenKind(kind);
+  const message = t("{name} aperta in Crea: stile, strumento e seme sono quelli del brano.", { name: (quick.choices.parts.find((p) => p.value === part) || {}).label || part });
+  $("genStatus").textContent = message;
+  announce(message);
+}
+
+// ---- stili personali del computer
+
+async function quickInstallStyles(json) {
+  const names = (await call("install_user_styles", { args: [json || ""] })).result;
+  const total = Object.values(names).reduce((n, l) => n + l.length, 0);
+  $("quickStylesInfo").textContent = total ? t("Stili personali: {n}.", { n: total }) + " " + Object.entries(names).filter(([, l]) => l.length).map(([k, l]) => `${k}: ${l.join(", ")}`).join(" · ") : "";
+  $("quickStylesClear").hidden = !total;
+  return total;
+}
+
+async function quickStylesFromStorage() {
+  let json = "";
+  try { json = localStorage.getItem(QUICK_STYLES_KEY) || ""; } catch (e) {}
+  if (!json) return;
+  try { await quickInstallStyles(json); } catch (e) { /* un file rovinato: si ignora */ }
+}
+
+async function quickImportStyles(file) {
+  try {
+    const json = await file.text();
+    const total = await quickInstallStyles(json);
+    try { localStorage.setItem(QUICK_STYLES_KEY, json); } catch (e) {}
+    quick.choices = (await call("quick_choices")).result;                   // gli stili nuovi nelle liste
+    quickSyncControls();
+    setQuickStatus(total ? t("Stili personali importati: {n}.", { n: total }) : t("Nel file non ci sono stili."));
+  } catch (e) {
+    setQuickStatus(shortError(e), true);
+  }
+}
+
+async function quickClearStyles() {
+  try { localStorage.removeItem(QUICK_STYLES_KEY); } catch (e) {}
+  await quickInstallStyles("");
+  quick.choices = (await call("quick_choices")).result;
+  quickSyncControls();
+  setQuickStatus(t("Stili personali tolti."));
+}
+
+// ---- le tracce da cui partire con una melodia
+
+function quickFillIdeaTracks() {
+  const select = $("quickIdeaTrack");
+  select.replaceChildren();
+  const tracks = state.song ? state.song.info.tracks.filter((tr) => !tr.percussion) : [];
+  for (const tr of tracks) select.add(new Option(tr.name, tr.name));
+  $("quickIdea").disabled = !tracks.length;
+  if (!tracks.length) select.add(new Option(t("nessuna: apri un brano con una melodia"), ""));
 }
 
 // ---- generare
@@ -291,7 +372,7 @@ async function quickRegenerate(mode, part) {
       quick.parts = {};
       quickSyncControls();
     }
-    const fresh = mode === "new" || mode === "again" || mode === "surprise";
+    const fresh = mode === "new" || mode === "again" || mode === "surprise" || mode === "idea";
     const options = quickEngineOptions((parts) => {
       if (mode === "part" && quick.last) {
         // una parte sola: tutte le altre tengono il seme di prima, e questa ne prende uno nuovo
@@ -302,7 +383,12 @@ async function quickRegenerate(mode, part) {
       }
       return fresh && quick.opts.seed === undefined ? { seed: Math.floor(Math.random() * 2 ** 31) } : {};
     });
-    const made = (await call("quick_song", { args: [options] })).result;
+    // una melodia come punto di partenza: «Parti da questa melodia» (idea) e, dopo, «Un'altra» e le parti la tengono
+    if (mode === "idea") quick.ideaSource = { text: state.doc.text, track: $("quickIdeaTrack").value };
+    else if (mode === "new" || mode === "surprise") quick.ideaSource = null;
+    const made = quick.ideaSource
+      ? (await call("quick_from_melody", { args: [quick.ideaSource.text, quick.ideaSource.track, options] })).result
+      : (await call("quick_song", { args: [options] })).result;
     await resumed;
     quick.last = made;
     for (const p of Object.keys(made.seeds)) (quick.parts[p] = quick.parts[p] || {}).seed = made.seeds[p];
@@ -401,6 +487,8 @@ async function openQuick() {
   quick.songId = null;
   quick.last = null;
   quick.parts = {};
+  quick.ideaSource = null;
+  quickFillIdeaTracks();
   $("quickResult").hidden = true;
   quickSyncControls();
   quickShowMode();
@@ -423,6 +511,10 @@ function setupQuick() {
   $("quickPlay").onclick = () => play();
   $("quickOpenCrea").onclick = () => { quickClose(); setView("crea"); };
   $("quickFromDoc").onclick = () => quickFromDoc().catch(showError);
+  $("quickIdea").onclick = () => quickRegenerate("idea");
+  $("quickStylesFile").onchange = (ev) => { const f = ev.target.files[0]; ev.target.value = ""; if (f) quickImportStyles(f); };
+  $("quickStylesClear").onclick = () => quickClearStyles().catch(showError);
+  state.booted && state.booted.then(() => quickStylesFromStorage()).catch(() => {});
   $("quickSimple").onchange = () => { quickReadFields(); quick.simple = $("quickSimple").checked; quickShowMode(); quickSave(); };
   $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
   $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };

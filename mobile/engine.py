@@ -1361,6 +1361,83 @@ def quick_surprise(seed: Optional[int] = None) -> dict:
     return quicksong.quick_surprise(seed)
 
 
+def install_user_styles(json_text: str = "") -> dict:
+    """Gli stili personali del computer (core.user_styles, il file generator_styles.json della cartella di
+    configurazione di SoundText): si installano per questa sessione del motore e i generatori li riconoscono come
+    «user:Nome». Testo vuoto: nessuno. {tipo: [nomi]}; ValueError se non e' un file di stili."""
+    import json
+    import os
+    import tempfile
+    from core import user_styles as us
+    from core.i18n import tr
+    if json_text and json_text.strip():
+        try:
+            raw = json.loads(json_text)
+        except ValueError:
+            raise ValueError(tr("Questo non è un file di stili personali di SoundText."))
+        if not isinstance(raw, dict) or not any(isinstance(raw.get(k), dict) for k in us.KINDS):
+            raise ValueError(tr("Questo non è un file di stili personali di SoundText."))
+    fd, path = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(json_text if json_text and json_text.strip() else "{}")
+        us.USER_STYLES_FILE = path
+        us.load_user_styles(reload=True)
+    finally:
+        pass
+    return {kind: us.user_style_names(kind) for kind in us.KINDS}
+
+
+def quick_from_melody(text: str, track: str, options: Optional[dict] = None) -> dict:
+    """«Parti da una melodia»: la melodia di una traccia del brano aperto (per esempio canticchiata con «Canta») viene
+    armonizzata (core.harmonize, un accordo a battuta), gli accordi diventano il giro del brano in 60 secondi e la
+    melodia entra nel primo pezzo cantato. Come quick_song, piu' "idea": {track, key, chords}."""
+    import quicksong
+    from core import harmonize as hz
+    from core.i18n import tr
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    source = project.find_track(track)
+    if source is None or source.is_audio or source.instrument.is_percussion:
+        raise ValueError(tr("La traccia '{name}' non c'è.", name=track))
+    if source.clips:
+        raise ValueError(tr("La melodia sta in box: scegli una traccia scritta senza box."))
+    notes = hz.melody_notes(source.text, project.patterns)
+    if not notes:
+        raise ValueError(tr("La melodia non ha note da armonizzare."))
+    bar_beats = _bar_beats(project)
+    key = hz.melody_key(notes)
+    chords_text = hz.harmonize(notes, key, "diatonic", bar_beats, bar_beats, (options or {}).get("seed"))
+    grid, _colon, body = chords_text.partition(":")
+    unit = 4.0 / int(re.match(r"\d+", grid.strip()).group(0))              # battiti di una unita' della griglia
+    chords = []
+    for token in body.split():
+        m = re.match(r"(\d*)(.+)", token)
+        if not m or m.group(2) == "r":
+            continue
+        bars = max(1, int(round(int(m.group(1) or 1) * unit / bar_beats)))
+        chords += [m.group(2)] * bars
+    if not chords:
+        raise ValueError(tr("La melodia non ha note da armonizzare."))
+    opts = dict(options or {})
+    opts.update({"key": key, "chords": " ".join(chords), "melody": "nessuna", "bpm": opts.get("bpm") or int(project.tempo_bpm)})
+    made = quicksong.quick_song(opts)
+    # la melodia entra nel primo pezzo che non e' l'intro
+    first = next((s for s in made["sections"] if s["role"] not in ("intro",)), made["sections"][0])
+    start_beat = first["start_bar"] * bar_beats
+    taken = {t.name for t in parse_project_text(made["text"], "Brano").tracks}
+    name = source.instrument_name if source.instrument_name not in taken else next(
+        (n for n in ("Flute", "Violin", "Oboe", "Trumpet", "Clarinet") if n not in taken), None)
+    if name is None:
+        raise ValueError(tr("Non c'è uno strumento libero per la melodia."))
+    header = (f"{name}:" if _has_short_header(name) else f"Traccia {name} [{name}]:") + "\n\n"
+    box = _box_header(name, tr("Idea"), start_beat) + "\n" + _indent(source.text.strip("\n"))
+    made["text"] = made["text"].rstrip("\n") + "\n\n" + header + box + "\n"
+    made["idea"] = {"track": track, "key": key, "chords": " ".join(chords), "melody_track": name}
+    return made
+
+
 def quick_read(text: str) -> Optional[dict]:
     import quicksong
     return quicksong.quick_read(text)
