@@ -35,7 +35,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>A song in the structure view, with the mixer</caption>
-      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.20.1/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.21.0/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <categories>
@@ -58,6 +58,18 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.21.0" date="2026-11-21">
+      <description>
+        <p>A whole song in 60 seconds, a more readable generated text, richer generators and screen reader support.</p>
+        <ul>
+          <li>New song in 60 seconds: 25 genres, each with its own instruments, scales, accompaniment styles and starting effects</li>
+          <li>Generated text written in bars with patterns for repeated bars, and a Human control for each style's micro-timing</li>
+          <li>Generators: borrowed chords and other cadences, inversions with the bass following them, a pedal bass in the bridge, a theme taken up an octave in the last chorus with a second voice in thirds, pickup notes, string layers and an energy curve</li>
+          <li>Screen reader: every control has a name, Where am I?, next and previous error, and listening to the note or the bar under the cursor</li>
+          <li>Downloads of third-party plugins are checked against fixed versions and SHA-256 hashes</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.20.1" date="2026-11-15">
       <description>
         <p>CLAP plugins get their own window and saved state, and the Flatpak installs instruments properly.</p>
