@@ -1060,9 +1060,12 @@ def bar_bounds(text: str, beat: float) -> list:
 # usano Qt: tests/test_mobile_engine.py pilota quelle finestre e controlla
 # che con gli stessi parametri e lo stesso seme il testo sia identico.
 
-from core.song_generate import (  # noqa: E402  (spostati in core: li usano anche il brano in 60 secondi e il computer)
-    DEFAULT_VARIABILITY, GENERATORS, _bar_beats, _box_header, _chords_of, _format_beat, _has_short_header, _indent,
-    _instrument, _performed, _quick_melody, _variation, add_track, generate)
+from core import song_generate as _sg  # noqa: E402  (spostati in core: li usano anche il brano in 60 secondi e il computer)
+
+DEFAULT_VARIABILITY, GENERATORS = _sg.DEFAULT_VARIABILITY, _sg.GENERATORS
+_bar_beats, _box_header, _chords_of, _format_beat = _sg._bar_beats, _sg._box_header, _sg._chords_of, _sg._format_beat
+_has_short_header, _indent, _instrument, _performed = _sg._has_short_header, _sg._indent, _sg._instrument, _sg._performed
+_quick_melody, _variation, add_track, generate = _sg._quick_melody, _sg._variation, _sg.add_track, _sg.generate
 
 
 def _choice_labels() -> dict:
