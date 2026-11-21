@@ -183,6 +183,12 @@ Four bars, to see how it works:
 5. **Project → Save** (Ctrl+S): the song becomes a plain-text `.st`
    file.
 
+For a ready-made song without writing anything: **Project → New song in 60 seconds...**. Pick a genre (25), a mood
+and a length; **Compose and listen** writes a whole song, in sections (boxes) with chords, bass, drums, accompaniment
+and melody. **Another** changes the seed, **Surprise me** picks at random; with **Details** you also choose key, tempo,
+form, ensemble and a chord loop of your own. **Create the song** makes it the project, to edit like any other (the
+sections show in the Structure view). The same song, with the same seed, also comes out on SoundText Mobile.
+
 To go on: the full grammar is in chapter 4, the box view in
 chapter 15; ready-made examples open from **Project → Open
 example...**.

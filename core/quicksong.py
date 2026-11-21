@@ -435,7 +435,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     mano), variability, e parts: {parte: {seed, style, instrument}} per le scelte di ogni parte (PARTS).
     Restituisce {text, name, seed, key, bpm, meter, bars, seconds, genre, mood, form, ensemble, fallback, sections, loop,
     seeds, choices}."""
-    import engine as E
+    from . import song_generate as E
     from core.i18n import tr as _tr
     from core.instruments import make_instrument_available
     from core.project_io import parse_project_text

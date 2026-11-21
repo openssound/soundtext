@@ -2,7 +2,7 @@ import os
 import re
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog
 
 from core import disk_cache
 from core.model import Project
@@ -11,7 +11,7 @@ from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
                            RE_ARPEGGIO_SUFFIX, RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
-from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
+from core.project_io import load_project_file, parse_project_text, save_project_file, ensure_songs_dir, EXAMPLES_DIR
 from core.midi_export import export_project_to_midi
 from core.musicxml_export import export_project_to_musicxml
 from core.midi_import import import_midi_file
@@ -89,6 +89,20 @@ class ProjectMixin:
         if not self._confirm_discard_unsaved():
             return
         self._replace_project(Project(name=tr("Nuovo progetto")))
+
+    def new_quick_song(self):
+        """«Nuovo brano in 60 secondi» (gui.quick_song_dialog, core.quicksong): il brano composto diventa il progetto."""
+        from .quick_song_dialog import QuickSongDialog
+        if not self._confirm_discard_unsaved():
+            return
+        dlg = QuickSongDialog(self)
+        self._quick_song_dialog = dlg   # per i test
+        if dlg.exec() != QDialog.Accepted or not dlg.song:
+            return
+        project = parse_project_text(dlg.song["text"], dlg.song["name"])
+        self._replace_project(project, title=dlg.song["name"],
+                              status_msg=tr("Brano «{name}» creato: {bars} battute.", name=dlg.song["name"], bars=dlg.song["bars"]))
+        self._mark_dirty()                  # e' un brano nuovo, da salvare
 
     def _confirm_discard_unsaved(self) -> bool:
         """Se il progetto ha modifiche non salvate (vedi _mark_dirty), chiede

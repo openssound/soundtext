@@ -148,7 +148,6 @@ def build():
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(HERE, "engine.py"), "engine.py")
         z.write(os.path.join(HERE, "exercises.py"), "exercises.py")
-        z.write(os.path.join(HERE, "quicksong.py"), "quicksong.py")
         z.write(os.path.join(HERE, "speech.py"), "speech.py")
         for name in modules:
             rel = name.replace(".", "/") + ("/__init__.py" if name == "core" else ".py")

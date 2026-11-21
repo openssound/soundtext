@@ -187,6 +187,12 @@ Cuatro compases, para ver cómo funciona:
 5. **Proyecto → Guardar** (Ctrl+S): la canción se convierte en un archivo
    `.st` de texto.
 
+Para una canción ya completa, sin escribir nada: **Proyecto → Nueva canción en 60 segundos...**. Elige un género (25),
+un ambiente y una duración; **Componer y escuchar** escribe una canción entera, en secciones (cajas) con acordes, bajo, batería,
+acompañamiento y melodía. **Otra** cambia la semilla, **Sorpréndeme** elige al azar; con **Detalles** eliges también
+tonalidad, tempo, forma, conjunto y una secuencia de acordes tuya. **Crear la canción** la convierte en el proyecto, para editarla
+como cualquier otra (las secciones se ven en la vista Estructura). La misma canción, con la misma semilla, sale también en SoundText Mobile.
+
 Para seguir: la gramática completa está en el capítulo 4, la vista
 en boxes en el capítulo 15; los ejemplos listos se abren desde
 **Proyecto → Abrir ejemplo...**.

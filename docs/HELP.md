@@ -187,6 +187,13 @@ Quattro battute, per vedere come funziona:
 5. **Progetto → Salva** (Ctrl+S): il brano diventa un file `.st` di
    testo.
 
+Per un brano già completo, senza scrivere niente: **Progetto → Nuovo brano in 60 secondi...**. Scegli un genere (25),
+un'atmosfera e una durata; **Componi e ascolta** scrive un brano intero, in sezioni (box) con accordi, basso, batteria,
+accompagnamento e melodia. **Un'altra** cambia il seme, **Sorprendimi** sceglie a caso; con **Dettagli** scegli anche
+tonalità, tempo, forma, organico e un giro di accordi tuo. Con **Crea il brano** diventa il progetto, da modificare
+come ogni altro (le sezioni si vedono nella vista Struttura). Lo stesso brano, con lo stesso seme, esce anche su
+SoundText Mobile.
+
 Per continuare: la grammatica completa è nel capitolo 4, la vista a
 box nel capitolo 15; gli esempi pronti si aprono da **Progetto → Apri
 esempio...**.

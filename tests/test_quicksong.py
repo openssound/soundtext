@@ -1,5 +1,5 @@
 """
-SoundText Mobile, fase 3: «Un brano in 60 secondi», la versione estesa (mobile/quicksong.py): 25 generi, 11 atmosfere,
+SoundText Mobile, fase 3: «Un brano in 60 secondi», la versione estesa (core/quicksong.py): 25 generi, 11 atmosfere,
 durate da 15 secondi a 4 minuti, forme, organici, finali, modulazione e le parti con il loro seme. Ogni brano deve
 essere valido (nessun avviso di battuta), suonare e durare quanto dice.
 """
@@ -16,19 +16,23 @@ MOBILE = os.path.join(ROOT, "mobile")
 
 @pytest.fixture(scope="module")
 def q():
+    from core import quicksong
+    return quicksong
+
+
+def _mobile_engine():
+    """Il motore di SoundText Mobile: i controlli del testo (avvisi di battuta) e il MIDI stanno li'."""
     sys.path.insert(0, MOBILE)
     try:
         import engine
-        import quicksong
     finally:
         sys.path.remove(MOBILE)
-    quicksong.engine = engine
-    return quicksong
+    return engine
 
 
 def _valid(q, song, duration=None):
     """Il brano e' valido, suona e dura quanto dichiara (entro una battuta)."""
-    engine = q.engine
+    engine = _mobile_engine()
     check = engine.check_text(song["text"], song["name"])
     assert not check["warnings"], (song["genre"], song["mood"], song["form"], check["warnings"][:2])
     e = engine.Engine()
@@ -81,7 +85,7 @@ def test_every_mood_gets_a_valid_song_in_its_genre_at_fifteen_seconds(q):
     for genre in q.GENRES:
         for mood in q.GENRES_DATA[genre]["moods"]:
             song = q.quick_song({"genre": genre, "mood": mood, "duration": 15, "seed": 3})
-            assert q.engine.check_text(song["text"], "x")["warnings"] == [], (genre, mood)
+            assert _mobile_engine().check_text(song["text"], "x")["warnings"] == [], (genre, mood)
             assert song["seconds"] <= 27 and all(sec["role"] != "intro" for sec in song["sections"]), (genre, mood, song["seconds"])
 
 
@@ -213,7 +217,7 @@ def test_key_tempo_meter_and_density_choices(q):
 def test_a_written_chord_progression_is_used_and_a_bad_one_is_an_error(q):
     song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 15, "chords": "Am F C G", "key": "C", "seed": 3})
     _valid(q, song)
-    chart = q.engine.chord_chart(song["text"])
+    chart = _mobile_engine().chord_chart(song["text"])
     assert [c[2] for c in chart][:4] == ["Am", "F", "C", "G"] or chart, chart
     with pytest.raises(ValueError):
         q.quick_song({"genre": "pop", "mood": "allegra", "chords": "Am Zz9", "seed": 3})
@@ -231,7 +235,7 @@ def test_surprise_picks_only_allowed_combinations(q):
         assert pick["mood"] in q.GENRES_DATA[pick["genre"]]["moods"] and pick["duration"] in q.DURATIONS
         assert q.quick_surprise(seed) == pick
     song = q.quick_song({**q.quick_surprise(3), "duration": 15})
-    assert not song["fallback"] and not q.engine.check_text(song["text"], "x")["warnings"]
+    assert not song["fallback"] and not _mobile_engine().check_text(song["text"], "x")["warnings"]
 
 
 def test_durations_match_the_form_and_the_tempo(q):

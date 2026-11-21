@@ -381,6 +381,8 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         # trova comunque per nome, col percorso "Progetto › Esporta".
         file_menu = menubar.addMenu(tr("&Progetto"))
         file_menu.addAction(self._action(tr("Nuovo"), self.new_project, "Ctrl+N", tr("Crea un nuovo progetto vuoto.")))
+        file_menu.addAction(self._action(tr("Nuovo brano in 60 secondi..."), self.new_quick_song, None, tr(
+            "Un brano completo da un genere, un'atmosfera e una durata, in sezioni (box) da modificare.")))
         file_menu.addAction(self._action(tr("Apri..."), self.open_project, "Ctrl+O", tr("Apri un progetto .st esistente.")))
         file_menu.addAction(self._action(tr("Apri esempio..."), self.open_example, None,
                                           tr("Apri uno dei brani d'esempio .st, per studiarlo o partire da li': "

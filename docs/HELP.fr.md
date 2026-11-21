@@ -188,6 +188,12 @@ Quatre mesures, pour voir comment ça marche :
 5. **Projet → Enregistrer** (Ctrl+S) : le morceau devient un fichier
    `.st` de texte.
 
+Pour un morceau déjà complet, sans rien écrire : **Projet → Nouveau morceau en 60 secondes...**. Choisissez un genre (25),
+une ambiance et une durée ; **Composer et écouter** écrit un morceau entier, en sections (boîtes) avec accords, basse, batterie,
+accompagnement et mélodie. **Un autre** change la graine, **Surprenez-moi** choisit au hasard ; avec **Détails** vous choisissez aussi
+tonalité, tempo, forme, effectif et une grille d'accords à vous. **Créer le morceau** en fait le projet, à modifier comme les autres
+(les sections apparaissent dans la vue Structure). Le même morceau, avec la même graine, sort aussi sur SoundText Mobile.
+
 Pour continuer : la grammaire complète est au chapitre 4, la vue en
 box au chapitre 15 ; les exemples prêts s'ouvrent depuis **Projet →
 Ouvrir un exemple...**.
