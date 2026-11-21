@@ -156,6 +156,10 @@ def main():
         print("avviso:", a)
     git = commit_git(script)
     if args.scrivi:
+        falliti = [a for a in avvisi if re.search(r"HTTP Error|timed out|urlopen error", a)]
+        if falliti or len(pin) < len(repository(script)) - 1:      # un repository che non risponde non va perso dalla tabella
+            raise SystemExit("non scrivo: alcuni repository non hanno risposto (con GITHUB_TOKEN nell'ambiente le API concedono "
+                             "piu' richieste):\n  " + "\n  ".join(falliti))
         scrivi(pin, git)
         print("scritto in", SCRIPT)
     else:

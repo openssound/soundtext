@@ -873,34 +873,34 @@ def _esegui(cmd, **kw):
 # --- PIN_INIZIO (scritto da tools/aggiorna_pin_plugin.py) ---
 PIN_PLUGIN = {
     "AidaDSP/AIDA-X": {"tag": "1.1.0", "sha256": {
-        "AIDA-X-1.1.0-linux-arm64.tar.xz": "",
-        "AIDA-X-1.1.0-linux-x86_64.tar.xz": "",
-        "AIDA-X-1.1.0-macos-universal-10.15.dmg": "",
-        "AIDA-X-1.1.0-win64.zip": "",
+        "AIDA-X-1.1.0-linux-arm64.tar.xz": "bf9dc137d50bf569ec5243c6ccd81eee983699e1470044a980eeb3717bc55d28",
+        "AIDA-X-1.1.0-linux-x86_64.tar.xz": "292b94f635e8adec95f23280fc94f1b6dd954b8a9440f3e51b7e9faa8bdbe543",
+        "AIDA-X-1.1.0-macos-universal-10.15.dmg": "cea68478ed1923e79e7285d75a90fe8074dafc1a8884ee0ba7c9d1c92814a226",
+        "AIDA-X-1.1.0-win64.zip": "648612e80a598b17778374e42c54fdddd4199a844f7b290ad38f6b3256551425",
     }},
     "Chowdhury-DSP/BYOD": {"tag": "v1.3.0", "sha256": {
-        "BYOD-Linux-x64-1.3.0.deb": "",
-        "BYOD-Mac-1.3.0.dmg": "",
-        "BYOD-Win-64bit-1.3.0.exe": "",
+        "BYOD-Linux-x64-1.3.0.deb": "c1803ae57b717bab04ef2072c10284bcb7d44fbe352d42645075b0c6875c9aeb",
+        "BYOD-Mac-1.3.0.dmg": "997a0508b00a583d8563eb0e330c7e318fe43e7f4f3b06ba3d389221aeb7254a",
+        "BYOD-Win-64bit-1.3.0.exe": "a53fb65cedf90f7673e21ac2d12f5b0778f003ae7f2e34e6c4301854a738c36c",
     }},
     "Chowdhury-DSP/ChowKick": {"tag": "v1.2.0", "sha256": {
-        "ChowKick-Linux-x64-1.2.0.deb": "",
-        "ChowKick-Mac-1.2.0.dmg": "",
-        "ChowKick-Win-64bit-1.2.0.exe": "",
+        "ChowKick-Linux-x64-1.2.0.deb": "2c1328c65bd4af1c188f96d088d71527eccbdc5c434cafe57c8352f53969bb2f",
+        "ChowKick-Mac-1.2.0.dmg": "de1833ac2bfd7f9d74ba61cb64f3fb7c600de348cba6b46d9c05c8df14d158f7",
+        "ChowKick-Win-64bit-1.2.0.exe": "d136b3938111a118d64e1dfc01f6b153a8c3ee5641001aed31b42cb033616c82",
     }},
     "Chowdhury-DSP/ChowMatrix": {"tag": "v1.3.0", "sha256": {
-        "ChowMatrix-Mac-1.3.0.dmg": "",
-        "ChowMatrix-Win-1.3.0.exe": "",
+        "ChowMatrix-Mac-1.3.0.dmg": "11705e4cfb023525e8b6830fb29feb046eac05688428a12a8fdad48dc9a9fdcf",
+        "ChowMatrix-Win-1.3.0.exe": "b1e2451ae66362bf82112e77fccc48a1233780b6cbfb58fe1a588b17a77456c5",
     }},
     "GuitarML/Chameleon": {"tag": "v1.2.0", "sha256": {
-        "Chameleon-Linux-x64-1.2.deb": "",
-        "Chameleon-Win-1.2.0.exe": "",
-        "Install-Chameleon-v1.2-Mac.dmg": "",
+        "Chameleon-Linux-x64-1.2.deb": "06b2ba4d8438fc90376485aff6ed3c732868c6bfb1b773a2c348c0e6ad6d1352",
+        "Chameleon-Win-1.2.0.exe": "ac7e639eaad7c4db1aba556b6a489a17fd0dd4a67df49cbc5e126367a9a1d690",
+        "Install-Chameleon-v1.2-Mac.dmg": "9387fb1f0d5f4efe26dcb7d179dbd0a29ec96f976643be0b551dc0a56125739e",
     }},
     "GuitarML/Proteus": {"tag": "v1.2", "sha256": {
-        "Install-Proteus-v1.2-Mac.dmg": "",
-        "Proteus-Linux-x64-1.2.deb": "",
-        "Proteus-Win-1.2.0.exe": "",
+        "Install-Proteus-v1.2-Mac.dmg": "7194c26d4b04f40811295ad4ebe1ef3d1bb033a9976f6789ebf3ec021430e7d0",
+        "Proteus-Linux-x64-1.2.deb": "d3bf5a11127da6cf53af183390dc20350c15543617a8743b166c73f6a1a08e90",
+        "Proteus-Win-1.2.0.exe": "f63f39d4f38113c6efb93e4440fb3de84c1397c1cc52294c4922a14f393309c6",
     }},
     "asb2m10/dexed": {"tag": "v1.1.0", "sha256": {
         "Dexed-1.1.0-lnx.zip": "3a1a01511e3428f432cc91c7bf5267d72bfcb68aded4f084d4f9d002dcc42da6",
@@ -932,22 +932,22 @@ PIN_PLUGIN = {
         "GNULinux_binaries_v3.9.1_basic.zip": "35107da8c32f46c69ca546b1ef7c98e40f0c3570b017b70dd618161c576abdd8",
     }},
     "jatinchowdhury18/AnalogTapeModel": {"tag": "v2.11.4", "sha256": {
-        "ChowTapeModel-Mac-2.11.4.dmg": "",
-        "ChowTapeModel-Win-64bit-2.11.4.exe": "",
+        "ChowTapeModel-Mac-2.11.4.dmg": "9b37e2b6cb6c0a839ee9c65e1a958834ca647b3edfc4bd144115c483b4d64f82",
+        "ChowTapeModel-Win-64bit-2.11.4.exe": "8ba6e91196067244837877d9ca4a8e4a1f5bfad60cf33fa699c8a5b41f1211bf",
     }},
     "jatinchowdhury18/KlonCentaur": {"tag": "v1.4.0", "sha256": {
-        "ChowCentaur-Mac-1.4.0.dmg": "",
-        "ChowCentaur-Win-1.4.0.exe": "",
+        "ChowCentaur-Mac-1.4.0.dmg": "8b8c876cc9429d1c9d51d25a08fa3513398370b6b527067cb5d3982ca988bf3e",
+        "ChowCentaur-Win-1.4.0.exe": "3ff707e3e49e7cac0bb0819219eefcc6ed59b281246b43fc0465c0fb1d198048",
     }},
     "lsp-plugins/lsp-plugins": {"tag": "1.2.37", "sha256": {
         "lsp-plugins-1.2.37-Linux-aarch64.7z": "d0fc5c5600bee23eb088f99f899b7dd0bae6da43dc12e020df3ad56e3e0ed15a",
         "lsp-plugins-1.2.37-Linux-x86_64.7z": "bbdfbfce4591ea07e7ac9dac0b1aca8ea7ccf9d850aafbf9ac0a347a1340ee55",
     }},
     "michaelwillis/dragonfly-reverb": {"tag": "3.2.10", "sha256": {
-        "dragonfly-reverb-3.2.10-linux-arm64.tar.xz": "",
-        "dragonfly-reverb-3.2.10-linux-x86_64.tar.xz": "",
-        "dragonfly-reverb-3.2.10-macos-universal.dmg": "",
-        "dragonfly-reverb-3.2.10-win64.zip": "",
+        "dragonfly-reverb-3.2.10-linux-arm64.tar.xz": "6c830ad1b1cc028b0f3c4f4c0a4b073d7193ba1c8783528ed9365df1fc9b23c2",
+        "dragonfly-reverb-3.2.10-linux-x86_64.tar.xz": "59f1593120de82e31dd194e2ab1536af14fec2b3ec6ec45abf6d9c8ac02ef430",
+        "dragonfly-reverb-3.2.10-macos-universal.dmg": "e0b854b92a4e51ce5851320fb1a9f91ab1a4309f997de070e175b3e5cab4adaf",
+        "dragonfly-reverb-3.2.10-win64.zip": "ca5f35f9dcd9a33f06490d3c92f04061a1a798cb81257d5ca5851bdda0824c66",
     }},
     "midilab/jc303": {"tag": "v0.14.0", "sha256": {
         "jc303-0.14.0-linux_x64-plugins.zip": "378200f8ddda266873c9795feb6ee857fbae000a3b3537a7b42933dd277b370c",
@@ -955,14 +955,14 @@ PIN_PLUGIN = {
         "jc303-0.14.0-windows_x64-plugins.zip": "499c1bec494d9116999a52c13ae59ff503bdff32438e8ef4af5fce6408e08057",
     }},
     "pdesaulniers/wolf-shaper": {"tag": "v1.0.2", "sha256": {
-        "wolf-shaper-v1.0.2+20230515144200-windows-x64.zip": "",
-        "wolf-shaper-v1.0.2-linux-arm64.zip": "",
-        "wolf-shaper-v1.0.2-linux-x64.zip": "",
-        "wolf-shaper-v1.0.2-macos-universal.zip": "",
+        "wolf-shaper-v1.0.2+20230515144200-windows-x64.zip": "42a703a5f71b19855d9213d57f2261d2182c73c73d39730775188df3e4c47da9",
+        "wolf-shaper-v1.0.2-linux-arm64.zip": "79a2e37416be98b8b393d0732c0e49af4f769cc9d0010ecd60e0d740233b46c2",
+        "wolf-shaper-v1.0.2-linux-x64.zip": "8b844e9b535d2b8a8a07fc6cec207beae8161f7d6da36e4a856a766aa441b848",
+        "wolf-shaper-v1.0.2-macos-universal.zip": "19bba017c8eed9b697712d0f1e769ab30eb785534c152e6783017735fe73de03",
     }},
     "sfztools/sfizz-ui": {"tag": "1.2.3", "sha256": {
-        "sfizz-1.2.3-macos.pkg": "",
-        "sfizz-1.2.3-win64.exe": "",
+        "sfizz-1.2.3-macos.pkg": "62c76af58bfec05ca6ef199befca7c2508e15a5e63bca076198d94f085c14da7",
+        "sfizz-1.2.3-win64.exe": "56f57dfe443018e947b82b8e2bf4c9d824a9c961ff2b8eb6c5e929030b71b937",
     }},
     "surge-synthesizer/OB-Xf": {"tag": "v1.0.3", "sha256": {
         "ob-xf-Linux-v1.0.3.zip": "72b60c83cf6426337031df744c34a047104a9d95f1feaf6cd048ecfa39f74c96",
@@ -970,9 +970,9 @@ PIN_PLUGIN = {
         "ob-xf-macOS-v1.0.3.dmg": "e6f52f453c476dfafbd3225b80c5c3ec341ec20be5748c6f70c01cef14e7e7a8",
     }},
     "surge-synthesizer/releases-xt": {"tag": "1.3.4", "sha256": {
-        "surge-xt-macos-1.3.4-pluginsonly.zip": "",
-        "surge-xt-portable-content-1.3.4.tar.gz": "",
-        "surge-xt-win64-1.3.4-pluginsonly.zip": "",
+        "surge-xt-macos-1.3.4-pluginsonly.zip": "37d8d809693adc86587b7bc75a2384fc4e905f259aa9b9a21777749d36fbf8aa",
+        "surge-xt-portable-content-1.3.4.tar.gz": "7ed24822eab69f73101d8558222979b1bceb4882a780292bb7087309b7b101bd",
+        "surge-xt-win64-1.3.4-pluginsonly.zip": "564e162c560af07ad4ed47fe1bfcd827cf97a575de30d06c48249aad2e7c35e6",
     }},
     "zamaudio/zam-plugins": {"tag": "4.5", "sha256": {
         "zam-plugins-4.5-linux-arm64.tar.xz": "4e02771b743afaaa2d6912eac083661c1d9ab0a92dd6787414f29e365877b4c2",
