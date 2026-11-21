@@ -64,7 +64,7 @@ _ENSEMBLE_PARTS = {
 GENRES_DATA = {
     "pop": dict(meter="4/4", bpm=104, drums="rock", bass="root_fifth", comp="arpeggio_up", comp2="block_chords", melody="cantabile",
                 ens="acustica", form="canzone", moods=("allegra", "malinconica", "tesa", "epica", "calma", "romantica", "nostalgica", "festosa", "sognante")),
-    "rock": dict(meter="4/4", bpm=122, drums="rock", bass="eighths", comp="quarter_chords", comp2="block_chords", melody="vivace",
+    "rock": dict(meter="4/4", bpm=122, drums="rock", bass="eighths", comp="power_chords", comp2="block_chords", melody="vivace",
                  ens="elettrica", form="canzone", dist=True, moods=("allegra", "tesa", "epica", "oscura", "festosa", "malinconica")),
     "ballata": dict(meter="4/4", bpm=72, drums="halftime", bass="root", comp="arpeggio_up", comp2="sustained", melody="ballata",
                     ens="acustica", form="ponte", moods=("malinconica", "calma", "romantica", "nostalgica", "epica", "sognante")),
@@ -96,16 +96,16 @@ GENRES_DATA = {
     "blues": dict(meter="4/4", bpm=96, drums="shuffle", bass="blues", comp="quarter_chords", comp2="block_chords", melody="vivace",
                   ens="elettrica", form="blues", moods=("allegra", "malinconica", "tesa", "oscura", "calma", "nostalgica"),
                   prog={"major": ("blues_12", "blues_12", "blues_12"), "minor": ("minor_blues_12", "minor_blues_12", "minor_blues_12")}),
-    "reggae": dict(meter="4/4", bpm=76, drums="reggae", bass="reggae", comp="skank_chords", comp2="sustained", melody="cantabile",
+    "reggae": dict(meter="4/4", bpm=76, drums="reggae", bass="reggae", comp="skank_chords", comp2="organ_bubble", melody="cantabile",
                    ens="elettrica", form="canzone", moods=("allegra", "calma", "festosa", "nostalgica", "sognante"),
                    prog={"major": ("three_chord", "pop", "mixolydian"), "minor": ("minor_three", "minor_pop", "minor_cadence")}),
-    "country": dict(meter="4/4", bpm=108, drums="country", bass="root_fifth", comp="quarter_chords", comp2="broken_chord", melody="cantabile",
+    "country": dict(meter="4/4", bpm=108, drums="country", bass="root_fifth", comp="boom_chick", comp2="broken_chord", melody="cantabile",
                     ens="acustica", form="canzone", moods=("allegra", "festosa", "malinconica", "nostalgica", "calma", "romantica"),
                     prog={"major": ("three_chord", "pop", "canon"), "minor": ("minor_pop", "minor_three", "minor_cadence")}),
-    "punk": dict(meter="4/4", bpm=170, drums="punk", bass="eighths", comp="quarter_chords", comp2="block_chords", melody="vivace",
+    "punk": dict(meter="4/4", bpm=170, drums="punk", bass="eighths", comp="power_chords", comp2="block_chords", melody="vivace",
                  ens="elettrica", form="canzone", dist=True, moods=("tesa", "allegra", "epica", "oscura", "festosa"),
                  prog={"major": ("three_chord", "rock", "mixolydian"), "minor": ("minor_three", "minor_rock", "minor_three")}),
-    "metal": dict(meter="4/4", bpm=150, drums="metal", bass="eighths", comp="quarter_chords", comp2="block_chords", melody="vivace",
+    "metal": dict(meter="4/4", bpm=150, drums="metal", bass="eighths", comp="metal_gallop", comp2="block_chords", melody="vivace",
                   ens="elettrica", form="canzone", dist=True, moods=("tesa", "epica", "oscura", "misteriosa"),
                   prog={"major": ("mixolydian", "rock", "mixolydian"), "minor": ("phrygian", "minor_epic", "minor_three")}),
     "rocknroll": dict(meter="4/4", bpm=150, drums="rocknroll", bass="root_fifth", comp="quarter_chords", comp2="block_chords", melody="vivace",
@@ -128,6 +128,36 @@ GENRES_DATA = {
     "balcanico78": dict(meter="7/8", bpm=140, drums="balkan_78", bass="eighths", comp="block_chords", comp2="quarter_chords", melody="vivace",
                         ens="acustica", form="canzone", moods=("allegra", "festosa", "tesa", "misteriosa", "epica"),
                         prog={"major": ("mixolydian", "pop", "mixolydian"), "minor": ("phrygian", "minor_rock", "phrygian")}),
+}
+
+# gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
+# (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
+_GENRE_INSTRUMENTS = {
+    "jazz": {"bass": "Acoustic_Bass", "melody": "Tenor_Sax", "comp2": None},
+    "swing": {"bass": "Acoustic_Bass", "melody": "Trumpet", "comp2": None, "horn": "Brass_Section"},
+    "country": {"comp": "Acoustic_Guitar_Steel", "comp2": "Banjo", "melody": "Fiddle"},
+    "soul": {"comp": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section"},
+    "funk": {"comp": "Clavinet", "comp2": "Clean_Guitar", "horn": "Brass_Section"},
+    "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
+    "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
+    "chacha": {"horn": "Brass_Section"},
+    "reggae": {"comp2": "Drawbar_Organ"},
+    "disco": {"horn": "Brass_Section"},
+}
+_HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
+
+# gli effetti con cui parte ogni genere (8.8.4): la catena master (riga per effetto), perche' e' quella che si sente sia sul
+# computer sia sul telefono, dove le tracce escono da un solo sintetizzatore. Si cambiano o si tolgono come gli altri;
+# con l'opzione effects=False non si scrivono.
+_GENRE_FX = {
+    "rocknroll": ("riverbero: stanza=35 smorzamento=30 ampiezza=100 mix=20",),          # riverbero a molla
+    "blues": ("riverbero: stanza=35 smorzamento=30 ampiezza=100 mix=20",),
+    "reggae": ("delay: suddivisione=1/8p tempo=375 ripetizioni=30 mix=14",),            # delay in levare
+    "lofi": ("passa_basso: frequenza=5000 pendenza=12", "eq: bassi=2 medi=0 alti=-2"),  # caldo e senza brillantezza
+    "orchestrale": ("riverbero: stanza=60 smorzamento=40 ampiezza=100 mix=22",),        # riverbero di sala
+    "ballata": ("riverbero: stanza=60 smorzamento=40 ampiezza=100 mix=18",),
+    "funk": ("compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=3",),  # compressione piu' marcata
+    "disco": ("compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=3",),
 }
 
 # in quali sezioni suona ogni parte
@@ -275,8 +305,8 @@ def _form_sections(form: str, target: int, loops: Optional[int] = None, short: b
         n = max(1, int(round(target / 12.0)))
         out = []
         for i in range(n):
-            role = "end" if i == n - 1 and n > 1 else "solo" if 0 < i < n - 1 else "verse"
-            out.append((tr("Giro {n}", n=i + 1), role, 12))
+            role = "chorus" if n == 1 else "end" if i == n - 1 else "solo" if 0 < i < n - 1 else "verse"
+            out.append((tr("Giro {n}", n=i + 1), role, 12))              # un giro solo: suona anche la melodia
         return out
     if form == "aaba":
         reps = max(1, int(round(target / 32.0)))
@@ -384,7 +414,7 @@ def resolve(options: Optional[dict] = None) -> dict:
     for part in PARTS:
         given = (parts_in.get(part) or {}).get("seed")
         seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
-    styles = {"drums": drums, "bass": recipe["bass"], "comp": recipe["comp"], "comp2": recipe["comp2"], "horn": "sustained",
+    styles = {"drums": drums, "bass": recipe["bass"], "comp": recipe["comp"], "comp2": recipe["comp2"], "horn": _HORN_STYLE.get(genre, "sustained"),
               "progression": None}
     for part, spec in parts_in.items():
         if part in styles and spec.get("style"):
@@ -392,6 +422,12 @@ def resolve(options: Optional[dict] = None) -> dict:
     instruments = dict(_ENSEMBLE_PARTS[ensemble])
     if recipe.get("dist") and ensemble == "elettrica":
         instruments["comp"] = "Distortion_Guitar"
+    if ensemble == recipe["ens"]:                            # gli strumenti del genere (8.8.1)
+        for part, name in _GENRE_INSTRUMENTS.get(genre, {}).items():
+            if name is None:
+                instruments.pop(part, None)
+            elif not (part == "comp" and name == "Overdriven_Guitar" and instruments.get("comp") == "Distortion_Guitar"):
+                instruments[part] = name
     if drums is not None and "drums" not in instruments and (options.get("drums") or recipe.get("drums_in_orchestra")):
         instruments["drums"] = "Drums"                       # l'orchestra non ha la batteria, salvo una marcia o se la si sceglie
     if drums is None:
@@ -580,6 +616,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
              "", header(key).rstrip("\n"), ""]
     for part in active:
         lines += [E.add_track("", c["instruments"][part], "", name=part_track(c, part))["text"].rstrip("\n").split("\n")[0].rstrip(), ""]
+    fx_rows = _GENRE_FX.get(c["genre"], ()) if options.get("effects", True) not in (False, 0, "0", "no") else ()
+    if fx_rows:
+        lines += [_tr("// Gli effetti di partenza del genere (catena master): si cambiano o si tolgono come gli altri."), "",
+                  "Catena master:\n" + "\n".join("  " + r for r in fx_rows), ""]
     if patterns:
         lines.append(_tr("// I pattern: le battute che si ripetono, scritte una volta sola."))
         lines.append("")

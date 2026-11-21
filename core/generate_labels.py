@@ -70,6 +70,11 @@ def generator_labels() -> dict:
         ("funk_stab", tr("Stop-time funk")),
         ("waltz_comp", tr("Valzer (accordi sul 2 e sul 3)")),
         ("arpeggio_68", tr("Arpeggio in 6/8")),
+        ("power_chords", tr("Power chord a ottavi (rock, punk)")),
+        ("metal_gallop", tr("Galoppo metal")),
+        ("boom_chick", tr("Boom-chick (country, marcia)")),
+        ("organ_bubble", tr("Organo bubble (reggae)")),
+        ("horn_stabs", tr("Colpi dei fiati sugli accenti")),
     ]
     progression_style_labels = [
         ("pop", tr("Pop (I-V-vi-IV)")),

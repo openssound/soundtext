@@ -245,3 +245,44 @@ def test_durations_match_the_form_and_the_tempo(q):
     assert long["bars"] > 3 * short["bars"] and abs(long["seconds"] - 240) < 70 and abs(short["seconds"] - 60) < 20
     assert any(s["role"] == "bridge" for s in long["sections"]) and any(s["role"] == "solo" for s in long["sections"])
     assert all(s["role"] != "intro" for s in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 15, "seed": 1})["sections"])
+
+
+def test_genres_choose_their_own_instruments_and_accompaniment_styles(q):
+    quick_song = q.quick_song
+
+    def tracks(genre, mood="allegra", **extra):
+        song = quick_song({"genre": genre, "mood": mood, "duration": 30, "seed": 3, **extra})
+        return re.findall(r"^(?:Traccia )?([A-Za-z_0-9 ]+?)(?: \[.*\])?:\s*$", song["text"], re.M), song
+
+    jazz, _ = tracks("jazz")
+    assert "Acoustic_Bass" in jazz and "Tenor_Sax" in jazz and "Nylon_Guitar" not in jazz
+    funk, _ = tracks("funk")
+    assert "Clavinet" in funk and "Brass_Section" in funk
+    country, _ = tracks("country")
+    assert "Banjo" in country and "Fiddle" in country
+    blues, _ = tracks("blues", "tesa")
+    assert "Harmonica" in blues and "Drawbar_Organ" in blues
+    # due generi non suonano le stesse tracce (solo la ritmica puo' essere uguale)
+    sets = {g: tuple(tracks(g)[0]) for g in ("jazz", "swing", "country", "soul", "funk", "blues", "reggae", "disco")}
+    assert len(set(sets.values())) == len(sets)
+    # lo stile della parte e' quello nuovo: power chord nel rock, galoppo nel metal, boom-chick nel country
+    for genre, mood, part, style in (("rock", "tesa", "comp", "power_chords"), ("metal", "tesa", "comp", "metal_gallop"),
+                                     ("country", "allegra", "comp", "boom_chick"), ("funk", "allegra", "horn", "horn_stabs"),
+                                     ("reggae", "allegra", "comp2", "organ_bubble")):
+        song = quick_song({"genre": genre, "mood": mood, "duration": 30, "seed": 3})
+        assert song["choices"]["styles"][part] == style, (genre, part)
+    # un altro organico vince sul genere
+    other, _ = tracks("jazz", ensemble="orchestra")
+    assert "Tenor_Sax" not in other and "Strings" in other
+
+
+def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
+    from core.project_io import parse_project_text
+
+    def effects(genre, **extra):
+        song = q.quick_song({"genre": genre, "mood": "calma", "duration": 30, "seed": 2, **extra})
+        return [e.kind for e in parse_project_text(song["text"], "x").master_effects]
+
+    assert effects("reggae") == ["delay"] and effects("lofi") == ["passa_basso", "eq"]
+    assert effects("funk") == ["compressore"] and effects("blues") == ["riverbero"] and effects("orchestrale") == ["riverbero"]
+    assert effects("pop") == [] and effects("reggae", effects=False) == []

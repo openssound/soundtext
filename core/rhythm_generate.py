@@ -1864,6 +1864,33 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                   "variant": [(0.0, ["root", "third", "seventh"]), (0.5, "rest"),
                               (2.5, ["root", "third", "fifth"]), (3.0, "rest")]},
 
+    # --- Accompagnamenti per genere (8.8.2) ---
+    # Power chord (fondamentale e quinta) a ottavi: rock e punk.
+    "power_chords": {"grid": "8:", "polyphonic": True,
+                     "bar": [(0.5 * i, ["root", "fifth"]) for i in range(8)],
+                     "variant": [(0.5 * i, ["root", "fifth"]) for i in range(7)] + [(3.5, ["fifth", "root_hi"])]},
+    # Galoppo del metal: un ottavo e due sedicesimi su ogni quarto, sempre su fondamentale e quinta.
+    "metal_gallop": {"grid": "16:", "polyphonic": True,
+                     "bar": [(b + o, ["root", "fifth"]) for b in range(4) for o in (0.0, 0.5, 0.75)],
+                     "variant": [(b + o, ["root", "fifth"]) for b in range(3) for o in (0.0, 0.5, 0.75)]
+                     + [(3.0, ["root", "fifth"]), (3.5, ["root", "fifth"])]},
+    # Boom-chick (country, marcia): il basso dell'accordo sul tempo, l'accordo in levare.
+    "boom_chick": {"grid": "4:", "polyphonic": True,
+                   "bar": [(0.0, "root"), (1.0, ["third", "fifth"]), (2.0, "fifth"), (3.0, ["third", "fifth"])],
+                   "variant": [(0.0, "root"), (1.0, ["third", "fifth"]), (2.0, "root"), (3.0, ["third", "seventh"])]},
+    # Organo "bubble" del reggae: due sedicesimi in levare di ogni quarto, il resto silenzio.
+    "organ_bubble": {"grid": "16:", "polyphonic": True,
+                     "bar": [x for b in range(4) for x in ((float(b), "rest"), (b + 0.5, ["root", "third", "fifth"]),
+                                                           (b + 0.75, ["root", "third", "fifth"]))],
+                     "variant": [x for b in range(4) for x in ((float(b), "rest"), (b + 0.5, ["root", "third", "seventh"]),
+                                                               (b + 0.75, ["root", "third", "fifth"]))]},
+    # Colpi brevi dei fiati sugli accenti (1, "e" del 2, "e" del 4): funk, soul, swing, disco.
+    "horn_stabs": {"grid": "8:", "polyphonic": True,
+                   "bar": [(0.0, ["root", "third", "fifth"]), (0.5, "rest"), (1.5, ["root", "third", "fifth"]),
+                           (2.0, "rest"), (3.5, ["root", "third", "fifth"])],
+                   "variant": [(0.0, ["root", "third", "seventh"]), (0.5, "rest"), (1.5, ["third", "fifth", "seventh"]),
+                               (2.0, "rest"), (3.5, ["root", "third", "seventh"])]},
+
     # --- Melodia/riff (fiati, ottoni, archi soli, synth lead...) ---
     # Motivo breve sulle note dell'accordo, ripetuto a ogni accordo.
     "riff_short": {"grid": "8:", "polyphonic": False,
