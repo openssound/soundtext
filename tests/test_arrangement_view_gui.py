@@ -560,6 +560,7 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PySide6.QtWidgets import QApplication, QFileDialog
     app = QApplication.instance() or QApplication([])
+    assert app is not None      # tiene viva l'applicazione per tutto il test
     import core.playback as pb
     from core.audio_tracks import read_wav
     from core.model import Clip, Effect

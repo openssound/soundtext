@@ -176,6 +176,7 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
     emette canceled, e prima il risultato veniva scartato come annullato."""
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication.instance() or QApplication([])
+    assert app is not None      # tiene viva l'applicazione per tutto il test
     import core.levels
     from core.levels import LevelReport, TrackPeak
     from gui.main_window import MainWindow

@@ -49,6 +49,7 @@ def test_background_noise_events_are_dropped():
 def test_dialog_shows_silence_without_an_error_popup(tmp_path, monkeypatch):
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication.instance() or QApplication([])
+    assert app is not None      # tiene viva l'applicazione per tutto il test
     errors = []
     monkeypatch.setattr(QMessageBox, "critical", lambda *a: errors.append(a))
     from core.model import Project
