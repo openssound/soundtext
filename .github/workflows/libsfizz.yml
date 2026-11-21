@@ -70,7 +70,7 @@ jobs:
       # appena compilati): devono accompagnare il binario
       - name: Licenze
         run: /opt/python/cp312-cp312/bin/python soundtext/.github/scripts/licenze_sfizioso.py src LICENSE-sfizz.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux
           path: |
@@ -103,7 +103,7 @@ jobs:
           Write-Output "dipendenze: $deps"
           if ($deps -match "(?i)vcruntime|msvcp") { throw "la DLL dipende ancora dal runtime MSVC: $deps" }
         shell: pwsh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows
           path: sfizz-windows-x64.dll
@@ -138,7 +138,7 @@ jobs:
           lipo -info libsfizz-macos-universal.dylib
           python3 -c "import ctypes; ctypes.CDLL('./libsfizz-macos-universal.dylib').sfizz_create_synth"
           otool -L libsfizz-macos-universal.dylib
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos
           path: libsfizz-macos-universal.dylib
