@@ -18,7 +18,12 @@ const gen = {
   seeds: {},                         // per generatore: il seme
   text: "", textFor: "",             // ultima parte generata e per quali valori
   timer: null, busy: null,
+  sections: null,                    // engine.structure_sections: le sezioni del brano, se ce ne sono
+  intensities: {},                   // intensita' scelte per sezione (indice -> livello)
+  arranged: null,                    // l'ultimo risultato di engine.arrange_song, per «Aggiungi»
 };
+const GEN_INTENSITY_LABELS = () => ({ intro: t("Intro"), light: t("Leggera"), normal: t("Normale"), build: t("Cresce"), full: t("Piena"),
+                                       outro: t("Finale"), stop: t("Stop"), break: t("Break") });
 
 // I campi di ogni generatore: [nome, tipo, etichetta, opzioni]. Le etichette
 // sono quelle delle finestre di SoundText.
@@ -81,6 +86,57 @@ function genDefaults(kind) {
            voice_leading: true, performance: false };
 }
 
+// Le parti seguono le sezioni del brano? (solo batteria, basso e accompagnamento, e se il brano ha sezioni)
+function followActive() {
+  return !!(gen.sections && gen.sections.sections.length && $("genFollow").checked && ["drums", "bass", "comping"].includes(gen.kind));
+}
+
+function arrangeOptions(parts) {
+  const out = { parts, intensities: gen.intensities, replace: true };
+  const d = gen.values.drums, b = gen.values.bass, c = gen.values.comping;
+  const variability = (gen.values[parts.length === 1 ? parts[0] : "comping"] || { variability: 35 }).variability / 100;
+  out.variability = variability;
+  if (d && d.style) out.drum_style = d.style;
+  if (b) { out.bass_style = b.style; out.bass_instrument = b.instrument; }
+  if (c) { out.comping_style = c.style; out.comping_instrument = c.instrument; }
+  const kind = parts.length === 1 ? parts[0] : null;
+  if (kind && gen.seeds[kind] != null) out.seed = gen.seeds[kind];
+  return out;
+}
+
+async function loadSections() {
+  const text = state.doc ? state.doc.text : "";
+  if (gen.sectionsFor === text) return;
+  gen.sections = (await call("structure_sections", { args: [text] })).result;
+  gen.sectionsFor = text;
+  gen.intensities = {};
+  const list = $("genSections"), preview = $("genPreviewSection");
+  list.replaceChildren();
+  preview.replaceChildren(new Option(t("tutto il brano"), ""));
+  const labels = GEN_INTENSITY_LABELS();
+  for (const s of gen.sections.sections) {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = `${s.name || t("(senza nome)")} · ${s.bars === 1 ? t("1 battuta") : t("{n} battute", { n: s.bars })}`;
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", t("Intensità di {name}", { name: s.name }));
+    for (const [value, label] of Object.entries(labels)) select.add(new Option(label, value));
+    select.value = s.intensity;
+    select.onchange = () => { gen.intensities[s.index] = select.value; gen.textFor = ""; scheduleGenerate(0); };
+    li.append(name, select);
+    list.append(li);
+    preview.add(new Option(s.name || t("sezione {n}", { n: s.index + 1 }), String(s.index)));
+  }
+}
+
+function renderFollowBox() {
+  const has = !!(gen.sections && gen.sections.sections.length) && gen.kind !== "progression";
+  $("genStructure").hidden = !has;
+  $("genFollowBox").hidden = !has || !$("genFollow").checked;
+  const exists = gen.sections && gen.sections.tracks && followActive() && gen.sections.tracks.includes(gen.kind === "drums" ? "Drums" : (gen.values[gen.kind] || {}).instrument);
+  $("genAdd").textContent = exists ? t("Sostituisci la traccia") : t("Aggiungi al brano");
+}
+
 async function loadGenChoices() {
   const text = state.doc ? state.doc.text : "";
   if (gen.choices && gen.choicesFor === text) return;
@@ -107,7 +163,15 @@ async function showCrea() {
     return;
   }
   if (first) $("genStatus").textContent = "";
+  try { await loadSections(); } catch (e) { gen.sections = null; }
   renderGenForm();
+  // l'accompagnamento non puo' avere lo strumento della traccia degli accordi (e' la sorgente, non si sostituisce)
+  const chordTrack = gen.sections && gen.sections.track, comp = gen.values.comping;
+  if (chordTrack && comp && comp.instrument === chordTrack && gen.choices) {
+    comp.instrument = gen.choices.instruments.comping.find((n) => n !== chordTrack) || comp.instrument;
+    if (gen.kind === "comping") renderGenForm();
+  }
+  renderFollowBox();
   scheduleGenerate(0);
 }
 
@@ -205,6 +269,8 @@ async function generatePart() {
   const key = JSON.stringify([state.doc.text, kind, options]);
   if (key === gen.textFor && gen.text) return gen.text;
   const status = $("genStatus");
+  if (followActive()) return generateArranged(kind, key);
+  gen.arranged = null;
   let r;
   try {
     r = (await call("generate", { args: [state.doc.text, kind, options] })).result;
@@ -228,6 +294,35 @@ async function generatePart() {
   return r.text;
 }
 
+// Le parti come un box per sezione (engine.arrange_song): il testo mostrato e' quello dei box nuovi
+async function generateArranged(kind, key) {
+  const status = $("genStatus");
+  const parts = [kind];
+  let r;
+  try {
+    r = (await call("arrange_song", { args: [state.doc.text, arrangeOptions(parts)] })).result;
+  } catch (e) {
+    if (gen.kind !== kind) return null;
+    gen.text = ""; gen.textFor = ""; gen.arranged = null;
+    $("genText").textContent = "";
+    status.textContent = errorText(e);
+    $("genAdd").disabled = true;
+    return null;
+  }
+  if (gen.kind !== kind) return null;
+  gen.arranged = r;
+  gen.seeds[kind] = r.seed;
+  const name = r.tracks[0];
+  const shown = (r.text.match(new RegExp(`^Box ${name} "[^\\n]*\\|[0-9.]+:\\n(?:[ \\t][^\\n]*\\n?)*`, "gm")) || []).join("\n");
+  gen.text = shown;
+  gen.textFor = key;
+  $("genText").textContent = shown;
+  status.textContent = t("{n} box, uno per sezione.", { n: (shown.match(/^Box /gm) || []).length });
+  $("genAdd").disabled = false;
+  if (state.previewing) listenToPart(true).catch(showError);
+  return shown;
+}
+
 // Strumento e nome della traccia nuova
 function genTrack(kind) {
   const v = gen.values[kind];
@@ -238,6 +333,11 @@ function genTrack(kind) {
 
 // Il brano con la parte nuova in fondo
 async function songWithPart() {
+  if (followActive()) {
+    await generatePart();
+    if (!gen.arranged) throw new Error(errorText($("genStatus").textContent || t("Niente da aggiungere")));
+    return { text: gen.arranged.text, name: gen.arranged.tracks[0] };
+  }
   const part = await generatePart() || gen.text;
   if (!part) throw new Error(errorText($("genStatus").textContent || t("Niente da aggiungere")));
   const { instrument, name } = genTrack(gen.kind);
@@ -252,7 +352,12 @@ async function listenToPart(again = false) {
   if (resumed) await resumed;
   const song = await songWithPart();
   const r = await call("preview", { text: song.text });
-  await playPreview(r.midi);
+  let midi = r.midi;
+  const from = $("genPreviewSection").value;
+  if (followActive() && from !== "" && gen.sections.sections[Number(from)]) {          // una sezione sola: dal suo inizio
+    midi = MidiCut.from(new Uint8Array(midi), Math.round(gen.sections.sections[Number(from)].beat * TICKS_PER_BEAT));
+  }
+  await playPreview(midi);
 }
 
 async function addPartToSong() {
@@ -270,8 +375,38 @@ async function addPartToSong() {
   const next = order[order.indexOf(gen.kind) + 1];
   gen.choices = null;                    // le tracce sono cambiate: nuove sorgenti di accordi
   gen.textFor = "";
+  gen.sectionsFor = "";
   if (next) await setGenKind(next); else await showCrea();
   $("genStatus").textContent = done;
+}
+
+// «Arrangia tutto»: batteria, basso e accompagnamento su tutte le sezioni, in un tocco
+async function arrangeAll() {
+  if (!state.doc || !gen.sections || !gen.sections.sections.length) return;
+  if (state.previewing) stopPreview();
+  const status = $("genStatus");
+  status.textContent = t("Arrangio il brano…");
+  const options = arrangeOptions(["drums", "bass", "comping"]);
+  options.replace = false;
+  let r;
+  try {
+    r = (await call("arrange_song", { args: [state.doc.text, options] })).result;
+  } catch (e) {
+    if (!/c'è già|already|existe/i.test(errorText(e))) { status.textContent = errorText(e); return; }
+    const names = ["Drums", options.bass_instrument || "Bass", options.comping_instrument || "Piano"].filter((n) => gen.sections.tracks.includes(n));
+    if (!confirm(t("Sostituire le tracce {names}?", { names: names.join(", ") }))) { status.textContent = ""; return; }
+    options.replace = true;
+    try { r = (await call("arrange_song", { args: [state.doc.text, options] })).result; } catch (e2) { status.textContent = errorText(e2); return; }
+  }
+  gen.undo = { before: state.doc.text, after: r.text };
+  await replaceDocText(r.text);
+  $("genUndo").hidden = false;
+  gen.choices = null; gen.textFor = ""; gen.sectionsFor = "";
+  await showCrea();
+  const done = t("Brano arrangiato: {names}.", { names: r.tracks.join(", ") });
+  $("genStatus").textContent = done;
+  setStatus(done);
+  announce(done);
 }
 
 const GENERATOR_ORDER = ["progression", "drums", "bass", "comping"];
@@ -282,6 +417,9 @@ function setupCrea() {
   $("genAgain").onclick = () => { gen.seeds[gen.kind] = null; gen.textFor = ""; scheduleGenerate(0); };
   $("genListen").onclick = () => listenToPart().catch(showError);
   $("genAdd").onclick = () => addPartToSong().catch(showError);
+  $("genFollow").onchange = () => { renderFollowBox(); gen.textFor = ""; scheduleGenerate(0); };
+  $("genPreviewSection").onchange = () => { if (state.previewing) listenToPart(true).catch(showError); };
+  $("genArrangeAll").onclick = () => arrangeAll().catch(showError);
   $("genUndo").onclick = async () => {
     const u = gen.undo;
     $("genUndo").hidden = true;

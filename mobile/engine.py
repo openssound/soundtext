@@ -15,6 +15,7 @@ corpo del pattern, cosi' si vede la nota che suona e non solo il box.
 
 import io
 import math
+import random
 import re
 import time
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -1893,16 +1894,8 @@ def _unused_patterns(text: str) -> List[str]:
     return unused
 
 
-def _track_delete(text: str, track: str) -> dict:
-    """box_edit "track_delete": vedi sopra."""
-    from core.i18n import tr
-    from core.project_io import parse_project_text
-    project = parse_project_text(text, "Brano")
-    names = [t.name for t in project.tracks if not t.is_audio]
-    if track not in names:
-        raise ValueError(tr("La traccia non c'è più: il testo è cambiato."))
-    if len(names) <= 1:
-        raise ValueError(tr("È l'ultima traccia: per toglierla si cancella il brano."))
+def _track_ranges(text: str, project, track: str) -> tuple:
+    """([(inizio, fine) dei blocchi della traccia: intestazione, testo e box], quanti box)."""
     index = {t.name: i for i, t in enumerate(project.tracks)}
     ranges, boxes = [], 0
     for b in file_blocks(text):
@@ -1913,6 +1906,20 @@ def _track_delete(text: str, track: str) -> dict:
                 boxes += 1
         elif not RE_PATTERN_HDR.match(b["header"]) and Engine._track_of_header(b["header"], index) == track:
             ranges.append((b["hstart"], max(b["end"], b["hstart"] + len(b["header"]))))
+    return ranges, boxes
+
+
+def _track_delete(text: str, track: str) -> dict:
+    """box_edit "track_delete": vedi sopra."""
+    from core.i18n import tr
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    names = [t.name for t in project.tracks if not t.is_audio]
+    if track not in names:
+        raise ValueError(tr("La traccia non c'è più: il testo è cambiato."))
+    if len(names) <= 1:
+        raise ValueError(tr("È l'ultima traccia: per toglierla si cancella il brano."))
+    ranges, boxes = _track_ranges(text, project, track)
     if not ranges:
         raise ValueError(tr("La traccia non ha un testo da togliere."))
     new = text
@@ -1920,6 +1927,124 @@ def _track_delete(text: str, track: str) -> dict:
         new = _cut_block(new, hstart, end)
     before = set(_unused_patterns(text))
     return {"text": new, "focus": -1, "boxes": boxes, "unused": [p for p in _unused_patterns(new) if p not in before]}
+
+
+# ------------------------------------------------------------ Crea: le parti seguono la struttura del brano
+
+INTENSITIES = ("intro", "light", "normal", "build", "full", "outro", "stop", "break")
+
+
+def _chord_track(project):
+    """La traccia con i box che hanno degli accordi (le sue sezioni sono quelle del brano), o None."""
+    from core.rhythm_generate import extract_chords_from_track
+    for track in project.tracks:
+        if track.is_audio or not track.clips:
+            continue
+        for clip in track.clips:
+            try:
+                if extract_chords_from_track(clip.text, project.patterns, midi_dir=None):
+                    return track
+            except Exception:
+                continue
+    return None
+
+
+def structure_sections(text: str) -> dict:
+    """Le sezioni del brano per la schermata Crea: {"track": traccia degli accordi o None, "sections": [{index, name, beat, bars,
+    intensity}]}. Vuoto se il brano non ha box con accordi: allora Crea scrive una traccia unica, come sempre."""
+    from core.arrange import song_sections
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    track = _chord_track(project)
+    names = [t.name for t in project.tracks if not t.is_audio]
+    if track is None:
+        return {"track": None, "sections": [], "tracks": names}
+    bar_beats = _bar_beats(project)
+    sections = song_sections(project, track)
+    return {"track": track.name, "tracks": names,
+            "sections": [{"index": i, "name": s.name, "beat": s.start_beat, "bars": max(1, round(s.length_beats / bar_beats)),
+                          "intensity": s.intensity} for i, s in enumerate(sections)]}
+
+
+def arrange_song(text: str, options: Optional[dict] = None) -> dict:
+    """Le parti generate come un box per sezione, allineati alle sezioni del brano (core.arrange, come «Arrangia il brano» del
+    computer): {text, sections, tracks, seed}. options: parts (["drums", "bass", "comping"]), drum_style, bass_style,
+    comping_style, bass_instrument ("Bass"), comping_instrument ("Piano"), variability (0.3), seed, intensities {indice:
+    livello} per cambiare l'intensita' proposta, ending, rallentando, phrase_dynamics, melody (traccia della melodia),
+    replace (le tracce che ci sono gia' si sostituiscono; senza, ValueError). Le sezioni con lo stesso nome e gli stessi
+    accordi ricevono la stessa parte quando la variabilita' e' bassa."""
+    from dataclasses import replace as _replace
+    from core import arrange as ar
+    from core import rhythm_generate as rg
+    from core.i18n import tr
+    from core.project_io import parse_project_text
+    options = dict(options or {})
+    project = parse_project_text(text, "Brano")
+    track = _chord_track(project)
+    if track is None:
+        raise ValueError(tr("Il brano non ha sezioni con degli accordi: Crea scrive una traccia unica."))
+    sections = ar.song_sections(project, track)
+    for key, level in (options.get("intensities") or {}).items():
+        k = int(key)
+        if 0 <= k < len(sections) and level in INTENSITIES:
+            sections[k] = _replace(sections[k], intensity=level)
+    parts = [p for p in options.get("parts", ["drums", "bass", "comping"]) if p in ("drums", "bass", "comping")]
+    if not parts:
+        raise ValueError(tr("Niente da generare."))
+    bar_beats = _bar_beats(project)
+    styles = rg.drum_styles_for_meter(project.time_sig)
+    seed = options.get("seed")
+    seed = int(seed) if seed is not None else random.randrange(2 ** 31)
+    variability = float(options.get("variability", 0.3))
+    opts = ar.ArrangeOptions(
+        drum_style=(options.get("drum_style") or (styles[0] if styles else "rock")) if "drums" in parts else None,
+        bass_style=(options.get("bass_style") or rg.BASS_STYLES[0]) if "bass" in parts else None,
+        comping_style=(options.get("comping_style") or rg.COMPING_STYLES[0]) if "comping" in parts else None,
+        comping_instrument=options.get("comping_instrument") or ("Guitar" if track.name == "Piano" else "Piano"),
+        bass_instrument=options.get("bass_instrument", "Bass"),
+        variability=variability, seed=seed, ending=bool(options.get("ending", True)),
+        rallentando=bool(options.get("rallentando", False)), phrase_dynamics=bool(options.get("phrase_dynamics", True)),
+        melody_track=options.get("melody"))
+    made = ar.arrange(project, sections, opts, bar_beats, chord_octave=track.instrument.default_octave, chord_track=track.name)
+    names = {"drums": "Drums", "bass": opts.bass_instrument, "comping": opts.comping_instrument}
+    new = text
+    existing = {t.name for t in project.tracks if not t.is_audio}
+    placed = []
+    for kind in parts:
+        clips = made.get(kind) or []
+        if not clips:
+            continue
+        name = names[kind]
+        if name == track.name:                       # la traccia degli accordi e' la sorgente: non si sostituisce mai
+            raise ValueError(tr("«{name}» è la traccia degli accordi: scegli un altro strumento.", name=name))
+        if name in existing:
+            if not options.get("replace"):
+                raise ValueError(tr("La traccia «{name}» c'è già: scegli di sostituirla.", name=name))
+            ranges, _n = _track_ranges(new, parse_project_text(new, "Brano"), name)
+            for hstart, end in sorted(ranges, reverse=True):
+                new = _cut_block(new, hstart, end)
+        # le sezioni uguali (stesso nome e stessi accordi) ricevono la stessa parte, se la variabilita' e' bassa
+        if variability <= 0.5:
+            seen = {}
+            for clip in clips:
+                section = next((s for s in sections if abs(s.start_beat - clip.start_beat) < 1e-6), None)
+                key = (section.name, section.text, section.intensity, section.length_beats) if section else None
+                if key in seen and section is not sections[-1]:
+                    clip.text = seen[key]
+                elif key is not None:
+                    seen[key] = clip.text
+        blocks = [_box_header(name, clip.name, clip.start_beat) + "\n" + _indent(clip.text.strip("\n")) for clip in clips]
+        body = "\n\n".join(blocks)
+        # una traccia nuova ha la sua intestazione (vuota, come nei brani a box): senza, il motore non la vede
+        header = ""
+        if name not in {t.name for t in parse_project_text(new, "Brano").tracks}:
+            header = (f"{name}:" if re.match(r"^[A-Za-z]\w*$", name) and _has_short_header(name)
+                      else f"Traccia {name} [{name}]:") + "\n\n"
+        new = new.rstrip("\n") + "\n\n" + header + body + "\n"
+        placed.append(name)
+    _check_overlaps(new)
+    return {"text": new, "tracks": placed, "seed": seed,
+            "sections": [{"index": i, "name": s.name, "beat": s.start_beat, "intensity": s.intensity} for i, s in enumerate(sections)]}
 
 
 def flat_spans(spans) -> list:

@@ -136,7 +136,15 @@
       <button role="tab" data-gen="comping" aria-selected="false" aria-controls="genForm" data-i18n>Accompagnamento</button>
     </div>
     <div class="genbody">
-      <form id="genForm" class="genform" role="tabpanel"></form>
+      <div id="genStructure" class="gen-structure" hidden>
+      <label class="check"><input id="genFollow" type="checkbox" checked> <span data-i18n>Segui la struttura del brano</span></label>
+      <div id="genFollowBox">
+        <ul id="genSections" class="gen-sections" aria-label="Sezioni del brano"></ul>
+        <label class="hum-grid"><span data-i18n>Anteprima:</span><select id="genPreviewSection"></select></label>
+        <button id="genArrangeAll" data-i18n>Arrangia tutto</button>
+      </div>
+    </div>
+    <form id="genForm" class="genform" role="tabpanel"></form>
       <pre id="genText" class="gentext" aria-label="Parte generata" translate="no"></pre>
       <p id="genStatus" class="hint" role="status"></p>
     </div>

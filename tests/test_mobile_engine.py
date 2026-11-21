@@ -855,3 +855,71 @@ def test_track_delete_in_a_song_made_of_boxes_and_its_limits():
     if len(_track_names(e, single)) == 1:
         with pytest.raises(ValueError):
             e.box_edit(single, "track_delete", {"track": "Piano"})
+
+
+SECTIONED = ("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\nTonalita: C\n\nPiano:\n\n" +
+             "".join(f'Box Piano "{name}" |{beat}:\n  1: {chords} |\n\n' for name, beat, chords in
+                     [("Intro", 0, "Am F"), ("Strofa", 8, "Am F C G"), ("Ritornello", 24, "F G Am C"), ("Strofa", 40, "Am F C G"),
+                      ("Ritornello", 56, "F G Am C"), ("Finale", 72, "F G")]))
+
+
+def test_structure_sections_of_a_song_with_and_without_sections():
+    e = _quick()
+    info = e.structure_sections(SECTIONED)
+    assert info["track"] == "Piano"
+    assert [(s["name"], s["bars"], s["intensity"]) for s in info["sections"]] == [
+        ("Intro", 2, "intro"), ("Strofa", 4, "light"), ("Ritornello", 4, "full"), ("Strofa", 4, "light"),
+        ("Ritornello", 4, "full"), ("Finale", 2, "outro")]
+    with open(os.path.join(ROOT, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+        jazz = e.structure_sections(f.read())
+    assert [s["name"] for s in jazz["sections"]] == ["Intro", "Chorus 1", "Chorus 2", "Chorus 3", "Coda"]
+    plain = "ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPiano:\n  4: c d e f |\n"
+    assert e.structure_sections(plain) == {"track": None, "sections": [], "tracks": ["Piano"]}
+
+
+def test_arrange_song_writes_one_box_per_section_aligned_with_the_chords():
+    e = _quick()
+    r = e.arrange_song(SECTIONED, {"seed": 4})
+    assert r["tracks"] == ["Drums", "Bass", "Guitar"] and r["text"].startswith(SECTIONED.rstrip("\n"))
+    tracks = {t["name"]: t for t in e.structure(r["text"])["tracks"]}
+    piano = [(b["name"], b["bar"], b["bars"]) for b in tracks["Piano"]["boxes"]]
+    assert [b[0] for b in piano] == ["Intro", "Strofa", "Ritornello", "Strofa", "Ritornello", "Finale"]
+    assert [(b["name"], b["bar"], b["bars"]) for b in tracks["Guitar"]["boxes"]] == piano           # l'accompagnamento: tutte le sezioni
+    for kind in ("Drums", "Bass"):                                                                  # l'intro suona senza batteria ne' basso
+        assert [(b["name"], b["bar"], b["bars"]) for b in tracks[kind]["boxes"]] == piano[1:]
+    # sezioni uguali, stessa parte (variabilita' bassa)
+    import re
+    strofe = re.findall(r'Box Bass "Strofa" \|\d+:\n(.*)\n', r["text"])
+    assert len(strofe) == 2 and strofe[0] == strofe[1]
+    # lo stesso seme, lo stesso risultato
+    assert e.arrange_song(SECTIONED, {"seed": 4})["text"] == r["text"]
+
+
+def test_arrange_song_chorus_is_fuller_than_verse():
+    e = _quick()
+    r = e.arrange_song(SECTIONED, {"seed": 4, "parts": ["drums", "comping"]})
+    data = e.visual_notes(r["text"])
+    drums = next(t for t in data["tracks"] if t["name"] == "Drums")["notes"]
+    verse = [n for n in drums if 8 <= n[0] < 24]
+    chorus = [n for n in drums if 24 <= n[0] < 40]
+    assert len(verse) > 0 and len(chorus) > 0
+    assert sum(n[3] for n in chorus) / len(chorus) > sum(n[3] for n in verse) / len(verse)
+
+
+def test_arrange_song_replace_touches_only_that_track_and_never_the_chords():
+    e = _quick()
+    r = e.arrange_song(SECTIONED, {"seed": 4})
+    with pytest.raises(ValueError):
+        e.arrange_song(r["text"], {"seed": 5})                                    # esistono gia': serve «sostituisci»
+    with pytest.raises(ValueError):
+        e.arrange_song(r["text"], {"seed": 5, "replace": True, "parts": ["comping"], "comping_instrument": "Piano"})
+    again = e.arrange_song(r["text"], {"seed": 5, "replace": True, "parts": ["bass"]})
+    old = {t["name"]: t for t in e.structure(r["text"])["tracks"]}
+    new = {t["name"]: t for t in e.structure(again["text"])["tracks"]}
+    assert set(old) == set(new)
+    for name in ("Piano", "Drums", "Guitar"):
+        assert [(b["name"], b["beat"], b["length"]) for b in old[name]["boxes"]] == [(b["name"], b["beat"], b["length"]) for b in new[name]["boxes"]]
+    assert len(new["Bass"]["boxes"]) == 5
+    # le intensita' si cambiano per sezione
+    quiet = e.arrange_song(SECTIONED, {"seed": 4, "parts": ["drums"], "intensities": {"2": "light", "4": "light"}})
+    assert quiet["sections"][2]["intensity"] == "light"
