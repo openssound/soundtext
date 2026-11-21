@@ -16,6 +16,7 @@ import random
 import re
 from typing import Dict, List, Optional, Tuple
 
+from core.humanize_text import humanize_drums, humanize_part
 from core.i18n import tr
 
 # ------------------------------------------------------------ valori
@@ -29,18 +30,19 @@ DURATIONS = (15, 30, 45, 60, 90, 120, 180, 240)
 FORMS = ("loop", "canzone", "aaba", "blues", "ponte")
 ENSEMBLES = ("piano", "acustica", "elettrica", "elettronica", "orchestra")
 MELODIES = ("nessuna", "cantabile", "vivace", "ballata", "aaba")
+ENERGY_CURVES = ("sale", "picco", "cala")
 ENDINGS = ("cadenza", "rallentando", "sfumato")
-PARTS = ("progression", "comp", "comp2", "horn", "bass", "drums", "melody")
+PARTS = ("progression", "comp", "comp2", "horn", "pad", "bass", "drums", "melody")
 _MELODY_STYLE = {"cantabile": "melody_period", "vivace": "melody_lively", "ballata": "melody_ballad", "aaba": "melody_aaba"}
 
 # i parametri di ogni atmosfera: modo, fattore del tempo, intensita' (strofa, ritornello), giro armonico
 # (strofa, ritornello, ponte), come stanno fra loro (energia 1-4)
 MOODS_DATA = {
-    "allegra": ("major", 1.10, ("normal", "full"), ("pop", "royal_road", "circle"), 3),
+    "allegra": ("major", 1.10, ("normal", "full"), ("pop", "royal_road", "borrowed_flat6"), 3),
     "malinconica": ("minor", 0.88, ("light", "normal"), ("minor_pop", "andalusian", "minor_circle"), 1),
     "tesa": ("minor", 1.00, ("normal", "full"), ("minor_rock", "minor_cadence", "phrygian"), 3),
-    "epica": ("minor", 1.05, ("normal", "full"), ("minor_epic", "minor_pop", "minor_cadence"), 4),
-    "calma": ("major", 0.82, ("light", "normal"), ("canon", "ballad", "pop"), 1),
+    "epica": ("minor", 1.05, ("normal", "full"), ("minor_epic", "minor_pop", "minor_deceptive"), 4),
+    "calma": ("major", 0.82, ("light", "normal"), ("canon", "ballad", "plagal"), 1),
     "sognante": ("minor", 0.90, ("light", "normal"), ("dorian_vamp", "minor_pop", "dorian_vamp"), 1),
     "misteriosa": ("minor", 0.90, ("light", "normal"), ("phrygian", "minor_cadence", "phrygian"), 2),
     "romantica": ("major", 0.85, ("light", "normal"), ("ballad", "canon", "royal_road"), 1),
@@ -130,19 +132,24 @@ GENRES_DATA = {
                         prog={"major": ("mixolydian", "pop", "mixolydian"), "minor": ("phrygian", "minor_rock", "phrygian")}),
 }
 
+# la scala della melodia per genere (8.8.3): pentatonica, blues o minore armonica (vedi core.melody_generate.SCALE_KINDS)
+_GENRE_SCALE = {"blues": "blues", "rock": "blues", "rocknroll": "blues", "metal": "blues", "country": "pentatonic", "pop": "pentatonic",
+                "punk": "pentatonic", "balcanico78": "harmonic_minor"}
+
 # gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
 # (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
 _GENRE_INSTRUMENTS = {
+    "pop": {"pad": "Strings"}, "ballata": {"pad": "Strings"}, "ballata68": {"pad": "Strings"},
     "jazz": {"bass": "Acoustic_Bass", "melody": "Tenor_Sax", "comp2": None},
     "swing": {"bass": "Acoustic_Bass", "melody": "Trumpet", "comp2": None, "horn": "Brass_Section"},
     "country": {"comp": "Acoustic_Guitar_Steel", "comp2": "Banjo", "melody": "Fiddle"},
-    "soul": {"comp": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section"},
+    "soul": {"comp": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
     "funk": {"comp": "Clavinet", "comp2": "Clean_Guitar", "horn": "Brass_Section"},
     "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
     "chacha": {"horn": "Brass_Section"},
     "reggae": {"comp2": "Drawbar_Organ"},
-    "disco": {"horn": "Brass_Section"},
+    "disco": {"horn": "Brass_Section", "pad": "Strings"},
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
 
@@ -163,7 +170,7 @@ _GENRE_FX = {
 # in quali sezioni suona ogni parte
 _ENTER = {
     "progression": (), "comp": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
-    "comp2": ("chorus", "bridge", "solo", "end", "loop"), "horn": ("chorus", "solo", "end"),
+    "comp2": ("chorus", "bridge", "solo", "end", "loop"), "horn": ("chorus", "solo", "end"), "pad": ("chorus", "bridge", "end"),
     "bass": ("verse", "chorus", "bridge", "solo", "end", "loop"), "drums": ("verse", "chorus", "bridge", "solo", "end", "loop"),
     "melody": ("chorus", "solo", "end", "loop"),
 }
@@ -202,13 +209,17 @@ def _melody_labels() -> Dict[str, str]:
             "aaba": tr("AABA")}
 
 
+def _energy_labels() -> Dict[str, str]:
+    return {"sale": tr("sale"), "picco": tr("sale e poi cala"), "cala": tr("cala")}
+
+
 def _ending_labels() -> Dict[str, str]:
     return {"cadenza": tr("cadenza"), "rallentando": tr("rallentando"), "sfumato": tr("sfumato")}
 
 
 def _part_labels() -> Dict[str, str]:
     return {"progression": tr("Giro armonico"), "comp": tr("Accompagnamento"), "comp2": tr("Secondo accompagnamento"),
-            "horn": tr("Ottoni"), "bass": tr("Basso"), "drums": tr("Batteria"), "melody": tr("Melodia")}
+            "horn": tr("Ottoni"), "pad": tr("Archi (strato)"), "bass": tr("Basso"), "drums": tr("Batteria"), "melody": tr("Melodia")}
 
 
 def _duration_label(seconds: int) -> str:
@@ -252,6 +263,7 @@ def quick_choices() -> dict:
             "ensembles": [{"value": e, "label": l} for e, l in _ensemble_labels().items()],
             "melodies": [{"value": m, "label": l} for m, l in _melody_labels().items()],
             "endings": [{"value": e, "label": l} for e, l in _ending_labels().items()],
+            "energies": [{"value": e, "label": l} for e, l in _energy_labels().items()],
             "parts": [{"value": p, "label": l} for p, l in _part_labels().items()],
             "meters": ["4/4", "3/4", "6/8", "7/8"], "keys": list(keys), "styles": styles,
             "drum_styles_by_meter": {m: rg.drum_styles_for_meter(m) for m in ("4/4", "3/4", "6/8", "7/8")}}
@@ -414,7 +426,7 @@ def resolve(options: Optional[dict] = None) -> dict:
     for part in PARTS:
         given = (parts_in.get(part) or {}).get("seed")
         seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
-    styles = {"drums": drums, "bass": recipe["bass"], "comp": recipe["comp"], "comp2": recipe["comp2"], "horn": _HORN_STYLE.get(genre, "sustained"),
+    styles = {"drums": drums, "bass": recipe["bass"], "comp": recipe["comp"], "comp2": recipe["comp2"], "horn": _HORN_STYLE.get(genre, "sustained"), "pad": "sustained",
               "progression": None}
     for part, spec in parts_in.items():
         if part in styles and spec.get("style"):
@@ -510,6 +522,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     active = [p for p in PARTS if p != "progression" and p in c["instruments"]]
     if "comp2" in active and c["density"] < 0.25:
         active.remove("comp2")                              # piu' semplice: un solo accompagnamento
+    if "pad" in active and c["density"] < 0.25:
+        active.remove("pad")
     if c["melody"] == "nessuna" and "melody" in active:
         active.remove("melody")
     for name in set(c["instruments"].values()):
@@ -524,6 +538,15 @@ def quick_song(options: Optional[dict] = None) -> dict:
         total_bars = sum(b for _n, _r, b in sections)
     intensity["fade"] = "light"
     styles["fade"] = c["prog"][1]
+    # la curva dell'energia (8.6): sale, picco o cala, al posto dell'intensita' ricavata dal nome della sezione
+    curve = options.get("energy") if options.get("energy") in ENERGY_CURVES else None
+    section_level: Dict[int, str] = {}
+    if curve:
+        movable = [i for i, (_n, r, _b) in enumerate(sections) if r in ("verse", "chorus", "bridge", "solo", "loop")]
+        for pos, i in enumerate(movable):
+            e = pos / (len(movable) - 1) if len(movable) > 1 else 1.0
+            height = {"sale": e, "cala": 1.0 - e, "picco": 1.0 - abs(e - 0.7) / 0.7}[curve]
+            section_level[i] = level(_LEVELS[0 if height < 0.34 else 1 if height < 0.67 else 2])
 
     # la modulazione: dall'ultimo ritornello in poi un tono sopra
     mod_from = -1
@@ -536,17 +559,26 @@ def quick_song(options: Optional[dict] = None) -> dict:
     drum_texts: Dict[Tuple, str] = {}                        # la batteria: in un loop cambia a ogni giro (i fill)
     boxes: List[str] = []
     patterns: Dict[str, str] = {}                            # i pattern del testo compatto (core.compact_text), uno per battuta ripetuta
+    raw_patterns: Dict[str, str] = {}                        # gli stessi, come li ha scritti il generatore (prima del micro-tempo)
+    human = _float(options.get("human"), 1.0)                # «Umano» (8.3): 0 = griglia esatta, 1 = il micro-tempo dello stile
     compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     out_sections: List[dict] = []
     start_bar = 0
     chords_track = "Piano"
+    # sviluppo del tema (8.2, 8.4): con piu' ritornelli nella stessa tonalita' e un finale dopo, la melodia del ritornello si scrive
+    # una volta in un pattern e l'ultimo ritornello la riprende un'ottava sopra (il culmine del brano), se lo strumento ci arriva
+    chorus_ids = [i for i, (_n, r, _b) in enumerate(sections) if r == "chorus"]
+    develop = (options.get("development", True) not in (False, 0, "0", "no") and "melody" in active and len(chorus_ids) >= 2
+               and mod_from < 0 and chorus_ids[-1] < last and any(r == "end" for _n, r, _b in sections[chorus_ids[-1] + 1:]))
+    dev_pattern = ""
     for idx, (sname, role, bars) in enumerate(sections):
         skey = _shift_key(key, 2) if 0 <= mod_from <= idx else key
         closing = idx == last and not fading or (fading and role == "end")
         base = header(skey)
         sidx = 0 if form == "loop" else idx                  # in un loop l'armonia e' sempre la stessa
         seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
-        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing)
+        lvl = section_level.get(idx, intensity[role])
+        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl)
         if cache not in harmony:
             written = _chord_loop(c["chords"], bars) if c["chords"] else None
             progression = written or E.generate(base, "progression", {
@@ -558,8 +590,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
             for p, part in enumerate(active):
                 if role not in _ENTER[part] or part == "drums" or (role == "fade" and part != "comp"):
                     continue
-                common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": intensity[role], "variability": variability}
-                if part in ("comp", "comp2", "horn"):
+                common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": lvl, "variability": variability}
+                if part in ("comp", "comp2", "horn", "pad"):
                     body = E.generate(temp, "comping", {**common, "source": chords_track, "style": c["styles"][part],
                                                         "instrument": c["instruments"][part]})["text"]
                 elif part == "bass":
@@ -568,7 +600,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
                     body = E._quick_melody(project, chords_track, c["instruments"]["melody"], _MELODY_STYLE[c["melody"]], skey, bars,
-                                           seed_of("melody", 99), intensity[role], E._variation({"seed": seed_of("melody", 99)}))
+                                           seed_of("melody", 99), lvl,
+                                           {**E._variation({"seed": seed_of("melody", 99)}),
+                                            "scale_kind": _GENRE_SCALE.get(c["genre"], "")})
                 bodies[part] = body
             harmony[cache] = bodies
         bodies = dict(harmony[cache])
@@ -577,7 +611,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
             dkey = cache + (variant,)
             if dkey not in drum_texts:
                 drum_texts[dkey] = E.generate(base, "drums", {
-                    "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": intensity[role], "variability": variability,
+                    "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
                     "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato"})["text"]
             bodies["drums"] = drum_texts[dkey]
         sec_start = start_bar * beats_per_bar
@@ -594,9 +628,25 @@ def quick_song(options: Optional[dict] = None) -> dict:
             if compact_on:                                    # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
                 from .compact_text import compact
                 label = {"melody": "Melodia"}.get(part) or c["styles"].get(part) or part
-                made_text = compact(body, bar_beats, label, existing=patterns)
-                patterns.update(made_text["patterns"])
+                made_text = compact(body, bar_beats, label, existing=raw_patterns)
+                raw_patterns.update(made_text["patterns"])
+                patterns.update({n: (humanize_drums(b, c["styles"]["drums"], human) if part == "drums" else b)
+                                 for n, b in made_text["patterns"].items()})
                 body = made_text["text"]
+            if part == "drums":
+                body = humanize_drums(body, c["styles"]["drums"], human)
+            elif part in ("bass", "comp"):
+                body = humanize_part(body, part, c["genre"], human)
+            if develop and part == "melody" and role == "chorus":
+                from .compact_text import _camel
+                dev_pattern = dev_pattern or "Melodia" + _camel(sname)
+                patterns.setdefault(dev_pattern, body)
+                body = "%" + dev_pattern
+                if idx == chorus_ids[-1]:
+                    from core.instruments import get_instrument
+                    top = _top_pitch(patterns[dev_pattern], c["instruments"]["melody"], c["meter"])
+                    if top is not None and top + 12 <= get_instrument(c["instruments"]["melody"]).range_high:
+                        body += ".octave(1)"
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
@@ -623,7 +673,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     if patterns:
         lines.append(_tr("// I pattern: le battute che si ripetono, scritte una volta sola."))
         lines.append("")
-        lines += ["\n\n".join(f"Pattern %{n}:\n  {b}" for n, b in patterns.items()), ""]
+        lines += ["\n\n".join(f"Pattern %{n}:\n  " + b.replace("\n", "\n  ") for n, b in patterns.items()), ""]
     lines.append(_tr("// Le sezioni, ognuna in un box (vista Struttura): si spostano e si copiano."))
     lines.append("")
     lines += ["\n\n".join(boxes)]
@@ -637,6 +687,30 @@ def quick_song(options: Optional[dict] = None) -> dict:
 def part_track(c: dict, part: str) -> str:
     """Il nome della traccia di una parte: lo strumento (intestazione breve, «Bass:»)."""
     return c["instruments"][part]
+
+
+def _float(value, default: float) -> float:
+    try:
+        return max(0.0, min(1.0, float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _top_pitch(body: str, instrument: str, meter: str) -> Optional[int]:
+    """La nota piu' alta (MIDI) di un testo di melodia, o None se non si legge."""
+    try:
+        from core.model import Project
+        from st_language.midi import resolve_event_notes, sounding_events
+        project = Project(name="t", time_sig=meter)
+        track = project.add_track("M", instrument, body)
+        top = None
+        for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
+            notes, _v = resolve_event_notes(ev, track.instrument)
+            if notes:
+                top = max(top or 0, max(notes))
+        return top
+    except Exception:
+        return None
 
 
 def _rallentando(body: str, bar_beats_total: float, bpm: int) -> str:

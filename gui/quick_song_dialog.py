@@ -82,12 +82,19 @@ class QuickSongDialog(QDialog):
         detail.addRow(tr("Melodia:"), self.melody_combo)
         self.ending_combo = self._combo([(e["value"], e["label"]) for e in self.choices["endings"]], tr("della ricetta"))
         detail.addRow(tr("Finale:"), self.ending_combo)
+        self.energy_combo = self._combo([(e["value"], e["label"]) for e in self.choices["energies"]], tr("della ricetta"))
+        detail.addRow(tr("Energia del brano:"), self.energy_combo)
         self.modulation_check = QCheckBox(tr("L'ultimo ritornello sale di un tono"))
         detail.addRow("", self.modulation_check)
         self.density = QSlider(Qt.Horizontal)
         self.density.setRange(0, 100)
         self.density.setValue(50)
         detail.addRow(tr("Densita' (piu' semplice - piu' ricco):"), self.density)
+        self.human = QSlider(Qt.Horizontal)
+        self.human.setRange(0, 100)
+        self.human.setValue(100)
+        self.human.setToolTip(tr("0 = tutte le note esattamente sulla griglia; 100 = il micro-tempo dello stile (per esempio il rullante un po' indietro nel funk)."))
+        detail.addRow(tr("Umano (griglia esatta - micro-tempo dello stile):"), self.human)
         self.loop_check = QCheckBox(tr("Un loop senza fine"))
         detail.addRow("", self.loop_check)
         self.compact_check = QCheckBox(tr("Testo compatto (battute e pattern)"))
@@ -167,11 +174,14 @@ class QuickSongDialog(QDialog):
             if self.bpm_spin.value():
                 o["bpm"] = self.bpm_spin.value()
             for name, combo in (("meter", self.meter_combo), ("form", self.form_combo), ("ensemble", self.ensemble_combo),
-                                ("melody", self.melody_combo), ("ending", self.ending_combo)):
+                                ("melody", self.melody_combo), ("ending", self.ending_combo),
+                                ("energy", self.energy_combo)):
                 if combo.currentData():
                     o[name] = combo.currentData()
             o["modulation"] = self.modulation_check.isChecked()
             o["density"] = self.density.value() / 100.0
+            if self.human.value() != 100:
+                o["human"] = self.human.value() / 100.0
             o["loop"] = self.loop_check.isChecked()
             if self.chords_edit.text().strip():
                 o["chords"] = self.chords_edit.text().strip()

@@ -190,6 +190,8 @@ and melody. **Another** changes the seed, **Surprise me** picks at random; with 
 form, ensemble and a chord loop of your own. **Create the song** makes it the project, to edit like any other (the
 sections show in the Structure view). The same song, with the same seed, also comes out on SoundText Mobile.
 
+The details also add: **Compact text** (the text is written in bars, with a pattern for each repeated bar: the sound stays identical), **Human** (from 0, every note on the grid, to 100, the style's micro-timing: the snare slightly behind in funk, the kick ahead in punk; written in the text as `shift=N`) and **Song energy** (rises, rises then falls, falls: it replaces the intensity taken from the section name). Each genre has its own instruments, scales (pentatonic in country, blues in blues and rock, harmonic minor in Balkan), starting master effects and, in pop, ballad, soul and disco, a string layer in the choruses; with several choruses the last one takes the theme up an octave, through a pattern.
+
 To go on: the full grammar is in chapter 4, the box view in
 chapter 15; ready-made examples open from **Project → Open
 example...**.

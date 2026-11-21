@@ -19,7 +19,7 @@ const quick = {
   previewing: null, resumed: null,
 };
 const QUICK_KEY = "stmobile.quick";
-const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact"];
+const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact", "human", "energy"];
 
 // 64 s -> «1:04»
 function formatClock(seconds) {
@@ -121,9 +121,11 @@ function quickBuildDetail() {
   quickFill($("quickEnsemble"), c.ensembles, o.ensemble, t("della ricetta"));
   quickFill($("quickMelodyStyle"), c.melodies, o.melody, t("della ricetta"));
   quickFill($("quickEnding"), c.endings, o.ending || "cadenza");
+  quickFill($("quickEnergy"), c.energies, o.energy, t("della ricetta"));
   $("quickBpm").value = o.bpm || "";
   $("quickModulation").checked = !!o.modulation;
   $("quickDensity").value = o.density === undefined ? 0.5 : o.density;
+  $("quickHuman").value = o.human === undefined ? 1 : o.human;
   $("quickChords").value = o.chords || "";
   $("quickSeed").value = o.seed === undefined || o.seed === null ? "" : o.seed;
   $("quickSeconds").value = o.seconds || "";
@@ -141,11 +143,13 @@ function quickReadFields() {
   set("form", $("quickForm").value);
   set("ensemble", $("quickEnsemble").value);
   set("melody", $("quickMelodyStyle").value);
+  set("energy", $("quickEnergy").value);
   o.ending = $("quickEnding").value || "cadenza";
   const bpm = Math.round(Number($("quickBpm").value));
   set("bpm", bpm ? Math.min(240, Math.max(40, bpm)) : "");
   set("modulation", $("quickModulation").checked);
   o.density = Number($("quickDensity").value);
+  set("human", Number($("quickHuman").value) === 1 ? "" : Number($("quickHuman").value));
   set("chords", $("quickChords").value.trim());
   const seed = $("quickSeed").value.trim();
   set("seed", seed !== "" && Number.isFinite(Number(seed)) && Number(seed) >= 0 ? Math.floor(Number(seed)) : "");
@@ -216,7 +220,7 @@ function quickRenderParts() {
   if (!last) return;
   const labels = Object.fromEntries(quick.choices.parts.map((p) => [p.value, p.label]));
   const styleLists = { drums: quick.choices.styles.drums, bass: quick.choices.styles.bass, comp: quick.choices.styles.comp, comp2: quick.choices.styles.comp,
-                       horn: quick.choices.styles.comp, progression: quick.choices.styles.progression };
+                       horn: quick.choices.styles.comp, pad: quick.choices.styles.comp, progression: quick.choices.styles.progression };
   for (const part of ["progression", ...last.parts]) {
     const li = document.createElement("li");
     const name = document.createElement("span");
@@ -264,7 +268,7 @@ function quickRenderParts() {
 
 // ---- «Apri in Crea»: una parte del brano generato, con stile, strumento e seme, per lavorarci a fondo
 
-const CREA_KIND = { progression: "progression", drums: "drums", bass: "bass", comp: "comping", comp2: "comping", horn: "comping" };
+const CREA_KIND = { progression: "progression", drums: "drums", bass: "bass", comp: "comping", comp2: "comping", horn: "comping", pad: "comping" };
 
 async function quickOpenPartInCrea(part) {
   const kind = CREA_KIND[part], made = quick.last;
@@ -520,8 +524,8 @@ function setupQuick() {
   $("quickSimple").onchange = () => { quickReadFields(); quick.simple = $("quickSimple").checked; quickShowMode(); quickSave(); };
   $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
   $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };
-  for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickBpm", "quickModulation",
-                    "quickDensity", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact"]) {
+  for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickEnergy", "quickBpm", "quickModulation",
+                    "quickDensity", "quickHuman", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact"]) {
     $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });
   }
 }

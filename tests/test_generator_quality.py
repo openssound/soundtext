@@ -132,3 +132,30 @@ def test_more_intensity_never_means_fewer_notes():
             assert counts[0] <= counts[1] <= counts[2], (kind, style, counts)
             if counts[0] == counts[2]:
                 assert style in FLAT_STYLES[kind], (kind, style, "non cambia con l'intensita'", counts)
+
+
+def _melody_scale_share(genre, mood, scale, seeds=(1, 2, 3)):
+    """La quota delle note della melodia che stanno nella scala (gradi dalla tonica) o nell'accordo che suona."""
+    from core.quicksong import quick_song
+    inside = total = 0
+    for seed in seeds:
+        made = quick_song({"genre": genre, "mood": mood, "duration": 60, "seed": seed})
+        project = parse_project_text(made["text"], "Prova")
+        names = made["choices"]["instruments"]
+        track = next(t for t in project.tracks if t.name == names["melody"])
+        harmony = [n for part in ("comp", "comp2", "bass") if part in names
+                   for t in project.tracks if t.name == names[part] for n in _notes(project, t)]
+        key = made["key"]
+        tonic = {"C": 0, "C#": 1, "D": 2, "Eb": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "Ab": 8, "A": 9, "Bb": 10, "B": 11}[key.rstrip("m")]
+        for start, _dur, notes in _notes(project, track):
+            pc = notes[-1] % 12
+            chord = {n % 12 for s, d, ns in harmony if s - 1e-6 <= start < s + d - 1e-6 for n in ns}
+            inside += (pc - tonic) % 12 in scale or pc in chord
+            total += 1
+    return inside / total
+
+
+def test_melodies_follow_the_scale_of_their_genre():
+    assert _melody_scale_share("blues", "tesa", (0, 3, 5, 6, 7, 10)) >= 0.9
+    assert _melody_scale_share("country", "allegra", (0, 2, 4, 7, 9)) >= 0.9
+    assert _melody_scale_share("balcanico78", "tesa", (0, 2, 3, 5, 7, 8, 11)) >= 0.95

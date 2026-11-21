@@ -314,10 +314,17 @@ def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str) 
 # Generatore
 # ---------------------------------------------------------------------------
 
+# Le scale per genere (8.8.3), come gradi dalla tonica: (maggiore, minore); None = la scala di sempre. Le note dell'accordo che
+# non ne fanno parte si aggiungono comunque (vedi _allowed_pcs).
+SCALE_KINDS = {"pentatonic": ((0, 2, 4, 7, 9), (0, 3, 5, 7, 10)),
+               "blues": ((0, 2, 3, 4, 7, 9), (0, 3, 5, 6, 7, 10)),
+               "harmonic_minor": (None, (0, 2, 3, 5, 7, 8, 11))}
+
+
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
-                           intensity: str = "normal", repeats=()) -> str:
+                           intensity: str = "normal", repeats=(), scale_kind: str = "") -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
@@ -341,6 +348,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     else:
         tonic, mode = estimate_key(chords)
     scale = [(tonic + s) % 12 for s in (MAJOR_SCALE if mode == "major" else MINOR_SCALE)]
+    kind = SCALE_KINDS.get(scale_kind or "")
+    if kind and kind[0 if mode == "major" else 1]:
+        scale = [(tonic + s) % 12 for s in kind[0 if mode == "major" else 1]]
 
     # A variabilita' 0 il motivo non dipende dal seme.
     free = amount.rhythm > 0 or amount.notes > 0
@@ -350,7 +360,23 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     compound = bool(meter) and meter.replace(" ", "").endswith("/8") and int(meter.split("/")[0]) % 3 == 0
     phrase_bars = 4 if bar_beats <= 3 + 1e-6 else 2
     phrase_beats = phrase_bars * bar_beats
-    n_phrases = max(1, math.ceil(total / phrase_beats - 1e-9))
+    # frasi di lunghezza diversa (8.4): una frase B puo' durare piu' battute delle A ("b_bars" dello stile)
+    form = spec["form"]
+    long_b = (int(spec.get("b_bars", phrase_bars))
+              if total >= sum(int(spec.get("b_bars", phrase_bars)) if f[0][0] == "B" else phrase_bars for f in form) * bar_beats - 1e-9
+              else phrase_bars)                      # la B lunga solo se c'e' posto per tutta la forma (A A' B A)
+
+    def bars_of(label: str) -> int:
+        return long_b if label[0] == "B" else phrase_bars
+    starts: List[float] = []
+    lengths: List[int] = []
+    cursor = 0.0
+    while not starts or cursor < total - 1e-9:
+        label = form[len(starts) % len(form)][0]
+        starts.append(cursor)
+        lengths.append(bars_of(label))
+        cursor += lengths[-1] * bar_beats
+    n_phrases = len(starts)
 
     # Registro: intorno alla tonica dell'ottava scelta, dentro l'estensione.
     center = midi_note(tonic, octave)
@@ -363,7 +389,6 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         low, high = range_low, range_high
     harmony = _Harmony(chords, scale, low, high)
 
-    form = spec["form"]
     motifs: Dict[Tuple[str, int], dict] = {}
     notes: List[Tuple[float, float, int, bool]] = []   # (inizio, durata, nota, frase-B?)
     prev = prev2 = None
@@ -372,7 +397,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         if p == n_phrases - 1:
             ending = "closed"
         letter = label[0]
-        start = p * phrase_beats
+        start = starts[p]
+        phrase_bars_p = lengths[p]
+        phrase_beats_p = phrase_bars_p * bar_beats
         level = _intensity_at(intensity, p, n_phrases)
         density = spec["density"] if letter == "A" else spec["b_density"]
         density = max(0, min(2, density + {"light": -1, "normal": 0, "full": 1}[level]))
@@ -381,8 +408,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         motif = motifs.get((letter, density))
 
         if motif is None:
-            rhythm = _phrase_rhythm(phrase_bars, bar_beats, compound, density, rng, amount.rhythm)
-            targets = _arch(rhythm, phrase_beats, base, height, ending)
+            rhythm = _phrase_rhythm(phrase_bars_p, bar_beats, compound, density, rng, amount.rhythm)
+            targets = _arch(rhythm, phrase_beats_p, base, height, ending)
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
                                prev, prev2, rng, amount.notes)
             motifs[(letter, density)] = {"rhythm": rhythm, "pitches": pitches, "start": start}
@@ -390,8 +417,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
             rhythm = list(motif["rhythm"])
             # con la variabilita' del ritmo, una battuta (non l'ultima) cambia figura
             changed_bar = None
-            if amount.rhythm > 0 and phrase_bars > 1 and rng.random() < 0.5 * amount.rhythm:
-                changed_bar = rng.randrange(phrase_bars - 1)
+            if amount.rhythm > 0 and phrase_bars_p > 1 and rng.random() < 0.5 * amount.rhythm:
+                changed_bar = rng.randrange(phrase_bars_p - 1)
                 lo, hi = changed_bar * bar_beats, (changed_bar + 1) * bar_beats
                 new_bar = [(lo + t, d) for t, d in
                            _bar_rhythm(bar_beats, compound, density, False, rng, amount.rhythm)]

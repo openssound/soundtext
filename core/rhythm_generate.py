@@ -1941,11 +1941,11 @@ MELODIC_PATTERNS: Dict[str, dict] = {
 # semitoni. Strumenti monofonici: sono fra i RIFF_STYLES.
 MELODY_STYLES: Dict[str, dict] = {
     "melody_aaba": {"form": [("A", "open"), ("A'", "closed"), ("B", "open"), ("A", "closed")],
-                    "density": 1, "b_density": 2, "height": 5, "b_lift": 3},
+                    "density": 1, "b_density": 2, "height": 5, "b_lift": 3, "b_bars": 4},
     "melody_period": {"form": [("A", "open"), ("A'", "closed")],
                       "density": 1, "b_density": 2, "height": 5, "b_lift": 3},
     "melody_ballad": {"form": [("A", "open"), ("A'", "closed"), ("B", "open"), ("A", "closed")],
-                      "density": 0, "b_density": 1, "height": 4, "b_lift": 4},
+                      "density": 0, "b_density": 1, "height": 4, "b_lift": 4, "b_bars": 4},
     "melody_lively": {"form": [("A", "open"), ("A'", "closed"), ("B", "open"), ("A", "closed")],
                       "density": 2, "b_density": 1, "height": 6, "b_lift": 3},
 }
@@ -1982,7 +1982,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            variability=0.0, seed: Optional[int] = None,
                            bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
                            voice_leading: bool = False, key: Optional[str] = None,
-                           meter: Optional[str] = None, repeats=()) -> str:
+                           meter: Optional[str] = None, repeats=(), scale_kind: str = "") -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2014,7 +2014,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         return generate_phrase_melody(chords, style, octave, range_low, range_high, key=key,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
-                                      repeats=repeats)
+                                      repeats=repeats, scale_kind=scale_kind)
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
                or user_styles.get_user_style("riff", style))
     if pattern is None:
@@ -2153,6 +2153,14 @@ PROGRESSION_STYLES: Dict[str, dict] = {
     "minor_circle": {"mode": "minor", "chords": [(0, "m7", 1), (5, "m7", 1), (10, "7", 1), (3, "maj7", 1),
                                                  (8, "maj7", 1), (2, "m7b5", 1), (7, "7", 1), (0, "m7", 1)]},
     "phrygian": {"mode": "minor", "flats": True, "chords": [(0, "m", 2), (1, "", 2)]},                                 # i-bII
+    # --- cadenze diverse e accordi in prestito (8.5) ---
+    "deceptive": {"mode": "major", "chords": [(0, "", 1), (5, "", 1), (7, "", 1), (9, "m", 1)]},       # I-IV-V-vi: cadenza d'inganno
+    "plagal": {"mode": "major", "chords": [(0, "", 1), (9, "m", 1), (5, "", 1), (0, "", 1)]},          # I-vi-IV-I: cadenza plagale
+    "half_cadence": {"mode": "major", "chords": [(0, "", 1), (9, "m", 1), (2, "m", 1), (7, "", 1)]},   # I-vi-ii-V: sospesa sulla dominante
+    "borrowed_iv": {"mode": "major", "chords": [(0, "", 1), (5, "", 1), (5, "m", 1), (0, "", 1)]},     # I-IV-iv-I: il iv minore in prestito
+    "borrowed_flat6": {"mode": "major", "flats": True, "chords": [(0, "", 1), (8, "", 1), (10, "", 1), (0, "", 1)]},  # I-bVI-bVII-I
+    "minor_deceptive": {"mode": "minor", "chords": [(0, "m", 1), (5, "m", 1), (7, "", 1), (8, "", 1)]},  # i-iv-V-VI
+    "minor_plagal": {"mode": "minor", "chords": [(0, "m", 1), (8, "", 1), (5, "m", 1), (0, "m", 1)]},   # i-VI-iv-i
 }
 
 # Con la variabilita', un accordo puo' "colorarsi" (settima, nona, sus...)

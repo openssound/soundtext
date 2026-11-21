@@ -104,6 +104,13 @@ def generator_labels() -> dict:
         ("line_cliche", tr("Line cliché (i - i maj7 - i7 - i6)")),
         ("minor_circle", tr("Circolo delle quinte (minore)")),
         ("phrygian", tr("Frigio (i-bII)")),
+        ("deceptive", tr("Cadenza d'inganno (I-IV-V-vi)")),
+        ("plagal", tr("Cadenza plagale (I-vi-IV-I)")),
+        ("half_cadence", tr("Cadenza sospesa (I-vi-ii-V)")),
+        ("borrowed_iv", tr("Con il iv in prestito (I-IV-iv-I)")),
+        ("borrowed_flat6", tr("Accordi in prestito (I-bVI-bVII-I)")),
+        ("minor_deceptive", tr("Minore d'inganno (i-iv-V-VI)")),
+        ("minor_plagal", tr("Minore plagale (i-VI-iv-i)")),
     ]
     intensity_labels = [
         ("light", tr("Leggera (strofa, intro)")),

@@ -195,6 +195,8 @@ accompagnement et mélodie. **Un autre** change la graine, **Surprenez-moi** cho
 tonalité, tempo, forme, effectif et une grille d'accords à vous. **Créer le morceau** en fait le projet, à modifier comme les autres
 (les sections apparaissent dans la vue Structure). Le même morceau, avec la même graine, sort aussi sur SoundText Mobile.
 
+Les détails ajoutent aussi : **Texte compact** (le texte s'écrit en mesures, avec un motif pour chaque mesure qui se répète : le son reste identique), **Humain** (de 0, toutes les notes sur la grille, à 100, le micro-tempo du style : la caisse claire un peu en arrière dans le funk, la grosse caisse en avant dans le punk ; écrit dans le texte comme `shift=N`) et **Énergie du morceau** (monte, monte puis redescend, descend : elle remplace l'intensité tirée du nom de la section). Chaque genre a ses instruments, ses gammes (pentatonique dans la country, blues dans le blues et le rock, mineure harmonique dans le balkanique), ses effets de départ sur le master et, en pop, ballade, soul et disco, une couche de cordes dans les refrains ; avec plusieurs refrains, le dernier reprend le thème une octave au-dessus, par un motif.
+
 Pour continuer : la grammaire complète est au chapitre 4, la vue en
 box au chapitre 15 ; les exemples prêts s'ouvrent depuis **Projet →
 Ouvrir un exemple...**.

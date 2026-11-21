@@ -195,6 +195,8 @@ tonalità, tempo, forma, organico e un giro di accordi tuo. Con **Crea il brano*
 come ogni altro (le sezioni si vedono nella vista Struttura). Lo stesso brano, con lo stesso seme, esce anche su
 SoundText Mobile.
 
+I dettagli aggiungono anche: **Testo compatto** (il testo si scrive in battute, con un pattern per ogni battuta che si ripete: il suono resta identico), **Umano** (da 0, tutte le note sulla griglia, a 100, il micro-tempo dello stile: il rullante un po' indietro nel funk, la cassa avanti nel punk; si scrive nel testo come `shift=N`) e **Energia del brano** (sale, sale e poi cala, cala: sostituisce l'intensità ricavata dal nome della sezione). Ogni genere ha i suoi strumenti, le sue scale (pentatonica nel country, blues nel blues e nel rock, minore armonica nel balcanico), i suoi effetti di partenza sul master e, in pop, ballata, soul e disco, uno strato di archi nei ritornelli; con più ritornelli l'ultimo riprende il tema un'ottava sopra, tramite un pattern.
+
 Per continuare: la grammatica completa è nel capitolo 4, la vista a
 box nel capitolo 15; gli esempi pronti si aprono da **Progetto → Apri
 esempio...**.

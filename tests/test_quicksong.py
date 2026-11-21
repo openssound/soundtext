@@ -286,3 +286,51 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
     assert effects("reggae") == ["delay"] and effects("lofi") == ["passa_basso", "eq"]
     assert effects("funk") == ["compressore"] and effects("blues") == ["riverbero"] and effects("orchestrale") == ["riverbero"]
     assert effects("pop") == [] and effects("reggae", effects=False) == []
+
+
+def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
+    from core.project_io import parse_project_text
+    from st_language.midi import resolve_event_notes, sounding_events
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    assert "Pattern %MelodiaRitornello:" in song["text"]
+    calls = re.findall(r"^  (%MelodiaRitornello(?:\.octave\(1\))?)$", song["text"], re.M)
+    assert calls == ["%MelodiaRitornello"] * (len(calls) - 1) + ["%MelodiaRitornello.octave(1)"] and len(calls) >= 3
+    project = parse_project_text(song["text"], "x")
+    track = project.get_track("Flute")
+    notes = [max(resolve_event_notes(e, track.instrument)[0], default=0) for e in
+             sounding_events(track.parsed_events(project.patterns, meter=project.meter()))]
+    assert max(notes) >= 12 + min(n for n in notes if n) + 4          # il culmine sta nell'ultimo ritornello
+    # senza sviluppo: ogni ritornello ha la sua melodia, nessun pattern del tema
+    plain = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "development": False})
+    assert "MelodiaRitornello" not in plain["text"]
+
+
+def test_human_option_writes_micro_timing_and_zero_keeps_the_grid(q):
+    funk = q.quick_song({"genre": "funk", "mood": "tesa", "duration": 30, "seed": 3})
+    assert "shift=14" in funk["text"]
+    exact = q.quick_song({"genre": "funk", "mood": "tesa", "duration": 30, "seed": 3, "human": 0})
+    assert "shift=" not in exact["text"]
+    assert "shift=" not in q.quick_song({"genre": "bossa", "mood": "calma", "duration": 30, "seed": 3})["text"]
+
+
+def test_energy_curve_changes_the_intensity_of_the_sections(q):
+    import re as _re
+
+    def drum_sizes(curve):
+        song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "energy": curve})
+        return [len(m) for m in _re.findall(r'Box Drums "[^"]*" \|\d+:\n((?:  .*\n)+)', song["text"])]
+
+    base, rises, falls = drum_sizes(None), drum_sizes("sale"), drum_sizes("cala")
+    assert rises[0] < rises[-2] and falls[0] > falls[-2]                       # sale: la prima sezione e' piu' leggera dell'ultima; cala: il contrario
+    assert base[0] == base[2] and len({tuple(drum_sizes("picco"))}) == 1
+    assert "energies" in q.quick_choices() and [e["value"] for e in q.quick_choices()["energies"]] == ["sale", "picco", "cala"]
+
+
+def test_a_string_layer_plays_only_in_the_choruses_and_the_ending(q):
+    import re as _re
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    assert "pad" in song["parts"]
+    names = _re.findall(r'Box Strings "([^"]*)"', song["text"])
+    assert names and set(names) <= {"Ritornello", "Finale"}
+    assert "pad" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "density": 0.1})["parts"]
+    assert "pad" not in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 60, "seed": 1})["parts"]

@@ -194,6 +194,8 @@ acompañamiento y melodía. **Otra** cambia la semilla, **Sorpréndeme** elige a
 tonalidad, tempo, forma, conjunto y una secuencia de acordes tuya. **Crear la canción** la convierte en el proyecto, para editarla
 como cualquier otra (las secciones se ven en la vista Estructura). La misma canción, con la misma semilla, sale también en SoundText Mobile.
 
+Los detalles añaden también: **Texto compacto** (el texto se escribe en compases, con un patrón por cada compás que se repite: el sonido es idéntico), **Humano** (de 0, todas las notas en la rejilla, a 100, el micro-tempo del estilo: la caja un poco atrás en el funk, el bombo adelante en el punk; se escribe en el texto como `shift=N`) y **Energía del tema** (sube, sube y luego baja, baja: sustituye la intensidad sacada del nombre de la sección). Cada género tiene sus instrumentos, sus escalas (pentatónica en el country, blues en el blues y el rock, menor armónica en el balcánico), sus efectos de partida en el master y, en pop, balada, soul y disco, una capa de cuerdas en los estribillos; con varios estribillos, el último retoma el tema una octava arriba, mediante un patrón.
+
 Para seguir: la gramática completa está en el capítulo 4, la vista
 en boxes en el capítulo 15; los ejemplos listos se abren desde
 **Proyecto → Abrir ejemplo...**.
