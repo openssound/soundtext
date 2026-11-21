@@ -91,3 +91,17 @@ def test_another_and_surprise_change_the_song_and_the_menu_command_replaces_the_
     assert len(w.project.tracks) >= 4 and w.project.name == w._quick_song_dialog.song["name"]
     assert any(t.clips for t in w.project.tracks)                                    # box, uno per sezione
     assert w._dirty                                                                  # un brano nuovo da salvare
+
+
+def test_arrange_dialog_lists_every_section_and_says_where_the_chords_are_missing(app):
+    from core.project_io import parse_project_text
+    from core.quicksong import quick_song
+    from gui.arrange_dialog import ArrangeDialog
+    made = quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "seed": 3})
+    project = parse_project_text(made["text"], made["name"])
+    dlg = ArrangeDialog(None, project)
+    names = [dlg.table.item(r, 0).text() for r in range(dlg.table.rowCount())]
+    assert names == [s["name"] for s in made["sections"]]                                   # tutte, anche l'Intro
+    assert dlg.table.item(0, 3).text() == "senza accordi" and dlg.table.item(names.index("Ritornello"), 3).text() == "della traccia scelta"
+    dlg.accept()
+    assert dlg.parts() and dlg.parts()["drums"]

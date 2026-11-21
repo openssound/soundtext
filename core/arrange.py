@@ -83,6 +83,76 @@ def song_sections(project: Project, chord_track: Track) -> List[Section]:
     return out
 
 
+def all_sections(project: Project, chord_track: Track) -> List[Section]:
+    """Tutte le sezioni del brano, non solo i box della traccia degli accordi: dove ne comincia uno in una traccia con
+    il giro (la 'chord_track'), dove cominciano box di almeno due tracce (le sezioni della vista Struttura, vedi
+    core.arrangement.song_sections) e dove comincia un box di una traccia qualsiasi. Gli accordi di una sezione sono quelli del suo box nella traccia scelta; se li'
+    non c'e', quelli di un box con lo stesso inizio in un'altra traccia di accordi; senza accordi (testo vuoto) la
+    sezione suona solo con la batteria (o tace, se e' uno stop). La lunghezza arriva alla sezione dopo (o alla fine del
+    box piu' lungo che comincia li')."""
+    from .arrangement import clip_duration_beats, song_sections as structure_sections
+    from .rhythm_generate import extract_chords_from_track
+    meter = project.meter()
+
+    def length_of(track, clip):
+        return clip_duration_beats(clip.text, project.patterns, track.instrument.default_octave,
+                                   start_beat=clip.start_beat, meter=meter)
+
+    def has_chords(track, clip):
+        try:
+            return bool(extract_chords_from_track(clip.text, project.patterns))
+        except Exception:
+            return False
+
+    starts = {}                                         # inizio -> nome
+    own = {}                                            # i box della traccia scelta: (inizio, fine)
+    for clip in chord_track.clips:
+        starts[round(clip.start_beat, 6)] = clip.name
+        own[round(clip.start_beat, 6)] = (clip.start_beat, clip.start_beat + length_of(chord_track, clip))
+
+    def covered(beat):
+        return any(a - 1e-6 <= beat < b - 1e-6 for a, b in own.values())
+
+    # le altre sezioni: dove la traccia scelta non ha un box che le copre (un'altra traccia che entra a meta' di una
+    # sezione non la spezza)
+    extra = list(structure_sections(project))
+    for track in project.tracks:                         # anche i box di una traccia sola (un'Intro del solo piano...)
+        if not track.is_audio:
+            extra += [(clip.start_beat, clip.name) for clip in track.clips]
+    for beat, name in extra:
+        if not covered(beat):
+            starts.setdefault(round(beat, 6), name)
+    out = []
+    ordered = sorted(starts)
+    others = [t for t in project.tracks if not t.is_audio and t is not chord_track and t.clips]
+    for k, beat in enumerate(ordered):
+        own = next((c for c in chord_track.clips if abs(c.start_beat - beat) < 1e-6), None)
+        clip, track = own, chord_track
+        if clip is None or not has_chords(track, clip):
+            clip = None
+            for other in others:
+                found = next((c for c in other.clips if abs(c.start_beat - beat) < 1e-6 and has_chords(other, c)), None)
+                if found is not None:
+                    clip, track = found, other
+                    break
+        if clip is not None:
+            length = length_of(track, clip)
+        else:
+            length = 0.0
+        if k + 1 < len(ordered):
+            length = max(length, 0.0) if clip is not None else ordered[k + 1] - beat
+            if clip is None or length <= 0:
+                length = ordered[k + 1] - beat
+        elif clip is None:
+            ends = [c.start_beat + length_of(t, c) for t in project.tracks if not t.is_audio for c in t.clips
+                    if abs(c.start_beat - beat) < 1e-6]
+            length = max(ends, default=0.0)
+        name = starts[beat]
+        if length > 0:
+            out.append(Section(name, beat, length, clip.text if clip is not None else "", section_intensity(name)))
+    return out
+
+
 @dataclass
 class ArrangeOptions:
     drum_style: Optional[str] = "rock"

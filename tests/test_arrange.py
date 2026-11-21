@@ -260,3 +260,26 @@ def test_modulation_also_raises_the_melody_boxes():
     [chorus] = parts["modulated"]["Melodia"]
     assert (chorus.name, chorus.start_beat, chorus.text) == ("Ritornello", 8.0, "4: d*5 b*4")
     assert "modulated" not in arrange(p, song_sections(p, acc), ArrangeOptions(seed=1), 4.0)
+
+
+def test_all_sections_lists_every_section_of_the_song_not_just_the_chord_track_boxes():
+    """Le sezioni dell'arrangiamento sono quelle del brano: gli accordi di ognuna vengono dalla traccia scelta o, dove
+    li' mancano, da un'altra; una sezione senza accordi resta, con il testo vuoto."""
+    from core.arrange import all_sections, song_sections
+    from core.project_io import parse_project_text
+    text = ("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\nTonalita: C\n\nPiano:\n\nGuitar:\n\nBass:\n\n"
+            'Box Piano "Intro" |0:\n  4: c d e f |\n\n'                                       # solo note: niente accordi
+            'Box Piano "Strofa" |8:\n  4: c d e f | g a b g |\n\n'
+            'Box Guitar "Strofa" |8:\n  1: Am F |\n\n'                                         # gli accordi della strofa
+            'Box Piano "Ritornello" |16:\n  1: F G |\n\n'
+            'Box Guitar "Ritornello" |16:\n  1: F G |\n\n'
+            'Box Bass "Finale" |24:\n  4: c2 |\n\n')
+    project = parse_project_text(text, "x")
+    guitar = project.get_track("Guitar")
+    assert [s.name for s in song_sections(project, guitar)] == ["Strofa", "Ritornello"]       # prima: solo i box della chitarra
+    sections = all_sections(project, guitar)
+    assert [(s.name, s.start_beat) for s in sections] == [("Intro", 0.0), ("Strofa", 8.0), ("Ritornello", 16.0), ("Finale", 24.0)]
+    assert [bool(s.text.strip()) for s in sections] == [False, True, True, False]
+    assert "Am" in sections[1].text and "F G" in sections[2].text                             # gli accordi: dalla chitarra scelta
+    assert all(s.length_beats > 0 for s in sections)
+    assert [s.intensity for s in sections] == ["intro", "light", "full", "outro"]

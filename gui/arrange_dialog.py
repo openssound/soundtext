@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QVBoxLayout,
 )
 
-from core.arrange import ArrangeOptions, arrange, song_sections
+from core.arrange import ArrangeOptions, all_sections, arrange
 from core.i18n import tr
 from core.instruments import get_instrument, list_instrument_names
 from core.rhythm_generate import drum_styles_for_meter, extract_chords_from_track
@@ -62,8 +62,9 @@ class ArrangeDialog(QDialog):
         self.project = project
         self.tracks = chord_tracks(project)
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel(tr("Le sezioni sono i box della traccia degli accordi; l'intensita' viene dal loro "
-                                   "nome (Intro, Strofa, Pre-ritornello, Ritornello, Ponte, Finale...).")))
+        layout.addWidget(QLabel(tr("Le sezioni sono quelle del brano (i box di tutte le tracce); gli accordi vengono dalla "
+                                   "traccia scelta o, dove li' mancano, da un'altra. L'intensita' viene dal nome della sezione "
+                                   "(Intro, Strofa, Pre-ritornello, Ritornello, Ponte, Finale...).")))
         form = QFormLayout()
         self.source_combo = QComboBox()
         for track in self.tracks:
@@ -134,8 +135,8 @@ class ArrangeDialog(QDialog):
             form.addRow("", check)
         layout.addLayout(form)
 
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels([tr("Sezione"), tr("Battute"), tr("Intensita'")])
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels([tr("Sezione"), tr("Battute"), tr("Intensita'"), tr("Accordi")])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         layout.addWidget(self.table, 1)
@@ -161,7 +162,7 @@ class ArrangeDialog(QDialog):
             self.melody_combo.addItem(melody.name, melody.name)
         index = self.melody_combo.findData(current) if current else -1
         self.melody_combo.setCurrentIndex(index if index >= 0 else min(1, self.melody_combo.count() - 1))
-        self.sections = song_sections(self.project, track) if track is not None else []
+        self.sections = all_sections(self.project, track) if track is not None else []
         bar_beats = project_bar_beats(self.project) or 4.0
         self.table.setRowCount(len(self.sections))
         for row, section in enumerate(self.sections):
@@ -176,6 +177,11 @@ class ArrangeDialog(QDialog):
                 combo.addItem(label, value)
             combo.setCurrentIndex(max(0, combo.findData(section.intensity)))
             self.table.setCellWidget(row, 2, combo)
+            chords = QTableWidgetItem(tr("della traccia scelta") if section.text.strip() else tr("senza accordi"))
+            chords.setFlags(chords.flags() & ~Qt.ItemIsEditable)
+            if not section.text.strip():
+                chords.setToolTip(tr("Nessuna traccia ha accordi in questa sezione: suona solo la batteria (o tace, con Stop)."))
+            self.table.setItem(row, 3, chords)
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(bool(self.sections))
 
     def options(self) -> ArrangeOptions:

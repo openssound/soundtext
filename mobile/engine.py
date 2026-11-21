@@ -1831,7 +1831,7 @@ def _chord_track(project):
 def structure_sections(text: str) -> dict:
     """Le sezioni del brano per la schermata Crea: {"track": traccia degli accordi o None, "sections": [{index, name, beat, bars,
     intensity}]}. Vuoto se il brano non ha box con accordi: allora Crea scrive una traccia unica, come sempre."""
-    from core.arrange import song_sections
+    from core.arrange import all_sections as ar_all_sections
     from core.project_io import parse_project_text
     project = parse_project_text(text, "Brano")
     track = _chord_track(project)
@@ -1839,7 +1839,7 @@ def structure_sections(text: str) -> dict:
     if track is None:
         return {"track": None, "sections": [], "tracks": names}
     bar_beats = _bar_beats(project)
-    sections = song_sections(project, track)
+    sections = ar_all_sections(project, track)
     return {"track": track.name, "tracks": names,
             "sections": [{"index": i, "name": s.name, "beat": s.start_beat, "bars": max(1, round(s.length_beats / bar_beats)),
                           "intensity": s.intensity} for i, s in enumerate(sections)]}
@@ -1862,7 +1862,7 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
     track = _chord_track(project)
     if track is None:
         raise ValueError(tr("Il brano non ha sezioni con degli accordi: Crea scrive una traccia unica."))
-    sections = ar.song_sections(project, track)
+    sections = ar.all_sections(project, track)
     for key, level in (options.get("intensities") or {}).items():
         k = int(key)
         if 0 <= k < len(sections) and level in INTENSITIES:
