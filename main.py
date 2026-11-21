@@ -191,6 +191,8 @@ def main():
     app.setStyleSheet(stylesheet_for(settings.get_theme()))
     repair_sidebar_shortcuts([ensure_songs_dir()])
     install_file_dialog_sizing(app)
+    from gui import accessibility
+    accessibility.install(app)          # un nome per lo screen reader a ogni controllo (gui/accessibility.py)
     if os.path.exists(ICON_PATH):
         app.setWindowIcon(QIcon(ICON_PATH))
 

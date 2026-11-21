@@ -25,6 +25,7 @@ from core.audio_tracks import AUDIO_SAMPLE_RATE, write_wav
 from core.model import AudioClip, Clip
 from gui.arrangement_view import AudioBoxItem, BoxItem
 from gui.main_window import MainWindow
+from _waits import wait_for  # noqa: E402
 
 _app = QApplication.instance() or QApplication([])
 
@@ -887,34 +888,26 @@ def test_song_key_from_the_chords_of_an_audio_track(tmp_path, monkeypatch):
 
 
 def test_export_stems_from_the_file_menu(tmp_path, monkeypatch):
-    import time
     w, t, clip, _item = _window_with_clip(tmp_path)
     def press(box):
         next(b for b in box.buttons() if b.text() == "Asciutte").click()
     monkeypatch.setattr(QMessageBox, "exec", press)
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(tmp_path / "esportate"))
     w.wav_export.stems()
-    deadline = time.time() + 20
-    while w.wav_export.worker is not None and time.time() < deadline:
-        _app.processEvents()
-        time.sleep(0.01)
+    wait_for(lambda: w.wav_export.worker is None, 20)
     folder = next((tmp_path / "esportate").iterdir())
     assert folder.name.endswith(" - tracce")
     assert [f.name for f in folder.iterdir()] == ["01 Voce (asciutta).wav"]
 
 
 def test_freeze_and_unfreeze_from_the_track_menu(tmp_path):
-    import time
     from PySide6.QtWidgets import QMenu
     w, t, clip, _item = _window_with_clip(tmp_path)
     menu = QMenu()
     action = w.wav_export.add_freeze_action(menu, "Voce")
     assert action.text() == "Congela in audio"
     action.trigger()
-    deadline = time.time() + 20
-    while w.wav_export.freeze_worker is not None and time.time() < deadline:
-        _app.processEvents()
-        time.sleep(0.01)
+    wait_for(lambda: w.wav_export.freeze_worker is None, 20)
     assert [x.name for x in w.project.tracks] == ["Voce", "Voce (congelata)"]
     assert t.mute and t.frozen == "Voce (congelata)"
     assert w.wav_export.add_freeze_action(QMenu(), "Voce (congelata)") is None     # la traccia stampata non si congela

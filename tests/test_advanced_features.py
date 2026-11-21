@@ -22,6 +22,7 @@ from core.model import Project
 from core.midi_export import export_project_to_midi, export_single_track_to_midi
 from core.midi_import import import_midi_file, list_midi_channels
 from core import midi_convert
+from _waits import wait_until  # noqa: E402
 
 
 def _reset_custom_instruments():
@@ -882,11 +883,7 @@ def test_playback_offline_render_with_fake_fluidsynth():
         engine = playback.PlaybackEngine()
         result = {}
         engine.play(p, on_finished=lambda ok: result.update(ok=ok))
-        import time
-        for _ in range(30):
-            if "ok" in result:
-                break
-            time.sleep(0.1)
+        wait_until(lambda: "ok" in result, 3)
         assert result.get("ok") is True
     finally:
         os.environ["PATH"] = old_path
@@ -946,17 +943,14 @@ def test_playback_stop_during_offline_render_terminates_process():
         engine = playback.PlaybackEngine()
         engine.play(p)
 
-        time.sleep(0.3)  # il finto rendering (5s di sleep) e' sicuramente partito
+        wait_until(engine.is_playing, 3)  # il finto rendering (5s di sleep) e' partito
         assert engine.is_playing(), "il processo di rendering deve essere tracciato come 'in corso'"
 
         engine.stop()
-        for _ in range(30):
-            if not engine.is_playing():
-                break
-            time.sleep(0.1)
+        wait_until(lambda: not engine.is_playing(), 3)
         assert not engine.is_playing(), "stop() deve interrompere il rendering, non solo l'eventuale playback successivo"
 
-        time.sleep(0.2)
+        time.sleep(0.2)   # un'assenza non ha un evento da aspettare: si lascia il tempo che il player partirebbe
         assert not os.path.exists(marker_path), "il player non deve mai partire se si e' fermato durante il rendering"
     finally:
         os.environ["PATH"] = old_path

@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from core.playback import PlaybackEngine, slowed_entry
+from _waits import wait_until  # noqa: E402
 
 RATE = 48000
 
@@ -122,7 +123,6 @@ def test_slowed_mix_starts_from_the_chosen_chunk_and_joins_cleanly():
     """Rallentare la prima volta: si comincia appena e' pronto il pezzo da
     cui si parte, il resto si riempie dopo; alle giunture niente buchi."""
     pytest.importorskip("pedalboard")
-    import time
     from core.playback import SlowedMix
     t = np.arange(30 * RATE) / RATE
     tone = (0.4 * np.sin(2 * np.pi * 440 * t) * 32767).astype(np.int16)
@@ -131,9 +131,7 @@ def test_slowed_mix_starts_from_the_chosen_chunk_and_joins_cleanly():
     mix.start_from(20.0)
     assert mix.wait_ready(20.0, timeout=60)
     assert not mix._done[0]                         # l'inizio del brano arriva dopo
-    deadline = time.time() + 120
-    while not mix.complete and time.time() < deadline:
-        time.sleep(0.05)
+    wait_until(lambda: mix.complete, 120, interval=0.01)
     assert mix.complete
     y = mix.samples[:, 0].astype(np.float32) / 32767.0
     rms = [np.sqrt(np.mean(y[i:i + 960] ** 2)) for i in range(RATE, len(y) - RATE, 480)]

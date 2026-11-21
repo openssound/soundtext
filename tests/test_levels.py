@@ -5,6 +5,7 @@ import numpy as np
 from core.levels import analyze_int16, bars_for_seconds, format_bars, peak_dbfs, BLOCK_SECONDS
 from core.model import Project
 from core.tempo_map import build_tempo_beat_map
+from _waits import wait_for  # noqa: E402
 
 RATE = 48000
 
@@ -173,7 +174,6 @@ def test_level_report_marks_track_headers_until_the_song_changes():
 def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
     """Il comando intero, con la finestra di avanzamento: chiuderla alla fine
     emette canceled, e prima il risultato veniva scartato come annullato."""
-    import time
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication.instance() or QApplication([])
     import core.levels
@@ -187,10 +187,7 @@ def test_analyze_levels_command_shows_the_report_when_it_finishes(monkeypatch):
     w = MainWindow()
     w.project.add_track("Piano", "Piano", "c d e f")
     w.analyze_levels()
-    deadline = time.time() + 10
-    while not shown and time.time() < deadline:
-        app.processEvents()
-        time.sleep(0.01)
+    wait_for(lambda: bool(shown), 10)
     assert shown and "-6.0" in shown[0]
     assert w.levels.track_peaks["Piano"].peak_db == -6.0
     w._dirty = False

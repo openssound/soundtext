@@ -427,6 +427,7 @@ class MixerMixin:
         from core.sfz_coverage import silent_notes_cached
         silent = silent_notes_cached(self.project, track) if ok else None
         self.highlighter.set_bar_errors(i.char_start for i in issues)
+        self._record_issues(track, issues, ok, "" if ok else msg)       # per F8 e Maiusc+F8
         self.validation_label.setToolTip("\n".join(([silent.message()] if silent else [])
                                                     + [i.message for i in issues]))
         # una riga sottile: il colore dice lo stato, con un filo a sinistra per

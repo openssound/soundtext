@@ -26,6 +26,7 @@ from .theme import (ACCENT, ACCENT_DIM, BAD, VALIDATION_STYLE, dim, get_active_t
 from .icons import icon
 from .main_window_mixer import MixerMixin
 from .main_window_project import ProjectMixin
+from .main_window_access import AccessibilityMixin
 from .main_window_playback import PlaybackMixin
 from .metronome_engine import MetronomeEngine
 from .level_monitor import LevelMonitor
@@ -43,7 +44,7 @@ from .effects_panel import EffectsPanel
 LISTENING_SPEEDS = (100, 90, 80, 75, 70, 60, 50)
 
 
-class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
+class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
     def __init__(self):
         super().__init__()
         self.levels = LevelMonitor(self)   # vu-meter, spia di clipping, Analizza livelli
@@ -128,6 +129,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
 
         self._build_ui()
         self._build_menu()
+        self._setup_accessibility()        # annunci della barra di stato (creata dal menu); errori per F8
         self.refresh_mixer()
         self.refresh_master_fx_button()
         # Vista di default all'avvio: Struttura brano (vedi
@@ -315,6 +317,7 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         text_layout.addWidget(self.editor)
 
         self.expanded_editor = NotationEditor()
+        self.expanded_editor.setAccessibleName(tr("Testo con i pattern espansi"))
         self.expanded_editor.setFont(QFont("Monospace", 11))
         self.expanded_editor.setReadOnly(True)
         self._expanded_highlighter = NotationHighlighter(self.expanded_editor.document())
@@ -456,6 +459,14 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
                                               self.arrangement_view.duplicate_selected_box, ["Ctrl+D"]))
         edit_menu.addAction(self._view_action(tr("Dividi la clip audio alla testina"),
                                               self.arrangement_view.split_selected_at_playhead, ["S"]))
+        # Accessibilita': errori e posizione si leggono, non solo si vedono
+        edit_menu.addSeparator()
+        edit_menu.addAction(self._action(tr("Vai all'errore successivo"), lambda: self.go_to_issue(1), "F8",
+                                         tr("Porta il cursore al prossimo errore o avviso della traccia e ne annuncia il messaggio.")))
+        edit_menu.addAction(self._action(tr("Vai all'errore precedente"), lambda: self.go_to_issue(-1), "Shift+F8",
+                                         tr("Porta il cursore all'errore o all'avviso precedente e ne annuncia il messaggio.")))
+        edit_menu.addAction(self._action(tr("Dove sono?"), self.where_am_i, "Ctrl+Shift+W",
+                                         tr("Dice dove sta il cursore: traccia, battuta, tempo, nota o accordo e box.")))
 
         view_menu = menubar.addMenu(tr("&Vista"))
         self.arrangement_action = QAction(tr("Struttura brano (a box)"), self, checkable=True)
@@ -633,6 +644,12 @@ class MainWindow(MixerMixin, ProjectMixin, PlaybackMixin, QMainWindow):
         self.play_pause_action = self._action(tr("Play ensemble"), self.toggle_play_pause, "F5")
         playback_menu.addAction(self.play_pause_action)
         playback_menu.addAction(self._action(tr("Stop"), self.stop, "F6"))
+        playback_menu.addAction(self._action(tr("Suona la nota o l'accordo sotto il cursore"), self.play_token_at_cursor,
+                                             "Ctrl+Alt+1", tr("Per controllare quello che si e' appena scritto.")))
+        playback_menu.addAction(self._action(tr("Suona la battuta corrente"), self.play_bar_at_cursor, "Ctrl+Alt+2",
+                                             tr("Il testo fra due stanghette |, intorno al cursore.")))
+        playback_menu.addAction(self._action(tr("Suona dal cursore"), self.play_from_cursor, "Ctrl+Alt+3",
+                                             tr("Dal cursore alla fine del testo della traccia.")))
         playback_menu.addAction(self._action(
             tr("Analizza livelli..."), self.analyze_levels,
             tooltip=tr("Misura il picco di ogni traccia suonata da sola e del mix, e dove clippano.")))

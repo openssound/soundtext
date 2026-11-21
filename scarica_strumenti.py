@@ -53,6 +53,7 @@ presenti vengono saltati.
 """
 
 import ctypes
+import hashlib
 import json
 import os
 import platform
@@ -430,7 +431,27 @@ def _richiesta(url: str, **headers):
 
 def scarica_file(url: str, dest: Path, tentativi: int = 3, silenzioso: bool = False):
     """Scarica url in dest riprendendo un download interrotto. 'silenzioso':
-    senza l'avanzamento (i tanti file piccoli dell'orchestra), errori a parte."""
+    senza l'avanzamento (i tanti file piccoli dell'orchestra), errori a parte.
+    Se l'URL porta uno SHA-256 atteso (UrlVerificato), a download finito il file si controlla: se e' diverso si
+    cancella e non si installa."""
+    _scarica_file(url, dest, tentativi, silenzioso)
+    atteso = getattr(url, "sha256", "")
+    if atteso:
+        digest = _sha256_file(Path(dest))
+        if digest != atteso:
+            Path(dest).unlink(missing_ok=True)
+            raise Errore(tr("il file scaricato non e' quello atteso (SHA-256 {}...): non lo installo", digest[:12]))
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for blocco in iter(lambda: f.read(1 << 20), b""):
+            h.update(blocco)
+    return h.hexdigest()
+
+
+def _scarica_file(url: str, dest: Path, tentativi: int = 3, silenzioso: bool = False):
     dest.parent.mkdir(parents=True, exist_ok=True)
     for tentativo in range(1, tentativi + 1):
         gia = dest.stat().st_size if dest.exists() else 0
@@ -472,6 +493,49 @@ def _dentro(base: Path, nome: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _link_dentro(base: Path, nome: str, destinazione: str) -> bool:
+    """Un link simbolico (o fisso) dell'archivio che punta dentro la cartella di destinazione."""
+    if not destinazione or destinazione.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:", destinazione):
+        return False
+    return _dentro(base, os.path.normpath(os.path.join(os.path.dirname(nome), destinazione)))
+
+
+def _controlla_percorsi(base: Path, voci, file: Path):
+    """Rifiuta l'archivio se un percorso esce dalla cartella o un link punta fuori: voci = [(nome, destinazione del link o "")]."""
+    for nome, destinazione in voci:
+        if not nome or not _dentro(base, nome) or Path(nome).is_absolute() or (destinazione and not _link_dentro(base, nome, destinazione)):
+            raise Errore(tr("percorso non valido nell'archivio: {}", nome or file.name))
+
+
+def _voci_7z(sette: str, file: Path) -> list:
+    """[(percorso, destinazione del link)] dall'elenco di 7-Zip (7z l -slt)."""
+    r = subprocess.run([sette, "l", "-slt", "-ba", str(file)], capture_output=True, text=True, check=True)
+    voci, corrente = [], {}
+    for riga in r.stdout.splitlines() + [""]:
+        if riga.strip() == "":
+            if "Path" in corrente:
+                voci.append((corrente["Path"], corrente.get("Symbolic Link", "") or corrente.get("Hard Link", "")))
+            corrente = {}
+        elif " = " in riga:
+            chiave, _sep, valore = riga.partition(" = ")
+            corrente[chiave.strip()] = valore
+    return voci
+
+
+def _voci_tar(comando: list, file: Path) -> list:
+    """[(percorso, destinazione del link)] dall'elenco di tar (-tvf, con i link «nome -> destinazione»)."""
+    nomi = subprocess.run(comando + ["-tf", str(file)], capture_output=True, text=True, check=True).stdout.splitlines()
+    voci = [(nome, "") for nome in nomi]
+    lungo = subprocess.run(comando + ["-tvf", str(file)], capture_output=True, text=True, check=True).stdout.splitlines()
+    for riga, (nome, _vuoto) in zip(lungo, voci):
+        if riga[:1] in ("l", "h"):
+            _testa, sep, destinazione = riga.partition(" -> ")
+            voci[voci.index((nome, ""))] = (nome, destinazione.strip() or "?")
+            if not sep and riga[:1] == "h":                       # hard link: «link to»
+                voci[voci.index((nome, "?"))] = (nome, riga.rsplit(" link to ", 1)[-1].strip() or "?")
+    return voci
 
 
 def programma_7z():
@@ -520,6 +584,7 @@ def estrai(file: Path, cartella: Path):
     elif nome.endswith(".7z"):
         sette = programma_7z()
         if sette:
+            _controlla_percorsi(cartella, _voci_7z(sette, file), file)       # prima si guarda cosa c'e' dentro
             subprocess.run([sette, "x", "-y", f"-o{cartella}", str(file)], check=True, stdout=subprocess.DEVNULL)
             return
         try:
@@ -530,6 +595,10 @@ def estrai(file: Path, cartella: Path):
                                 "segnalalo su https://github.com/openssound/soundtext/issues", file.name))
             raise Errore(tr("per estrarre {} serve 7-Zip (esegui prima: {} host) "
                             "oppure il pacchetto Python py7zr (pip install py7zr)", file.name, comando_script()))
+        with py7zr.SevenZipFile(file) as z:
+            _controlla_percorsi(cartella, [(i.filename, "") for i in z.list()], file)
+            if any(getattr(i, "is_symlink", False) or getattr(i, "is_junction", False) for i in z.list()):
+                raise Errore(tr("percorso non valido nell'archivio: {}", file.name))
         with py7zr.SevenZipFile(file) as z:
             z.extractall(cartella)
     elif nome.endswith(".deb"):
@@ -559,8 +628,11 @@ def estrai_deb(file: Path, cartella: Path):
                         # zstd non e' nella libreria di Python (prima della 3.14): lo apre il tar del sistema
                         cartella.mkdir(parents=True, exist_ok=True)
                         try:
+                            _controlla_percorsi(cartella, _voci_tar(["tar", "--zstd"], dati), file)
                             subprocess.run(["tar", "--zstd", "-xf", str(dati), "-C", str(cartella)], check=True,
                                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        except Errore:
+                            raise
                         except (OSError, subprocess.CalledProcessError):
                             raise Errore(tr("per aprire {} servono tar e zstd (sudo apt-get install -y zstd)",
                                             file.name))
@@ -578,9 +650,41 @@ def estrai_deb(file: Path, cartella: Path):
     raise Errore(tr("formato sconosciuto: {}", file.name))
 
 
+# Gli strumenti che si scaricano con git (o con l'archivio .zip di GitHub) a un commit fisso, non al ramo principale:
+# se il repository venisse modificato dopo, SoundText scarica quello che ha provato. Le righe le scrive
+# tools/aggiorna_pin_plugin.py (git ls-remote, senza scaricare niente).
+# --- PIN_GIT_INIZIO (scritto da tools/aggiorna_pin_plugin.py) ---
+PIN_GIT = {
+    "https://github.com/sfzinstruments/Discord-SFZ-GM-Bank.git": "7a9c478fe331f94f246d33332f0adedb25bbbe27",
+    "https://github.com/sfzinstruments/DrumGizmo.DRSKit.git": "b01448990a31f722542f1812e56159a97a6a2a82",
+    "https://github.com/sfzinstruments/FlameStudios.Kay5StringBanjo.git": "a773f1625db53a8a4d1bc10098d867561e21fd09",
+    "https://github.com/sfzinstruments/GregSullivan.E-Pianos.git": "8c3e581acda3594b553948ff0222d4f84a698376",
+    "https://github.com/sfzinstruments/MTG.SoloSax.git": "b494d256549b3d088fdec176ce82867f8a1f58b2",
+    "https://github.com/sfzinstruments/SamsSonor.git": "ef3e32058924ed1c3335e86d03094d3f310a9104",
+    "https://github.com/sfzinstruments/SplendidGrandPiano.git": "1c595d827b7fd7f0be3134aaed0f90b3662a09cf",
+    "https://github.com/sfzinstruments/Terkelsen.Marimba.git": "473e8dc5df1d8cafe3cde8d934e5be40f72e1d1e",
+    "https://github.com/sfzinstruments/WilkinsonAudio.NakedDrums.git": "407732a548606ac715ad8f3fbac63d9f4df77c0d",
+    "https://github.com/sfzinstruments/jlearman.SteelDrum.git": "dc15a36ad69a43b0d240fcbd0cc78fbc61b2b47e",
+    "https://github.com/sfzinstruments/jlearman.jRhodes3d.git": "aea5b8d3e11e2f7102593789a4e0a0e41b30271a",
+}
+# --- PIN_GIT_FINE ---
+
+
 def archivio_github(url_git: str) -> str:
-    """https://github.com/a/b.git -> l'archivio .zip del ramo principale."""
-    return re.sub(r"\.git$", "", url_git) + "/archive/HEAD.zip"
+    """https://github.com/a/b.git -> l'archivio .zip del commit fissato (PIN_GIT) o del ramo principale."""
+    return re.sub(r"\.git$", "", url_git) + f"/archive/{PIN_GIT.get(url_git, 'HEAD')}.zip"
+
+
+def clona_fissato(url: str, cartella: Path):
+    """git clone --depth 1 del commit fissato in PIN_GIT (o del ramo principale se non c'e')."""
+    commit = PIN_GIT.get(url)
+    if not commit:
+        subprocess.run(["git", "clone", "--depth", "1", url, str(cartella)], check=True)
+        return
+    cartella.mkdir(parents=True, exist_ok=True)
+    for cmd in (["init", "-q"], ["remote", "add", "origin", url], ["fetch", "-q", "--depth", "1", "origin", commit],
+                ["checkout", "-q", "FETCH_HEAD"]):
+        subprocess.run(["git", "-C", str(cartella)] + cmd, check=True)
 
 
 def _rimuovi(path: Path):
@@ -611,7 +715,7 @@ def scarica(voce):
         _rimuovi(cartella)
         if shutil.which("git"):
             cartella.parent.mkdir(parents=True, exist_ok=True)
-            subprocess.run(["git", "clone", "--depth", "1", url, str(cartella)], check=True)
+            clona_fissato(url, cartella)
         else:                  # senza git: l'archivio .zip di GitHub (nessuno di questi usa Git LFS)
             file = download / f"{nome}.zip"
             scarica_file(archivio_github(url), file)
@@ -763,14 +867,150 @@ def _esegui(cmd, **kw):
     subprocess.run([str(c) for c in cmd], check=True, **kw)
 
 
+# Versioni fisse dei plugin gratuiti: per ogni repository il tag della release e lo SHA-256 di ogni file che
+# SoundText scarica. Le righe le scrive tools/aggiorna_pin_plugin.py (dalle API di GitHub, senza scaricare niente):
+# l'aggiornamento e' una scelta, con la differenza da guardare. Un file con uno SHA-256 diverso non si installa.
+# --- PIN_INIZIO (scritto da tools/aggiorna_pin_plugin.py) ---
+PIN_PLUGIN = {
+    "AidaDSP/AIDA-X": {"tag": "1.1.0", "sha256": {
+        "AIDA-X-1.1.0-linux-arm64.tar.xz": "",
+        "AIDA-X-1.1.0-linux-x86_64.tar.xz": "",
+        "AIDA-X-1.1.0-macos-universal-10.15.dmg": "",
+        "AIDA-X-1.1.0-win64.zip": "",
+    }},
+    "Chowdhury-DSP/BYOD": {"tag": "v1.3.0", "sha256": {
+        "BYOD-Linux-x64-1.3.0.deb": "",
+        "BYOD-Mac-1.3.0.dmg": "",
+        "BYOD-Win-64bit-1.3.0.exe": "",
+    }},
+    "Chowdhury-DSP/ChowKick": {"tag": "v1.2.0", "sha256": {
+        "ChowKick-Linux-x64-1.2.0.deb": "",
+        "ChowKick-Mac-1.2.0.dmg": "",
+        "ChowKick-Win-64bit-1.2.0.exe": "",
+    }},
+    "Chowdhury-DSP/ChowMatrix": {"tag": "v1.3.0", "sha256": {
+        "ChowMatrix-Mac-1.3.0.dmg": "",
+        "ChowMatrix-Win-1.3.0.exe": "",
+    }},
+    "GuitarML/Chameleon": {"tag": "v1.2.0", "sha256": {
+        "Chameleon-Linux-x64-1.2.deb": "",
+        "Chameleon-Win-1.2.0.exe": "",
+        "Install-Chameleon-v1.2-Mac.dmg": "",
+    }},
+    "GuitarML/Proteus": {"tag": "v1.2", "sha256": {
+        "Install-Proteus-v1.2-Mac.dmg": "",
+        "Proteus-Linux-x64-1.2.deb": "",
+        "Proteus-Win-1.2.0.exe": "",
+    }},
+    "asb2m10/dexed": {"tag": "v1.1.0", "sha256": {
+        "Dexed-1.1.0-lnx.zip": "3a1a01511e3428f432cc91c7bf5267d72bfcb68aded4f084d4f9d002dcc42da6",
+        "Dexed-1.1.0-macOS.zip": "d6576d064313327e216cec9d6f62caa650b44746bc7c8d4b010df7f55d9b8ae3",
+        "Dexed-1.1.0-win.zip": "4773150a3dfa281d1caef583f493a41ed99ea95b054b5a3479780799ed6279cc",
+    }},
+    "baconpaul/airwin2rack": {"tag": "DAWPlugin", "sha256": {
+        "AirwindowsConsolidated-2026-11-15-59a227e-Linux.zip": "32cb5d1f6cc39128fee901d9e2add7d22a3c9fb2fa67963281aa3c13f0d2d158",
+        "AirwindowsConsolidated-2026-11-15-59a227e-Windows.zip": "b2f0d0f02b8e129f56a6e6b25c62e2606105f77a283d4aa0d54766f44ec22f23",
+        "airwindows-consolidated-macOS-2026-11-15-59a227e.dmg": "ca48c320070f1a05da5b2ff4c0549ded2de21af0f68123195780c94efac834d2",
+    }},
+    "baconpaul/six-sines": {"tag": "v1.2.1", "sha256": {
+        "six-sines-Linux-2026-07-20-18ecb36.zip": "9b5353eebfec3e462c80ed8c0f53c965e6262bb38537518159cce71de7eace41",
+        "six-sines-Windows-2026-07-20-18ecb36.zip": "9f7c7fa5cb1c5e11b53c0a9306ee443149cc7bc0a109380dbbe1578f3a7b6e5d",
+        "six-sines-macOS-2026-07-20-18ecb36.dmg": "2da3de486551da88e06162a90ef917019c46a25c01d1ec0cdf5e0416b7394d6c",
+    }},
+    "brummer10/NeuralRack": {"tag": "v0.4.1", "sha256": {
+        "NeuralRack-v0.4.1-lv2-linux-arm64.tar.xz": "c9ced67afeb8e48a8366f97e9e9b3899d6fdb09548d27e4d87010d48c5513bf5",
+        "NeuralRack-v0.4.1-vst3-linux-x86_64.tar.xz": "9a0c20c5610ba542ec1895fb9efafc4d4bcde65b30324f522ecfce8a356207cc",
+        "NeuralRack-vst3-v0.4.1-win64.zip": "522bd2ade9efcc906a132bd773b70df4b0744659546db5e9dcc8c4ccd4ddd0ae",
+    }},
+    "brummer10/Ratatouille.lv2": {"tag": "v0.9.12", "sha256": {
+        "Ratatouille.lv2-clap-v0.9.12-linux-x86_64.tar.xz": "a81610b79053bbc759ce0eaa26d55a52363039a45cc87fc754b3671b43f338aa",
+        "Ratatouille.lv2-clap-v0.9.12-win64.zip": "aeb7367f1afe8515589ba816f38c19361d4a6f6987140e0926e6fd573dc4662b",
+        "Ratatouille.lv2-v0.9.12-linux-arm64.tar.xz": "9eba7b230e0258e83571ba377ac940b621cf1e9f1d38061047cc27ebf7f609b6",
+        "Ratatouille.lv2-v0.9.12-linux-x86_64.tar.xz": "134a0cbd7de8537e68e9d5e0855567d3a4fc53036da75c8efe2ea8ea8aad22b3",
+    }},
+    "geonkick-synthesizer/geonkick": {"tag": "v3.9.1", "sha256": {
+        "GNULinux_binaries_v3.9.1_basic.zip": "35107da8c32f46c69ca546b1ef7c98e40f0c3570b017b70dd618161c576abdd8",
+    }},
+    "jatinchowdhury18/AnalogTapeModel": {"tag": "v2.11.4", "sha256": {
+        "ChowTapeModel-Mac-2.11.4.dmg": "",
+        "ChowTapeModel-Win-64bit-2.11.4.exe": "",
+    }},
+    "jatinchowdhury18/KlonCentaur": {"tag": "v1.4.0", "sha256": {
+        "ChowCentaur-Mac-1.4.0.dmg": "",
+        "ChowCentaur-Win-1.4.0.exe": "",
+    }},
+    "lsp-plugins/lsp-plugins": {"tag": "1.2.37", "sha256": {
+        "lsp-plugins-1.2.37-Linux-aarch64.7z": "d0fc5c5600bee23eb088f99f899b7dd0bae6da43dc12e020df3ad56e3e0ed15a",
+        "lsp-plugins-1.2.37-Linux-x86_64.7z": "bbdfbfce4591ea07e7ac9dac0b1aca8ea7ccf9d850aafbf9ac0a347a1340ee55",
+    }},
+    "michaelwillis/dragonfly-reverb": {"tag": "3.2.10", "sha256": {
+        "dragonfly-reverb-3.2.10-linux-arm64.tar.xz": "",
+        "dragonfly-reverb-3.2.10-linux-x86_64.tar.xz": "",
+        "dragonfly-reverb-3.2.10-macos-universal.dmg": "",
+        "dragonfly-reverb-3.2.10-win64.zip": "",
+    }},
+    "midilab/jc303": {"tag": "v0.14.0", "sha256": {
+        "jc303-0.14.0-linux_x64-plugins.zip": "378200f8ddda266873c9795feb6ee857fbae000a3b3537a7b42933dd277b370c",
+        "jc303-0.14.0-macos_universal-plugins.zip": "dfdc9b7deb674d472dc8663ec03a8ea177bf5d752beac4058cd0ea309bd48107",
+        "jc303-0.14.0-windows_x64-plugins.zip": "499c1bec494d9116999a52c13ae59ff503bdff32438e8ef4af5fce6408e08057",
+    }},
+    "pdesaulniers/wolf-shaper": {"tag": "v1.0.2", "sha256": {
+        "wolf-shaper-v1.0.2+20230515144200-windows-x64.zip": "",
+        "wolf-shaper-v1.0.2-linux-arm64.zip": "",
+        "wolf-shaper-v1.0.2-linux-x64.zip": "",
+        "wolf-shaper-v1.0.2-macos-universal.zip": "",
+    }},
+    "sfztools/sfizz-ui": {"tag": "1.2.3", "sha256": {
+        "sfizz-1.2.3-macos.pkg": "",
+        "sfizz-1.2.3-win64.exe": "",
+    }},
+    "surge-synthesizer/OB-Xf": {"tag": "v1.0.3", "sha256": {
+        "ob-xf-Linux-v1.0.3.zip": "72b60c83cf6426337031df744c34a047104a9d95f1feaf6cd048ecfa39f74c96",
+        "ob-xf-Windows-v1.0.3.zip": "149fda0649daf8a3aa0851801f92515f0dbf6203acf33c0edc7d3c445e80b1e7",
+        "ob-xf-macOS-v1.0.3.dmg": "e6f52f453c476dfafbd3225b80c5c3ec341ec20be5748c6f70c01cef14e7e7a8",
+    }},
+    "surge-synthesizer/releases-xt": {"tag": "1.3.4", "sha256": {
+        "surge-xt-macos-1.3.4-pluginsonly.zip": "",
+        "surge-xt-portable-content-1.3.4.tar.gz": "",
+        "surge-xt-win64-1.3.4-pluginsonly.zip": "",
+    }},
+    "zamaudio/zam-plugins": {"tag": "4.5", "sha256": {
+        "zam-plugins-4.5-linux-arm64.tar.xz": "4e02771b743afaaa2d6912eac083661c1d9ab0a92dd6787414f29e365877b4c2",
+        "zam-plugins-4.5-linux-x86_64.tar.xz": "16b022cce2998d11d3dbcf15aa6fe176cd14576cad42250ae8cfc56d1b7add7a",
+        "zam-plugins-4.5-macos-universal.dmg": "ac163eb25781b08936b80c12e809777e3aaa523887d0355504f2e6586c4e43cf",
+        "zam-plugins-4.5-win64.zip": "745990b0acdda1cc319cd55aafdf61b6f258015810f310abd31d8bbe849e4da8",
+    }},
+}
+# --- PIN_FINE ---
+
+
+class UrlVerificato(str):
+    """L'indirizzo di un file di una release, con lo SHA-256 atteso (scarica_file lo controlla a download finito)."""
+    sha256 = ""
+    nome = ""
+
+
 def asset_github(repo: str, release: str, modello: str) -> str:
-    """URL del primo file della release (latest o un tag) che corrisponde al modello."""
+    """URL del primo file della release che corrisponde al modello. Per i repository di PIN_PLUGIN la release e' quella
+    fissata (con "latest" si usa il tag in PIN_PLUGIN) e l'URL porta lo SHA-256 atteso; un file senza SHA-256 fissato
+    non si scarica."""
+    fissato = PIN_PLUGIN.get(repo)
+    if fissato and release == "latest":
+        release = fissato["tag"]
     api = f"https://api.github.com/repos/{repo}/releases/" + ("latest" if release == "latest" else f"tags/{release}")
     with urllib.request.urlopen(_richiesta(api, Accept="application/vnd.github+json"), timeout=60) as resp:
         dati = json.load(resp)
     for asset in dati.get("assets", []):
         if re.fullmatch(modello, asset["name"]):
-            return asset["browser_download_url"]
+            url = UrlVerificato(asset["browser_download_url"])
+            url.nome = asset["name"]
+            if fissato:
+                if asset["name"] not in fissato["sha256"]:
+                    raise Errore(tr("il file {} non e' fra quelli verificati: non lo scarico (aggiorna i riferimenti)", asset["name"]))
+                url.sha256 = fissato["sha256"][asset["name"]]
+                if not url.sha256:                      # release vecchia senza «digest»: da fissare con --calcola
+                    print("   " + tr("attenzione: lo SHA-256 di {} non e' ancora fissato", asset["name"]))
+            return url
     raise Errore(tr("nessun file {} nella release {} di {}", modello, release, repo))
 
 

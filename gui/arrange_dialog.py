@@ -136,6 +136,7 @@ class ArrangeDialog(QDialog):
         layout.addLayout(form)
 
         self.table = QTableWidget(0, 4)
+        self.table.setAccessibleName(tr("Sezioni del brano"))
         self.table.setHorizontalHeaderLabels([tr("Sezione"), tr("Battute"), tr("Intensita'"), tr("Accordi")])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)

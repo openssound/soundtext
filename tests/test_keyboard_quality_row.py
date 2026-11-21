@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QApplication
 
 from core.model import Project
 from gui.keyboard_play_dialog import KeyboardPlayDialog
+from _waits import wait_for  # noqa: E402
 
 _app = QApplication.instance() or QApplication([])
 
@@ -55,10 +56,7 @@ class _FakeKeyEvent:
 
 def _wait_until(condition, timeout_s):
     """Fa girare gli eventi Qt finche' condition() e' vera o scade il tempo."""
-    t0 = time.time()
-    while not condition() and time.time() - t0 < timeout_s:
-        _app.processEvents()
-        time.sleep(0.01)
+    wait_for(condition, timeout_s)
 
 
 def _make_dialog():

@@ -6,6 +6,7 @@ import pytest
 from core.audio_import import SilentAudio, convert_audio_to_track_text, drop_background_noise
 from core.audio_quantize import AudioEvent
 from core.audio_tracks import write_wav
+from _waits import wait_for  # noqa: E402
 
 RATE = 44100
 
@@ -46,7 +47,6 @@ def test_background_noise_events_are_dropped():
 
 
 def test_dialog_shows_silence_without_an_error_popup(tmp_path, monkeypatch):
-    import time
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication.instance() or QApplication([])
     errors = []
@@ -55,10 +55,7 @@ def test_dialog_shows_silence_without_an_error_popup(tmp_path, monkeypatch):
     from gui.audio_import_dialog import AudioImportDialog
     dlg = AudioImportDialog(None, Project(name="p"), "Piano", "Piano")
     dlg._set_source(_wav(tmp_path, _noise(-50, 2.0)), from_mic=True)
-    end = time.time() + 10
-    while time.time() < end and "silenzios" not in dlg.result_status.text():
-        app.processEvents()
-        time.sleep(0.01)
+    wait_for(lambda: "silenzios" in dlg.result_status.text(), 10)
     assert "silenzios" in dlg.result_status.text() and errors == []
     assert dlg.preview_edit.toPlainText() == "" and dlg.result_text() is None
     dlg.reject()

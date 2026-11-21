@@ -10,7 +10,6 @@ Esecuzione:
 import _config_isolation  # noqa: F401  (isola la configurazione: prima di importare core)
 import os
 import sys
-import time
 
 import numpy as np
 import pytest
@@ -33,8 +32,8 @@ def test_decoded_files_are_read_once_and_follow_changes(tmp_path):
     path = _noise(tmp_path)
     first = at.decoded_wav(path)[0]
     assert at.decoded_wav(path)[0] is first and not first.flags.writeable
-    time.sleep(0.01)
     write_wav(path, np.zeros((RATE, 1), np.float32), RATE)
+    os.utime(path, (os.stat(path).st_atime, os.stat(path).st_mtime + 2))   # data di modifica diversa, senza aspettare
     assert len(at.decoded_wav(path)[0]) == RATE                  # file cambiato: si rilegge
 
 
@@ -81,3 +80,19 @@ def test_run_with_wait_returns_the_result_or_the_error():
 
     with pytest.raises(RuntimeError, match="niente da fare"):
         run_with_wait(None, "prova", fail)
+
+
+def test_frames_view_is_the_same_as_before_and_never_describes_a_huge_array():
+    """_frames costruisce solo i frame che servono: una registrazione lunga non deve dare una vista da miliardi di byte
+    (NumPy in WebAssembly, sul telefono, rifiuta oltre 2 GB: «array is too big»)."""
+    from core import audio_dsp
+    rng = np.random.default_rng(0)
+    for length, size, hop in ((5000, 2048, 512), (700, 1024, 256), (48000, 2048, 512)):
+        x = rng.standard_normal(length).astype(np.float32)
+        padded = np.concatenate([np.zeros(size // 2, np.float32), x, np.zeros(size // 2 + hop, np.float32)])
+        old = np.lib.stride_tricks.sliding_window_view(padded, size)[::hop][:1 + length // hop]
+        new = audio_dsp._frames(x, size, hop)
+        assert new.shape == old.shape and np.array_equal(new, old)
+    long_x = np.zeros(30 * 48000, np.float32)                       # 30 s a 48 kHz
+    frames = audio_dsp._frames(long_x, 2048, 512)
+    assert frames.shape[1] == 2048 and frames.size * frames.itemsize < 200 * 1024 * 1024

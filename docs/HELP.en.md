@@ -121,6 +121,7 @@ The guide is divided into six parts; click a title to go to that section.
 - [30. Installation on Linux](#30)
 - [31. Installation on Windows](#31)
 - [32. Installation on macOS](#32)
+- [33. Using a screen reader](#33)
 
 ---
 
@@ -3176,6 +3177,9 @@ instruments** that play the notes of a track instead of the SoundFont.
   - **Dragonfly Reverb**: hall, room and plate reverbs;
   - **LSP Plugins**: studio compressors, equalizers, limiters and delays
     (Linux only: there are no Windows or macOS versions).
+- **VST2**: SoundText does not load them. pedalboard, the library it uses for plugins, does not support them and Steinberg
+  no longer grants the SDK. On Windows and macOS [Carla](https://kx.studio/Applications:Carla) wraps a VST2 as a VST3; on
+  Linux yabridge loads Windows VST2s.
 - **Audio Unit (AU)**: on macOS only. SoundText looks for them in
   `/Library/Audio/Plug-Ins/Components` and `~/Library/Audio/Plug-Ins/Components`
   (the `.component` files, the same ones GarageBand and Logic use), plus
@@ -5021,3 +5025,35 @@ python3 main.py
   Microphone**, otherwise the recording stays silent. If the permission is
   denied, SoundText says so before recording, with a button that opens that
   setting.
+
+
+---
+
+## 33. Using a screen reader
+
+SoundText is written as text, the most suitable form for people who cannot see. It works with **NVDA** and **JAWS** on
+Windows, **VoiceOver** on macOS and **Orca** on Linux. Every control has a name (an icon-only button takes its name from its
+tooltip) and the status bar messages (saved, exported, plugin loaded, error) are announced.
+
+**Writing and moving around**
+
+- The track text is an ordinary text field: the arrow keys move through it, `|` separates the bars.
+- **Ctrl+K** looks up a command by name, without going through the menus.
+- **Where am I?** (Ctrl+Shift+W): says track, bar, beat, note or chord and box at the cursor ("Melody, bar 5, third beat,
+  A minor chord, box Chorus").
+
+**Listening to what you wrote**
+
+- **Play the note or chord under the cursor** (Ctrl+Alt+1), **Play the current bar** (Ctrl+Alt+2) and **Play from the
+  cursor** (Ctrl+Alt+3), in the Playback menu: the quickest way to check the last line.
+- **F5** plays the song, **F6** stops it.
+
+**Correcting**
+
+- **Go to the next error** (F8) and **previous error** (Shift+F8), in the Edit menu: the cursor moves to the spot and the
+  message is announced ("bar 5: a quarter is missing"). With no errors, it says so.
+
+**Exporting**: the **Project → Export** menu opens with Alt+P and is browsed with the arrow keys; every window closes with Esc.
+
+For the graphic views (Structure, Score) the song text remains the most accessible route: everything done with the mouse can
+be written in the text. On the phone, SoundText Mobile has the "Read" command, which speaks the bar at the cursor aloud.

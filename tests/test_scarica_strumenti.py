@@ -33,8 +33,101 @@ def test_groups_and_extra_groups_are_consistent():
 
 
 def test_github_archive_url():
-    assert ss.archivio_github("https://github.com/sfzinstruments/Terkelsen.Marimba.git") == \
-        "https://github.com/sfzinstruments/Terkelsen.Marimba/archive/HEAD.zip"
+    marimba = "https://github.com/sfzinstruments/Terkelsen.Marimba.git"
+    assert ss.archivio_github(marimba) == f"https://github.com/sfzinstruments/Terkelsen.Marimba/archive/{ss.PIN_GIT[marimba]}.zip"
+    assert ss.archivio_github("https://github.com/qualcuno/non-fissato.git") == \
+        "https://github.com/qualcuno/non-fissato/archive/HEAD.zip"
+
+
+# ---------------------------------------------------------------------------
+# versioni fisse e SHA-256 (PIN_PLUGIN, PIN_GIT)
+# ---------------------------------------------------------------------------
+
+def _tutti_i_plugin():
+    return ss.PLUGIN_VST3 + ss.PLUGIN_LV2 + ss.PLUGIN_CLAP
+
+
+def test_every_free_plugin_repository_has_a_pinned_tag_and_a_sha256_per_file():
+    for _nome, _desc, repo, _release, modelli in _tutti_i_plugin():
+        assert repo in ss.PIN_PLUGIN, repo
+        fissato = ss.PIN_PLUGIN[repo]
+        assert fissato["tag"] and fissato["sha256"], repo
+        for sha in fissato["sha256"].values():
+            assert sha == "" or (len(sha) == 64 and set(sha) <= set("0123456789abcdef")), (repo, sha)
+    assert ss.SURGE_REPO in ss.PIN_PLUGIN and ss.SFIZZ_UI_REPO in ss.PIN_PLUGIN
+
+
+def test_every_git_repository_of_the_tables_is_pinned_to_a_commit():
+    urls = {v[2] for v in ss.GRUPPI + ss.EXTRA if len(v) > 2 and str(v[2]).endswith(".git")}
+    assert urls and urls <= set(ss.PIN_GIT)
+    assert all(len(c) == 40 and set(c) <= set("0123456789abcdef") for c in ss.PIN_GIT.values())
+
+
+def _api(monkeypatch, assets, tag="v9.9"):
+    import io as _io
+    import json as _json
+
+    class Resp(_io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    chiamate = []
+
+    def fake(req, timeout=0):
+        chiamate.append(req.full_url)
+        return Resp(_json.dumps({"tag_name": tag, "assets": [{"name": n, "browser_download_url": "https://x/" + n} for n in assets]}).encode())
+
+    monkeypatch.setattr(ss.urllib.request, "urlopen", fake)
+    return chiamate
+
+
+def test_a_pinned_plugin_is_downloaded_from_its_tag_and_carries_the_expected_sha256(monkeypatch):
+    monkeypatch.setitem(ss.PIN_PLUGIN, "prova/plugin", {"tag": "v1.0", "sha256": {"P-1.0.zip": "ab" * 32, "Q-1.0.zip": ""}})
+    chiamate = _api(monkeypatch, ["P-1.0.zip", "Q-1.0.zip", "R-1.0.zip"])
+    url = ss.asset_github("prova/plugin", "latest", r"P-[\d.]+\.zip")
+    assert chiamate == ["https://api.github.com/repos/prova/plugin/releases/tags/v1.0"]          # il tag, non "latest"
+    assert str(url) == "https://x/P-1.0.zip" and url.sha256 == "ab" * 32 and url.nome == "P-1.0.zip"
+    assert ss.asset_github("prova/plugin", "latest", r"Q-[\d.]+\.zip").sha256 == ""            # ancora da fissare
+    with pytest.raises(ss.Errore):
+        ss.asset_github("prova/plugin", "latest", r"R-[\d.]+\.zip")                           # un file non verificato
+
+
+def test_an_unpinned_repository_still_resolves_without_a_sha256(monkeypatch):
+    _api(monkeypatch, ["a.zip"])
+    url = ss.asset_github("altro/non-fissato", "latest", r"a\.zip")
+    assert str(url) == "https://x/a.zip" and url.sha256 == ""
+
+
+def test_a_download_with_the_wrong_sha256_is_deleted_and_not_installed(monkeypatch, tmp_path):
+    import hashlib
+    corpo = b"contenuto del plugin"
+    monkeypatch.setattr(ss, "_scarica_file", lambda url, dest, *a, **k: dest.write_bytes(corpo))
+    giusto = ss.UrlVerificato("https://x/p.zip")
+    giusto.sha256 = hashlib.sha256(corpo).hexdigest()
+    ss.scarica_file(giusto, tmp_path / "ok.zip")
+    assert (tmp_path / "ok.zip").read_bytes() == corpo
+    storto = ss.UrlVerificato("https://x/p.zip")
+    storto.sha256 = "00" * 32
+    with pytest.raises(ss.Errore, match="non quello atteso|non e' quello atteso"):
+        ss.scarica_file(storto, tmp_path / "no.zip")
+    assert not (tmp_path / "no.zip").exists()                                 # non resta nulla da installare
+    ss.scarica_file("https://x/senza-sha.zip", tmp_path / "libero.zip")        # un URL qualsiasi non si controlla
+    assert (tmp_path / "libero.zip").exists()
+
+
+def test_git_clone_goes_to_the_pinned_commit(monkeypatch, tmp_path):
+    comandi = []
+    monkeypatch.setattr(ss.subprocess, "run", lambda cmd, **k: comandi.append(cmd))
+    url = "https://github.com/sfzinstruments/Terkelsen.Marimba.git"
+    ss.clona_fissato(url, tmp_path / "marimba")
+    sequenza = [c[3] if c[:2] == ["git", "-C"] else c[1] for c in comandi]
+    assert sequenza == ["init", "remote", "fetch", "checkout"] and ss.PIN_GIT[url] in comandi[2]
+    comandi.clear()
+    ss.clona_fissato("https://github.com/qualcuno/non-fissato.git", tmp_path / "x")
+    assert comandi == [["git", "clone", "--depth", "1", "https://github.com/qualcuno/non-fissato.git", str(tmp_path / "x")]]
 
 
 def test_extracts_zip_and_tar_but_not_paths_outside(tmp_path):
@@ -320,3 +413,82 @@ def test_already_downloaded_vsco_group_gets_the_new_corrections(tmp_path, monkey
     monkeypatch.setattr(ss, "scarica_file", lambda *a, **k: pytest.fail("non deve scaricare"))
     ss.scarica(ss.trova("vsco-percussioni"))
     assert "hivel=60" in (cartella / "Timpani.sfz").read_text()
+
+
+# ---------------------------------------------------------------------------
+# .7z e .deb: i percorsi si controllano prima di estrarre
+# ---------------------------------------------------------------------------
+
+def _tar_con(path, membri):
+    """Un .tar con i membri dati: (nome, contenuto) o (nome, None, destinazione del link)."""
+    with tarfile.open(path, "w") as t:
+        for voce in membri:
+            info = tarfile.TarInfo(voce[0])
+            if len(voce) == 3:
+                info.type, info.linkname = tarfile.SYMTYPE, voce[2]
+                t.addfile(info)
+            else:
+                info.size = len(voce[1])
+                t.addfile(info, io.BytesIO(voce[1]))
+
+
+def _deb_con(tmp_path, membri):
+    """Un .deb con data.tar.zst (come quelli di molti plugin per Linux)."""
+    import shutil
+    import subprocess
+    if not (shutil.which("zstd") and shutil.which("tar")):
+        pytest.skip("servono zstd e tar")
+    tar = tmp_path / "data.tar"
+    _tar_con(tar, membri)
+    subprocess.run(["zstd", "-q", "-f", str(tar), "-o", str(tmp_path / "data.tar.zst")], check=True)
+    dati = (tmp_path / "data.tar.zst").read_bytes()
+    nome = b"data.tar.zst".ljust(16)
+    riga = nome + b"0".ljust(12) + b"0".ljust(6) + b"0".ljust(6) + b"100644".ljust(8) + str(len(dati)).encode().ljust(10) + b"`\n"
+    deb = tmp_path / "pacchetto.deb"
+    deb.write_bytes(b"!<arch>\n" + riga + dati + (b"\n" if len(dati) % 2 else b""))
+    return deb
+
+
+def test_a_deb_with_paths_outside_the_folder_or_links_out_is_refused(tmp_path):
+    buono = _deb_con(tmp_path, [("./usr/lib/vst3/Plugin.vst3/x", b"1")])
+    ss.estrai(buono, tmp_path / "ok")
+    assert (tmp_path / "ok" / "usr" / "lib" / "vst3" / "Plugin.vst3" / "x").exists()
+    for nome, membri in (("sale", [("../fuori.txt", b"x")]), ("assoluto", [("/tmp/fuori-assoluto.txt", b"x")]),
+                         ("link", [("a", None, "../../fuori")]), ("link-assoluto", [("b", None, "/etc/passwd")])):
+        cartella = tmp_path / nome
+        cartella.mkdir()
+        deb = _deb_con(cartella, membri)
+        with pytest.raises(ss.Errore, match="percorso non valido"):
+            ss.estrai(deb, cartella / "estratto")
+    assert not (tmp_path / "fuori.txt").exists() and not os.path.exists("/tmp/fuori-assoluto.txt")
+
+
+def test_a_7z_with_paths_outside_the_folder_is_refused(tmp_path, monkeypatch):
+    import shutil
+    import subprocess
+    sette = shutil.which("7z") or shutil.which("7za") or shutil.which("7zz")
+    if not sette:
+        pytest.skip("serve 7-Zip")
+    ok = tmp_path / "ok"
+    ok.mkdir()
+    (ok / "plugin.txt").write_text("1")
+    subprocess.run([sette, "a", "-bd", "-y", str(tmp_path / "buono.7z"), "plugin.txt"], cwd=ok, check=True, stdout=subprocess.DEVNULL)
+    ss.estrai(tmp_path / "buono.7z", tmp_path / "estratto-ok")
+    assert (tmp_path / "estratto-ok" / "plugin.txt").read_text() == "1"
+    # 7-Zip non scrive percorsi con ../ da riga di comando: l'elenco cattivo si simula, e l'estrazione non deve partire
+    for voci in ([("../fuori.txt", "")], [("/assoluto.txt", "")], [("a", "../../etc")], [("b", "/etc/passwd")]):
+        monkeypatch.setattr(ss, "_voci_7z", lambda *a, _v=voci: _v)
+        estrazioni = []
+        real = ss.subprocess.run
+        monkeypatch.setattr(ss.subprocess, "run", lambda cmd, **k: estrazioni.append(cmd) or real(cmd, **k))
+        with pytest.raises(ss.Errore, match="percorso non valido"):
+            ss.estrai(tmp_path / "buono.7z", tmp_path / "estratto-no")
+        assert not any(c[1] == "x" for c in estrazioni)                         # niente e' stato estratto
+        monkeypatch.setattr(ss.subprocess, "run", real)
+
+
+def test_link_targets_are_judged_by_where_they_point():
+    base = Path("/tmp/base-prova")
+    assert ss._link_dentro(base, "a/b", "../c") and ss._link_dentro(base, "a", "b/c")
+    assert not ss._link_dentro(base, "a", "../../x") and not ss._link_dentro(base, "a", "/etc/passwd")
+    assert not ss._link_dentro(base, "a", "C:\\\\Windows") and not ss._link_dentro(base, "a", "")

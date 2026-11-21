@@ -1,0 +1,10 @@
+# Aggiornamenti delle azioni dei workflow, che sono fissate per commit (SHA): Dependabot apre una pull request con il
+# nuovo SHA e il tag nel commento. L'aggiornamento resta una scelta: si guarda, si prova la CI, si unisce.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "CI"

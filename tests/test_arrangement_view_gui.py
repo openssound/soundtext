@@ -42,6 +42,7 @@ from PySide6.QtTest import QTest
 from core.model import Clip
 from gui.main_window import MainWindow
 from gui.arrangement_view import BoxItem
+from _waits import wait_for  # noqa: E402
 
 _app = QApplication.instance() or QApplication([])
 
@@ -376,7 +377,7 @@ def test_preview_natural_end_resets_button_to_play():
     assert av.preview_action.text() == "Pausa ascolto del box"
 
     av._preview_playback.playing = False  # fine naturale, nessuno Stop/Pausa esplicito
-    QTest.qWait(400)  # lascia scattare _preview_status_timer (200ms)
+    wait_for(lambda: av.preview_action.text() == "Ascolta il box selezionato", 3)  # scatta _preview_status_timer (200ms)
 
     assert av.preview_action.text() == "Ascolta il box selezionato"
     assert av._preview_paused_beat is None
@@ -555,7 +556,6 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     effetti e il volume della sua traccia anche se e' in Mute, senza la
     pausa davanti di un'ancora bar=N."""
     import os
-    import time
     import numpy as np
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PySide6.QtWidgets import QApplication, QFileDialog
@@ -587,11 +587,7 @@ def test_box_menu_exports_the_box_as_wav(tmp_path, monkeypatch):
     from _menus import scripted_menus
     with scripted_menus("Esporta come WAV..."):
         av.show_box_menu(item, av.mapToGlobal(av.rect().center()))
-    deadline = time.time() + 10
-    while not os.path.exists(out) or w.wav_export.worker is not None:
-        app.processEvents()
-        time.sleep(0.02)
-        assert time.time() < deadline
+    assert wait_for(lambda: os.path.exists(out) and w.wav_export.worker is None, 10)
     project = rendered["project"]
     assert [t.name for t in project.tracks] == ["Chitarra"]
     box = project.tracks[0]

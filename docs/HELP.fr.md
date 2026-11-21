@@ -121,6 +121,7 @@ Le guide est divisé en six parties ; un clic sur un titre mène à la section.
 - [30. Installation sous Linux](#30)
 - [31. Installation sous Windows](#31)
 - [32. Installation sous macOS](#32)
+- [33. Utiliser un lecteur d'écran](#33)
 
 ---
 
@@ -3392,6 +3393,9 @@ SoundFont.
   - **LSP Plugins** : compresseurs, égaliseurs, limiteurs et delays de
     studio (seulement sous Linux : il n'existe pas de versions Windows et
     macOS).
+- **VST2** : SoundText ne les charge pas. pedalboard, la bibliothèque qu'il utilise pour les plugins, ne les prend pas en
+  charge et Steinberg n'accorde plus le SDK. Sous Windows et macOS, [Carla](https://kx.studio/Applications:Carla) encapsule un
+  VST2 comme VST3 ; sous Linux, yabridge charge les VST2 de Windows.
 - **Audio Unit (AU)** : seulement sous macOS. SoundText les cherche dans
   `/Library/Audio/Plug-Ins/Components` et `~/Library/Audio/Plug-Ins/Components`
   (les fichiers `.component`, ceux qu'utilisent aussi GarageBand et Logic),
@@ -5382,3 +5386,35 @@ python3 main.py
   Confidentialité et sécurité → Microphone**, sinon l'enregistrement reste
   muet. Si l'autorisation est refusée, SoundText le dit avant d'enregistrer,
   avec un bouton qui ouvre ce réglage.
+
+
+---
+
+## 33. Utiliser un lecteur d'écran
+
+SoundText s'écrit comme du texte, la forme la plus adaptée à qui ne voit pas. Il fonctionne avec **NVDA** et **JAWS** sous
+Windows, **VoiceOver** sous macOS et **Orca** sous Linux. Chaque contrôle a un nom (un bouton avec une seule icône prend son
+nom de son infobulle) et les messages de la barre d'état (enregistré, exporté, plugin chargé, erreur) sont annoncés.
+
+**Écrire et se déplacer**
+
+- Le texte de la piste est un champ de texte ordinaire : les flèches le parcourent, `|` sépare les mesures.
+- **Ctrl+K** cherche une commande par son nom, sans passer par les menus.
+- **Où suis-je ?** (Ctrl+Maj+W) : dit la piste, la mesure, le temps, la note ou l'accord et la boîte du curseur (« Mélodie, mesure 5,
+  troisième temps, accord de la mineur, boîte Refrain »).
+
+**Écouter ce qu'on a écrit**
+
+- **Jouer la note ou l'accord sous le curseur** (Ctrl+Alt+1), **Jouer la mesure courante** (Ctrl+Alt+2) et **Jouer depuis le
+  curseur** (Ctrl+Alt+3), dans le menu Lecture : le moyen le plus rapide de vérifier la dernière ligne.
+- **F5** joue le morceau, **F6** l'arrête.
+
+**Corriger**
+
+- **Aller à l'erreur suivante** (F8) et **précédente** (Maj+F8), dans le menu Édition : le curseur se place à l'endroit et le message
+  est annoncé (« mesure 5 : il manque une noire »). Sans erreur, il le dit.
+
+**Exporter** : le menu **Projet → Exporter** s'ouvre avec Alt+P et se parcourt avec les flèches ; chaque fenêtre se ferme avec Échap.
+
+Pour les vues graphiques (Structure, Partition), le texte du morceau reste la voie la plus accessible : tout ce qui se fait à la souris
+peut s'écrire dans le texte. Sur le téléphone, SoundText Mobile a la commande « Lire », qui dit à voix haute la mesure du curseur.

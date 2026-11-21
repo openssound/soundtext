@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CMAKE_FLAGS: -DCMAKE_BUILD_TYPE=Release -DSFIZZ_JACK=OFF -DSFIZZ_RENDER=OFF -DSFIZZ_SHARED=ON -DENABLE_LTO=OFF
@@ -28,7 +28,7 @@ jobs:
       short: ${{ steps.read.outputs.short }}
       url: ${{ steps.read.outputs.url }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - id: read
         run: |
           sha=$(python3 -c "import re; print(re.search(r'SFIZIOSO_COMMIT = \"([0-9a-f]{40})\"', open('scarica_strumenti.py').read()).group(1))")
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           path: soundtext
       - name: Sorgenti di sfizioso
@@ -70,7 +70,7 @@ jobs:
       # appena compilati): devono accompagnare il binario
       - name: Licenze
         run: /opt/python/cp312-cp312/bin/python soundtext/.github/scripts/licenze_sfizioso.py src LICENSE-sfizz.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux
           path: |
@@ -103,7 +103,7 @@ jobs:
           Write-Output "dipendenze: $deps"
           if ($deps -match "(?i)vcruntime|msvcp") { throw "la DLL dipende ancora dal runtime MSVC: $deps" }
         shell: pwsh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows
           path: sfizz-windows-x64.dll
@@ -138,7 +138,7 @@ jobs:
           lipo -info libsfizz-macos-universal.dylib
           python3 -c "import ctypes; ctypes.CDLL('./libsfizz-macos-universal.dylib').sfizz_create_synth"
           otool -L libsfizz-macos-universal.dylib
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: macos
           path: libsfizz-macos-universal.dylib
@@ -149,8 +149,10 @@ jobs:
   release:
     needs: [commit, linux, windows, macos]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write          # solo questo job pubblica la release
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           merge-multiple: true
           path: out
@@ -160,7 +162,7 @@ jobs:
           cd out
           sha256sum libsfizz-linux-x86_64.so sfizz-windows-x64.dll libsfizz-macos-universal.dylib > SHA256SUMS
           cat SHA256SUMS
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: libsfizz-${{ needs.commit.outputs.short }}
           name: libsfizz ${{ needs.commit.outputs.short }} (motore SFZ interno)

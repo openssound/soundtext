@@ -121,6 +121,7 @@ La guía está dividida en seis partes; un clic en un título lleva a la secció
 - [30. Instalación en Linux](#30)
 - [31. Instalación en Windows](#31)
 - [32. Instalación en macOS](#32)
+- [33. Usar un lector de pantalla](#33)
 
 ---
 
@@ -3325,6 +3326,9 @@ SoundFont.
   - **Dragonfly Reverb**: reverberaciones de sala, habitación y placa;
   - **LSP Plugins**: compresores, ecualizadores, limitadores y delays de
     estudio (solo en Linux: no existen versiones para Windows y macOS).
+- **VST2**: SoundText no los carga. pedalboard, la biblioteca que usa para los plugins, no los admite y Steinberg ya no
+  concede el SDK. En Windows y macOS [Carla](https://kx.studio/Applications:Carla) encapsula un VST2 como VST3; en Linux
+  yabridge carga los VST2 de Windows.
 - **Audio Unit (AU)**: solo en macOS. SoundText los busca en
   `/Library/Audio/Plug-Ins/Components` y `~/Library/Audio/Plug-Ins/Components`
   (los archivos `.component`, los mismos que usan GarageBand y Logic), más
@@ -5264,3 +5268,35 @@ python3 main.py
   terminal): concédelo en **Ajustes del Sistema → Privacidad y seguridad →
   Micrófono**, si no la grabación queda muda. Si el permiso está denegado,
   SoundText lo dice antes de grabar, con un botón que abre ese ajuste.
+
+
+---
+
+## 33. Usar un lector de pantalla
+
+SoundText se escribe como texto, la forma más adecuada para quien no ve. Funciona con **NVDA** y **JAWS** en Windows,
+**VoiceOver** en macOS y **Orca** en Linux. Cada control tiene un nombre (un botón solo con icono toma el nombre de su
+sugerencia) y los mensajes de la barra de estado (guardado, exportado, plugin cargado, error) se anuncian.
+
+**Escribir y moverse**
+
+- El texto de la pista es un campo de texto normal: las flechas lo recorren, `|` separa los compases.
+- **Ctrl+K** busca un comando por nombre, sin pasar por los menús.
+- **¿Dónde estoy?** (Ctrl+Mayús+W): dice pista, compás, tiempo, nota o acorde y caja del cursor («Melodía, compás 5, tercer
+  tiempo, acorde de la menor, caja Estribillo»).
+
+**Escuchar lo que se ha escrito**
+
+- **Tocar la nota o el acorde bajo el cursor** (Ctrl+Alt+1), **Tocar el compás actual** (Ctrl+Alt+2) y **Tocar desde el
+  cursor** (Ctrl+Alt+3), en el menú Reproducción: la forma más rápida de comprobar la última línea.
+- **F5** toca la canción, **F6** la detiene.
+
+**Corregir**
+
+- **Ir al error siguiente** (F8) y **anterior** (Mayús+F8), en el menú Edición: el cursor se coloca en el punto y el mensaje
+  se anuncia («compás 5: falta una negra»). Sin errores, lo dice.
+
+**Exportar**: el menú **Proyecto → Exportar** se abre con Alt+P y se recorre con las flechas; cada ventana se cierra con Esc.
+
+Para las vistas gráficas (Estructura, Partitura) el texto de la canción sigue siendo la vía más accesible: todo lo que se hace
+con el ratón se puede escribir en el texto. En el teléfono, SoundText Mobile tiene el comando «Leer», que dice en voz alta el compás del cursor.

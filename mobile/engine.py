@@ -972,7 +972,7 @@ def visual_notes(text: str) -> dict:
 def speak_at(text: str, pos: int, lang: Optional[str] = None) -> dict:
     """«Leggi»: la frase che dice la battuta sotto il cursore (speech.phrase); se il cursore e' in un pattern o in una
     riga fuori dalle battute, quella riga. {"text", "bar", "track"}; lingua: quella dell'interfaccia."""
-    import speech
+    from core import speech_text as speech
     from core.i18n import current_language
     lang = lang or current_language()
     e = Engine()

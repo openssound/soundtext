@@ -38,6 +38,7 @@ class QuickSongDialog(QDialog):
         layout.addWidget(QLabel(tr("Scegli un genere, un'atmosfera e una durata: il brano si scrive da solo, "
                                    "in sezioni che poi puoi cambiare.")))
         self.genre_list = QListWidget()
+        self.genre_list.setAccessibleName(tr("Genere"))
         for genre in self.choices["genres"]:
             item = QListWidgetItem(genre["label"])
             item.setData(Qt.UserRole, genre["value"])

@@ -326,15 +326,8 @@ def test_tuning_needs_enough_notes_and_ignores_in_tune_playing():
 def _wait_seconds(until, seconds=5.0):
     """Attesa a tempo vero: la conversione automatica parte 350 ms dopo
     l'ultima scelta (vedi AudioImportDialog._auto_timer)."""
-    import time
-    from PySide6.QtWidgets import QApplication
-    end = time.time() + seconds
-    while time.time() < end:
-        QApplication.processEvents()
-        if until():
-            return True
-        time.sleep(0.01)
-    return until()
+    from _waits import wait_for
+    return wait_for(until, seconds)
 
 
 def test_conversion_starts_by_itself_and_follows_the_options(dialog, monkeypatch):

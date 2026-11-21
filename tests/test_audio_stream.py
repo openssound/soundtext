@@ -24,6 +24,7 @@ import pytest
 
 from core import audio_stream, playback
 from core.project_io import parse_project_text
+from _waits import wait_until  # noqa: E402
 
 
 class _FakeTime:
@@ -132,7 +133,6 @@ class _Underflow:
 def test_an_underflow_reopens_the_stream_where_it_was_playing(monkeypatch):
     """Dopo un underflow lo stream ALSA/PipeWire puo' restare muto mentre la
     barra prosegue: il player lo riapre da solo dal punto in ascolto."""
-    import time
     monkeypatch.setattr(audio_stream._sd, "OutputStream", _FakeOutputStream)
     monkeypatch.setattr(audio_stream.PcmPlayer, "MIN_RECOVERY_INTERVAL", 0.0)
     _FakeOutputStream.opened = []
@@ -142,9 +142,7 @@ def test_an_underflow_reopens_the_stream_where_it_was_playing(monkeypatch):
     out = np.zeros((50, 1), dtype=np.int16)
     first.callback(out, 50, _FakeTime(), _Underflow())   # blocco che suona da t=1.0, frame 100
     first.time = 1.02                                    # in ascolto: frame 120
-    deadline = time.time() + 2
-    while len(_FakeOutputStream.opened) < 2 and time.time() < deadline:
-        time.sleep(0.01)
+    wait_until(lambda: len(_FakeOutputStream.opened) >= 2, 2)
     assert len(_FakeOutputStream.opened) == 2 and first.aborted
     assert player.is_active()                            # la fine dello stream vecchio non conta
     second = _FakeOutputStream.opened[1]
@@ -159,7 +157,6 @@ def test_a_stalled_driver_reopens_the_stream_from_the_first_unwritten_frame(monk
     """Il driver smette di chiamare il callback senza nessun avviso, mentre
     il suo orologio (e la barra) va avanti: il player riapre lo stream da
     dove aveva smesso di scrivere."""
-    import time
     monkeypatch.setattr(audio_stream._sd, "OutputStream", _FakeOutputStream)
     monkeypatch.setattr(audio_stream.PcmPlayer, "MIN_RECOVERY_INTERVAL", 0.0)
     monkeypatch.setattr(audio_stream.PcmPlayer, "STALL_SECONDS", 0.2)
@@ -172,9 +169,7 @@ def test_a_stalled_driver_reopens_the_stream_from_the_first_unwritten_frame(monk
     out = np.zeros((50, 1), dtype=np.int16)
     first.callback(out, 50, _FakeTime(), None)           # scritti i frame 100-149, poi piu' niente
     first.time = 5.0                                     # l'orologio va avanti: "in ascolto" il 4100
-    deadline = time.time() + 3
-    while len(_FakeOutputStream.opened) < 2 and time.time() < deadline:
-        time.sleep(0.01)
+    wait_until(lambda: len(_FakeOutputStream.opened) >= 2, 3)
     assert len(_FakeOutputStream.opened) == 2 and first.aborted and player.is_active()
     second = _FakeOutputStream.opened[1]
     second.callback(out, 50, _FakeTime(), None)

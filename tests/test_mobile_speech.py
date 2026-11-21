@@ -1,4 +1,4 @@
-"""«Leggi» (mobile/speech.py, engine.speak_at): la frase che dice la battuta sotto il cursore, nelle quattro lingue,
+"""«Leggi» (core/speech_text.py, engine.speak_at): la frase che dice la battuta sotto il cursore, nelle quattro lingue,
 con note, pause, alterazioni, accordi e durate."""
 import os
 import sys
@@ -7,9 +7,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOBILE = os.path.join(ROOT, "mobile")
-if MOBILE not in sys.path:
-    sys.path.insert(0, MOBILE)
-import speech  # noqa: E402
+from core import speech_text as speech  # noqa: E402
 
 
 def test_notes_rests_accidentals_and_durations_in_four_languages():
@@ -59,6 +57,7 @@ def test_unknown_language_falls_back_to_english():
 
 def _engine():
     sys.path.insert(0, ROOT)
+    sys.path.insert(0, MOBILE)
     import engine
     return engine
 

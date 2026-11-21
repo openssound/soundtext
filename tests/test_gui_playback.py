@@ -28,6 +28,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 
 from core import settings
+from _waits import wait_until  # noqa: E402
 
 _app = QApplication.instance() or QApplication([])
 
@@ -108,18 +109,15 @@ def test_closing_main_window_stops_playback():
         win.project.add_track("Piano1", "Piano", "16: c*4 e*4")
         win.refresh_mixer()
         win.play()
-        time.sleep(0.3)
+        wait_until(win.playback.is_playing, 3)
         assert win.playback.is_playing(), "il rendering simulato deve essere tracciato come 'in corso'"
 
         win.close()
 
-        for _ in range(30):
-            if not win.playback.is_playing():
-                break
-            time.sleep(0.1)
+        wait_until(lambda: not win.playback.is_playing(), 3)
         assert not win.playback.is_playing(), "chiudere la finestra deve fermare la riproduzione"
 
-        time.sleep(0.2)
+        time.sleep(0.2)   # un'assenza non ha un evento da aspettare: si lascia il tempo che il player partirebbe
         assert not os.path.exists(marker_path), "il player non deve mai partire se la finestra e' gia' stata chiusa"
     finally:
         os.environ["PATH"] = old_path

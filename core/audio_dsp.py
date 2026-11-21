@@ -61,7 +61,11 @@ def _frames(x: np.ndarray, size: int, hop: int) -> np.ndarray:
     """Frame centrati: il frame i copre [i*hop - size/2, i*hop + size/2)."""
     padded = np.concatenate([np.zeros(size // 2, np.float32), x, np.zeros(size // 2 + hop, np.float32)])
     n = 1 + len(x) // hop
-    return np.lib.stride_tricks.sliding_window_view(padded, size)[::hop][:n]
+    # Una vista con un frame ogni 'hop' campioni, costruita direttamente: sliding_window_view(padded, size) descrive un frame
+    # per OGNI campione (15 s a 48 kHz: oltre 5 GB «virtuali»), e dove un array non puo' superare 2 GB (NumPy in WebAssembly,
+    # nel telefono) dava «array is too big» a una registrazione di pochi secondi.
+    item = padded.strides[0]
+    return np.lib.stride_tricks.as_strided(padded, shape=(n, size), strides=(item * hop, item), writeable=False)
 
 
 def _log_filterbank(n_fft: int, rate: int) -> np.ndarray:

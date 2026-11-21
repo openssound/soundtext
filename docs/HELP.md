@@ -121,6 +121,7 @@ La guida è divisa in sei parti; un clic su un titolo porta alla sezione.
 - [30. Installazione su Linux](#30)
 - [31. Installazione su Windows](#31)
 - [32. Installazione su macOS](#32)
+- [33. Uso con lo screen reader](#33)
 
 ---
 
@@ -3252,6 +3253,9 @@ SoundFont.
   - **Dragonfly Reverb**: riverberi di sala, stanza e piastra;
   - **LSP Plugins**: compressori, equalizzatori, limiter e delay da studio
     (solo su Linux: non esistono versioni per Windows e macOS).
+- **VST2**: SoundText non li carica. pedalboard, la libreria che usa per i plugin, non li supporta e Steinberg non concede
+  piu' l'SDK. Su Windows e macOS [Carla](https://kx.studio/Applications:Carla) incapsula un VST2 come VST3; su Linux
+  yabridge carica i VST2 di Windows.
 - **Audio Unit (AU)**: solo su macOS. SoundText li cerca in
   `/Library/Audio/Plug-Ins/Components` e `~/Library/Audio/Plug-Ins/Components`
   (i file `.component`, quelli che installano anche GarageBand e Logic), piu'
@@ -5143,3 +5147,36 @@ python3 main.py
   sicurezza → Microfono**, altrimenti la registrazione resta muta. Se il
   permesso è negato, SoundText lo dice prima di registrare, con un pulsante
   che apre quell'impostazione.
+
+
+---
+
+## 33. Uso con lo screen reader
+
+SoundText si scrive come testo: è la forma più adatta a chi non vede. Funziona con **NVDA** e **JAWS** su Windows,
+**VoiceOver** su macOS e **Orca** su Linux. Ogni controllo ha un nome (un pulsante con la sola icona prende il nome dal
+suo suggerimento) e i messaggi della barra di stato (salvato, esportato, plugin caricato, errore) vengono annunciati.
+
+**Scrivere e muoversi**
+
+- Il testo della traccia è un normale campo di testo: le frecce lo percorrono, `|` separa le battute.
+- **Ctrl+K** cerca un comando per nome, senza passare dai menu.
+- **Dove sono?** (Ctrl+Maiusc+W): dice traccia, battuta, tempo, nota o accordo e box del cursore («Melodia, battuta 5,
+  terzo tempo, accordo La minore, box Ritornello»).
+
+**Ascoltare quello che si è scritto**
+
+- **Suona la nota o l'accordo sotto il cursore** (Ctrl+Alt+1), **Suona la battuta corrente** (Ctrl+Alt+2) e **Suona dal
+  cursore** (Ctrl+Alt+3), nel menu Riproduzione: il modo più veloce per controllare l'ultima riga.
+- **F5** suona il brano, **F6** lo ferma.
+
+**Correggere**
+
+- **Vai all'errore successivo** (F8) e **precedente** (Maiusc+F8), nel menu Modifica: il cursore si sposta sul punto e il
+  messaggio viene annunciato («battuta 5: manca un quarto»). Senza errori lo dice.
+
+**Esportare**: il menu **Progetto → Esporta** si apre con Alt+P e si percorre con le frecce; ogni finestra si chiude con Esc.
+
+Per i pulsanti delle viste grafiche (Struttura, Partitura) il testo del brano resta la via più accessibile: tutto
+quello che si fa con il mouse si può scrivere nel testo. Sul telefono SoundText Mobile ha il comando «Leggi», che dice
+a voce la battuta del cursore.

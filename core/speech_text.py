@@ -1,4 +1,4 @@
-"""«Leggi»: la frase che dice a voce la battuta (o il pattern, o la riga) sotto il cursore, in parole: «Battuta 3,
+"""«Leggi» (core/speech_text.py, per il telefono e per il computer): la frase che dice a voce la battuta (o il pattern, o la riga) sotto il cursore, in parole: «Battuta 3,
 Piano. Do croma, Re croma, Mi minima, accordo La minore semibreve». E' il contrario della dettatura
 (core.dictation): quella scrive la musica da una frase, questa la dice. Le parole sono nelle quattro lingue
 dell'interfaccia; l'app (app/speak.js) legge la frase con la sintesi vocale, o la mette in una regione aria-live
@@ -62,7 +62,7 @@ QUALITIES = {
     "add9": {"it": "con nona aggiunta", "en": "add nine", "fr": "avec neuvième ajoutée", "es": "con novena añadida"},
 }
 
-_NOTE = re.compile(r"^(\d+)?([a-g])(#|b)?\*(-?\d+)")
+_NOTE = re.compile(r"^(\d+)?([a-g])(#|b)?(?:\*(-?\d+))?(?![A-Za-z_#])")
 _CHORD = re.compile(r"^(\d+)?([A-G])(#|b)?([^/!.'<>~\s]*)(?:/([A-G])(#|b)?)?")
 _REST = re.compile(r"^(\d+)?r$")
 

@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from core import audio_stream, jack_output, settings
+from _waits import wait_until  # noqa: E402
 
 
 # ------------------------------------------------------------ ricampionamento
@@ -220,11 +221,9 @@ def jack_server(monkeypatch, tmp_path):
     server = subprocess.Popen(["jackd", "-n", name, "-d", "dummy", "-r", "48000", "-p", "1024"],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        deadline = time.monotonic() + 5
-        while not jack_output.jack_available():
-            if time.monotonic() > deadline or server.poll() is not None:
-                pytest.skip("jackd non parte in questo ambiente")
-            time.sleep(0.1)
+        if not wait_until(lambda: jack_output.jack_available() or server.poll() is not None, 5, interval=0.05) \
+                or not jack_output.jack_available():
+            pytest.skip("jackd non parte in questo ambiente")
         yield name
     finally:
         server.terminate()

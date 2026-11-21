@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 
 from core import disk_cache, memory
+from _waits import wait_for  # noqa: E402
 
 GB = 1024 ** 3
 MB = 1024 ** 2
@@ -193,9 +194,7 @@ def test_typing_validates_once_after_a_pause():
         QTest.keyClick(w.editor, "x")
     assert calls == [] and timer.isActive()                  # nessuna validazione mentre si scrive
     typed_at = time.monotonic()
-    deadline = typed_at + 10.0
-    while not calls and time.monotonic() < deadline:
-        QTest.qWait(20)
+    wait_for(lambda: bool(calls), 10.0)
     assert len(calls) == 1                                   # una sola, dopo la pausa
     assert calls[0] - typed_at >= 1.5
     assert "Sintassi valida" not in w.validation_label.text()    # le x sono un errore
@@ -203,8 +202,7 @@ def test_typing_validates_once_after_a_pause():
     timer.setInterval(w.VALIDATION_DELAY_MS)
     start = time.monotonic()
     QTest.keyClick(w.editor, "x")
-    while len(calls) < 2 and time.monotonic() < start + 5.0:
-        QTest.qWait(10)
+    wait_for(lambda: len(calls) >= 2, 5.0)
     assert len(calls) == 2 and calls[1] - start >= 0.2
 
 
