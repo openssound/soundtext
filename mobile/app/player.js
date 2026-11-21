@@ -315,6 +315,16 @@ function renderMixer() {
       return b;
     };
     li.append(name, toggle("M", state.muted, t("Mute")), toggle("S", state.solo, t("Solo")));
+    // altre azioni: una pressione lunga sul nome, o il pulsante accanto (per chi non puo' premere a lungo)
+    const more = document.createElement("button");
+    more.textContent = "⋯";
+    more.setAttribute("aria-label", t("Altre azioni per la traccia {name}", { name: track.name }));
+    more.onclick = () => trackActions({ name: track.name, plain: false });
+    li.append(more);
+    let hold = null;
+    name.addEventListener("touchstart", () => { hold = setTimeout(() => trackActions({ name: track.name, plain: false }), 650); }, { passive: true });
+    for (const ev of ["touchend", "touchmove", "touchcancel"]) name.addEventListener(ev, () => clearTimeout(hold), { passive: true });
+    name.addEventListener("contextmenu", (e) => { e.preventDefault(); trackActions({ name: track.name, plain: false }); });
     const sf = fontSelectFor(track);
     if (sf) li.append(sf);
     list.append(li);

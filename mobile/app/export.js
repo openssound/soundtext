@@ -426,7 +426,7 @@ async function prepareScoreClip(width) {
   const r = await scoreCall({ cmd: "render", xml: xml.xml, scale: 40, pageWidth: Math.round(paper * 100 / 40) });
   const holder = document.createElement("div");
   holder.style.cssText = "position:absolute;left:-99999px;top:0;visibility:hidden";
-  holder.innerHTML = r.pages.join("");
+  holder.innerHTML = r.pages.map(SvgSafe.clean).join("");
   document.body.append(holder);
   const pages = [], boxes = new Map(), systems = [];
   let offset = 0;

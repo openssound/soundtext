@@ -468,3 +468,5 @@ summary:focus-visible, .button:focus-within {
 .sf-pack { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 8px 0; }
 .sf-pack button { min-height: 44px; }
 .sf-pack progress { width: 100%; margin-top: 6px; }
+.backup-note { border: 1px solid var(--accent); border-radius: 10px; padding: 10px; margin: 12px 0; }
+.backup-note p { margin: 0 0 8px; }

@@ -28,6 +28,8 @@ Prima di cominciare: «Svuota la cache e misura un avvio a freddo» (Diagnostica
 | 16 | Lettore dopo una pausa | Suonare, mettere in pausa, riprendere; saltare a una battuta; ripetere un tratto A–B | Riparte dallo stesso punto e il suono non sparisce | Qualsiasi silenzio |
 | 17 | Screen reader | TalkBack (Android) e VoiceOver (iPhone): aprire un brano da un link, ascoltarlo, spostarsi per battuta e sezione, farselo leggere con 🔊, esercizi, accordatore e modalità studio senza guardare | Ogni passo si può fare e si sente | Dove ci si perde; se la voce del telefono e lo screen reader si sovrappongono |
 | 18 | File .st | Aprire un .st dall'app File o da un allegato | Si apre nell'app | — |
+| 19 | Eliminare una traccia | In Struttura toccare il nome di una traccia → «Elimina la traccia»; poi «Annulla la modifica». Dal Lettore, «⋯» accanto a una traccia | Chiede conferma con il nome e il numero di box; il resto del brano non cambia; Annulla la rimette com'era; i pattern senza uso sono segnalati | — |
+| 20 | Copia di sicurezza | In Brani → «Copia di sicurezza e privacy»: «Esporta tutti i brani», cancellare i dati del sito, «Importa brani…» dallo zip. Controllare lo stato dell'archivio persistente | Tutti i brani tornano uguali; il foglio di condivisione si apre; lo spazio usato è mostrato | Se l'archivio risulta persistente; su iPhone, l'avviso «aggiungi alla Home» |
 
 ## Come si riferisce un problema
 

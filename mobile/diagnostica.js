@@ -1,0 +1,76 @@
+"use strict";
+const COLUMNS = {
+  avvio: ["when", "cache", "snapshot", "files_ms", "python_ms", "snapshot_make_ms", "snapshot_bytes", "total_ms", "page_to_ready_ms", "discarded", "started_hidden",
+          "network", "heap_bytes", "versions", "standalone", "isolated"],
+  analisi: ["when", "song", "chars", "tracks", "parse_ms", "midi_ms", "worker_total_ms", "roundtrip_ms"],
+  mappa: ["when", "song", "spans", "ms"],
+  controllo: ["when", "song", "ms", "warnings"],
+  numpy: ["when", "background_ms"],
+  audio: ["when", "worklet_ms", "soundfont_cached", "soundfont_bytes", "soundfont_fetch_ms", "soundfont_load_ms",
+          "sample_rate", "base_latency_ms", "output_latency_ms"],
+  play: ["when", "first", "tap_to_play_ms", "ctx_state", "song"],
+  trasposizione: ["when", "semitones", "ms"],
+  offline: ["when", "url", "ok", "ms", "error"],
+  lettore: ["when", "semitones", "silent", "metronome", "ms"],
+  partitura: ["when", "song", "tracks", "pages", "musicxml_ms", "verovio_boot_ms", "render_ms", "total_ms", "verovio"],
+  memoria: ["when", "when_label", "pyodide_heap_bytes", "ua_specific_bytes", "js_heap_used_bytes"],
+  batteria: ["when", "minute", "level", "charging", "drop_percent"],
+  visibilita: ["when", "event", "state", "playing", "ctx_state", "tick"],
+  brano_veloce: ["when", "genre", "mood", "mode", "bars", "seconds", "composed_ms", "to_sound_ms"],
+  esporta: ["when", "ms"],
+  studio: ["when", "notes", "intonation", "timing", "review"],
+};
+
+function fmt(key, v) {
+  if (v === undefined || v === null) return "";
+  if (key === "when") return new Date(v).toLocaleString();
+  if (/bytes$/.test(key) && typeof v === "number") return (v / 1048576).toFixed(1) + " MB";
+  // transfer resta 0 quando risponde il service worker: conta il peso caricato
+  if (key === "network") return `${(v.decoded / 1048576).toFixed(1)} MB caricati`;
+  return typeof v === "object" ? JSON.stringify(v) : String(v);
+}
+
+function render() {
+  const all = Metrics.all();
+  const d = Metrics.device();
+  document.getElementById("info").textContent =
+    `${d.ua} · ${d.cores || "?"} core · ${d.ram_gb || "?"} GB · installata: ${d.standalone ? "sì" : "no"}`;
+  const root = document.getElementById("tables");
+  root.innerHTML = "";
+  for (const [kind, cols] of Object.entries(COLUMNS)) {
+    const rows = all.filter((e) => e.kind === kind).reverse();
+    if (!rows.length) continue;
+    const h = document.createElement("h2");
+    h.textContent = kind;
+    h.style.fontSize = "15px";
+    root.append(h);
+    const wrap = document.createElement("div");
+    wrap.style.overflowX = "auto";
+    const table = document.createElement("table");
+    table.innerHTML = "<tr>" + cols.map((c) => `<th>${c}</th>`).join("") + "</tr>";
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      for (const c of cols) {
+        const td = document.createElement("td");
+        td.textContent = fmt(c, r[c]);
+        tr.append(td);
+      }
+      table.append(tr);
+    }
+    wrap.append(table);
+    root.append(wrap);
+  }
+}
+
+document.getElementById("cold").onclick = async () => {
+  for (const k of await caches.keys()) await caches.delete(k);
+  for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  location.href = "./";
+};
+document.getElementById("copy").onclick = async () => {
+  const text = JSON.stringify(Metrics.all(), null, 1);
+  try { await navigator.clipboard.writeText(text); alert("Misure copiate"); }
+  catch (e) { prompt("Copia le misure:", text); }
+};
+document.getElementById("clear").onclick = () => { Metrics.clear(); render(); };
+render();

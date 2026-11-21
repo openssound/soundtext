@@ -106,7 +106,7 @@ async function renderScore(key) {
     return;
   }
   score.key = key;
-  box.innerHTML = r.pages.join("");
+  box.innerHTML = r.pages.map(SvgSafe.clean).join("");
   // per TalkBack e VoiceOver: le pagine sono figure, con un nome
   for (const svg of box.children) {
     svg.setAttribute("role", "img");

@@ -57,8 +57,12 @@ function renderStructure() {
   head.append(corner);
   for (const tr of info.tracks) {
     const th = document.createElement("th");
-    th.textContent = tr.name;
-    th.title = tr.instrument;
+    const nameButton = document.createElement("button");        // il nome della traccia apre le sue azioni
+    nameButton.textContent = tr.name;
+    nameButton.title = tr.instrument;
+    nameButton.setAttribute("aria-label", t("Traccia {name}", { name: tr.name }));
+    nameButton.onclick = () => trackActions(tr);
+    th.append(nameButton);
     th.scope = "col";
     head.append(th);
   }
@@ -125,12 +129,38 @@ function openInText(pos) {
   goTo(pos);
 }
 
+// Le azioni di una traccia (dal suo nome nella Struttura, o dal mixer del Lettore)
+function trackActions(track) {
+  const actions = [];
+  if (track.plain) {
+    actions.push([t("Apri nel Testo"), () => openInText(0)], [t("Dividi in sezioni"), splitIntoSections]);
+  }
+  actions.push([t("Elimina la traccia"), () => deleteTrack(track.name), "danger"]);
+  sheet(t("Traccia {name}", { name: track.name }), actions);
+}
+
+async function deleteTrack(name) {
+  if (!state.doc) return;
+  await state.booted;
+  const info = (await call("structure", { args: [state.doc.text] })).result;
+  if (info.tracks.length <= 1) {
+    const text = t("È l'ultima traccia: per toglierla si cancella il brano.");
+    $("structStatus").textContent = text;
+    setStatus(text, true);
+    announce(text);
+    return;
+  }
+  const track = info.tracks.find((tr) => tr.name === name);
+  const boxes = track ? track.boxes.filter((b) => b.hstart >= 0).length : 0;
+  const ask = boxes ? t("Eliminare la traccia {name} e i suoi {n} box?", { name, n: boxes }) : t("Eliminare la traccia {name}?", { name });
+  announce(ask);
+  if (!confirm(ask)) return;
+  await structEdit("track_delete", { track: name });
+}
+
 function boxActions(track, bx) {
   if (track.plain) {
-    sheet(t("Traccia {name}", { name: track.name }), [
-      [t("Apri nel Testo"), () => openInText(0)],
-      [t("Dividi in sezioni"), splitIntoSections],
-    ]);
+    trackActions(track);
     return;
   }
   sheet(t("Box {name} · {track}", { name: bx.name, track: track.name }), [
@@ -145,6 +175,7 @@ function boxActions(track, bx) {
     }],
     [t("Duplica in fondo al brano"), () => structEdit("duplicate", { hstart: bx.hstart })],
     [t("Elimina"), () => structEdit("delete", { hstart: bx.hstart }), "danger"],
+    [t("Elimina la traccia {name}", { name: track.name }), () => deleteTrack(track.name), "danger"],
   ]);
 }
 
@@ -179,6 +210,19 @@ async function structEdit(op, args) {
   if (struct.undo.length > 30) struct.undo.shift();
   await replaceDocText(r.text);
   $("structStatus").textContent = "";
+  if (op === "track_delete") {
+    // la traccia non c'e' piu': via il suo SoundFont, il mute e il solo; i pattern rimasti senza uso si segnalano
+    const name = args.track;
+    if (state.doc.fonts) delete state.doc.fonts[name];
+    state.muted.delete(name);
+    state.solo.delete(name);
+    saveDoc().catch(() => {});
+    let message = t("Traccia {name} eliminata. Tocca «Annulla la modifica» per rimetterla.", { name });
+    if (r.unused && r.unused.length) message += " " + t("Pattern non più usati: {names}.", { names: r.unused.join(", ") });
+    $("structStatus").textContent = message;
+    setStatus(message);
+    announce(message);
+  }
   await showStructure();
 }
 

@@ -1766,7 +1766,10 @@ def box_edit(text: str, op: str, args: dict) -> dict:
     - "section_rename" {beat, name}: i box che cominciano nella sezione;
     - "section_delete" {beat};
     - "make_boxes" {name}: il testo di ogni traccia senza box diventa un box
-      'name' che comincia alla battuta 1.
+      'name' che comincia alla battuta 1;
+    - "track_delete" {track}: l'intestazione della traccia, il suo testo e tutti i suoi box, e solo quelli
+      (l'ultima traccia rimasta no). Il risultato ha anche "boxes" (quanti box c'erano) e "unused" (i
+      pattern che non servono piu' a nessuno: si segnalano, non si cancellano).
     ValueError con un messaggio leggibile (box che si sovrappongono...)."""
     from core.i18n import tr
     blocks = _box_blocks(text)
@@ -1838,6 +1841,8 @@ def box_edit(text: str, op: str, args: dict) -> dict:
         else:
             for b in sorted(chosen, key=lambda b: -b["hstart"]):
                 new = box_edit(new, "delete", {"hstart": b["hstart"]})["text"]
+    elif op == "track_delete":
+        return _track_delete(text, str(args["track"]))
     elif op == "make_boxes":
         name = str(args.get("name") or "A").strip()
         from core.project_io import parse_project_text
@@ -1862,6 +1867,59 @@ def box_edit(text: str, op: str, args: dict) -> dict:
         raise ValueError(f"modifica sconosciuta: {op}")
     _check_overlaps(new)
     return {"text": new, "focus": focus}
+
+
+def _cut_block(text: str, hstart: int, end: int) -> str:
+    """Il testo senza il blocco [hstart, end) e senza le righe vuote che lo seguivano (come l'azione "delete")."""
+    while end < len(text) and text[end] == "\n":
+        end += 1
+        if end < len(text) and text[end] != "\n":
+            break
+    return text[:hstart] + text[end:]
+
+
+def _unused_patterns(text: str) -> List[str]:
+    """I pattern definiti (Pattern %Nome:) che nessun altro testo richiama."""
+    names = []
+    for b in file_blocks(text):
+        m = RE_PATTERN_HDR.match(b["header"])
+        if m:
+            names.append(m.group(1))
+    unused = []
+    for name in names:
+        calls = re.findall(r"%" + re.escape(name) + r"(?![\w.\-])", _blank_comments(text))
+        if len(calls) <= 1:            # una sola occorrenza: la sua intestazione
+            unused.append(name)
+    return unused
+
+
+def _track_delete(text: str, track: str) -> dict:
+    """box_edit "track_delete": vedi sopra."""
+    from core.i18n import tr
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    names = [t.name for t in project.tracks if not t.is_audio]
+    if track not in names:
+        raise ValueError(tr("La traccia non c'è più: il testo è cambiato."))
+    if len(names) <= 1:
+        raise ValueError(tr("È l'ultima traccia: per toglierla si cancella il brano."))
+    index = {t.name: i for i, t in enumerate(project.tracks)}
+    ranges, boxes = [], 0
+    for b in file_blocks(text):
+        m = RE_BOX_LINE.match(b["header"])
+        if m:
+            if m.group(1) == track:
+                ranges.append((b["hstart"], max(b["end"], b["hstart"] + len(b["header"]))))
+                boxes += 1
+        elif not RE_PATTERN_HDR.match(b["header"]) and Engine._track_of_header(b["header"], index) == track:
+            ranges.append((b["hstart"], max(b["end"], b["hstart"] + len(b["header"]))))
+    if not ranges:
+        raise ValueError(tr("La traccia non ha un testo da togliere."))
+    new = text
+    for hstart, end in sorted(ranges, reverse=True):
+        new = _cut_block(new, hstart, end)
+    before = set(_unused_patterns(text))
+    return {"text": new, "focus": -1, "boxes": boxes, "unused": [p for p in _unused_patterns(new) if p not in before]}
 
 
 def flat_spans(spans) -> list:

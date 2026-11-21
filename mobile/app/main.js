@@ -47,6 +47,7 @@ async function main() {
   setupQuick();
   setupStudy();
   setupAccess();
+  setupBackup();
   setupExport();
   setupPads();
   setupExercises();
@@ -149,7 +150,8 @@ async function main() {
       setStatus(t("Scegli un brano"));
       setView("brani");
     }
-    if (new URLSearchParams(location.search).has("misura")) await automaticMeasure();
+    // la misura automatica e' uno strumento di sviluppo: solo da localhost, cosi' «non raccoglie dati» e' vero senza eccezioni
+    if (new URLSearchParams(location.search).has("misura") && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) await automaticMeasure();
   } catch (e) {
     $("engineState").textContent = t("errore");
     showError(e);

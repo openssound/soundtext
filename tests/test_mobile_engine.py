@@ -818,3 +818,40 @@ def test_visual_notes_gives_every_track_with_its_notes_in_beats():
     for track in data["tracks"]:
         assert track["notes"] == sorted(track["notes"])
         assert all(n[1] > 0 and 0 <= n[2] < 128 and 0 < n[3] <= 127 for n in track["notes"])
+
+
+def _track_names(e, text):
+    return [t["name"] for t in e.structure(text)["tracks"]]
+
+
+def test_track_delete_takes_only_that_track_and_flags_unused_patterns():
+    """Eliminare una traccia: intestazione, testo e box di lei, il resto del file com'era; i pattern senza uso si segnalano."""
+    e = _quick()
+    with open(os.path.join(ROOT, "examples", "jazz_aaba.st"), encoding="utf-8") as f:
+        text = f.read()
+    before = _track_names(e, text)
+    r = e.box_edit(text, "track_delete", {"track": "Bass"})
+    assert _track_names(e, r["text"]) == [n for n in before if n != "Bass"]
+    assert r["boxes"] == 3 and "BassChorus" in r["unused"]
+    # le altre tracce sono identiche: stessi box, stesse battute, stesso testo
+    old, new = e.structure(text)["tracks"], e.structure(r["text"])["tracks"]
+    for a in (t for t in old if t["name"] != "Bass"):
+        b = next(t for t in new if t["name"] == a["name"])
+        assert [(x["name"], x["beat"], x["length"]) for x in a["boxes"]] == [(x["name"], x["beat"], x["length"]) for x in b["boxes"]]
+    # i pattern non si cancellano
+    assert "Pattern %BassChorus" in r["text"]
+
+
+def test_track_delete_in_a_song_made_of_boxes_and_its_limits():
+    e = _quick()
+    made = e.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "seed": 3})
+    names = _track_names(e, made["text"])
+    r = e.box_edit(made["text"], "track_delete", {"track": names[0]})
+    assert _track_names(e, r["text"]) == names[1:] and r["boxes"] >= 1
+    assert names[0] + " \"" not in r["text"] and f"Box {names[0]} " not in r["text"]
+    with pytest.raises(ValueError):
+        e.box_edit(made["text"], "track_delete", {"track": "Non c'e'"})
+    single = "ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nPiano:\n  4: c d e f |\n"
+    if len(_track_names(e, single)) == 1:
+        with pytest.raises(ValueError):
+            e.box_edit(single, "track_delete", {"track": "Piano"})

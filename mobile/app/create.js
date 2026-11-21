@@ -259,7 +259,9 @@ async function addPartToSong() {
   if (!state.doc) return;
   if (state.previewing) stopPreview();
   const { text, name } = await songWithPart();
+  gen.undo = { before: state.doc.text, after: text };          // «Annulla l'aggiunta»
   await replaceDocText(text);
+  $("genUndo").hidden = false;
   // Si resta in Crea, pronti per la parte dopo (giro -> batteria -> basso ->
   // accompagnamento): la traccia nuova si vede nel Testo e si sente con Play.
   const done = t("Traccia «{name}» aggiunta al brano", { name });
@@ -280,6 +282,17 @@ function setupCrea() {
   $("genAgain").onclick = () => { gen.seeds[gen.kind] = null; gen.textFor = ""; scheduleGenerate(0); };
   $("genListen").onclick = () => listenToPart().catch(showError);
   $("genAdd").onclick = () => addPartToSong().catch(showError);
+  $("genUndo").onclick = async () => {
+    const u = gen.undo;
+    $("genUndo").hidden = true;
+    if (!u || !state.doc || state.doc.text !== u.after) { setStatus(t("Il brano è cambiato dopo l'aggiunta: non si può annullare da qui.")); return; }
+    gen.undo = null;
+    await replaceDocText(u.before);
+    gen.choices = null; gen.textFor = "";
+    await showCrea();
+    setStatus(t("Aggiunta annullata"));
+    announce(t("Aggiunta annullata"));
+  };
 }
 
 // ------------------------------------------------------------ trasforma
@@ -356,7 +369,7 @@ async function miniScore(box, xml) {
   const width = Math.max(240, box.clientWidth || 300);
   try {
     const r = await scoreCall({ cmd: "render", xml, scale: 35, pageWidth: Math.round(width * 100 / 35) });
-    box.innerHTML = r.pages[0] || "";
+    box.innerHTML = SvgSafe.clean(r.pages[0] || "");
     const svg = box.querySelector("svg");
     if (svg) { svg.setAttribute("role", "img"); svg.setAttribute("aria-label", t("Partitura")); }
   } catch (e) {

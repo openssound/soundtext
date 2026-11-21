@@ -47,6 +47,29 @@
     <label class="language"><span data-i18n>Lingua</span>
       <select id="language"></select>
     </label>
+    <div id="backupNote" class="backup-note" role="region" aria-label="Copia di sicurezza" hidden>
+      <p id="backupNoteText"></p>
+      <div class="actions">
+        <button id="backupNoteDo" class="primary" data-i18n>Fai la copia</button>
+        <button id="backupNoteLater" data-i18n>Più tardi</button>
+        <button id="backupNoteOff" data-i18n>Non ricordarmelo più</button>
+      </div>
+    </div>
+    <details class="opts" id="dataBox">
+      <summary data-i18n>Copia di sicurezza e privacy</summary>
+      <p class="hint" data-i18n>I brani stanno solo su questo telefono. Se cancelli i dati del browser spariscono: fai ogni tanto una copia.</p>
+      <div class="actions">
+        <button id="backupExport" data-i18n>Esporta tutti i brani</button>
+        <label class="button"><span data-i18n>Importa brani…</span><input id="backupImportFile" type="file" multiple accept=".zip,.st,application/zip,application/octet-stream,text/plain"></label>
+      </div>
+      <label class="check"><input id="backupRemind" type="checkbox" checked> <span data-i18n>Ricordami di fare la copia</span></label>
+      <p id="backupStatus" class="hint" role="status" aria-live="polite"></p>
+      <p id="storageInfo" class="hint"></p>
+      <h3 data-i18n>Privacy</h3>
+      <p class="hint" data-i18n>I tuoi brani restano sul tuo telefono: SoundText non ha un server e non raccoglie dati. Un link condiviso contiene il brano e lo vede solo chi lo riceve. La voce e il microfono sono elaborati sul telefono e non vengono inviati.</p>
+      <h3 data-i18n>Informazioni</h3>
+      <p class="hint" data-i18n>SoundText è software libero (GPL v3). L'app usa FluidSynth (LGPL) con il SoundFont TimGM6mb (GPL), Pyodide (MPL), verovio (LGPL), Vosk (Apache 2.0). Il pacchetto orchestra è costruito da VSCO 2 CE e VCSL (Versilian Studios, CC0).</p>
+    </details>
   </section>
 
   <!-- Testo -->
@@ -121,6 +144,7 @@
       <button id="genAgain" aria-label="Un'altra versione"><span aria-hidden="true">🎲 </span><span data-i18n>Un'altra</span></button>
       <button id="genListen" aria-pressed="false"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
       <button id="genAdd" class="primary" data-i18n>Aggiungi al brano</button>
+      <button id="genUndo" hidden data-i18n>Annulla l'aggiunta</button>
     </div>
   </section>
 
@@ -577,8 +601,11 @@
 <script src="app/fonts.js"></script>
 <script src="app/hum.js"></script>
 <script src="app/quick.js"></script>
+<script src="svgsafe.js"></script>
+<script src="zip.js"></script>
 <script src="midicut.js"></script>
 <script src="studio.js"></script>
+<script src="app/backup.js"></script>
 <script src="app/study.js"></script>
 <script src="app/access.js"></script>
 <script src="app/effects.js"></script>
