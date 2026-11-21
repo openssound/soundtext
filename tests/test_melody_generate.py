@@ -199,3 +199,19 @@ def test_dialog_passes_the_key_and_disables_variation_every():
     expected = generate_melodic_line(spans, "melody_period", 5, 52, 82, polyphonic=False,
                                      min_total_beats=32.0, key="Am", meter="4/4")
     assert dlg.preview_edit.toPlainText() == expected
+
+
+def test_phrases_can_start_with_a_pickup_note_before_the_bar():
+    """8.4: con la variabilita' una frase parte un ottavo prima della battuta; a variabilita' 0 mai (il motivo non cambia)."""
+    chords = extract_chords_from_track("4C 4Am 4F 4G 4C 4Am 4F 4G", {})
+
+    def onsets(variability, seed):
+        text = generate_melodic_line(chords, "melody_ballad", octave=5, range_low=60, range_high=88, polyphonic=False,
+                                     min_total_beats=32, variability=variability, seed=seed, key="C")
+        return [n[0] for n in _notes(text)]
+
+    def pickups(variability, seed):
+        return [t for t in onsets(variability, seed) if abs((t + 0.5) % 8.0) < 1e-6 and t > 0]    # un ottavo prima di una frase
+
+    assert all(not pickups(0, seed) for seed in range(6))
+    assert sum(len(pickups(0.9, seed)) for seed in range(12)) >= 6

@@ -104,12 +104,45 @@ function arrangeOptions(parts) {
   return out;
 }
 
+// La curva dell'energia (come core.quicksong.energy_levels): il livello di ogni sezione mobile, da leggero a pieno
+function energyLevels(curve, count) {
+  return Array.from({ length: count }, (_, pos) => {
+    const e = count > 1 ? pos / (count - 1) : 1;
+    const height = curve === "sale" ? e : curve === "cala" ? 1 - e : 1 - Math.abs(e - 0.7) / 0.7;
+    return height < 0.34 ? "light" : height < 0.67 ? "normal" : "full";
+  });
+}
+
+function applyEnergyCurve() {
+  const curve = $("genEnergy").value;
+  if (!curve || !gen.sections) return;
+  const fixed = ["intro", "outro", "stop", "break"];
+  const rows = [...$("genSections").children].map((li, i) => ({ li, section: gen.sections.sections[i] }))
+    .filter((r) => !fixed.includes(r.li.querySelector("select").value));
+  energyLevels(curve, rows.length).forEach((level, k) => {
+    const { li, section } = rows[k];
+    li.querySelector("select").value = level;
+    gen.intensities[section.index] = level;
+  });
+  gen.textFor = "";
+  scheduleGenerate(0);
+}
+
 async function loadSections() {
   const text = state.doc ? state.doc.text : "";
   if (gen.sectionsFor === text) return;
   gen.sections = (await call("structure_sections", { args: [text] })).result;
   gen.sectionsFor = text;
   gen.intensities = {};
+  const energy = $("genEnergy");
+  if (!energy.options.length) {
+    energy.add(new Option(t("a mano"), ""));
+    energy.add(new Option(t("sale"), "sale"));
+    energy.add(new Option(t("sale e poi cala"), "picco"));
+    energy.add(new Option(t("cala"), "cala"));
+    energy.onchange = applyEnergyCurve;
+  }
+  energy.value = "";
   const list = $("genSections"), preview = $("genPreviewSection");
   list.replaceChildren();
   preview.replaceChildren(new Option(t("tutto il brano"), ""));

@@ -31,6 +31,19 @@ FORMS = ("loop", "canzone", "aaba", "blues", "ponte")
 ENSEMBLES = ("piano", "acustica", "elettrica", "elettronica", "orchestra")
 MELODIES = ("nessuna", "cantabile", "vivace", "ballata", "aaba")
 ENERGY_CURVES = ("sale", "picco", "cala")
+
+
+def energy_levels(curve: str, count: int) -> List[str]:
+    """Il livello ("light", "normal", "full") di ognuna delle 'count' sezioni mobili lungo una curva dell'energia: sale, picco
+    (sale fino a due terzi e poi cala) o cala. Lista vuota se la curva non esiste."""
+    if curve not in ENERGY_CURVES:
+        return []
+    out = []
+    for pos in range(count):
+        e = pos / (count - 1) if count > 1 else 1.0
+        height = {"sale": e, "cala": 1.0 - e, "picco": 1.0 - abs(e - 0.7) / 0.7}[curve]
+        out.append("light" if height < 0.34 else "normal" if height < 0.67 else "full")
+    return out
 ENDINGS = ("cadenza", "rallentando", "sfumato")
 PARTS = ("progression", "comp", "comp2", "horn", "pad", "bass", "drums", "melody", "harm")
 _MELODY_STYLE = {"cantabile": "melody_period", "vivace": "melody_lively", "ballata": "melody_ballad", "aaba": "melody_aaba"}
@@ -543,10 +556,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     section_level: Dict[int, str] = {}
     if curve:
         movable = [i for i, (_n, r, _b) in enumerate(sections) if r in ("verse", "chorus", "bridge", "solo", "loop")]
-        for pos, i in enumerate(movable):
-            e = pos / (len(movable) - 1) if len(movable) > 1 else 1.0
-            height = {"sale": e, "cala": 1.0 - e, "picco": 1.0 - abs(e - 0.7) / 0.7}[curve]
-            section_level[i] = level(_LEVELS[0 if height < 0.34 else 1 if height < 0.67 else 2])
+        for i, name in zip(movable, energy_levels(curve, len(movable))):
+            section_level[i] = level(name)
 
     # la modulazione: dall'ultimo ritornello in poi un tono sopra
     mod_from = -1

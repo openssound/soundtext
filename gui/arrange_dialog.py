@@ -133,6 +133,15 @@ class ArrangeDialog(QDialog):
             "colpo di ogni ritornello."))
         for check in (self.ending_check, self.rallentando_check, self.dynamics_check):
             form.addRow("", check)
+        self.energy_combo = QComboBox()
+        self.energy_combo.setAccessibleName(tr("Curva dell'energia"))
+        self.energy_combo.addItem(tr("a mano (come nella tabella)"), "")
+        for value, label in ((("sale"), tr("sale")), ("picco", tr("sale e poi cala")), ("cala", tr("cala"))):
+            self.energy_combo.addItem(label, value)
+        self.energy_combo.setToolTip(tr("Riempie la colonna Intensita' dalle sezioni: dopo si puo' cambiare a mano, una per una. "
+                                        "L'intro e il finale restano come sono."))
+        self.energy_combo.currentIndexChanged.connect(self._apply_energy_curve)
+        form.addRow(tr("Curva dell'energia:"), self.energy_combo)
         layout.addLayout(form)
 
         self.table = QTableWidget(0, 4)
@@ -150,6 +159,16 @@ class ArrangeDialog(QDialog):
         self.resize(620, 520)
         self._parts = None
         self._fill_sections()
+
+    def _apply_energy_curve(self, *_args):
+        """La curva scelta sulle intensita' delle sezioni (verse, ritornelli, ponti...), tranne intro, finale, stop e break."""
+        from core.quicksong import energy_levels
+        curve = self.energy_combo.currentData()
+        rows = [r for r in range(self.table.rowCount())
+                if self.table.cellWidget(r, 2).currentData() not in ("intro", "outro", "stop", "break")]
+        for row, level in zip(rows, energy_levels(curve, len(rows))):
+            combo = self.table.cellWidget(row, 2)
+            combo.setCurrentIndex(max(0, combo.findData(level)))
 
     def source_track(self):
         return self.tracks[self.source_combo.currentIndex()] if self.tracks else None

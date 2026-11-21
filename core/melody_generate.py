@@ -451,8 +451,33 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         if pitches:
             prev2, prev = (pitches[-2] if len(pitches) > 1 else prev), pitches[-1]
 
+    if amount.rhythm > 0 and not compound:                   # prima delle ripetizioni: una sezione che torna copia anche le sue anacrusi interne
+        notes = _add_pickups(notes, starts[1:], scale, 0.5 * amount.rhythm, random.Random(f"{seed}/pickup"), range_low, range_high)
     notes = _apply_repeats(notes, repeats)
     return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng)
+
+
+def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Random, range_low: int, range_high: int):
+    """Anacrusi (8.4): una frase puo' partire un ottavo prima della battuta, con una nota di avvicinamento (un grado sotto la
+    prima nota, della scala) presa dalla fine della nota lunga che chiude la frase prima. Solo dove quella nota dura almeno un
+    tempo: una frase che finisce su note brevi non ha posto per l'attacco."""
+    notes = sorted(notes)
+    for start in phrase_starts:
+        if rng.random() >= probability:
+            continue
+        previous = next((i for i, n in enumerate(notes) if abs(n[0] + n[1] - start) < 1e-6 and n[1] >= 1.0 - 1e-6), None)
+        first = next((n for n in notes if abs(n[0] - start) < 1e-6), None)
+        if previous is None or first is None:
+            continue
+        t, d, p, b = notes[previous]
+        # un grado sotto la prima nota (o sopra, se sotto non c'e' posto): sempre nella scala e dentro l'estensione
+        approach = next((first[2] + step for step in (-2, -1, 2, 1)
+                         if (first[2] + step) % 12 in scale and range_low <= first[2] + step <= range_high), None)
+        if approach is None:
+            continue
+        notes[previous] = (t, d - 0.5, p, b)
+        notes.append((start - 0.5, 0.5, approach, first[3]))
+    return sorted(notes)
 
 
 def _apply_repeats(notes, repeats):

@@ -283,3 +283,32 @@ def test_all_sections_lists_every_section_of_the_song_not_just_the_chord_track_b
     assert "Am" in sections[1].text and "F G" in sections[2].text                             # gli accordi: dalla chitarra scelta
     assert all(s.length_beats > 0 for s in sections)
     assert [s.intensity for s in sections] == ["intro", "light", "full", "outro"]
+
+
+def test_energy_curve_fills_the_section_intensities_but_not_intro_or_finale(monkeypatch):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from gui.arrange_dialog import ArrangeDialog
+    from gui.main_window import MainWindow
+    w = MainWindow()
+    w.arrangement_action.setChecked(True)
+    p, acc = _song()
+    track = w.project.add_track("Accordi", "Piano", "")
+    track.clips = acc.clips
+    w.arrangement_view.on_clip_changed("Accordi")
+    dlg = ArrangeDialog(w, w.project)
+    before = [dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())]
+    dlg.energy_combo.setCurrentIndex(dlg.energy_combo.findData("sale"))
+    rising = [dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())]
+    assert rising[0] == before[0] == "intro"                                     # l'intro resta
+    movable = [x for x in rising if x not in ("intro", "outro")]
+    order = ["light", "normal", "full"]
+    assert movable == sorted(movable, key=order.index) and movable[0] == "light" and movable[-1] == "full"
+    dlg.energy_combo.setCurrentIndex(dlg.energy_combo.findData("cala"))
+    falling = [dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())
+               if dlg.table.cellWidget(r, 2).currentData() not in ("intro", "outro")]
+    assert falling[0] == "full" and falling[-1] == "light"
+    dlg.energy_combo.setCurrentIndex(0)
+    assert [dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())] == falling[:0] + [
+        dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())]    # "a mano": non tocca niente
