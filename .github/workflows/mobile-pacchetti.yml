@@ -38,7 +38,8 @@ jobs:
       - name: Strumenti
         run: |
           pip install "numpy>=1.24,<2"
-          sudo apt-get install -y -qq p7zip-full
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full ffmpeg
           ffmpeg -version | head -1
       - name: Librerie VSCO 2 CE e VCSL (orchestra)
         if: inputs.pacchetto == 'orchestra' || inputs.pacchetto == 'completo'
