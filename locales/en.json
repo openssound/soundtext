@@ -2688,6 +2688,7 @@
  "Una pausa non puo' avere una legatura": "A rest cannot have a tie or slur",
  "Una percussione non puo' avere una legatura di valore (~)": "A percussion hit cannot have a tie (~)",
  "Una traccia audio non ha note da far suonare a un plugin.": "An audio track has no notes for a plugin to play.",
+ "Una versione più leggera del pacchetto orchestra: stesso suono, {size} MB invece di 46. Sostituisce quella che hai sul telefono.": "A lighter version of the orchestra pack: same sound, {size} MB instead of 46. It replaces the one on your phone.",
  "Unisci i pezzi": "Join the pieces",
  "Unisci i pezzi in una clip ({n})": "Join the pieces into one clip ({n})",
  "Unisci le note uguali entro:": "Merge equal notes within:",

@@ -2688,6 +2688,7 @@
  "Una pausa non puo' avere una legatura": "Un silence ne peut pas avoir de liaison",
  "Una percussione non puo' avere una legatura di valore (~)": "Une percussion ne peut pas avoir de liaison de prolongation (~)",
  "Una traccia audio non ha note da far suonare a un plugin.": "Une piste audio n'a pas de notes à faire jouer par un plugin.",
+ "Una versione più leggera del pacchetto orchestra: stesso suono, {size} MB invece di 46. Sostituisce quella che hai sul telefono.": "Une version plus légère du pack orchestre : même son, {size} Mo au lieu de 46. Elle remplace celle qui est sur le téléphone.",
  "Unisci i pezzi": "Réunir les morceaux",
  "Unisci i pezzi in una clip ({n})": "Réunir les morceaux en un clip ({n})",
  "Unisci le note uguali entro:": "Fusionner les notes identiques à moins de :",

@@ -7,8 +7,8 @@ campioni (una dinamica, una nota ogni tre circa), li porta a 32 kHz mono, li acc
 tenuti) e li mette nel programma General MIDI corrispondente, cosi' i brani esistenti lo usano senza modifiche.
 Gli altri programmi restano a TimGM6mb: il pacchetto si carica come SoundFont predefinito sopra di lui.
 
-Il formato di uscita e' SF2 (non compresso): il FluidSynth in WebAssembly dell'app non legge gli SF3 (Ogg Vorbis).
-Con --format sf3 si scrive anche la versione compressa, per i lettori che la sanno aprire.
+Il formato di uscita e' SF2 (non compresso) o, con --format sf3, SF3 (campioni Ogg Vorbis, 5-10 volte piu' leggero): il
+FluidSynth in WebAssembly dell'app e' compilato con libsndfile e legge entrambi. L'app usa l'SF3.
 Il risultato e' sempre lo stesso a parità di sorgenti (stesso SHA-256): niente date, ordine fisso, ffmpeg senza
 metadati.
 

@@ -196,14 +196,15 @@ function fontSelectFor(track) {
 
 // ------------------------------------------------------------ il pacchetto orchestra
 //
-// Un SoundFont .sf2 leggero con archi, legni, ottoni, arpa, timpani e percussioni intonate (costruito da
+// Un SoundFont .sf3 (compresso, 6 MB) leggero con archi, legni, ottoni, arpa, timpani e percussioni intonate (costruito da
 // mobile/tools/costruisci_sf3.py dalle librerie CC0 VSCO 2 CE e VCSL). Si scarica a richiesta, mai al primo avvio,
 // e dopo si usa come ogni altro SoundFont: predefinito sopra TimGM6mb, che resta per gli altri strumenti.
 // Il file sta sullo stesso sito (vendor/soundfont/), con il suo SHA-256 in un file accanto.
 
-const PACK_URL = "vendor/soundfont/soundtext-orchestra.sf2";
+const PACK_URL = "vendor/soundfont/soundtext-orchestra.sf3";
 const PACK_INFO = "vendor/soundfont/soundtext-orchestra.json";
-const PACK_NAME = "soundtext-orchestra.sf2";
+const PACK_NAME = "soundtext-orchestra.sf3";
+const LEGACY_PACK_NAME = "soundtext-orchestra.sf2";       // la prima versione (46 MB): chi l'ha scaricata riceve quella compressa
 const pack = { info: null, busy: false };
 
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -221,10 +222,13 @@ async function loadPackInfo() {
 function renderPack() {
   const box = $("sfPack");
   const installed = fonts.list.some((f) => f.name === PACK_NAME);
+  const legacy = fonts.list.some((f) => f.name === LEGACY_PACK_NAME);
   box.hidden = !pack.info || installed;
   if (!pack.info) return;
-  $("sfPackInfo").textContent = t("Archi, legni, ottoni, arpa, timpani e altri strumenti d'orchestra, più vicini al suono del computer. " +
-    "{size} MB, licenza CC0 (VSCO 2 CE e VCSL). Si scarica una volta sola e resta sul telefono.", { size: fontMegabytes(pack.info.bytes) });
+  $("sfPackInfo").textContent = legacy
+    ? t("Una versione più leggera del pacchetto orchestra: stesso suono, {size} MB invece di 46. Sostituisce quella che hai sul telefono.", { size: fontMegabytes(pack.info.bytes) })
+    : t("Archi, legni, ottoni, arpa, timpani e altri strumenti d'orchestra, più vicini al suono del computer. " +
+        "{size} MB, licenza CC0 (VSCO 2 CE e VCSL). Si scarica una volta sola e resta sul telefono.", { size: fontMegabytes(pack.info.bytes) });
   $("sfPackGet").textContent = t("Scarica il pacchetto orchestra ({size} MB)", { size: fontMegabytes(pack.info.bytes) });
   $("sfPackGet").disabled = pack.busy;
 }
@@ -261,9 +265,16 @@ async function downloadPack() {
     if (hex(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())) !== pack.info.sha256) {
       throw new Error(t("Il file scaricato non è quello atteso (controllo SHA-256): riprova."));
     }
+    const legacy = fonts.list.find((f) => f.name === LEGACY_PACK_NAME);
+    const legacyWasDefault = !!legacy && fonts.defaultId === legacy.id;
     await addFont(new File([blob], PACK_NAME));
     const added = fonts.list.find((f) => f.name === PACK_NAME);
-    if (added && $("sfPackDefault").checked) {
+    if (legacy && added) {                         // la versione compressa prende il posto della vecchia: si libera lo spazio
+      await SoundFonts.remove(legacy.id);
+      await loadFontList();
+      if (state.synth) resetSynth();
+    }
+    if (added && (legacyWasDefault || $("sfPackDefault").checked)) {
       await setDefaultFont(added.id);
       fontSay(t("Pacchetto orchestra pronto: è il SoundFont predefinito. Lo senti dal prossimo Play."));
     } else {

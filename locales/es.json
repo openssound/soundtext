@@ -2688,6 +2688,7 @@
  "Una pausa non puo' avere una legatura": "Un silencio no puede tener una ligadura",
  "Una percussione non puo' avere una legatura di valore (~)": "Una percusión no puede tener una ligadura de prolongación (~)",
  "Una traccia audio non ha note da far suonare a un plugin.": "Una pista de audio no tiene notas que pueda tocar un plugin.",
+ "Una versione più leggera del pacchetto orchestra: stesso suono, {size} MB invece di 46. Sostituisce quella che hai sul telefono.": "Una versión más ligera del paquete de orquesta: mismo sonido, {size} MB en lugar de 46. Sustituye al que tienes en el teléfono.",
  "Unisci i pezzi": "Unir los trozos",
  "Unisci i pezzi in una clip ({n})": "Unir los trozos en un clip ({n})",
  "Unisci le note uguali entro:": "Unir las notas iguales dentro de:",

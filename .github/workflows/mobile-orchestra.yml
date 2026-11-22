@@ -1,6 +1,6 @@
 name: Pacchetto orchestra di SoundText Mobile
 
-# Costruisce il SoundFont .sf2 del pacchetto orchestra (mobile/tools/costruisci_sf3.py) dalle librerie CC0
+# Costruisce il SoundFont .sf3 del pacchetto orchestra (mobile/tools/costruisci_sf3.py) dalle librerie CC0
 # VSCO 2 CE e VCSL, scaricate come fa SoundText sul computer (scarica_strumenti.py, commit fissi), e lo mette
 # fra gli asset di una release. Si lancia a mano: stampa lo SHA-256 da scrivere in mobile/scarica_vendor.sh
 # (ORCH_SHA). Lo stesso file esce a parita' di sorgenti.
@@ -9,7 +9,7 @@ on:
     inputs:
       tag:
         description: "Tag della release (quello in scarica_vendor.sh)"
-        default: mobile-orchestra-1
+        default: mobile-orchestra-2
 
 permissions:
   contents: read
@@ -40,13 +40,13 @@ jobs:
               s.scarica_orchestra(nome, base, dest / nome.split("-")[0])
           PY
       - name: Costruzione
-        run: python mobile/tools/costruisci_sf3.py --vsco sorgenti/vsco --vcsl sorgenti/vcsl --out soundtext-orchestra.sf2
+        run: python mobile/tools/costruisci_sf3.py --vsco sorgenti/vsco --vcsl sorgenti/vcsl --out soundtext-orchestra.sf3 --format sf3
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sha256sum soundtext-orchestra.sf2
+          sha256sum soundtext-orchestra.sf3
           gh release view "${{ inputs.tag }}" >/dev/null 2>&1 || gh release create "${{ inputs.tag }}" \
             --title "Pacchetto orchestra di SoundText Mobile" \
-            --notes "SoundFont .sf2 con archi, legni, ottoni, arpa, timpani e percussioni intonate, costruito da VSCO 2 CE e VCSL (CC0). SHA-256: vedi il log del workflow."
-          gh release upload "${{ inputs.tag }}" soundtext-orchestra.sf2 soundtext-orchestra.sf2.json --clobber
+            --notes "SoundFont .sf3 con archi, legni, ottoni, arpa, timpani e percussioni intonate, costruito da VSCO 2 CE e VCSL (CC0). SHA-256: vedi il log del workflow."
+          gh release upload "${{ inputs.tag }}" soundtext-orchestra.sf3 soundtext-orchestra.sf3.json --clobber
