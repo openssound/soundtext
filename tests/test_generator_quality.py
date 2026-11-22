@@ -38,7 +38,7 @@ def _song(genre, seed):
     key = (genre, seed)
     if key not in _cache:
         mood = GENRES_DATA[genre]["moods"][seed % len(GENRES_DATA[genre]["moods"])]
-        made = quick_song({"genre": genre, "mood": mood, "duration": 45, "seed": seed})
+        made = quick_song({"genre": genre, "mood": mood, "duration": 45, "seed": seed, "variety": 0})
         project = parse_project_text(made["text"], "Prova")
         names = made["choices"]["instruments"]
         parts = {part: _notes(project, t) for part, name in names.items() for t in project.tracks if t.name == name

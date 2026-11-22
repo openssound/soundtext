@@ -97,7 +97,7 @@ def test_arrange_dialog_lists_every_section_and_says_where_the_chords_are_missin
     from core.project_io import parse_project_text
     from core.quicksong import quick_song
     from gui.arrange_dialog import ArrangeDialog
-    made = quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "seed": 3})
+    made = quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "seed": 3, "variety": 0})
     project = parse_project_text(made["text"], made["name"])
     dlg = ArrangeDialog(None, project)
     names = [dlg.table.item(r, 0).text() for r in range(dlg.table.rowCount())]

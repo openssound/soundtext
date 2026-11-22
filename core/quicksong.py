@@ -179,6 +179,36 @@ _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs"
 _HARM_FOR = {"Flute": "Clarinet", "Oboe": "Clarinet", "Clarinet": "Flute", "Lead": "Lead_2_sawtooth", "Tenor_Sax": "Alto_Sax",
              "Alto_Sax": "Tenor_Sax", "Trumpet": "Trombone", "Harmonica": "Clarinet", "Fiddle": "Violin", "Violin": "Flute"}
 
+# La variabilita' fra un brano e il successivo («Un'altra»): con lo stesso genere e la stessa atmosfera, il seme sceglie fra
+# alternative che stanno bene nel genere (giri armonici, stili del basso e della batteria, stile della melodia, forma, un po' di
+# tempo in piu' o in meno). Quello che l'utente sceglie nei dettagli non si tocca, e con variety=0 vale la ricetta pura.
+_PROG_POOLS = {
+    "default": {"major": ("pop", "doo_wop", "canon", "ballad", "royal_road", "three_chord", "borrowed_iv", "plagal", "deceptive"),
+                "minor": ("minor_pop", "andalusian", "minor_rock", "minor_cadence", "minor_epic", "minor_three", "minor_deceptive", "minor_plagal")},
+    "jazz": {"major": ("jazz_251", "turnaround", "circle", "rhythm_changes", "royal_road"),
+             "minor": ("minor_251", "minor_circle", "minor_cadence", "dorian_vamp")},
+    "groove": {"major": ("mixolydian", "gospel", "pop", "circle", "royal_road"),
+               "minor": ("dorian_vamp", "minor_three", "minor_pop", "minor_circle")},
+    "folk": {"major": ("three_chord", "pop", "canon", "mixolydian", "doo_wop"),
+             "minor": ("minor_three", "minor_pop", "minor_cadence", "andalusian")},
+    "rock": {"major": ("rock", "mixolydian", "three_chord", "pop", "borrowed_flat6"),
+             "minor": ("minor_rock", "minor_three", "phrygian", "minor_epic", "minor_pop")},
+}
+_PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jazz", "chacha": "jazz", "lofi": "jazz",
+                 "funk": "groove", "soul": "groove", "disco": "groove", "reggae": "folk", "country": "folk",
+                 "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
+_BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("root_fifth", "root", "eighths"),
+              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("root_fifth", "eighths"), "soul": ("root_fifth", "root", "octaves"),
+              "disco": ("octaves", "eighths", "root"), "funk": ("octaves", "eighths", "root"), "lofi": ("root", "root_fifth"),
+              "elettronica": ("octaves", "eighths", "root")}
+_DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
+              "soul": ("soul", "halftime")}
+# i generi i cui due accompagnamenti sono stili generici (si possono scambiare); gli altri (power chord, boom-chick, skank...) no
+_SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", "ballata68", "afro68", "balcanico78", "marcia", "orchestrale")
+_MELODY_ALTS = {"cantabile": ("cantabile", "vivace", "ballata"), "vivace": ("vivace", "cantabile"), "ballata": ("ballata", "cantabile"),
+                "aaba": ("aaba", "cantabile", "vivace")}
+
+
 # gli effetti con cui parte ogni genere (8.8.4): la catena master (riga per effetto), perche' e' quella che si sente sia sul
 # computer sia sul telefono, dove le tracce escono da un solo sintetizzatore. Si cambiano o si tolgono come gli altri;
 # con l'opzione effects=False non si scrivono.
@@ -413,6 +443,11 @@ def resolve(options: Optional[dict] = None) -> dict:
     seed = _random.randrange(2 ** 31) if seed is None or seed == "" else _int(seed, 0)
     rng = _random.Random(seed)
 
+    parts_in = dict(options.get("parts") or {})
+    seeds = {}
+    for part in PARTS:
+        given = (parts_in.get(part) or {}).get("seed")
+        seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
     mode, tempo_factor, intensities, mood_prog, _energy = MOODS_DATA[mood]
     key = options.get("key") or ""
     if key:
@@ -422,12 +457,21 @@ def resolve(options: Optional[dict] = None) -> dict:
         key = rng.choice(_KEYS[mode])
         prog_mood = mood
     prog_triple = (recipe.get("prog") or {}).get(mode) or MOODS_DATA[prog_mood][3]
+    variety = _float(options.get("variety"), 1.0)            # 0 = la ricetta pura, 1 = tutta la variabilita'
+    # ogni scelta fra alternative dipende dal seme della sua parte: un lucchetto (stesso seme) tiene la sua parte uguale
+    vrng = _random.Random(f"{seeds['progression']}/variety")                    # giri armonici, tempo e forma
+    part_rng = {part: _random.Random(f"{seeds[part]}/variety") for part in PARTS}
+    if variety > 0 and not options.get("chords") and _PROG_POOL_OF.get(genre, "default") is not None:
+        pool = _PROG_POOLS[_PROG_POOL_OF.get(genre, "default")][mode]
+        prog_triple = tuple(vrng.choice(pool) if vrng.random() < 0.75 * variety else base for base in prog_triple)
     meter = options.get("meter") or recipe["meter"]
-    bpm = _int(options.get("bpm"), 0) or int(round(recipe["bpm"] * tempo_factor))
+    bpm = _int(options.get("bpm"), 0) or int(round(recipe["bpm"] * tempo_factor * (1 + variety * vrng.uniform(-0.08, 0.08))))
     bpm = max(40, min(240, bpm))
 
     drum_styles = rg.drum_styles_for_meter(meter)
     drums = options.get("drums") or recipe["drums"]
+    if not options.get("drums") and variety > 0 and genre in _DRUM_ALTS and part_rng["drums"].random() < 0.6 * variety:
+        drums = part_rng["drums"].choice(_DRUM_ALTS[genre])
     if drums is not None and drums not in drum_styles:
         drums = drum_styles[0] if drum_styles else None      # lo stile non esiste per questa metrica
     ensemble = options.get("ensemble") or recipe["ens"]
@@ -438,9 +482,13 @@ def resolve(options: Optional[dict] = None) -> dict:
         melody = recipe["melody"]
     if melody is False or melody in ("", None):
         melody = "nessuna"
+    if "melody" not in options and variety > 0 and melody in _MELODY_ALTS and part_rng["melody"].random() < 0.5 * variety:
+        melody = part_rng["melody"].choice(_MELODY_ALTS[melody])
     if melody not in _MELODY_STYLE and melody != "nessuna":
         raise ValueError(f"stile di melodia sconosciuto: {melody}")
     form = options.get("form") or recipe["form"]
+    if not options.get("form") and variety > 0 and recipe["form"] in ("canzone", "ponte") and vrng.random() < 0.4 * variety:
+        form = "ponte" if recipe["form"] == "canzone" else "canzone"
     if form not in FORMS:
         raise ValueError(f"forma sconosciuta: {form}")
     ending = options.get("ending") or "cadenza"
@@ -449,12 +497,13 @@ def resolve(options: Optional[dict] = None) -> dict:
 
     density = options.get("density")
     density = 0.5 if density is None else max(0.0, min(1.0, float(density)))
-    parts_in = dict(options.get("parts") or {})
-    seeds = {}
-    for part in PARTS:
-        given = (parts_in.get(part) or {}).get("seed")
-        seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
-    styles = {"drums": drums, "bass": recipe["bass"], "comp": recipe["comp"], "comp2": recipe["comp2"], "horn": _HORN_STYLE.get(genre, "sustained"), "pad": "sustained",
+    bass_style, comp_style, comp2_style = recipe["bass"], recipe["comp"], recipe["comp2"]
+    if variety > 0 and meter == "4/4":
+        if genre in _BASS_ALTS and part_rng["bass"].random() < 0.5 * variety:
+            bass_style = part_rng["bass"].choice(_BASS_ALTS[genre])
+        if genre in _SWAP_COMP and part_rng["comp"].random() < 0.35 * variety:
+            comp_style, comp2_style = comp2_style, comp_style           # i due accompagnamenti si scambiano
+    styles = {"drums": drums, "bass": bass_style, "comp": comp_style, "comp2": comp2_style, "horn": _HORN_STYLE.get(genre, "sustained"), "pad": "sustained",
               "progression": None}
     for part, spec in parts_in.items():
         if part in styles and spec.get("style"):

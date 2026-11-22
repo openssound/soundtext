@@ -291,7 +291,7 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
 def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
     from core.project_io import parse_project_text
     from st_language.midi import resolve_event_notes, sounding_events
-    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "variety": 0})
     assert "Pattern %MelodiaRitornello:" in song["text"]
     calls = re.findall(r"^  (%MelodiaRitornello(?:\.octave\(1\))?)$", song["text"], re.M)
     assert calls == ["%MelodiaRitornello"] * (len(calls) - 1) + ["%MelodiaRitornello.octave(1)"] and len(calls) >= 3
@@ -328,21 +328,21 @@ def test_energy_curve_changes_the_intensity_of_the_sections(q):
 
 def test_a_string_layer_plays_only_in_the_choruses_and_the_ending(q):
     import re as _re
-    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "variety": 0})
     assert "pad" in song["parts"]
     names = _re.findall(r'Box Strings "([^"]*)"', song["text"])
     assert names and set(names) <= {"Ritornello", "Finale"}
-    assert "pad" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "density": 0.1})["parts"]
-    assert "pad" not in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 60, "seed": 1})["parts"]
+    assert "pad" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "variety": 0, "density": 0.1})["parts"]
+    assert "pad" not in q.quick_song({"genre": "rock", "mood": "tesa", "duration": 60, "seed": 1, "variety": 0})["parts"]
 
 
 def test_the_bridge_of_a_quiet_mood_has_a_pedal_bass(q):
-    song = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1})
+    song = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "variety": 0})
     assert any(s["role"] == "bridge" for s in song["sections"])
     assert "Pedal" in song["text"]                                   # i pattern del ponte portano il nome dello stile
-    loud = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 240, "seed": 1, "form": "ponte"})
+    loud = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 240, "seed": 1, "variety": 0, "form": "ponte"})
     assert "Pedal" not in loud["text"]
-    chosen = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "parts": {"bass": {"style": "root"}}})
+    chosen = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "variety": 0, "parts": {"bass": {"style": "root"}}})
     assert "Pedal" not in chosen["text"]                                # uno stile scelto a mano vince
 
 
@@ -362,3 +362,19 @@ def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_
     assert "harm" not in q.quick_song({**base, "second_voice": True, "duration": 45})["parts"]      # un solo ritornello
     rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True})
     assert q._HARM_FOR["Lead"] == "Lead_2_sawtooth" and any("Lead_2_sawtooth" in line for line in rock["text"].split("\n"))
+
+
+def test_another_song_varies_more_than_the_key_and_the_choices_of_the_user_stay(q):
+    def facts(seed, **extra):
+        song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": seed, **extra})
+        c = song["choices"]
+        return (song["bpm"], tuple(song["prog"]) if "prog" in song else None, c["styles"]["drums"], c["styles"]["bass"],
+                c["styles"]["comp"], c["melody"], song["form"], tuple(r["name"] for r in song["sections"]))
+    varied = {facts(seed) for seed in range(1, 9)}
+    assert len(varied) >= 6                                           # otto semi: almeno sei brani con una struttura diversa
+    pure = {facts(seed, variety=0)[:6] for seed in range(1, 9)}
+    assert len(pure) == 1                                             # senza variabilita' resta la ricetta
+    fixed = {facts(seed, bpm=100, form="canzone", melody="vivace")[0::1][0] for seed in range(1, 5)}
+    assert fixed == {100}                                             # tempo, forma e melodia scelti dall'utente non cambiano
+    assert all(q.quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "seed": s, "form": "canzone", "melody": "vivace"})["form"] == "canzone"
+               for s in range(1, 6))
