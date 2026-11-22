@@ -477,7 +477,7 @@ function quickShowResult(made) {
   $("quickFallback").textContent = made.fallback || "";
   $("quickFallback").hidden = !made.fallback;
   $("quickResult").hidden = false;
-  if (typeof renderSoundsInUse === "function") renderSoundsInUse();     // «Suoni: ...» sotto il riepilogo
+  if (typeof renderPackHint === "function") renderPackHint();           // «Suoni: ...» sotto il riepilogo e il pacchetto adatto, se manca
   quickShowMode();
   quickRenderParts();
   setQuickStatus(made.fallback ? "" : t("Pronto: {name}", { name: made.name }));

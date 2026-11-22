@@ -248,7 +248,7 @@ async function analyze() {
     fillScoreTracks(r.info.tracks);
     setTimeline(r.info.timeline);
     renderMixer();
-    if (typeof renderSoundsInUse === "function") renderSoundsInUse();
+    if (typeof renderPackHint === "function") renderPackHint();     // «Suoni: ...» e il pacchetto adatto al brano (avviso o scarico automatico)
     await loadEffectsPlan();                      // gli effetti del brano, prima di calcolare il MIDI con gli invii di riverbero
     // trasposizione, mute, solo e metronomo restano dopo una modifica del testo
     if (midiKey() !== "") await renderMidi();

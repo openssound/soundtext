@@ -227,9 +227,16 @@ function renderPackHint() {
   // niente di consigliato per il brano: la base migliore, se manca (vale per tutti i brani)
   if (!pack && baseP && baseP.info && !baseFont() && !allInOneInstalled() && !fonts.list.some(isBaseFont)) pack = baseP;
   box.hidden = true;
+  const quickGet = $("quickSoundsGet");                  // lo stesso suggerimento nel dialogo «Un brano in 60 secondi», dove l'avviso in alto non si vede
+  if (quickGet) quickGet.hidden = true;
   if (!pack || !pack.info || packHintDismissed.has(pack.id) || packBusy) return;
   if (fonts.autoDownload && onWifi()) { downloadPack(pack, { auto: true }).catch(showError); return; }
   const size = fontMegabytes(pack.info.bytes);
+  if (quickGet) {
+    quickGet.textContent = t("Scarica «{title}» ({size} MB) per questo brano", { title: pack.title(), size });
+    quickGet.onclick = () => { quickGet.hidden = true; downloadPack(pack).catch(showError); };
+    quickGet.hidden = pack.underlay || $("quickResult").hidden;      // per la base basta l'avviso in alto: nel dialogo solo i pacchetti del brano
+  }
   $("packHintText").textContent = pack.underlay
     ? t("Tutti i brani suonano meglio con «{title}» ({size} MB).", { title: pack.title(), size })
     : t("Questo brano suona meglio con «{title}» ({size} MB).", { title: pack.title(), size });
