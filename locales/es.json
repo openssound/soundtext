@@ -3479,5 +3479,8 @@
  "🎹 Registra": "🎹 Grabar",
  "📂 Scegli file...": "📂 Elegir archivo...",
  "🔊 Prova in corso — suona con la tastiera (non registrato)...": "🔊 Probando — toca con el teclado (sin grabar)...",
- "🔊 Suona": "🔊 Tocar"
+ "🔊 Suona": "🔊 Tocar",
+ "Aspetta qualche secondo: finché non è pronto non si può suonare né creare.": "Espera unos segundos: hasta que esté listo no se puede tocar ni crear.",
+ "({s} s)": "({s} s)",
+ "Suoni: {names}": "Sonidos: {names}"
 }

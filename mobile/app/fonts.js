@@ -179,7 +179,33 @@ function onWifi() {
   return !!c && c.type === "wifi";
 }
 
+// Il nome con cui si mostra un SoundFont: quello del pacchetto di SoundText o il nome del file
+function fontLabel(font) {
+  const pack = PACKS.find((p) => p.file === font.name);
+  return pack ? pack.title() : (font.title || font.name);
+}
+
+// «Suoni: ...» sotto il nome del brano: il SoundFont in uso (predefinito, scelto da te o dal pacchetto adatto al brano) e quelli
+// assegnati a singole tracce
+function renderSoundsInUse() {
+  const line = $("nowSounds");
+  if (!line) return;
+  if (!state.doc) { line.hidden = true; return; }
+  const names = [];
+  const base = effectiveDefaultId();
+  const baseFont = base && fonts.list.find((f) => f.id === base);
+  names.push(baseFont ? fontLabel(baseFont) : t("TimGM6mb (incluso)"));
+  for (const font of Object.values(docFonts())) {
+    const label = fontLabel(font);
+    if (!names.includes(label)) names.push(label);
+  }
+  line.textContent = t("Suoni: {names}", { names: names.join(" + ") });
+  line.title = line.textContent;
+  line.hidden = false;
+}
+
 function renderPackHint() {
+  renderSoundsInUse();
   const box = $("packHint");
   if (!box) return;
   const plan = soundPlan();
@@ -216,6 +242,7 @@ function resetSynth() {
 // ---- la schermata
 
 function renderFonts() {
+  renderSoundsInUse();
   const ul = $("sfList");
   ul.innerHTML = "";
   const row = (id, title, detail, extra) => {

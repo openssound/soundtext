@@ -3479,5 +3479,8 @@
  "🎹 Registra": "🎹 Enregistrer",
  "📂 Scegli file...": "📂 Choisir un fichier...",
  "🔊 Prova in corso — suona con la tastiera (non registrato)...": "🔊 Essai en cours — jouez au clavier (non enregistré)...",
- "🔊 Suona": "🔊 Jouer"
+ "🔊 Suona": "🔊 Jouer",
+ "Aspetta qualche secondo: finché non è pronto non si può suonare né creare.": "Attends quelques secondes : tant qu'il n'est pas prêt, on ne peut ni jouer ni créer.",
+ "({s} s)": "({s} s)",
+ "Suoni: {names}": "Sons : {names}"
 }

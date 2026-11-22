@@ -213,6 +213,7 @@ function showDocTitle() {
   $("badge").textContent = shared ? t("brano condiviso: sola lettura") : t("esempio: le modifiche creano una copia");
   $("copyShared").hidden = !shared;
   $("exportOpen").disabled = !doc;
+  if (typeof renderSoundsInUse === "function") renderSoundsInUse();
   $("playAlongOpen").disabled = !doc;
   $("chartOpen").disabled = !doc;
   if (typeof updateMediaSession === "function") updateMediaSession();
@@ -247,6 +248,7 @@ async function analyze() {
     fillScoreTracks(r.info.tracks);
     setTimeline(r.info.timeline);
     renderMixer();
+    if (typeof renderSoundsInUse === "function") renderSoundsInUse();
     await loadEffectsPlan();                      // gli effetti del brano, prima di calcolare il MIDI con gli invii di riverbero
     // trasposizione, mute, solo e metronomo restano dopo una modifica del testo
     if (midiKey() !== "") await renderMidi();

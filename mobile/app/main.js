@@ -125,6 +125,13 @@ async function main() {
   document.addEventListener("freeze", () => lifecycle("freeze"));
   document.addEventListener("resume", () => lifecycle("resume"));
 
+  // La striscia «Avvio del motore…»: si vede finche' il motore non e' pronto, con i secondi che passano
+  const engineStart = performance.now();
+  const engineTimer = setInterval(() => {
+    $("engineLoadingSecs").textContent = t("({s} s)", { s: Math.round((performance.now() - engineStart) / 1000) });
+  }, 1000);
+  const endEngineLoading = () => { clearInterval(engineTimer); $("engineLoading").hidden = true; };
+
   // La schermata Brani si usa subito, mentre il motore si avvia.
   await renderSongs();
   $("copyShared").onclick = () => copyShared().catch(showError);
@@ -134,6 +141,7 @@ async function main() {
 
   try {
     const boot = await state.booted;
+    endEngineLoading();
     Metrics.record("avvio", {
       cache: coldCache ? "senza cache (primo avvio)" : "con cache", service_worker: sw,
       page_to_ready_ms: ms(tPage), ...boot, ...Metrics.device(),
@@ -153,6 +161,7 @@ async function main() {
     // la misura automatica e' uno strumento di sviluppo: solo da localhost, cosi' «non raccoglie dati» e' vero senza eccezioni
     if (new URLSearchParams(location.search).has("misura") && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) await automaticMeasure();
   } catch (e) {
+    endEngineLoading();
     $("engineState").textContent = t("errore");
     showError(e);
   }

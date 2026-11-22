@@ -25,6 +25,10 @@
   <button id="copyShared" class="copy-shared" hidden data-i18n>Fai una copia</button>
 </header>
 
+<div id="engineLoading" class="sounds-loading" role="status" aria-live="assertive">
+  <span class="sounds-spinner" aria-hidden="true"></span>
+  <span><strong data-i18n>Avvio del motore…</strong> <span data-i18n>Aspetta qualche secondo: finché non è pronto non si può suonare né creare.</span> <span id="engineLoadingSecs"></span></span>
+</div>
 <div id="soundsLoading" class="sounds-loading" role="status" aria-live="assertive" hidden>
   <span class="sounds-spinner" aria-hidden="true"></span>
   <span><strong id="soundsLoadingTitle"></strong> <span id="soundsLoadingText"></span></span>
@@ -255,6 +259,7 @@
   <div class="now">
     <div id="nowName" class="name">–</div>
     <div id="status" role="status" class="status" data-i18n>Avvio del motore…</div>
+    <div id="nowSounds" class="status sounds-in-use" hidden></div>
   </div>
   <div id="pos" class="pos"></div>
 </section>

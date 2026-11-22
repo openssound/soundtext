@@ -3479,5 +3479,8 @@
  "🎹 Registra": "🎹 Record",
  "📂 Scegli file...": "📂 Choose file...",
  "🔊 Prova in corso — suona con la tastiera (non registrato)...": "🔊 Trying out — play with the keyboard (not recorded)...",
- "🔊 Suona": "🔊 Play"
+ "🔊 Suona": "🔊 Play",
+ "Aspetta qualche secondo: finché non è pronto non si può suonare né creare.": "Wait a few seconds: until it is ready you cannot play or create.",
+ "({s} s)": "({s} s)",
+ "Suoni: {names}": "Sounds: {names}"
 }
