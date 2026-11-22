@@ -148,7 +148,7 @@ def test_every_form_is_valid_with_its_own_shape(q, form):
 
 
 def test_a_loop_keeps_the_harmony_and_changes_the_fills(q):
-    song = q.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 8})
+    song = q.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 8, "variety": 0})
     assert song["loop"] is True and [s["bars"] for s in song["sections"]] == [8, 8, 8, 8]
     _valid(q, song)
     text = song["text"]
@@ -251,7 +251,7 @@ def test_genres_choose_their_own_instruments_and_accompaniment_styles(q):
     quick_song = q.quick_song
 
     def tracks(genre, mood="allegra", **extra):
-        song = quick_song({"genre": genre, "mood": mood, "duration": 30, "seed": 3, **extra})
+        song = quick_song({"genre": genre, "mood": mood, "duration": 30, "seed": 3, "variety": 0, **extra})
         return re.findall(r"^(?:Traccia )?([A-Za-z_0-9 ]+?)(?: \[.*\])?:\s*$", song["text"], re.M), song
 
     jazz, _ = tracks("jazz")
@@ -360,7 +360,7 @@ def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_
     assert boxes == [("Ritornello", "%MelodiaRitornello.thirds")]
     assert "harm" not in q.quick_song({**base, "second_voice": True, "development": False})["parts"]
     assert "harm" not in q.quick_song({**base, "second_voice": True, "duration": 45})["parts"]      # un solo ritornello
-    rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True})
+    rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True, "variety": 0})
     assert q._HARM_FOR["Lead"] == "Lead_2_sawtooth" and any("Lead_2_sawtooth" in line for line in rock["text"].split("\n"))
 
 
@@ -403,3 +403,28 @@ def rg_names():
     sys.path.insert(0, os.path.join(os.path.dirname(ROOT), "st-language"))
     from st_language.instruments import PERCUSSION_MAP
     return set(PERCUSSION_MAP)
+
+
+def test_another_song_changes_instruments_accompaniment_density_and_ending_but_keeps_the_family(q):
+    def made(genre, mood, seed, **extra):
+        return q.quick_song({"genre": genre, "mood": mood, "duration": 60, "seed": seed, **extra})
+    pop = [made("pop", "allegra", s) for s in range(1, 21)]
+    assert len({song["choices"]["instruments"]["melody"] for song in pop}) >= 4          # flauto, clarinetto, violino, sax, chitarra...
+    assert len({song["choices"]["instruments"]["comp"] for song in pop}) >= 2
+    assert len({song["choices"]["styles"]["comp"] for song in pop}) >= 3
+    assert len({round(song["choices"]["density"], 1) for song in pop}) >= 4
+    assert len({song["choices"]["ending"] for song in pop}) >= 2
+    for song in pop:                                                                      # mai due parti con lo stesso strumento
+        inst = song["choices"]["instruments"]
+        assert len({inst[p] for p in ("comp", "comp2", "melody") if p in inst}) == len([p for p in ("comp", "comp2", "melody") if p in inst])
+    # il punk e il metal non prendono tastiere o chitarre pulite per la melodia, il jazz resta con fiati e piano o chitarra
+    assert {made("punk", "tesa", s)["choices"]["instruments"]["melody"] for s in range(1, 15)} <= {"Lead", "Overdriven_Guitar"}
+    assert {made("jazz", "calma", s)["choices"]["instruments"]["comp"] for s in range(1, 15)} <= {"Piano", "Nylon_Guitar"}
+    # la ricetta pura (variety 0) e le scelte dell'utente non cambiano
+    pure = {made("pop", "allegra", s, variety=0)["choices"]["instruments"]["melody"] for s in range(1, 10)}
+    assert pure == {"Flute"}
+    chosen = made("pop", "allegra", 3, parts={"melody": {"instrument": "Oboe"}})
+    assert chosen["choices"]["instruments"]["melody"] == "Oboe"
+    # e i brani sono validi
+    for song in pop[:6] + [made("country", "allegra", s) for s in range(1, 5)] + [made("elettronica", "ipnotica", s) for s in range(1, 5)]:
+        _valid(q, song)

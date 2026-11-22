@@ -205,6 +205,31 @@ _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_12
               "soul": ("soul", "halftime")}
 # i generi i cui due accompagnamenti sono stili generici (si possono scambiare); gli altri (power chord, boom-chick, skank...) no
 _SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", "ballata68", "afro68", "balcanico78", "marcia", "orchestrale")
+# gli strumenti alternativi di ogni parte: il primo e' quello della ricetta; il seme puo' sceglierne un altro (stessa famiglia e,
+# dove si puo', gli stessi pacchetti di suoni del genere). Per genere se il genere ha il suo suono, se no per organico.
+_INSTRUMENT_ALTS_GENRE = {
+    "jazz": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet", "Clarinet", "Flute"), "comp": ("Piano", "Nylon_Guitar")},
+    "swing": {"melody": ("Trumpet", "Tenor_Sax", "Clarinet", "Alto_Sax"), "comp": ("Piano", "Nylon_Guitar")},
+    "bossa": {"comp": ("Piano", "Nylon_Guitar")},
+    "country": {"melody": ("Fiddle", "Acoustic_Guitar_Steel", "Harmonica"), "comp": ("Acoustic_Guitar_Steel", "Piano")},
+    "soul": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet")},
+    "blues": {"melody": ("Harmonica", "Overdriven_Guitar", "Tenor_Sax")},
+    "balcanico78": {"melody": ("Clarinet", "Accordion", "Violin")},
+}
+_INSTRUMENT_ALTS = {
+    "acustica": {"melody": ("Flute", "Clarinet", "Violin", "Piano", "Acoustic_Guitar_Steel", "Alto_Sax"),
+                 "comp": ("Piano", "Acoustic_Guitar_Steel", "Nylon_Guitar"), "comp2": ("Nylon_Guitar", "Piano", "Acoustic_Guitar_Steel")},
+    "elettrica": {"melody": ("Lead", "Clean_Guitar", "Overdriven_Guitar", "Electric_Piano_1", "Rock_Organ"),
+                  "comp": ("Clean_Guitar", "Electric_Piano_1", "Drawbar_Organ"), "comp2": ("Electric_Piano_1", "Clean_Guitar", "Drawbar_Organ", "Electric_Piano_2")},
+    "elettronica": {"melody": ("Lead", "Lead_2_sawtooth", "Lead_1_square", "Polysynth"), "comp": ("Pad", "Polysynth"),
+                    "comp2": ("Electric_Piano_1", "Electric_Piano_2", "Pad"), "bass": ("Synth_Bass_1", "Synth_Bass_2")},
+    "orchestra": {"melody": ("Oboe", "Flute", "Clarinet", "Violin", "Trumpet", "French_Horn"), "comp2": ("Harp", "Pizzicato_Strings")},
+}
+# gli accompagnamenti alternativi dei generi che non hanno uno stile caratteristico (4/4)
+_COMP_ALTS = {"pop": ("arpeggio_up", "broken_chord", "block_chords", "quarter_chords"), "ballata": ("arpeggio_up", "broken_chord", "sustained"),
+              "lofi": ("broken_chord", "sustained", "arpeggio_up"), "elettronica": ("sustained", "arpeggio_up", "broken_chord"),
+              "soul": ("broken_chord", "arpeggio_up", "block_chords"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
+              "swing": ("quarter_chords", "block_chords", "broken_chord")}
 _BUSY_DRUM_GENRES = ("rock", "funk", "metal", "rocknroll", "punk", "elettronica", "disco")
 _MELODY_ALTS = {"cantabile": ("cantabile", "vivace", "ballata"), "vivace": ("vivace", "cantabile"), "ballata": ("ballata", "cantabile"),
                 "aaba": ("aaba", "cantabile", "vivace")}
@@ -497,10 +522,18 @@ def resolve(options: Optional[dict] = None) -> dict:
     if form not in FORMS:
         raise ValueError(f"forma sconosciuta: {form}")
     ending = options.get("ending") or "cadenza"
+    if not options.get("ending") and variety > 0:
+        roll = vrng.random()
+        if roll < 0.15 * variety:
+            ending = "rallentando"
+        elif roll < 0.25 * variety and (options.get("duration") or 60) >= 45:       # lo sfumato aggiunge 4 battute: non nei brani corti
+            ending = "sfumato"
     if ending not in ENDINGS:
         raise ValueError(f"finale sconosciuto: {ending}")
 
     density = options.get("density")
+    if density is None and variety > 0:
+        density = 0.5 + random.Random(f"{seeds['progression']}/density").uniform(-0.25, 0.25) * variety    # piu' o meno pieno
     density = 0.5 if density is None else max(0.0, min(1.0, float(density)))
     bass_style, comp_style, comp2_style = recipe["bass"], recipe["comp"], recipe["comp2"]
     if variety > 0 and meter == "4/4":
@@ -508,6 +541,10 @@ def resolve(options: Optional[dict] = None) -> dict:
             bass_style = part_rng["bass"].choice(_BASS_ALTS[genre])
         if genre in _SWAP_COMP and part_rng["comp"].random() < 0.35 * variety:
             comp_style, comp2_style = comp2_style, comp_style           # i due accompagnamenti si scambiano
+        elif genre in _COMP_ALTS:
+            crng = random.Random(f"{seeds['comp']}/stile")
+            if crng.random() < 0.5 * variety:
+                comp_style = crng.choice([x for x in _COMP_ALTS[genre] if x != comp2_style] or _COMP_ALTS[genre])
     styles = {"drums": drums, "bass": bass_style, "comp": comp_style, "comp2": comp2_style, "horn": _HORN_STYLE.get(genre, "sustained"), "pad": "sustained",
               "progression": None}
     for part, spec in parts_in.items():
@@ -522,6 +559,21 @@ def resolve(options: Optional[dict] = None) -> dict:
                 instruments.pop(part, None)
             elif not (part == "comp" and name == "Overdriven_Guitar" and instruments.get("comp") == "Distortion_Guitar"):
                 instruments[part] = name
+    if variety > 0:                                          # strumenti alternativi (sceglie il seme di ogni parte)
+        genre_alts = _INSTRUMENT_ALTS_GENRE.get(genre, {}) if ensemble == recipe["ens"] else {}
+        for part in ("comp", "comp2", "melody", "bass"):
+            pool = genre_alts.get(part) or _INSTRUMENT_ALTS.get(ensemble, {}).get(part)
+            if part == "melody" and recipe.get("dist") and ensemble == "elettrica":
+                pool = ("Lead", "Overdriven_Guitar")        # punk e metal: niente tastiere o chitarre pulite per la melodia
+            current = instruments.get(part)
+            if not pool or current not in pool:
+                continue                                     # lo strumento del genere (clavinet, chitarra distorta...) non si tocca
+            irng = random.Random(f"{seeds[part]}/strumento")
+            if irng.random() < 0.6 * variety:
+                taken = {instruments.get(o) for o in ("comp", "comp2", "melody") if o != part}
+                choices = [x for x in pool if x != current and x not in taken]
+                if choices:
+                    instruments[part] = irng.choice(choices)
     if drums is not None and "drums" not in instruments and (options.get("drums") or recipe.get("drums_in_orchestra")):
         instruments["drums"] = "Drums"                       # l'orchestra non ha la batteria, salvo una marcia o se la si sceglie
     if drums is None:
