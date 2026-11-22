@@ -198,7 +198,7 @@ function fontLabel(font) {
 function renderSoundsInUse() {
   const line = $("nowSounds");
   if (!line) return;
-  if (!state.doc) { line.hidden = true; return; }
+  if (!state.doc) { line.hidden = true; if ($("quickSounds")) $("quickSounds").hidden = true; return; }
   const names = [];
   const base = effectiveDefaultId();
   const chosen = base && fonts.list.find((f) => f.id === base);
@@ -213,6 +213,8 @@ function renderSoundsInUse() {
   line.textContent = t("Suoni: {names}", { names: names.join(" + ") });
   line.title = line.textContent;
   line.hidden = false;
+  const inDialog = $("quickSounds");                  // la stessa riga nel dialogo «Un brano in 60 secondi», sotto il riepilogo
+  if (inDialog) { inDialog.textContent = line.textContent; inDialog.hidden = $("quickResult").hidden; }
 }
 
 function renderPackHint() {
