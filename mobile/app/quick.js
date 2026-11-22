@@ -412,6 +412,9 @@ async function quickRegenerate(mode, part) {
       quick.parts = {};
       quickSyncControls();
     }
+    // «Un'altra» e «Sorprendimi» vogliono sempre un brano diverso: un seme rimasto nel campo (o salvato da un brano aperto) non vale.
+    // Solo «Crea» e «Parti da questa melodia» usano il seme scritto a mano, per rifare lo stesso brano.
+    if (mode === "again" || mode === "surprise") { delete quick.opts.seed; $("quickSeed").value = ""; }
     const fresh = mode === "new" || mode === "again" || mode === "surprise" || mode === "idea";
     const options = quickEngineOptions((parts) => {
       if (mode === "part" && quick.last) {
