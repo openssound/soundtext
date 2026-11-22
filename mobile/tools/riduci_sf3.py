@@ -17,7 +17,6 @@ programma, il ritocco in dB; il risultato e' sempre lo stesso a parita' di sorge
 import argparse
 import hashlib
 import json
-import math
 import struct
 import sys
 from pathlib import Path
