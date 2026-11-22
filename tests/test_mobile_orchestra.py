@@ -397,6 +397,12 @@ def test_the_reducer_keeps_only_the_wanted_presets_and_their_samples_and_applies
     # niente ritocco: nessun generatore in piu'
     flat = reducer.reduce_soundfont(source, [(0, 17)], {}, "Base", "prova")
     assert all(op != 48 for op, _a in reducer.SoundFont(_write(tmp_path, "piatto.sf3", flat)).pgen)
+    # alleggerire: di ogni 2 gruppi di note se ne tiene uno, che copre anche il vicino
+    light = reducer.reduce_soundfont(source, [(0, 17)], {}, "Base", "prova", {"0/17": {"ogni": 2}})
+    lighter = reducer.SoundFont(_write(tmp_path, "leggero.sf3", light))
+    assert len(lighter.shdr) - 1 == 2 and len(light) < len(flat)                                 # note 48, 60, 72 -> 48 e 72
+    ranges = sorted(struct.unpack("BB", a) for op, a in lighter.igen if op == 43)
+    assert ranges[0][0] <= 48 and ranges[-1][1] >= 72 and ranges[0][1] >= 60                    # la prima nota copre fino a quella tolta
     # un preset che non c'e' si dice a voce alta
     with pytest.raises(SystemExit):
         reducer.reduce_soundfont(source, [(0, 99)], {}, "Base", "prova")
@@ -411,7 +417,8 @@ def _write(tmp_path, name, data):
 def test_the_base_file_lists_valid_programs_and_kits_and_a_gain_per_program():
     spec = json.loads(open(os.path.join(ROOT, "mobile", "tools", "pacchetti", "base.json"), encoding="utf-8").read())
     assert len(spec["programmi"]) == len(set(spec["programmi"])) and all(0 <= p <= 127 for p in spec["programmi"])
-    assert not {0, 1, 2, 3} & set(spec["programmi"])                       # i pianoforti restano a TimGM6mb e al pacchetto acustico
+    assert not {1, 2, 3} & set(spec["programmi"])                          # gli altri pianoforti restano a TimGM6mb e al pacchetto acustico
+    assert 0 in spec["programmi"] and spec["alleggerisci"]["0/0"]["ogni"] >= 2   # il pianoforte c'e', ma alleggerito (uno strato, meno note)
     assert 128 not in spec["batterie"] and 0 in spec["batterie"] and spec["limite_mb"] <= 20
     assert all(abs(v) <= 12 for v in spec["guadagni_db"].values())
     assert {f"0/{p}" for p in spec["programmi"]} <= set(spec["guadagni_db"])

@@ -371,7 +371,7 @@ function fontSelectFor(track) {
 const PACKS = [
   { id: "base", underlay: true, programs: [], replaces: [],
     title: () => t("Base di suoni"),
-    what: () => t("Un suono migliore per quasi tutti gli strumenti, al posto di TimGM6mb: chitarre, bassi, archi, ottoni, sax, flauti, sintetizzatori e più kit di batteria."),
+    what: () => t("Un suono migliore per quasi tutti gli strumenti, al posto di TimGM6mb: pianoforte, chitarre, bassi, archi, ottoni, sax, flauti, sintetizzatori e più kit di batteria."),
     license: () => t("licenza MIT (MuseScore General)") },
   { id: "completo", programs: [0,1,4,5,6,9,11,12,13,14,16,17,18,21,24,25,26,27,28,29,30,32,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,56,57,58,59,60,61,65,66,68,70,71,72,73,80,81,88,89,90,95], replaces: ["soundtext-orchestra.sf2", "soundtext-orchestra.sf3", "soundtext-acustico.sf3", "soundtext-elettrico.sf3", "soundtext-elettronico.sf3"],
     title: () => t("Tutti gli strumenti"),

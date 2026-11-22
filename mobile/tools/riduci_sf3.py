@@ -88,8 +88,12 @@ class SoundFont:
         return zones
 
 
-def reduce_soundfont(src: SoundFont, wanted: list, gains: dict, name: str, comment: str) -> bytes:
-    """wanted: [(banco, programma)]; gains: {"banco/programma": dB}."""
+def reduce_soundfont(src: SoundFont, wanted: list, gains: dict, name: str, comment: str, thin: dict | None = None) -> bytes:
+    """wanted: [(banco, programma)]; gains: {"banco/programma": dB}; thin: {"banco/programma": {"strumenti": {nome: nome}, "ogni": N}} per
+    alleggerire un preset pesante (il pianoforte): gli strumenti col primo nome si sostituiscono con quelli del secondo (via lo strato
+    forte, che ripete le stesse note) e di ogni N gruppi di note se ne tiene uno solo, che si estende ai vicini (le note si
+    trasportano di uno o due semitoni)."""
+    thin = thin or {}
     presets = []                     # (nome, programma, banco, zone)
     for bank, program in wanted:
         i = src.preset_index(bank, program)
@@ -110,24 +114,54 @@ def reduce_soundfont(src: SoundFont, wanted: list, gains: dict, name: str, comme
                 take_sample(link)
         return smp_map[old]
 
-    def take_instrument(old: int) -> int:
-        if old in inst_map:
-            return inst_map[old]
+    def inst_by_name(name: bytes) -> int:
+        for k, entry in enumerate(src.inst[:-1]):
+            if entry[0].rstrip(b"\0") == name:
+                return k
+        raise SystemExit(f"nel SoundFont non c'e' lo strumento {name!r}")
+
+    def thinned(zones: list, every: int) -> list:
+        """Delle zone di campioni (una coppia sinistra/destra per ogni gruppo di note) ne tiene una ogni 'every' e allarga le note."""
+        head = [z for z in zones if not any(op == 53 for op, _a in z[0])]
+        body = [z for z in zones if any(op == 53 for op, _a in z[0])]
+        groups: list = []
+        for z in body:
+            key = next((a for op, a in z[0] if op == 43), None)
+            if groups and groups[-1][0] == key:
+                groups[-1][1].append(z)
+            else:
+                groups.append((key, [z]))
+        out = list(head)
+        for n in range(0, len(groups), every):
+            lo = groups[n][0][0]
+            hi = groups[min(n + every, len(groups)) - 1][0][1]
+            for gens, mods in groups[n][1]:
+                out.append(([(op, bytes([lo, hi]) if op == 43 else a) for op, a in gens], mods))
+        return out
+
+    def take_instrument(old: int, every: int = 1) -> int:
+        if (old, every) in inst_map:
+            return inst_map[(old, every)]
+        raw = src.zones(src.ibag, src.igen, src.imod, src.inst[old][1], src.inst[old + 1][1])
+        if every > 1:
+            raw = thinned(raw, every)                  # prima di rimappare i campioni: quelli delle zone tolte non si portano dietro
         zones = []
-        for gens, mods in src.zones(src.ibag, src.igen, src.imod, src.inst[old][1], src.inst[old + 1][1]):
+        for gens, mods in raw:
             new_gens = []
             for op, amount in gens:
                 if op == 53:
                     amount = struct.pack("<H", take_sample(struct.unpack("<H", amount)[0]))
                 new_gens.append((op, amount))
             zones.append((new_gens, mods))
-        inst_map[old] = len(inst_out)
+        inst_map[(old, every)] = len(inst_out)
         inst_out.append((src.inst[old][0], zones))
-        return inst_map[old]
+        return inst_map[(old, every)]
 
     new_presets = []
     for pname, program, bank, zones, key in presets:
         db = float(gains.get(f"{key[0]}/{key[1]}", gains.get("tutti", 0.0)))
+        light = thin.get(f"{key[0]}/{key[1]}", {})
+        swap = {inst_by_name(a.encode()): inst_by_name(b.encode()) for a, b in light.get("strumenti", {}).items()}
         cb = int(round(db * -25))              # FluidSynth applica l'attenuazione con un fattore 0,4: 25 cB per dB (e non 10) ottengono quello voluto
         new_zones = []
         has_global = bool(zones) and not any(op == 41 for op, _a in zones[0][0])     # la prima zona senza strumento vale per tutte
@@ -135,7 +169,8 @@ def reduce_soundfont(src: SoundFont, wanted: list, gains: dict, name: str, comme
             new_gens = []
             for op, amount in gens:
                 if op == 41:
-                    amount = struct.pack("<H", take_instrument(struct.unpack("<H", amount)[0]))
+                    old = struct.unpack("<H", amount)[0]
+                    amount = struct.pack("<H", take_instrument(swap.get(old, old), int(light.get("ogni", 1))))
                 new_gens.append((op, amount))
             is_global = has_global and n_zone == 0
             if cb and (is_global or any(op == 41 for op, _a in new_gens)):
@@ -217,7 +252,7 @@ def main():
     args = ap.parse_args()
     spec = json.loads(args.elenco.read_text(encoding="utf-8"))
     src = SoundFont(args.source)
-    data = reduce_soundfont(src, wanted_from(spec), spec.get("guadagni_db", {}), spec["nome"], spec["commento"])
+    data = reduce_soundfont(src, wanted_from(spec), spec.get("guadagni_db", {}), spec["nome"], spec["commento"], spec.get("alleggerisci"))
     limit = spec.get("limite_mb")
     if limit and len(data) > limit * 1e6:
         raise SystemExit(f"la base pesa {len(data) / 1e6:.1f} MB, oltre il limite di {limit} MB")
