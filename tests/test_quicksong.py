@@ -346,11 +346,19 @@ def test_the_bridge_of_a_quiet_mood_has_a_pedal_bass(q):
     assert "Pedal" not in chosen["text"]                                # uno stile scelto a mano vince
 
 
-def test_the_last_chorus_has_a_second_voice_in_thirds(q):
+def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_the_melody_family(q):
     import re as _re
-    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1})
+    base = {"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1}
+    plain = q.quick_song(base)
+    assert "harm" not in plain["parts"] and "Clarinet" not in plain["text"]            # la formazione del genere non cambia da sola
+    for genre in ("punk", "rock", "metal", "blues"):
+        song = q.quick_song({"genre": genre, "mood": "allegra" if genre in ("punk",) else "tesa", "duration": 120, "seed": 2})
+        assert "harm" not in song["parts"], genre
+    song = q.quick_song({**base, "second_voice": True})
     assert "harm" in song["parts"]
     boxes = _re.findall(r'Box Clarinet "([^"]*)" \|\d+:\n  (%MelodiaRitornello\.thirds)', song["text"])
     assert boxes == [("Ritornello", "%MelodiaRitornello.thirds")]
-    assert "harm" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "development": False})["parts"]
-    assert "harm" not in q.quick_song({"genre": "pop", "mood": "allegra", "duration": 45, "seed": 1})["parts"]      # un solo ritornello
+    assert "harm" not in q.quick_song({**base, "second_voice": True, "development": False})["parts"]
+    assert "harm" not in q.quick_song({**base, "second_voice": True, "duration": 45})["parts"]      # un solo ritornello
+    rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True})
+    assert q._HARM_FOR["Lead"] == "Lead_2_sawtooth" and any("Lead_2_sawtooth" in line for line in rock["text"].split("\n"))

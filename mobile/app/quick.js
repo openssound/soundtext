@@ -19,7 +19,7 @@ const quick = {
   previewing: null, resumed: null,
 };
 const QUICK_KEY = "stmobile.quick";
-const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact", "human", "energy"];
+const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact", "human", "energy", "second_voice"];
 
 // 64 s -> «1:04»
 function formatClock(seconds) {
@@ -94,13 +94,32 @@ function quickFillMoods() {
   quickFill($("quickMood"), items, quick.opts.mood);
 }
 
+// Le scelte che dipendono dalla ricetta del genere (organico, melodia, forma, metrica, tempo, stili delle parti) non passano a un
+// altro genere: un punk non deve ereditare il flauto e il clarinetto dell'orchestra scelta per il brano di prima. Un organico
+// diverso dalla ricetta si sceglie nei dettagli, per il brano che si sta facendo.
+const QUICK_RECIPE_FIELDS = ["ensemble", "melody", "form", "meter", "bpm"];
+
 function quickPickGenre(id) {
+  if (quick.opts.genre !== id) {
+    for (const f of QUICK_RECIPE_FIELDS) delete quick.opts[f];
+    quick.parts = {};
+    quickSyncRecipeFields();
+  }
   quick.opts.genre = id;
   quickFillMoods();
   for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === id));
   quickDefaults();
   quickSave();
   quickAnnounceChoice();
+}
+
+// i campi dei dettagli tornano a «della ricetta» quando il genere cambia
+function quickSyncRecipeFields() {
+  for (const [id, name] of [["quickKey", "key"], ["quickMeter", "meter"], ["quickForm", "form"], ["quickEnsemble", "ensemble"], ["quickMelodyStyle", "melody"]]) {
+    const el = $(id);
+    if (el && !(name in quick.opts)) el.value = "";
+  }
+  if ($("quickBpm") && !("bpm" in quick.opts)) $("quickBpm").value = "";
 }
 
 // i valori che sceglie la ricetta, quando un campo e' vuoto
@@ -142,6 +161,7 @@ function quickBuildDetail() {
   quickFill($("quickBars"), [8, 16, 32, 64].map((n) => ({ value: n, label: t("{n} battute", { n }) })), o.bars, t("a tempo"));
   $("quickLoop").checked = !!o.loop;
   $("quickCompact").checked = o.compact !== false;
+  $("quickSecondVoice").checked = !!o.second_voice;
 }
 
 // Le scelte a mano dai campi (vuoto = la ricetta)
@@ -168,6 +188,7 @@ function quickReadFields() {
   set("bars", Number($("quickBars").value) || "");
   set("loop", $("quickLoop").checked);
   set("compact", $("quickCompact").checked ? "" : false);
+  set("second_voice", $("quickSecondVoice").checked);
   o.duration = Number($("quickDuration").value) || o.duration || 60;
   o.mood = $("quickMood").value || o.mood;
 }
@@ -356,6 +377,9 @@ function quickFillIdeaTracks() {
 // Le opzioni per il motore: le scelte a mano, la durata e i semi (le parti bloccate tengono il loro)
 function quickEngineOptions(seedFor) {
   const o = { ...quick.opts };
+  if (quick.simple) {                              // nella modalita' semplificata i dettagli (nascosti) non contano: vale la ricetta
+    for (const k of Object.keys(o)) if (!["genre", "mood", "duration", "seed"].includes(k)) delete o[k];
+  }
   const duration = o.seconds || o.duration;
   delete o.seconds;
   o.duration = o.bars || o.loop ? undefined : duration;
@@ -535,7 +559,7 @@ function setupQuick() {
   $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
   $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };
   for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickEnergy", "quickBpm", "quickModulation",
-                    "quickDensity", "quickHuman", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact"]) {
+                    "quickDensity", "quickHuman", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact", "quickSecondVoice"]) {
     $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });
   }
 }

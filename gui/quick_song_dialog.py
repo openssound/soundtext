@@ -97,6 +97,8 @@ class QuickSongDialog(QDialog):
         detail.addRow(tr("Umano (griglia esatta - micro-tempo dello stile):"), self.human)
         self.loop_check = QCheckBox(tr("Un loop senza fine"))
         detail.addRow("", self.loop_check)
+        self.second_voice_check = QCheckBox(tr("Seconda voce in terze nell'ultimo ritornello"))
+        detail.addRow("", self.second_voice_check)
         self.compact_check = QCheckBox(tr("Testo compatto (battute e pattern)"))
         self.compact_check.setChecked(True)
         detail.addRow("", self.compact_check)
@@ -189,6 +191,8 @@ class QuickSongDialog(QDialog):
                 self._seed = self.seed_spin.value()
         if not self.compact_check.isChecked():
             o["compact"] = False
+        if self.detail_check.isChecked() and self.second_voice_check.isChecked():
+            o["second_voice"] = True
         o["seed"] = self._seed if self._seed is not None else random.randrange(2 ** 31)
         return o
 

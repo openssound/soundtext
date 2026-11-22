@@ -174,6 +174,11 @@ _GENRE_INSTRUMENTS = {
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
 
+# lo strumento della seconda voce (il tema in terze dell'ultimo ritornello), nella famiglia della melodia: la formazione di un
+# genere non cambia da sola, la seconda voce c'e' solo se la si chiede (opzione second_voice)
+_HARM_FOR = {"Flute": "Clarinet", "Oboe": "Clarinet", "Clarinet": "Flute", "Lead": "Lead_2_sawtooth", "Tenor_Sax": "Alto_Sax",
+             "Alto_Sax": "Tenor_Sax", "Trumpet": "Trombone", "Harmonica": "Clarinet", "Fiddle": "Violin", "Violin": "Flute"}
+
 # gli effetti con cui parte ogni genere (8.8.4): la catena master (riga per effetto), perche' e' quella che si sente sia sul
 # computer sia sul telefono, dove le tracce escono da un solo sintetizzatore. Si cambiano o si tolgono come gli altri;
 # con l'opzione effects=False non si scrivono.
@@ -593,8 +598,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                and mod_from < 0 and chorus_ids[-1] < last and any(r == "end" for _n, r, _b in sections[chorus_ids[-1] + 1:]))
     dev_pattern = ""
     harm_body = ""
-    if develop:                                              # la seconda voce dell'ultimo ritornello: il tema in terze (.thirds)
-        c["instruments"]["harm"] = "Flute" if c["instruments"]["melody"] == "Clarinet" else "Clarinet"
+    if develop and options.get("second_voice") in (True, 1, "1", "si"):      # solo su richiesta: il tema in terze (.thirds)
+        c["instruments"]["harm"] = _HARM_FOR.get(c["instruments"]["melody"], "Flute")
         active.append("harm")
         from core.instruments import make_instrument_available as _available
         _available(c["instruments"]["harm"])
@@ -680,7 +685,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                         body += ".octave(1)"
                     harm_body = "%" + dev_pattern + ".thirds"
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
-        if harm_body and idx == chorus_ids[-1]:
+        if harm_body and "harm" in active and idx == chorus_ids[-1]:
             boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent(harm_body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
