@@ -699,6 +699,38 @@ DRUM_ALTS: Dict[str, List[list]] = {
                                                               [("ride", 85)] if i % 4 == 0 else [])
                   + ([("snare", 115)] if i in (4, 12) else []) for i in range(16)}),
     ],
+    "halftime": [
+        _pattern({0: [("kick", 105), ("hihat", 75)], 2: [("hihat", 60)], 4: [("hihat", 70)], 6: [("hihat_open", 70)],
+                  8: [("snare", 110), ("clap", 110)], 10: [("hihat", 60)], 11: [("kick", 85)],
+                  12: [("hihat", 70)], 14: [("hihat", 60)]}),
+        _pattern({0: [("kick", 100), ("ride", 75)], 4: [("ride", 65)], 8: [("snare", 105), ("ride", 75)],
+                  10: [("kick", 85)], 12: [("ride", 65)], 14: [("ride", 60)]}),
+    ],
+    "country": [
+        _pattern({0: [("kick", 95), ("hihat", 70)], 2: [("hihat", 55)], 4: [("snare", 100), ("hihat", 70)],
+                  6: [("hihat", 55)], 8: [("kick", 95), ("hihat", 70)], 10: [("hihat", 55)],
+                  12: [("snare", 100), ("hihat", 70)], 14: [("hihat", 55)]}),
+        _pattern({0: [("kick", 95), ("hihat", 70)], 2: [("hihat", 55)], 4: [("rimshot", 85), ("hihat", 70)],
+                  6: [("hihat", 55)], 8: [("kick", 95), ("hihat", 70)], 10: [("hihat", 55)],
+                  12: [("rimshot", 85), ("hihat", 70)], 14: [("hihat", 55)]}),
+    ],
+    "samba": [
+        _pattern({0: [("kick", 80), ("hihat", 70)], 1: [("hihat", 45)], 2: [("hihat", 55)], 3: [("rimshot", 75), ("hihat", 45)],
+                  4: [("kick", 100), ("hihat", 70)], 5: [("hihat", 45)], 6: [("hihat", 55)], 7: [("rimshot", 75), ("hihat", 45)],
+                  8: [("kick", 80), ("hihat", 70)], 9: [("hihat", 45)], 10: [("rimshot", 80), ("hihat", 55)], 11: [("hihat", 45)],
+                  12: [("kick", 100), ("hihat", 70)], 13: [("rimshot", 75), ("hihat", 45)], 14: [("hihat", 55)], 15: [("hihat", 45)]}),
+    ],
+    "bossa": [
+        _pattern({0: [("kick", 70), ("hihat", 70)], 2: [("hihat", 50)], 4: [("rimshot", 70), ("hihat", 55)],
+                  6: [("kick", 65), ("hihat", 65)], 8: [("kick", 75), ("hihat", 75)], 10: [("hihat", 60)],
+                  12: [("rimshot", 65), ("hihat", 60)], 14: [("kick", 65), ("hihat", 65)]}),
+    ],
+    "cha_cha": [
+        _pattern({0: [("kick", 95), ("cowbell", 90)], 2: [("cabasa", 60)], 4: [("cowbell", 75)],
+                  6: [("conga_mute", 70), ("cabasa", 60)], 8: [("kick", 90), ("cowbell", 85)],
+                  10: [("conga_mute", 70), ("cabasa", 60)], 12: [("cowbell", 75), ("timbale_hi", 85)],
+                  14: [("timbale_hi", 90), ("conga_open", 80)]}),
+    ],
     "rock_54": [
         _pattern({0: [("kick", 100), ("ride", 85)], 2: [("ride", 60)], 4: [("kick", 85), ("ride", 70)],
                   6: [("ride", 60)], 8: [("snare", 100), ("ride", 85)], 10: [("ride", 60)],

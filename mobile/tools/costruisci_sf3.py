@@ -361,8 +361,8 @@ class SoundFont:
         self.instruments.append((name, zones))
         return len(self.instruments) - 1
 
-    def add_preset(self, name, program, instrument):
-        self.presets.append((name, program, instrument))
+    def add_preset(self, name, program, instrument, bank=0):
+        self.presets.append((name, program, instrument, bank))
 
     def to_bytes(self, info: dict, compressed: list | None = None) -> bytes:
         smpl = bytearray()
@@ -402,8 +402,8 @@ class SoundFont:
         imod = bytes(10)
 
         pgen, pbag, phdr = bytearray(), bytearray(), bytearray()
-        for i, (name, program, instrument) in enumerate(self.presets):
-            phdr += name20(name) + struct.pack("<HHHIII", program, 0, i, 0, 0, 0)
+        for i, (name, program, instrument, bank) in enumerate(self.presets):
+            phdr += name20(name) + struct.pack("<HHHIII", program, bank, i, 0, 0, 0)
             pbag += struct.pack("<HH", i, 0)
             pgen += gen(41, instrument)
         phdr += name20("EOP") + struct.pack("<HHHIII", 0, 0, len(self.presets), 0, 0, 0)
@@ -499,6 +499,37 @@ def _velocity_bounds(velocities: list) -> list:
     lows = [0] + [c + 1 for c in cuts]
     highs = cuts + [127]
     return list(zip(lows, highs))
+
+
+def add_kit(sf: "SoundFont", kit: dict, spec: dict, fmt: str, report: list, log=print) -> None:
+    """Un kit di percussioni (banco 128): un campione per ogni nota General MIDI, suonato senza trasposizione. Il volume di
+    ogni colpo e' il suo peso (sintesi.DRUM_LEVEL_DB) piu' il ritocco del kit, scritto come attenuazione come per gli strumenti.
+    FluidSynth applica l'attenuazione dei campioni (generatore 48) con un fattore 0,4: per ottenere i dB voluti la si scrive 2,5 volte
+    piu' grande (500 invece di 200 per il logaritmo)."""
+    rate = int(kit.get("frequenza", RATE))
+    zones, total, count = [], 0, 0
+    for note in sorted(sintesi.DRUM_NOTES):
+        family, hit = sintesi.drum_hit(note, rate)
+        db = sintesi.DRUM_LEVEL_DB[family] + sintesi.DRUM_NOTE_DB.get(note, 0) + kit.get("guadagno_db", 0) + spec.get("guadagno_pacchetto_db", 0)
+        scaled = hit * (10 ** (db / 20))
+        peak = float(np.max(np.abs(scaled))) or 1.0
+        boost = 0.98 / peak
+        attenuation = max(0, min(1440, int(round(500 * math.log10(boost))))) if spec.get("normalizza", fmt == "sf3") else 0
+        data = np.round((scaled * boost if attenuation else scaled) * 32767.0).astype("<i2")
+        sid = sf.add_sample(f"{kit['nome'][:10]} {note}", data, None, None, note, 0, rate)
+        zone = [(43, (note, note)), (34, timecents(0.001)), (38, timecents(0.08))]
+        if attenuation:
+            zone.append((48, attenuation))
+        zone += [(56, 0), (58, note), (53, sid)]               # scaleTuning 0 e nota d'origine: il colpo non si trasporta
+        zones.append(zone)
+        total += len(data)
+        count += 1
+    inst = sf.add_instrument(kit["nome"], zones)
+    sf.add_preset(kit["nome"], kit.get("programma", 0), inst, kit.get("banco", 128))
+    report.append({"program": kit.get("programma", 0), "bank": kit.get("banco", 128), "name": kit["nome"], "samples": count,
+                   "seconds": round(total / rate, 1), "pcm_bytes": total * 2, "license": "suono generato", "source": "sintesi",
+                   "source_sha256": hashlib.sha256(Path(sintesi.__file__).read_bytes()).hexdigest()})
+    log(f"  kit {kit['nome']:16s} {count:3d} colpi, {total / rate:5.1f} s")
 
 
 def build(sources: dict, fmt: str = "sf2", log=print, spec: dict | None = None, limit_mb: float | None = None,
@@ -602,6 +633,8 @@ def build(sources: dict, fmt: str = "sf2", log=print, spec: dict | None = None, 
                           {"source": "sintesi", "source_sha256": hashlib.sha256(
                               (Path(sintesi.__file__).read_bytes() + json.dumps(entry["sintesi"], sort_keys=True).encode())).hexdigest()})})
         log(f"  {program:3d} {name:20s} {n_samples:3d} campioni, {seconds:5.1f} s")
+    for kit in spec.get("kit", []):
+        add_kit(sf, kit, spec, fmt, report, log)
     info = {"name": spec["nome"], "copyright": spec["copyright"], "comment": spec["commento"]}
     if fmt == "sf3":
         compressed = [vorbis(smp[1], smp[6]) for smp in sf.samples]

@@ -205,6 +205,7 @@ _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_12
               "soul": ("soul", "halftime")}
 # i generi i cui due accompagnamenti sono stili generici (si possono scambiare); gli altri (power chord, boom-chick, skank...) no
 _SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", "ballata68", "afro68", "balcanico78", "marcia", "orchestrale")
+_BUSY_DRUM_GENRES = ("rock", "funk", "metal", "rocknroll", "punk", "elettronica", "disco")
 _MELODY_ALTS = {"cantabile": ("cantabile", "vivace", "ballata"), "vivace": ("vivace", "cantabile"), "ballata": ("ballata", "cantabile"),
                 "aaba": ("aaba", "cantabile", "vivace")}
 
@@ -474,6 +475,10 @@ def resolve(options: Optional[dict] = None) -> dict:
         drums = part_rng["drums"].choice(_DRUM_ALTS[genre])
     if drums is not None and drums not in drum_styles:
         drums = drum_styles[0] if drum_styles else None      # lo stile non esiste per questa metrica
+    # ogni quante battute un fill (di solito 4: ogni tanto ogni 8, per un groove piu' disteso, o ogni 2 nei generi nervosi)
+    drum_fill = 4
+    if variety > 0 and part_rng["drums"].random() < 0.5 * variety:
+        drum_fill = part_rng["drums"].choice((8, 8, 2) if genre in _BUSY_DRUM_GENRES else (8, 8))
     ensemble = options.get("ensemble") or recipe["ens"]
     if ensemble not in _ENSEMBLE_PARTS:
         raise ValueError(f"organico sconosciuto: {ensemble}")
@@ -529,7 +534,7 @@ def resolve(options: Optional[dict] = None) -> dict:
             "modulation": bool(options.get("modulation")), "density": density, "loop": bool(options.get("loop")),
             "duration": options.get("duration"), "bars": _int(options.get("bars"), 0), "variability": options.get("variability"),
             "prog": list(prog_triple), "intensities": list(intensities), "styles": styles, "instruments": instruments, "seeds": seeds,
-            "chords": str(options.get("chords") or "").strip(), "parts": parts_in}
+            "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill}
 
 
 # ------------------------------------------------------------ il brano
@@ -697,7 +702,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
             if dkey not in drum_texts:
                 drum_texts[dkey] = E.generate(base, "drums", {
                     "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
-                    "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato"})["text"]
+                    "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato",
+                    "fill_every": c.get("drum_fill", 4)})["text"]
             bodies["drums"] = drum_texts[dkey]
         sec_start = start_bar * beats_per_bar
         for part in active:

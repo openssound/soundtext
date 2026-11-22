@@ -13,6 +13,11 @@ Tipi (campo «tipo» del file di dati del pacchetto):
   lead_pwm      onda quadra con modulazione di larghezza d'impulso
   lead_saw      tre denti di sega leggermente scordati
   pad           denti di sega scordati con filtro lento («apertura»: da quanto parte il filtro, «chiusura» a dove arriva)
+
+Le percussioni (kit_elettronico, drum_hit): un colpo per ogni nota del set General MIDI (35-81), nello stile delle drum
+machine analogiche: cassa e tom sono sinusoidi con una caduta d'intonazione, rullante e battito di mani sono rumore e un
+corpo tonale, i piatti sono sei onde quadre inarmoniche. Il rumore viene da un generatore con seme fisso (il nome della
+nota): il risultato e' sempre lo stesso.
 """
 
 import math
@@ -131,3 +136,146 @@ def render(kind: str, params: dict, midi: int, rate: int = 44100, seconds: float
         raise ValueError(f"suono sintetico sconosciuto: {kind}")
     peak = float(np.max(np.abs(out))) or 1.0
     return (out / peak * 0.9).astype(np.float32)
+
+
+# ---------------------------------------------------------------------------
+# percussioni: un colpo per nota General MIDI
+# ---------------------------------------------------------------------------
+
+METAL = (2.0, 3.0, 4.16, 5.43, 6.79, 8.21)                   # i rapporti delle sei onde quadre dei piatti di una drum machine
+
+
+def _noise(n: int, key: int) -> np.ndarray:
+    return np.random.default_rng(1000 + key).uniform(-1.0, 1.0, n)
+
+
+def _highpass(x: np.ndarray, amount: int = 1) -> np.ndarray:
+    """Toglie le basse: differenza fra campioni vicini (una volta per 'amount')."""
+    for _ in range(amount):
+        x = np.concatenate(([0.0], np.diff(x)))
+    return x
+
+
+def _smooth(x: np.ndarray, width: int) -> np.ndarray:
+    return np.convolve(x, np.ones(width) / width, mode="same") if width > 1 else x
+
+
+def _drop_sine(t: np.ndarray, rate: int, f_start: float, f_end: float, glide: float) -> np.ndarray:
+    freq = f_end + (f_start - f_end) * np.exp(-t / glide)
+    return np.sin(2 * math.pi * np.cumsum(freq) / rate)
+
+
+def _metal(t: np.ndarray, base: float, rate: int) -> np.ndarray:
+    out = np.zeros_like(t)
+    for ratio in METAL:
+        out += np.sign(np.sin(2 * math.pi * base * ratio * t))
+    return out / len(METAL)
+
+
+# nota -> (famiglia, parametri): tutte le note del set General MIDI da 35 a 81
+DRUM_NOTES = {
+    35: ("kick", dict(f0=120, f1=52, glide=0.025, decay=0.30, click=0.25)),
+    36: ("kick", dict(f0=150, f1=46, glide=0.035, decay=0.50, click=0.2)),
+    37: ("rim", dict(f=820, decay=0.035)),
+    38: ("snare", dict(f=185, decay=0.20, noise=0.8, hp=1)),
+    39: ("clap", dict(decay=0.22)),
+    40: ("snare", dict(f=215, decay=0.16, noise=1.0, hp=2)),
+    41: ("tom", dict(f0=130, f1=70, decay=0.50)),
+    42: ("hat", dict(decay=0.045, base=205)),
+    43: ("tom", dict(f0=160, f1=88, decay=0.45)),
+    44: ("hat", dict(decay=0.035, base=205)),
+    45: ("tom", dict(f0=195, f1=110, decay=0.42)),
+    46: ("hat", dict(decay=0.40, base=205)),
+    47: ("tom", dict(f0=240, f1=135, decay=0.38)),
+    48: ("tom", dict(f0=290, f1=165, decay=0.35)),
+    49: ("crash", dict(decay=1.3, base=300)),
+    50: ("tom", dict(f0=340, f1=200, decay=0.32)),
+    51: ("ride", dict(decay=0.9, base=420)),
+    52: ("crash", dict(decay=1.0, base=360)),
+    53: ("bell", dict(f=(680, 1010), decay=0.5)),
+    54: ("shaker", dict(decay=0.10, width=2, hp=2)),
+    55: ("crash", dict(decay=0.55, base=380)),
+    56: ("bell", dict(f=(540, 810), decay=0.28)),
+    57: ("crash", dict(decay=1.5, base=330)),
+    58: ("shaker", dict(decay=0.45, width=3, hp=1)),
+    59: ("ride", dict(decay=0.8, base=460)),
+    60: ("conga", dict(f0=420, f1=330, decay=0.14)),
+    61: ("conga", dict(f0=330, f1=260, decay=0.17)),
+    62: ("conga", dict(f0=300, f1=240, decay=0.09)),
+    63: ("conga", dict(f0=260, f1=200, decay=0.22)),
+    64: ("conga", dict(f0=210, f1=160, decay=0.26)),
+    65: ("conga", dict(f0=520, f1=410, decay=0.2)),
+    66: ("conga", dict(f0=420, f1=340, decay=0.22)),
+    67: ("bell", dict(f=(870, 1305), decay=0.3)),
+    68: ("bell", dict(f=(650, 975), decay=0.34)),
+    69: ("shaker", dict(decay=0.07, width=1, hp=2)),
+    70: ("shaker", dict(decay=0.05, width=1, hp=2)),
+    71: ("rim", dict(f=2100, decay=0.18)),
+    72: ("rim", dict(f=1700, decay=0.35)),
+    73: ("shaker", dict(decay=0.06, width=3, hp=1)),
+    74: ("shaker", dict(decay=0.18, width=3, hp=1)),
+    75: ("rim", dict(f=2500, decay=0.05)),
+    76: ("rim", dict(f=1150, decay=0.06)),
+    77: ("rim", dict(f=820, decay=0.07)),
+    78: ("conga", dict(f0=900, f1=700, decay=0.12)),
+    79: ("conga", dict(f0=700, f1=560, decay=0.2)),
+    80: ("bell", dict(f=(2400, 3600), decay=0.12)),
+    81: ("bell", dict(f=(2400, 3600), decay=0.7)),
+}
+# il peso di ogni famiglia sul livello del colpo (dB, prima del ritocco del kit): la cassa e il rullante portano il ritmo,
+# i piatti e i suoni piccoli stanno dietro
+# (misurati contro il kit di TimGM6mb, a pari colpo: media fra picco e livello medio)
+DRUM_LEVEL_DB = {"kick": -4.5, "snare": 0.0, "clap": -2.0, "tom": -2.0, "hat": -4.0, "crash": -5.0, "ride": -9.0, "rim": -3.0,
+                 "bell": -8.0, "shaker": -2.0, "conga": -3.0}
+DRUM_NOTE_DB = {46: 1.0}                                    # l'hi-hat aperto un po' sopra il chiuso
+
+
+def drum_hit(note: int, rate: int = 32000) -> tuple:
+    """(famiglia, colpo in float32 con picco 0,9) della nota General MIDI 'note' (35-81)."""
+    family, p = DRUM_NOTES[note]
+    seconds = {"kick": 1.0, "tom": 0.9, "crash": 2.2, "ride": 1.6, "hat": 0.7, "bell": 1.0, "shaker": 0.7}.get(family, 0.6)
+    seconds = min(seconds, max(0.15, p["decay"] * 5))
+    n = int(seconds * rate)
+    t = np.arange(n) / rate
+    noise = _noise(n, note)
+    if family == "kick":
+        body = _drop_sine(t, rate, p["f0"], p["f1"], p["glide"])
+        out = np.tanh(1.6 * body) * np.exp(-t / p["decay"]) + p["click"] * _smooth(noise, 3) * np.exp(-t / 0.004)
+    elif family == "tom":
+        out = (_drop_sine(t, rate, p["f0"] * 1.5, p["f1"], 0.04) * np.exp(-t / p["decay"]) +
+               0.12 * _highpass(noise) * np.exp(-t / 0.01))
+    elif family == "snare":
+        tone = _drop_sine(t, rate, p["f"] * 1.4, p["f"], 0.015) * np.exp(-t / (p["decay"] * 0.5))
+        rattle = _highpass(_smooth(noise, 2), p["hp"]) * np.exp(-t / p["decay"])
+        out = 0.7 * tone + p["noise"] * rattle / max(1e-6, np.max(np.abs(rattle)))
+    elif family == "clap":
+        env = np.zeros(n)
+        for k, gap in enumerate((0.0, 0.011, 0.022)):
+            s = int(gap * rate)
+            env[s:] += np.exp(-t[: n - s] / 0.005) * (0.9 - 0.1 * k)
+        env += 0.5 * np.exp(-np.maximum(0, t - 0.03) / p["decay"]) * (t > 0.03)
+        out = _smooth(_highpass(noise), 2) * env
+    elif family == "hat":
+        out = _highpass(_metal(t, p["base"], rate), 1) * np.exp(-t / p["decay"]) + 0.25 * _highpass(noise) * np.exp(-t / (p["decay"] * 0.7))
+    elif family == "crash":
+        out = (_highpass(_metal(t, p["base"], rate), 1) * 0.7 + 0.5 * _highpass(noise)) * np.exp(-t / p["decay"]) * (1.0 - 0.3 * np.exp(-t / 0.01))
+    elif family == "ride":
+        out = (_highpass(_metal(t, p["base"], rate), 1) * 0.6 * np.exp(-t / p["decay"]) +
+               0.6 * np.sin(2 * math.pi * 5200 * t) * np.exp(-t / 0.06))
+    elif family == "rim":
+        out = np.sin(2 * math.pi * p["f"] * t) * np.exp(-t / p["decay"]) + 0.3 * _highpass(noise) * np.exp(-t / 0.004)
+    elif family == "bell":
+        a, b = p["f"]
+        out = (np.sign(np.sin(2 * math.pi * a * t)) + np.sign(np.sin(2 * math.pi * b * t))) * 0.5 * np.exp(-t / p["decay"])
+        out = _smooth(out, 3)
+    elif family == "shaker":
+        out = _smooth(_highpass(noise, p["hp"]), p["width"]) * np.exp(-t / p["decay"]) * np.minimum(1.0, t / 0.004)
+    elif family == "conga":
+        out = (_drop_sine(t, rate, p["f0"] * 1.15, p["f1"], 0.02) * np.exp(-t / p["decay"]) +
+               0.2 * _smooth(noise, 3) * np.exp(-t / 0.006))
+    else:
+        raise ValueError(family)
+    out = out * np.minimum(1.0, t / 0.0008)                    # niente scatto all'inizio
+    out[-int(0.02 * rate):] *= np.linspace(1.0, 0.0, int(0.02 * rate))
+    peak = float(np.max(np.abs(out))) or 1.0
+    return family, (out / peak * 0.9).astype(np.float32)

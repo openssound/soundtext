@@ -8,7 +8,8 @@
 // predefinito (al posto di TimGM6mb, che resta caricato sotto, come riserva) e, traccia per traccia,
 // dal mixer. FluidSynth tiene piu' SoundFont insieme: ogni SoundFont oltre al predefinito ha un suo
 // scostamento di banco, e le note di una traccia scelgono il banco giusto con un Bank Select scritto nel
-// MIDI dal motore (engine.midi_bytes con banks). Le percussioni suonano sempre dal predefinito.
+// MIDI dal motore (engine.midi_bytes con banks). Le percussioni suonano sempre dal predefinito (e se il pacchetto
+// predefinito ha un kit di batteria, banco 128, come il pacchetto elettronico, suona quello).
 // I file .sf3 (campioni in Ogg Vorbis) si leggono come gli .sf2: la FluidSynth e' quella con libsndfile.
 
 const fonts = { list: [], defaultId: "", loaded: new Map(), busy: null, autoSounds: true, autoDownload: true };
@@ -342,7 +343,7 @@ const PACKS = [
     license: () => t("licenze CC0 (FreePats) e CC BY 3.0 (Greg Sullivan, Wurlitzer)") },
   { id: "elettronico", programs: [38,39,80,81,88,89,90,95],
     title: () => t("Pacchetto elettronico"),
-    what: () => t("Bassi, lead e pad sintetizzati: per elettronica, lo-fi, disco e pop."),
+    what: () => t("Bassi, lead e pad sintetizzati e una batteria elettronica: per elettronica, lo-fi, disco e pop."),
     license: () => t("suoni generati, senza licenze di terzi") },
 ];
 for (const p of PACKS) { p.file = `soundtext-${p.id}.sf3`; p.url = `vendor/soundfont/${p.file}`; p.infoUrl = `vendor/soundfont/soundtext-${p.id}.json`; p.info = null; }

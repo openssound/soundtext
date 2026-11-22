@@ -192,5 +192,14 @@
    "guadagno_db": -1.8
   }
  ],
- "normalizza": true
+ "normalizza": true,
+ "kit": [
+  {
+   "nome": "Electronic Kit",
+   "programma": 0,
+   "banco": 128,
+   "frequenza": 32000,
+   "guadagno_db": 0
+  }
+ ]
 }

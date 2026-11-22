@@ -378,3 +378,28 @@ def test_another_song_varies_more_than_the_key_and_the_choices_of_the_user_stay(
     assert fixed == {100}                                             # tempo, forma e melodia scelti dall'utente non cambiano
     assert all(q.quick_song({"genre": "pop", "mood": "allegra", "duration": 60, "seed": s, "form": "canzone", "melody": "vivace"})["form"] == "canzone"
                for s in range(1, 6))
+
+
+def test_the_drum_fills_come_at_different_distances_and_the_pure_recipe_keeps_four(q):
+    from core import quicksong
+    fills = {quicksong.resolve({"genre": "rock", "mood": "tesa", "seed": s})["drum_fill"] for s in range(1, 30)}
+    assert fills == {4, 8, 2}                                             # ogni 4 (di solito), ogni 8 o ogni 2 nel rock
+    assert {quicksong.resolve({"genre": "rock", "mood": "tesa", "seed": s, "variety": 0})["drum_fill"] for s in range(1, 30)} == {4}
+    assert 2 not in {quicksong.resolve({"genre": "pop", "mood": "allegra", "seed": s})["drum_fill"] for s in range(1, 30)}
+
+
+def test_the_drum_styles_with_one_groove_got_alternatives_with_valid_slots():
+    from core import rhythm_generate as rg
+    for style in ("halftime", "country", "samba", "bossa", "cha_cha"):
+        grooves = rg.DRUM_ALTS[style]
+        assert grooves and all(len(g) == rg.SLOTS_PER_BAR for g in grooves), style
+        assert all(name in rg_names() for g in grooves for hits in g if hits for name, _v in hits), style
+        text = rg.generate_drum_pattern(style, 16, variability=1.0, seed=3)
+        assert text.strip()
+
+
+def rg_names():
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(ROOT), "st-language"))
+    from st_language.instruments import PERCUSSION_MAP
+    return set(PERCUSSION_MAP)

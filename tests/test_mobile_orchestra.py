@@ -1,6 +1,7 @@
 """Il pacchetto orchestra di SoundText Mobile (mobile/tools/costruisci_sf3.py): da .sfz e campioni sintetici si
 ottiene un SoundFont 2 valido, con i programmi General MIDI giusti, sempre lo stesso a parita' di sorgenti."""
 import hashlib
+import json
 import importlib.util
 import os
 import shutil
@@ -315,3 +316,45 @@ def test_every_genre_has_a_preferred_pack_and_only_known_ones():
     from core import quicksong
     assert set(genre_pack) == set(quicksong.GENRES_DATA)
     assert set(genre_pack.values()) <= {"orchestra", "acustico", "elettrico", "elettronico"}
+
+
+def _drum_notes_used_by_the_rhythm_generator():
+    import re
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(ROOT), "st-language"))
+    from st_language.instruments import PERCUSSION_MAP
+    source = open(os.path.join(ROOT, "core", "rhythm_generate.py"), encoding="utf-8").read()
+    return {PERCUSSION_MAP[name] for name in set(re.findall(r'\("(\w+)", *\d+\)', source)) if name in PERCUSSION_MAP}
+
+
+def test_the_electronic_kit_is_a_bank_128_preset_with_one_deterministic_hit_per_general_midi_note():
+    tool = _tool()
+    sintesi = tool.sintesi
+    assert set(sintesi.DRUM_NOTES) == set(range(35, 82))
+    for note in (36, 38, 42, 46, 49, 54):
+        family, hit = sintesi.drum_hit(note)
+        again = sintesi.drum_hit(note)[1]
+        assert np.array_equal(hit, again) and 0.85 < float(np.max(np.abs(hit))) <= 0.9 and family in sintesi.DRUM_LEVEL_DB
+        assert np.all(np.isfinite(hit)) and len(hit) > 3000
+    spec = {"nome": "Prova", "copyright": "x", "commento": "x", "strumenti": [],
+            "kit": [{"nome": "Electronic Kit", "programma": 0, "banco": 128, "frequenza": 32000}]}
+    one, report = tool.build({}, "sf3", log=lambda *_: None, spec=spec)
+    two, _ = tool.build({}, "sf3", log=lambda *_: None, spec=spec)
+    assert one == two and report[0]["bank"] == 128 and report[0]["samples"] == len(sintesi.DRUM_NOTES)
+    i = one.index(b"phdr")
+    program, bank = struct.unpack("<HH", one[i + 8 + 20:i + 8 + 24])
+    assert (program, bank) == (0, 128)                                                  # banco 128, programma 0: la batteria
+    j = one.index(b"igen")
+    igen = one[j + 8:j + 8 + struct.unpack("<I", one[j + 4:j + 8])[0]]
+    keyranges = {struct.unpack("<HBB", igen[k:k + 4])[1:] for k in range(0, len(igen), 4) if struct.unpack("<H", igen[k:k + 2])[0] == 43}
+    assert keyranges == {(n, n) for n in sintesi.DRUM_NOTES}                           # una zona per nota, senza trasposizione
+
+
+def test_the_electronic_package_file_has_the_kit_and_it_covers_what_the_rhythm_generator_plays():
+    spec = json.loads(open(os.path.join(ROOT, "mobile", "tools", "pacchetti", "elettronico.json"), encoding="utf-8").read())
+    kits = spec["kit"]
+    assert [(k["programma"], k["banco"]) for k in kits] == [(0, 128)]
+    sintesi = _tool().sintesi
+    assert _drum_notes_used_by_the_rhythm_generator() <= set(sintesi.DRUM_NOTES)
+    complete = _tool().completo_spec()
+    assert "kit" not in complete                                    # nel pacchetto completo le percussioni restano quelle di TimGM6mb
