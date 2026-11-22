@@ -118,5 +118,6 @@ pacchetto orchestra mobile-orchestra-3 4c8874e4a38aa11810edf74d79fffcdc8a059f3cb
 pacchetto acustico mobile-acustico-1 1279c23ed0f283fff319de10e2c6091d989469e77d57d14cbd5398b9b7b88a52
 pacchetto elettrico mobile-elettrico-1 12d4be093e45a7536f9ec7490fa83eeaeba2a67acfaf4edcb9426acdf7babcd7
 pacchetto elettronico mobile-elettronico-2 e383752b61c4531898a7d511c77b706c98457b63833a16596fad6cea8df54b1a
+pacchetto base mobile-base-1 4b5ad20b4665809d0569192536efab4150fd2d3d08d6f4d701b1e4426b27199f
 
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"
