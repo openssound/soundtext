@@ -1,0 +1,196 @@
+{
+ "nome": "SoundText Elettronico",
+ "titolo": "Pacchetto elettronico",
+ "copyright": "Suoni generati da mobile/tools/sintesi.py (nessuna libreria di terzi)",
+ "commento": "Pacchetto elettronico di SoundText Mobile, costruito da mobile/tools/costruisci_sf3.py",
+ "limite_mb": 10,
+ "strumenti": [
+  {
+   "programma": 38,
+   "nome": "Synth Bass 1",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "basso_saw",
+    "parametri": {
+     "quadra": 0.4,
+     "risonanza": 1.2
+    },
+    "estensione": [
+     24,
+     72
+    ],
+    "passo": 3
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -3.7
+  },
+  {
+   "programma": 39,
+   "nome": "Synth Bass 2",
+   "classe": "organo",
+   "tipo": "colpo",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "basso_808",
+    "parametri": {
+     "salita": 1.2,
+     "decadimento": 1.4
+    },
+    "estensione": [
+     24,
+     60
+    ],
+    "passo": 3
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -2.0
+  },
+  {
+   "programma": 80,
+   "nome": "Square Lead",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "lead_pwm",
+    "parametri": {
+     "profondita": 0.18,
+     "velocita": 0.7
+    },
+    "estensione": [
+     48,
+     96
+    ],
+    "passo": 3
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": 4.6
+  },
+  {
+   "programma": 81,
+   "nome": "Saw Lead",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "lead_saw",
+    "parametri": {
+     "taglio": 12.0
+    },
+    "estensione": [
+     48,
+     96
+    ],
+    "passo": 3
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": 2.6
+  },
+  {
+   "programma": 88,
+   "nome": "New Age Pad",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "pad",
+    "parametri": {
+     "apertura": 4.0,
+     "chiusura": 12.0,
+     "tempo_filtro": 1.2,
+     "attacco": 0.5
+    },
+    "estensione": [
+     36,
+     96
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -0.4
+  },
+  {
+   "programma": 89,
+   "nome": "Warm Pad",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "pad",
+    "parametri": {
+     "apertura": 2.0,
+     "chiusura": 6.0,
+     "tempo_filtro": 1.0,
+     "attacco": 0.4
+    },
+    "estensione": [
+     36,
+     96
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -0.3
+  },
+  {
+   "programma": 90,
+   "nome": "Polysynth",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "lead_saw",
+    "parametri": {
+     "taglio": 10.0,
+     "scordatura": [
+      -6.0,
+      6.0
+     ],
+     "decadimento": 0.5,
+     "sostegno": 0.55
+    },
+    "estensione": [
+     36,
+     96
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -1.3
+  },
+  {
+   "programma": 95,
+   "nome": "Sweep Pad",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "pad",
+    "parametri": {
+     "apertura": 1.5,
+     "chiusura": 16.0,
+     "tempo_filtro": 2.5,
+     "attacco": 0.8
+    },
+    "estensione": [
+     36,
+     96
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "guadagno_db": -1.8
+  }
+ ],
+ "normalizza": true
+}

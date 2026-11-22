@@ -101,17 +101,22 @@ model vosk-model-small-fr-0.22 fr 8873b1234503f6edd55f54bfff31cf3e \
 model vosk-model-small-es-0.42 es 2d5c94f9859a84881a0ef744738ebd31 \
       09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f
 
-# Il pacchetto orchestra (6 MB, CC0): un SoundFont .sf3 costruito da mobile/tools/costruisci_sf3.py (workflow
-# "Pacchetto orchestra") e pubblicato fra gli asset di una release. Sta sullo stesso sito dell'app, con il suo
-# SHA-256 in un file accanto, e l'app lo scarica solo a richiesta (app/fonts.js). Finche' la release non c'e'
-# l'app non lo offre.
-ORCH_URL=https://github.com/openssound/soundtext/releases/download/mobile-orchestra-2/soundtext-orchestra.sf3
-ORCH_SHA=11ddfb4bfdfcafc70b8aa8589c5e8a9a3153a5670405678d3f057328dd8af1ca
-if [ -n "$ORCH_SHA" ] && curl -fsIL "$ORCH_URL" >/dev/null 2>&1; then
-  get "$ORCH_URL" $V/soundfont/soundtext-orchestra.sf3 "$ORCH_SHA"
-  printf '{"sha256": "%s", "bytes": %s}\n' "$ORCH_SHA" "$(stat -c %s $V/soundfont/soundtext-orchestra.sf3)" > $V/soundfont/soundtext-orchestra.json
-else
-  echo "pacchetto orchestra non pubblicato: l'app non lo offre"
-fi
+# I pacchetti di strumenti (CC0 e CC BY): SoundFont .sf3 costruiti da mobile/tools/costruisci_sf3.py (workflow "Pacchetti
+# di strumenti") e pubblicati fra gli asset di una release. Stanno sullo stesso sito dell'app, con il loro SHA-256 in un
+# file accanto, e l'app li scarica solo a richiesta (app/fonts.js). Finche' una release non c'e' l'app non offre il pacchetto.
+pacchetto() {  # nome release sha256
+  local url=https://github.com/openssound/soundtext/releases/download/$2/soundtext-$1.sf3
+  if [ -n "$3" ] && curl -fsIL "$url" >/dev/null 2>&1; then
+    get "$url" $V/soundfont/soundtext-$1.sf3 "$3"
+    printf '{"sha256": "%s", "bytes": %s}\n' "$3" "$(stat -c %s $V/soundfont/soundtext-$1.sf3)" > $V/soundfont/soundtext-$1.json
+  else
+    echo "pacchetto $1 non pubblicato: l'app non lo offre"
+  fi
+}
+pacchetto completo mobile-completo-1 5fd6ad5c998eded87f051505a437b73324d36a9140829298bbfb7d670bd4348e
+pacchetto orchestra mobile-orchestra-3 4c8874e4a38aa11810edf74d79fffcdc8a059f3cb0ea4dd0e3ed244e2f3777a1
+pacchetto acustico mobile-acustico-1 1279c23ed0f283fff319de10e2c6091d989469e77d57d14cbd5398b9b7b88a52
+pacchetto elettrico mobile-elettrico-1 12d4be093e45a7536f9ec7490fa83eeaeba2a67acfaf4edcb9426acdf7babcd7
+pacchetto elettronico mobile-elettronico-1 54120b9d8e999b82fcaa6c2182da94dbd05679d7868272cece227ec28f885605
 
 echo "vendor/ pronta: $(du -sh $V | cut -f1)"

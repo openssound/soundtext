@@ -8,7 +8,7 @@
 //   messi in cache al primo uso. Il SoundFont si scarica solo al primo Play.
 "use strict";
 
-const CACHE = "stmobile-v97";            // pagina e bundle: si cambia a ogni versione
+const CACHE = "stmobile-v104";            // pagina e bundle: si cambia a ogni versione
 const VENDOR = "stmobile-vendor-v1";     // Pyodide, wheel, FluidSynth, SoundFont: restano
 const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide, gestita da worker.js
 // I modelli della dettatura (50 MB l'uno) li conserva gia' Vosk nel suo
@@ -16,7 +16,7 @@ const KEEP = [CACHE, VENDOR, "stmobile-snapshot"];   // l'istantanea di Pyodide,
 // raddoppierebbe lo spazio occupato sul telefono.
 const VOICE_MODEL = /\/vendor\/vosk\/[^/]+\.tar\.gz$/;
 // Lo stesso per il pacchetto orchestra (50 MB): lo tiene IndexedDB (soundfonts.js) dopo il download
-const ORCHESTRA_PACK = /\/vendor\/soundfont\/soundtext-orchestra\.sf[23]$/;
+const ORCHESTRA_PACK = /\/vendor\/soundfont\/soundtext-[a-z]+\.sf[23]$/;
 const SHELL = [
   "./", "index.html", "diagnostica.html", "diagnostica.js", "style.css", "app/base.js", "app/text-edits.js", "app/editor.js", "app/voice.js", "app/fonts.js", "app/hum.js", "app/quick.js", "app/study.js", "app/backup.js", "app/access.js", "app/effects.js", "app/export.js", "app/pads.js", "app/exercises.js", "app/system.js", "app/songs-view.js", "app/create.js", "app/structure.js", "app/player.js", "app/score.js", "app/main.js",
   "metrics.js", "studio.js", "midicut.js", "svgsafe.js", "zip.js", "songs.js", "share.js", "progress.js", "fxchain.js", "soundfonts.js", "mp4.js", "wav.js", "export-worker.js", "worker.js", "score-worker.js", "voice-worklet.js", "i18n.js",

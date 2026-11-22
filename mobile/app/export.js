@@ -53,9 +53,10 @@ async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress
   const sf = await (await fetch(SOUNDFONT_URL)).arrayBuffer();
   // i SoundFont dell'utente: il predefinito e quelli delle tracce, ognuno col suo banco (come nel lettore)
   const extra = [];
-  if (fonts.defaultId) extra.push({ bytes: await SoundFonts.get(fonts.defaultId), bank: 0 });
+  const base = effectiveDefaultId();
+  if (base) extra.push({ bytes: await SoundFonts.get(base), bank: 0 });
   for (const font of new Set(Object.values(docFonts()))) {
-    if (font.id !== fonts.defaultId) extra.push({ bytes: await SoundFonts.get(font.id), bank: fontBank(font.id) });
+    if (font.id !== base) extra.push({ bytes: await SoundFonts.get(font.id), bank: fontBank(font.id) });
   }
   return new Promise((resolve, reject) => {
     const worker = new Worker("export-worker.js");

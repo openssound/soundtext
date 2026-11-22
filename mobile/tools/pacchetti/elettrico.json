@@ -1,0 +1,240 @@
+{
+ "nome": "SoundText Elettrico",
+ "titolo": "Pacchetto elettrico",
+ "copyright": "CC0 1.0 (FreePats, YR), CC BY 3.0 (Greg Sullivan, Wurlitzer EP200) e suoni generati (organo)",
+ "commento": "Pacchetto elettrico di SoundText Mobile, costruito da mobile/tools/costruisci_sf3.py",
+ "limite_mb": 25,
+ "strumenti": [
+  {
+   "programma": 4,
+   "nome": "Electric Piano 1",
+   "sorgente": "sorgenti",
+   "sfz": "epiano-vintage/Wurlitzer EP200/Wurlitzer EP200.sfz",
+   "classe": "piano",
+   "tipo": "colpo",
+   "licenza": "CC BY 3.0",
+   "attribuzione": "Greg Sullivan (Wurlitzer EP200), mappatura di kinwie, da sfzinstruments/GregSullivan.E-Pianos",
+   "guadagno_db": 0.5
+  },
+  {
+   "programma": 5,
+   "nome": "Electric Piano 2",
+   "sorgente": "sorgenti",
+   "sfz": "epiano/FM-Piano1 SFZ+FLAC-20190916/FM-Piano1 20190916.sfz",
+   "classe": "piano",
+   "tipo": "colpo",
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, FM-Piano1",
+   "guadagno_db": -4.2
+  },
+  {
+   "programma": 16,
+   "nome": "Drawbar Organ",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "organo",
+    "parametri": {
+     "registri": [
+      8,
+      8,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "estensione": [
+     24,
+     108
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py"
+  },
+  {
+   "programma": 17,
+   "nome": "Percussive Organ",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "organo",
+    "parametri": {
+     "registri": [
+      8,
+      0,
+      8,
+      8,
+      0,
+      0,
+      0,
+      0,
+      8
+     ],
+     "click": 0.8
+    },
+    "estensione": [
+     24,
+     108
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py"
+  },
+  {
+   "programma": 18,
+   "nome": "Rock Organ",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 44100,
+   "sintesi": {
+    "tipo": "organo",
+    "parametri": {
+     "registri": [
+      8,
+      8,
+      8,
+      8,
+      0,
+      0,
+      0,
+      0,
+      8
+     ]
+    },
+    "estensione": [
+     24,
+     108
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py",
+   "saturazione": 2.5
+  },
+  {
+   "programma": 27,
+   "nome": "Clean Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Electric Guitar FSBS clean",
+   "guadagno_db": -8.7
+  },
+  {
+   "programma": 28,
+   "nome": "Muted Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "parametri": {
+    "seconds": 0.5,
+    "release": 0.12
+   },
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Electric Guitar FSBS clean (note corte)",
+   "guadagno_db": 1.1
+  },
+  {
+   "programma": 29,
+   "nome": "Overdriven Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "chitarra-elettrica/EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "saturazione": 4.0,
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Electric Guitar FSBS clean, saturata nello script",
+   "guadagno_db": -0.5
+  },
+  {
+   "programma": 30,
+   "nome": "Distortion Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "chitarra-dist/EGuitarFSBS-dist1 SFZ+FLAC-20220911/EGuitarFSBS-dist1 bridge 20220911.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Electric Guitar FSBS dist1",
+   "guadagno_db": 1.9
+  },
+  {
+   "programma": 33,
+   "nome": "Fingered Bass",
+   "sorgente": "sorgenti",
+   "sfz": "basso/FingerBassYR SFZ+FLAC-20190930/FingerBassYR 20190930.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "dinamiche": [
+    100
+   ],
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Finger Bass YR",
+   "estendi_alto": 24,
+   "guadagno_db": 1.0
+  },
+  {
+   "programma": 34,
+   "nome": "Picked Bass",
+   "sorgente": "sorgenti",
+   "sfz": "basso-plettro/PickedBassYR SFZ+FLAC-20190930/PickedBassYR 20190930.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "dinamiche": [
+    100
+   ],
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Picked Bass YR",
+   "estendi_alto": 24,
+   "guadagno_db": 0.0
+  },
+  {
+   "programma": 35,
+   "nome": "Fretless Bass",
+   "sorgente": "sorgenti",
+   "sfz": "basso/FingerBassYR SFZ+FLAC-20190930/FingerBassYR 20190930.sfz",
+   "classe": "corde",
+   "tipo": "tenuto",
+   "dinamiche": [
+    100
+   ],
+   "parametri": {
+    "seconds": 2.0
+   },
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Finger Bass YR",
+   "estendi_alto": 24,
+   "guadagno_db": 2.1
+  },
+  {
+   "programma": 36,
+   "nome": "Slap Bass 1",
+   "sorgente": "sorgenti",
+   "sfz": "basso-plettro/PickedBassYR SFZ+FLAC-20190930/PickedBassYR 20190930.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "dinamiche": [
+    100
+   ],
+   "parametri": {
+    "release": 0.3
+   },
+   "licenza": "CC0 1.0",
+   "attribuzione": "FreePats, Picked Bass YR",
+   "estendi_alto": 24,
+   "guadagno_db": 2.6
+  }
+ ],
+ "normalizza": true,
+ "guadagno_pacchetto_db": -2.0
+}

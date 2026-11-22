@@ -85,8 +85,18 @@ function quickAnnounceChoice() {
     { genre: genre.label, mood: mood ? mood.label : "", duration: dur ? dur.label : "" });
 }
 
+// Le atmosfere del genere scelto, e solo quelle (ogni genere ha le sue, vedi core/quicksong.py): se quella scelta non e' fra
+// loro, si passa alla prima del genere
+function quickFillMoods() {
+  const g = genreData(quick.opts.genre);
+  const items = g ? quick.choices.moods.filter((m) => g.moods.includes(m.value)) : quick.choices.moods;
+  if (!items.some((m) => m.value === quick.opts.mood) && items.length) quick.opts.mood = items[0].value;
+  quickFill($("quickMood"), items, quick.opts.mood);
+}
+
 function quickPickGenre(id) {
   quick.opts.genre = id;
+  quickFillMoods();
   for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === id));
   quickDefaults();
   quickSave();
@@ -453,7 +463,7 @@ function quickAnnounce(made) {
 }
 
 function quickSyncControls() {
-  quickFill($("quickMood"), quick.choices.moods, quick.opts.mood);
+  quickFillMoods();
   quickFill($("quickDuration"), quick.choices.durations, quick.opts.duration);
   for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === quick.opts.genre));
   quickBuildDetail();

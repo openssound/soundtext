@@ -73,7 +73,8 @@ async function initAudio() {
   const sf = await resp.arrayBuffer();
   const download_ms = ms(t1);
   const t2 = performance.now();
-  await synth.loadSFont(sf);
+  showSoundsLoading("");
+  try { await synth.loadSFont(sf); } finally { hideSoundsLoading(); }
   const sfload_ms = ms(t2);
   state.synth = synth;
   fonts.loaded.clear();
@@ -276,6 +277,7 @@ async function renderMidi() {
   });
   if (state.song !== song || r.key !== midiKey()) return;   // superata da un'altra modifica
   state.midiKey = key;
+  if (typeof renderPackHint === "function") renderPackHint();
   if (state.previewing) { state.savedMidi = r.midi; return; }
   state.midi = r.midi;
   Metrics.record("lettore", { semitones: state.semitones, silent: silentTracks().length, metronome: state.metronome, ms: r.ms });

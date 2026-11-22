@@ -25,6 +25,15 @@
   <button id="copyShared" class="copy-shared" hidden data-i18n>Fai una copia</button>
 </header>
 
+<div id="soundsLoading" class="sounds-loading" role="status" aria-live="assertive" hidden>
+  <span class="sounds-spinner" aria-hidden="true"></span>
+  <span><strong id="soundsLoadingTitle"></strong> <span id="soundsLoadingText"></span></span>
+</div>
+<div id="packHint" class="pack-hint" role="status" hidden>
+  <span id="packHintText"></span>
+  <button id="packHintGet"></button>
+  <button id="packHintClose" aria-label="Chiudi" title="Chiudi">✕</button>
+</div>
 <p id="liveSay" class="visually-hidden" role="status" aria-live="polite"></p>
 <main>
   <!-- Brani -->
@@ -68,7 +77,7 @@
       <h3 data-i18n>Privacy</h3>
       <p class="hint" data-i18n>I tuoi brani restano sul tuo telefono: SoundText non ha un server e non raccoglie dati. Un link condiviso contiene il brano e lo vede solo chi lo riceve. La voce e il microfono sono elaborati sul telefono e non vengono inviati.</p>
       <h3 data-i18n>Informazioni</h3>
-      <p class="hint" data-i18n>SoundText è software libero (GPL v3). L'app usa FluidSynth (LGPL, con libsndfile, libogg e libvorbis: LGPL e BSD) con il SoundFont TimGM6mb (GPL), Pyodide (MPL), verovio (LGPL), Vosk (Apache 2.0). Il pacchetto orchestra è costruito da VSCO 2 CE e VCSL (Versilian Studios, CC0).</p>
+      <p class="hint" data-i18n>SoundText è software libero (GPL v3). L'app usa FluidSynth (LGPL, con libsndfile, libogg e libvorbis: LGPL e BSD) con il SoundFont TimGM6mb (GPL), Pyodide (MPL), verovio (LGPL), Vosk (Apache 2.0). I pacchetti di strumenti sono costruiti da VSCO 2 CE e VCSL (Versilian Studios, CC0), FreePats (CC0), Karoryfer Samples e D. Smolken (CC0), Splendid Grand Piano (pubblico dominio), il Wurlitzer EP200 di Greg Sullivan (CC BY 3.0) e suoni generati.</p>
     </details>
   </section>
 
@@ -220,13 +229,9 @@
     <details class="opts sf-box" id="sfBox">
       <summary data-i18n>SoundFont</summary>
       <p class="hint" data-i18n>Un SoundFont .sf2 o .sf3 (compresso) dal telefono suona al posto di quello incluso, e dal mixer si può dare un SoundFont diverso a una traccia. I file restano sul telefono. Le percussioni suonano sempre dal predefinito. Un file .sf3 pesa molto meno di un .sf2 con gli stessi campioni.</p>
-      <div id="sfPack" class="sf-pack" hidden>
-        <strong data-i18n>Pacchetto orchestra</strong>
-        <p id="sfPackInfo" class="hint"></p>
-        <label class="check"><input id="sfPackDefault" type="checkbox" checked> <span data-i18n>Usalo come SoundFont predefinito dopo il download</span></label>
-        <button id="sfPackGet" data-i18n>Scarica il pacchetto orchestra</button>
-        <progress id="sfPackProgress" max="1" value="0" hidden aria-label="Avanzamento del download"></progress>
-      </div>
+      <label class="check"><input id="sfAuto" type="checkbox" checked> <span data-i18n>Scegli da solo il pacchetto adatto al brano</span></label>
+      <label class="check"><input id="sfAutoDl" type="checkbox" checked> <span data-i18n>Scarica da solo i pacchetti consigliati (solo con il Wi-Fi)</span></label>
+      <div id="sfPacks"></div>
       <ul id="sfList" class="sf-list"></ul>
       <p id="sfHint" class="hint" data-i18n>Ancora nessun SoundFont tuo.</p>
       <label class="button"><span data-i18n>Carica SoundFont…</span><input id="sfFile" type="file" accept=".sf2,.sf3,application/octet-stream"></label>

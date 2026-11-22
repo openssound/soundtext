@@ -1,5 +1,5 @@
 """
-SoundText Mobile, fase 3: «Un brano in 60 secondi», la versione estesa (core/quicksong.py): 25 generi, 11 atmosfere,
+SoundText Mobile, fase 3: «Un brano in 60 secondi», la versione estesa (core/quicksong.py): 25 generi, 19 atmosfere,
 durate da 15 secondi a 4 minuti, forme, organici, finali, modulazione e le parti con il loro seme. Ogni brano deve
 essere valido (nessun avviso di battuta), suonare e durare quanto dice.
 """
@@ -49,7 +49,7 @@ def _valid(q, song, duration=None):
 
 def test_the_values_of_the_document_are_all_there(q):
     assert len(q.GENRES) == 25 and set(q.GENRES) == set(q.GENRES_DATA)
-    assert len(q.MOODS) == 11 and set(q.MOODS) == set(q.MOODS_DATA)
+    assert len(q.MOODS) == 19 and set(q.MOODS) == set(q.MOODS_DATA)
     assert q.DURATIONS == (15, 30, 45, 60, 90, 120, 180, 240)
     assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte"} and len(q.ENSEMBLES) == 5
     choices = q.quick_choices()

@@ -85,7 +85,8 @@ class Engine:
         self.text = text
         self.timings = {"parse_s": time.perf_counter() - t0}
         tracks = [{"name": t.name, "instrument": t.instrument_name,
-                   "percussion": bool(t.instrument.is_percussion)}
+                   "percussion": bool(t.instrument.is_percussion),
+                   "program": int(getattr(t.instrument, "gm_program", 0) or 0)}
                   for t in self.project.tracks if not t.is_audio]
         return {"name": name, "tracks": tracks, "bpm": self.project.tempo_bpm}
 

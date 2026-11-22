@@ -13,6 +13,7 @@ Il risultato e' sempre lo stesso a parità di sorgenti (stesso SHA-256): niente 
 metadati.
 
     python mobile/tools/costruisci_sf3.py --vsco CARTELLA/vsco --vcsl CARTELLA/vcsl --out orchestra.sf2
+    python mobile/tools/costruisci_sf3.py --pacchetto elettrico --sorgenti ~/Strumenti/sfz --out elettrico.sf3 --format sf3
 
 Le sorgenti si scaricano con scarica_strumenti.py (voci vsco-* e vcsl-*), o con scarica_orchestra() di quel file.
 Servono ffmpeg e numpy.
@@ -29,6 +30,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sintesi   # noqa: E402  (i suoni generati: organo, fisarmonica, suoni elettronici)
 
 RATE = 32000
 NOTE_NAMES = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
@@ -92,10 +96,34 @@ def note_number(value: str) -> int:
     return NOTE_NAMES[m.group(1)] + (1 if m.group(2) == "#" else -1 if m.group(2) == "b" else 0) + 12 * (int(m.group(3)) + 1)
 
 
-def parse_sfz(text: str) -> list:
+def preprocess(text: str, folder: Path | None = None, defines: dict | None = None, depth: int = 0) -> str:
+    """I #define («#define $EXT flac») e i #include («#include "file.sfz"») di un .sfz: $NOME sostituito nel testo e nei percorsi
+    dei #include, e ogni #include sostituito dal contenuto del file (relativo alla cartella di chi lo cita, barre rovesciate
+    dei percorsi Windows comprese). Senza 'folder' si risolvono solo i #define."""
+    defs = dict(defines or {})
+    defs.update(re.findall(r"^\s*#define\s+(\$\w+)\s+(\S+)", text, re.M))
+    text = re.sub(r"^\s*#define\b.*$", "", text, flags=re.M)
+    for name in sorted(defs, key=len, reverse=True):
+        text = text.replace(name, defs[name])
+    if folder is None or depth > 6:
+        return text
+
+    def include(match):
+        target = folder / match.group(1).replace("\\", "/")
+        if not target.exists():
+            return ""
+        return preprocess(target.read_text(encoding="utf-8", errors="replace"), target.parent, defs, depth + 1)
+    return re.sub(r'^\s*#include\s+"([^"]+)"', include, text, flags=re.M)
+
+
+def expand_defines(text: str) -> str:
+    return preprocess(text)
+
+
+def parse_sfz(text: str, folder: Path | None = None) -> list:
     """Le regioni di un .sfz come dizionari di opcode, con quelli di <global>, <master> e <group> sommati (la regione
-    vince). Le librerie dell'orchestra non usano #include ne' #define."""
-    return _inherit(text)
+    vince). Si capiscono i #define e, se si da' la cartella del file, i #include."""
+    return _inherit(preprocess(text, folder))
 
 
 def _inherit(text: str) -> list:
@@ -150,8 +178,8 @@ def control_path(text: str) -> str:
 
 def region_info(r: dict) -> dict | None:
     """key range, keycenter, velocita' di una regione; None se non e' una nota da tenere."""
-    if "sample" not in r or r.get("trigger", "attack") != "attack":
-        return None
+    if "sample" not in r or r.get("trigger", "attack") != "attack" or r["sample"].startswith("*"):
+        return None                                                  # (i campioni «*noise», «*sine»: oscillatori dell'SFZ, non file)
     if float(r.get("lorand", 0) or 0) > 0:
         return None                                                  # le altre alternanze
     seq = int(float(r.get("seq_position", 1)))
@@ -170,6 +198,34 @@ def region_info(r: dict) -> dict | None:
             "end": int(float(r["end"])) if "end" in r else None}
 
 
+def find_sample(folder: Path, sfz_path: Path, sample: str) -> Path:
+    """Il file di un campione: nella cartella di default_path, accanto all'.sfz, o (come nelle librerie Karoryfer, con gli
+    .sfz in Programs/) in ../Samples/."""
+    for candidate in (folder / sample, sfz_path.parent / sample, sfz_path.parent.parent / "Samples" / sample):
+        if candidate.exists():
+            return candidate
+    return folder / sample
+
+
+def synth_layers(spec: dict, rate: int, cfg: dict, kind: str = "tenuto") -> tuple:
+    """I campioni di un suono generato (mobile/tools/sintesi.py): uno ogni 'passo' semitoni nell'estensione, con gli stessi
+    confini a meta' strada e lo stesso anello dei campioni veri. Ritorna (regioni, campioni preparati)."""
+    low, high = spec.get("estensione", [28, 100])
+    step = int(spec.get("passo", 3))
+    centers = list(range(low, high + 1, step))
+    if centers[-1] != high:
+        centers.append(high)
+    layers, prepared = [], []
+    for i, center in enumerate(centers):
+        lo = max(0, center - 12) if i == 0 else (centers[i - 1] + center) // 2 + 1
+        hi = min(127, center + 12) if i == len(centers) - 1 else (center + centers[i + 1]) // 2
+        audio = sintesi.render(spec["tipo"], spec.get("parametri", {}), center, rate, float(cfg["seconds"]) + 0.5)
+        layers.append({"sample": f"{spec['tipo']}{center}", "lo": lo, "hi": hi, "center": center, "lovel": 0, "hivel": 127,
+                       "tune": 0.0, "offset": 0, "end": None})
+        prepared.append(prepare(audio, kind, 0, rate, cfg))
+    return layers, prepared
+
+
 def pick_layers(regions: list, velocity: int) -> list:
     """Una regione per ogni nota di riferimento: quella la cui dinamica contiene 'velocity' (o la piu' vicina)."""
     by_center: dict = {}
@@ -186,7 +242,7 @@ def pick_layers(regions: list, velocity: int) -> list:
     return picked
 
 
-def thin(picked: list, gap: int) -> list:
+def thin(picked: list, gap: int, extra: int = 12) -> list:
     """Una nota ogni 'gap' semitoni circa; i campioni tenuti coprono i tasti vicini. Il primo e l'ultimo restano."""
     if not picked:
         return []
@@ -197,7 +253,7 @@ def thin(picked: list, gap: int) -> list:
     if len(picked) > 1 and picked[-1]["center"] - keep[-1]["center"] >= 1:
         keep.append(picked[-1])
     low = max(0, min(p["lo"] for p in picked) - 12)                  # fuori dalla tessitura reale: un'ottava di campioni
-    high = min(127, max(p["hi"] for p in picked) + 12)                # trasposti, meglio del silenzio
+    high = min(127, max(p["hi"] for p in picked) + extra)             # trasposti, meglio del silenzio
     bounds = []                                                       # i confini a meta' strada fra le note tenute
     for i, p in enumerate(keep):
         lo = low if i == 0 else bounds[-1][1] + 1
@@ -210,26 +266,26 @@ def thin(picked: list, gap: int) -> list:
 # campioni
 # ---------------------------------------------------------------------------
 
-def decode(path: Path) -> np.ndarray:
-    """Il campione a 32 kHz mono, int16 -> float32 [-1, 1]."""
-    cmd = ["ffmpeg", "-v", "error", "-i", str(path), "-map_metadata", "-1", "-ac", "1", "-ar", str(RATE), "-f", "s16le", "pipe:1"]
+def decode(path: Path, rate: int = RATE) -> np.ndarray:
+    """Il campione alla frequenza 'rate' (32 kHz di solito) in mono, int16 -> float32 [-1, 1]."""
+    cmd = ["ffmpeg", "-v", "error", "-i", str(path), "-map_metadata", "-1", "-ac", "1", "-ar", str(rate), "-f", "s16le", "pipe:1"]
     raw = subprocess.run(cmd, check=True, capture_output=True).stdout
     return np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
 
 
-def prepare(audio: np.ndarray, kind: str, offset_frames: int = 0) -> tuple:
+def prepare(audio: np.ndarray, kind: str, offset_frames: int = 0, rate: int = RATE, cfg: dict | None = None) -> tuple:
     """(campione, inizio anello, fine anello) o (campione, None, None). Accorcia, toglie il silenzio iniziale,
     chiude con una dissolvenza; i suoni tenuti hanno un anello con il raccordo."""
-    cfg = KINDS[kind]
+    cfg = cfg or KINDS[kind]
     audio = audio[offset_frames:] if offset_frames else audio
     peak = float(np.max(np.abs(audio))) if len(audio) else 0.0
     if peak <= 0:
-        return audio[:RATE // 10], None, None
+        return audio[:rate // 10], None, None
     start = int(np.argmax(np.abs(audio) > peak * 0.02))                 # via il silenzio prima dell'attacco
     audio = audio[max(0, start - 16):]
-    n = min(len(audio), int(cfg["seconds"] * RATE))
+    n = min(len(audio), int(cfg["seconds"] * rate))
     audio = audio[:n].copy()
-    if kind == "tenuto" and n > int(1.4 * RATE):
+    if kind == "tenuto" and n > int(1.4 * rate):
         a = int(0.45 * n)
         window = 512
         best, best_cost = int(0.93 * n), None
@@ -243,7 +299,7 @@ def prepare(audio: np.ndarray, kind: str, offset_frames: int = 0) -> tuple:
         w = np.linspace(0.0, 1.0, fade, dtype=np.float32)
         audio[b - fade:b] = audio[b - fade:b] * (1 - w) + audio[a - fade:a] * w
         return audio[:b + window], a, b
-    fade = min(int(0.35 * RATE), n // 3)
+    fade = min(int(0.35 * rate), n // 3)
     audio[n - fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
     return audio, None, None
 
@@ -297,8 +353,8 @@ class SoundFont:
         self.instruments = []      # (nome, [zone: lista di (op, valore)])
         self.presets = []          # (nome, programma, indice dello strumento)
 
-    def add_sample(self, name, pcm, loop_a, loop_b, key, cents):
-        self.samples.append((name, pcm, loop_a, loop_b, key, cents))
+    def add_sample(self, name, pcm, loop_a, loop_b, key, cents, rate=RATE):
+        self.samples.append((name, pcm, loop_a, loop_b, key, cents, rate))
         return len(self.samples) - 1
 
     def add_instrument(self, name, zones):
@@ -311,7 +367,7 @@ class SoundFont:
     def to_bytes(self, info: dict, compressed: list | None = None) -> bytes:
         smpl = bytearray()
         shdr = bytearray()
-        for i, (name, pcm, la, lb, key, cents) in enumerate(self.samples):
+        for i, (name, pcm, la, lb, key, cents, rate) in enumerate(self.samples):
             if compressed is not None:                                    # SF3: i byte di Ogg Vorbis
                 blob = compressed[i]
                 start = len(smpl)
@@ -326,7 +382,7 @@ class SoundFont:
                 smpl += bytes(46 * 2)
                 loop_a, loop_b = start + (la or 0), start + (lb or 0)
                 stype = 1
-            shdr += name20(name) + struct.pack("<IIIIIBbHH", start, end, loop_a, loop_b, RATE, key, cents, 0, stype)
+            shdr += name20(name) + struct.pack("<IIIIIBbHH", start, end, loop_a, loop_b, rate, key, cents, 0, stype)
         shdr += name20("EOS") + struct.pack("<IIIIIBbHH", 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
         igen, ibag, inst = bytearray(), bytearray(), bytearray()
@@ -370,84 +426,220 @@ class SoundFont:
         return chunk(b"RIFF", body)
 
 
-def vorbis(pcm: np.ndarray) -> bytes:
-    cmd = ["ffmpeg", "-v", "error", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "pipe:0", "-map_metadata", "-1",
+def vorbis(pcm: np.ndarray, rate: int = RATE) -> bytes:
+    cmd = ["ffmpeg", "-v", "error", "-f", "s16le", "-ar", str(rate), "-ac", "1", "-i", "pipe:0", "-map_metadata", "-1",
            "-fflags", "+bitexact", "-flags:a", "+bitexact", "-c:a", "libvorbis", "-q:a", "3", "-f", "ogg", "pipe:1"]
     return subprocess.run(cmd, input=pcm.tobytes(), check=True, capture_output=True).stdout
 
 
 # ---------------------------------------------------------------------------
-# la costruzione
+# i pacchetti: l'elenco degli strumenti sta in un file di dati (mobile/tools/pacchetti/NOME.json)
 # ---------------------------------------------------------------------------
 
-def build(sources: dict, fmt: str = "sf2", log=print, instruments: list | None = None) -> tuple:
+PACCHETTI = Path(__file__).resolve().parent / "pacchetti"
+
+# La qualita' per classe di strumento (docs, sezione 2): frequenza, dinamiche (velocity dei livelli) e ogni quanti semitoni si
+# tiene un campione. Un file di dati puo' cambiare ognuna di queste voci per uno strumento.
+CLASSI = {
+    "piano": {"frequenza": 44100, "dinamiche": [60, 110], "gap": 3},
+    "corde": {"frequenza": 44100, "dinamiche": [60, 110], "gap": 4},
+    "fiato": {"frequenza": 32000, "dinamiche": [100], "gap": 3},
+    "organo": {"frequenza": 32000, "dinamiche": [100], "gap": 3},
+}
+
+
+def orchestra_spec(instruments: list | None = None) -> dict:
+    """Il pacchetto orchestra, dalla tabella INSTRUMENTS (stessa qualita' di sempre: 32 kHz, una dinamica, una nota ogni tre)."""
+    instruments = INSTRUMENTS if instruments is None else instruments
+    return {"nome": "SoundText Orchestra", "copyright": "CC0 1.0: VSCO 2 CE e VCSL (Versilian Studios)",
+            "commento": "Pacchetto orchestra di SoundText Mobile, costruito da mobile/tools/costruisci_sf3.py",
+            "strumenti": [{"programma": p, "nome": n, "sorgente": src, "sfz": f, "tipo": k, "dinamiche": [v],
+                           "frequenza": RATE, "gap": KINDS[k]["gap"], "guadagno_db": GAIN_DB.get(p, 0), "licenza": "CC0"}
+                          for p, n, src, f, k, v in instruments]}
+
+
+def completo_spec() -> dict:
+    """Tutti gli strumenti in un solo SoundFont: l'orchestra e gli altri tre pacchetti, un solo strumento per programma (vale il
+    primo, nell'ordine orchestra, acustico, elettrico, elettronico). Il ritocco di volume di ogni pacchetto passa agli strumenti."""
+    entries, seen, titles = [], set(), []
+    for name in ("orchestra", "acustico", "elettrico", "elettronico"):
+        spec = orchestra_spec() if name == "orchestra" else json.loads((PACCHETTI / f"{name}.json").read_text(encoding="utf-8"))
+        titles.append(spec["nome"].replace("SoundText ", ""))
+        for entry in spec["strumenti"]:
+            if entry["programma"] in seen:
+                continue
+            seen.add(entry["programma"])
+            entries.append({**entry, "guadagno_db": entry.get("guadagno_db", 0) + spec.get("guadagno_pacchetto_db", 0), "pacchetto": name})
+    return {"nome": "SoundText Completo", "titolo": "Tutti gli strumenti", "limite_mb": 25, "normalizza": True,
+            "copyright": "CC0 1.0, pubblico dominio, CC BY 3.0 (Greg Sullivan, Wurlitzer EP200) e suoni generati",
+            "commento": "Orchestra, acustico, elettrico ed elettronico di SoundText Mobile in un solo SoundFont, costruito da "
+                        "mobile/tools/costruisci_sf3.py", "strumenti": entries}
+
+
+def carica_pacchetto(nome: str) -> dict:
+    if nome == "orchestra":
+        return orchestra_spec()
+    if nome == "completo":
+        return completo_spec()
+    return json.loads((PACCHETTI / f"{nome}.json").read_text(encoding="utf-8"))
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _velocity_bounds(velocities: list) -> list:
+    """(lovel, hivel) di ogni livello: i confini a meta' strada fra le dinamiche scelte."""
+    vs = sorted(velocities)
+    cuts = [(a + b) // 2 for a, b in zip(vs, vs[1:])]
+    lows = [0] + [c + 1 for c in cuts]
+    highs = cuts + [127]
+    return list(zip(lows, highs))
+
+
+def build(sources: dict, fmt: str = "sf2", log=print, spec: dict | None = None, limit_mb: float | None = None,
+          instruments: list | None = None) -> tuple:
+    """(byte del SoundFont, rapporto). 'sources' dice dove sta ogni sorgente (la chiave 'sorgente' di ogni strumento)."""
+    spec = spec or orchestra_spec(instruments)
     sf = SoundFont()
     report = []
     cache: dict = {}
-    for program, name, source, sfz_name, kind, velocity in sorted(instruments or INSTRUMENTS):
-        sfz_path = sources[source] / sfz_name
-        text = sfz_path.read_text(encoding="utf-8", errors="replace")
-        folder = sfz_path.parent / control_path(text)
-        layers = thin(pick_layers(parse_sfz(text), velocity), KINDS[kind]["gap"])
-        if not layers:
-            raise SystemExit(f"nessun campione in {sfz_path}")
-        cfg = KINDS[kind]
-        prepared = []
-        for layer in layers:
-            key = (str(folder), layer["sample"], kind, layer["offset"])
-            if key not in cache:
-                wav = (folder / layer["sample"]) if (folder / layer["sample"]).exists() else sfz_path.parent / layer["sample"]
-                audio = decode(wav)
-                if layer["end"]:
-                    audio = audio[: int(layer["end"] * RATE / 44100)]
-                cache[key] = prepare(audio, kind, int(layer["offset"] * RATE / 44100))
-            prepared.append(cache[key])
-        # il volume: lo stesso RMS per tutti gli strumenti, misurato sul primo secondo dei campioni di mezzo
+    sizes = {}
+    for entry in sorted(spec["strumenti"], key=lambda e: (e["programma"], e["nome"])):
+        program, name, source, kind = entry["programma"], entry["nome"], entry.get("sorgente", "sintesi"), entry["tipo"]
+        sfz_name = entry.get("sfz", "")
+        cls = {**CLASSI.get(entry.get("classe", ""), {}), **{k: entry[k] for k in ("frequenza", "dinamiche", "gap") if k in entry}}
+        rate, velocities, gap = cls.get("frequenza", RATE), cls.get("dinamiche", [100]), cls.get("gap", KINDS[kind]["gap"])
+        if "sintesi" in entry:
+            sfz_path, sfz_name, regions, folder, source = None, entry["sintesi"]["tipo"], [], None, "sintesi"
+        else:
+            sfz_path = sources[source] / sfz_name
+        text = sfz_path.read_text(encoding="utf-8", errors="replace") if sfz_path else ""
+        if sfz_path:
+            folder = sfz_path.parent / control_path(preprocess(text, sfz_path.parent))
+            regions = parse_sfz(text, sfz_path.parent)
+        cfg = {**KINDS[kind], **entry.get("parametri", {})}             # es. {"seconds": 0.5, "release": 0.15} per una chitarra stoppata
+        bounds = _velocity_bounds(velocities)
+        per_layer = []                       # per ogni dinamica: [(regione, campione preparato)]
+        used = set()
+        for vel in sorted(velocities):
+            if "sintesi" in entry:
+                layers, prepared = synth_layers(entry["sintesi"], rate, cfg, kind)
+                if entry.get("saturazione"):
+                    drive = float(entry["saturazione"])
+                    prepared = [((np.tanh(drive * pcm) / np.tanh(drive)).astype(np.float32), a, b) for pcm, a, b in prepared]
+                per_layer.append((layers, prepared))
+                continue
+            layers = thin(pick_layers(regions, vel), gap, int(entry.get("estendi_alto", 12)))
+            if not layers:
+                raise SystemExit(f"nessun campione in {sfz_path}")
+            prepared = []
+            for layer in layers:
+                key = (str(folder), layer["sample"], kind, layer["offset"], rate, tuple(sorted(cfg.items())))
+                if key not in cache:
+                    wav = find_sample(folder, sfz_path, layer["sample"])
+                    audio = decode(wav, rate)
+                    if layer["end"]:
+                        audio = audio[: int(layer["end"] * rate / 44100)]
+                    cache[key] = prepare(audio, kind, int(layer["offset"] * rate / 44100), rate, cfg)
+                    used.add(str(wav))
+                pcm, loop_a, loop_b = cache[key]
+                if entry.get("saturazione"):                              # chitarra pulita -> saturata (docs, sezione 4)
+                    drive = float(entry["saturazione"])
+                    pcm = (np.tanh(drive * pcm) / np.tanh(drive)).astype(np.float32)
+                prepared.append((pcm, loop_a, loop_b))
+            per_layer.append((layers, prepared))
+        # il volume: lo stesso RMS per tutti gli strumenti, misurato sul primo secondo dei campioni di mezzo (di tutte le dinamiche)
         rms = []
-        for pcm, _a, _b in prepared:
-            seg = pcm[: RATE]
-            rms.append(float(np.sqrt(np.mean(seg ** 2))) if len(seg) else 0.0)
+        for _layers, prepared in per_layer:
+            for pcm, _a, _b in prepared:
+                seg = pcm[: rate]
+                rms.append(float(np.sqrt(np.mean(seg ** 2))) if len(seg) else 0.0)
         level = float(np.median(rms)) or 1e-3
-        scale = TARGET_RMS / level * 10 ** (GAIN_DB.get(program, 0) / 20)
+        scale = TARGET_RMS / level * 10 ** ((entry.get("guadagno_db", 0) + spec.get("guadagno_pacchetto_db", 0)) / 20)
         # (niente tetto sul picco: il limitatore dolce qui sotto schiaccia i picchi oltre 0,5, cosi' arpa e timpani,
         # che hanno picchi alti sul volume medio, arrivano al livello degli altri strumenti)
-        zones = []
-        for layer, (pcm, la, lb) in zip(layers, prepared):
-            data = np.round(soft_limit(pcm * scale) * 32767.0).astype("<i2")
-            cents = int(round(layer["tune"]))
-            sid = sf.add_sample(f"{name[:12]} {layer['center']}", data, la, lb, layer["center"], max(-99, min(99, cents)))
-            zone = [(43, (layer["lo"], layer["hi"])), (44, (0, 127)),
-                    (34, timecents(cfg["attack"])), (38, timecents(cfg["release"]))]
-            if la is not None:
-                zone.append((54, 1))
-            zone += [(53, sid)]
-            zones.append(zone)
+        zones, total = [], 0
+        for (layers, prepared), (vlo, vhi) in zip(per_layer, bounds):
+            for layer, (pcm, la, lb) in zip(layers, prepared):
+                limited = soft_limit(pcm * scale)
+                attenuation = 0
+                if spec.get("normalizza", fmt == "sf3"):
+                    # Il motore dell'app (FluidSynth in WebAssembly con libsndfile) porta ogni campione compresso (SF3) al fondo
+                    # scala quando lo decomprime, qualunque livello gli si sia dato: il volume voluto si scrive allora come
+                    # attenuazione della zona (generatore 48), e il campione sta gia' al fondo scala. Vale uguale in un motore
+                    # che non normalizza.
+                    peak = float(np.max(np.abs(limited))) or 1.0
+                    boost = 0.98 / peak
+                    limited = limited * boost
+                    attenuation = max(0, min(1440, int(round(200 * math.log10(boost)))))
+                data = np.round(limited * 32767.0).astype("<i2")
+                cents = int(round(layer["tune"]))
+                label = f"{name[:9]} v{vlo} {layer['center']}" if len(per_layer) > 1 else f"{name[:12]} {layer['center']}"
+                sid = sf.add_sample(label, data, la, lb, layer["center"], max(-99, min(99, cents)), rate)
+                zone = [(43, (layer["lo"], layer["hi"])), (44, (vlo, vhi)),
+                        (34, timecents(cfg["attack"])), (38, timecents(cfg["release"]))]
+                if attenuation:
+                    zone.append((48, attenuation))
+                if la is not None:
+                    zone.append((54, 1))
+                zone += [(53, sid)]
+                zones.append(zone)
+                total += len(pcm)
         inst = sf.add_instrument(name, zones)
         sf.add_preset(name, program, inst)
-        seconds = sum(len(p) for p, _a, _b in prepared) / RATE
-        report.append({"program": program, "name": name, "samples": len(layers), "seconds": round(seconds, 1)})
-        log(f"  {program:3d} {name:20s} {len(layers):3d} campioni, {seconds:5.1f} s")
-    info = {"name": "SoundText Orchestra", "copyright": "CC0 1.0: VSCO 2 CE e VCSL (Versilian Studios)",
-            "comment": "Pacchetto orchestra di SoundText Mobile, costruito da mobile/tools/costruisci_sf3.py"}
+        seconds = total / rate
+        n_samples = sum(len(layers) for layers, _p in per_layer)
+        sizes[name] = total * 2 / (1 if fmt == "sf2" else 6)             # SF3: circa un sesto del PCM
+        report.append({"program": program, "name": name, "samples": n_samples, "seconds": round(seconds, 1), "pcm_bytes": total * 2,
+                       **({"license": entry["licenza"]} if "licenza" in entry else {}),
+                       **({"attribution": entry["attribuzione"]} if "attribuzione" in entry else {}),
+                       **({"source_sha256": _sha256_file(sfz_path), "source": f"{source}/{sfz_name}"} if sfz_path else
+                          {"source": "sintesi", "source_sha256": hashlib.sha256(
+                              (Path(sintesi.__file__).read_bytes() + json.dumps(entry["sintesi"], sort_keys=True).encode())).hexdigest()})})
+        log(f"  {program:3d} {name:20s} {n_samples:3d} campioni, {seconds:5.1f} s")
+    info = {"name": spec["nome"], "copyright": spec["copyright"], "comment": spec["commento"]}
     if fmt == "sf3":
-        compressed = [vorbis(pcm) for _n, pcm, *_rest in sf.samples]
-        return sf.to_bytes(info, compressed), report
-    return sf.to_bytes(info), report
+        compressed = [vorbis(smp[1], smp[6]) for smp in sf.samples]
+        data = sf.to_bytes(info, compressed)
+    else:
+        data = sf.to_bytes(info)
+    if limit_mb and len(data) > limit_mb * 1e6:
+        heaviest = sorted(sizes.items(), key=lambda kv: -kv[1])[:5]
+        raise SystemExit(f"il pacchetto pesa {len(data) / 1e6:.1f} MB, oltre il limite di {limit_mb} MB; i piu' pesanti: " +
+                         ", ".join(f"{n} (~{b / 1e6:.1f} MB)" for n, b in heaviest))
+    return data, report
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--vsco", type=Path, required=True, help="cartella delle sorgenti VSCO 2 CE")
-    p.add_argument("--vcsl", type=Path, required=True, help="cartella delle sorgenti VCSL")
+    p.add_argument("--pacchetto", default="orchestra", help="orchestra, o il nome di un file di mobile/tools/pacchetti/")
+    p.add_argument("--vsco", type=Path, help="cartella delle sorgenti VSCO 2 CE (pacchetto orchestra)")
+    p.add_argument("--vcsl", type=Path, help="cartella delle sorgenti VCSL (pacchetto orchestra)")
+    p.add_argument("--sorgenti", type=Path, help="la cartella di scarica_strumenti.py (una sottocartella per libreria)")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--format", choices=("sf2", "sf3"), default="sf2")
+    p.add_argument("--limite-mb", type=float, help="si ferma se il pacchetto pesa di piu' (default: quello del file di dati)")
     args = p.parse_args()
-    data, report = build({"vsco": args.vsco, "vcsl": args.vcsl}, args.format)
+    spec = carica_pacchetto(args.pacchetto)
+    sources = {k: v for k, v in (("vsco", args.vsco), ("vcsl", args.vcsl), ("sorgenti", args.sorgenti)) if v}
+    needed = {e["sorgente"] for e in spec["strumenti"] if "sorgente" in e}
+    if args.pacchetto == "completo":
+        needed = needed | {"vsco", "vcsl"}
+    if needed - set(sources):
+        raise SystemExit("mancano le cartelle delle sorgenti: " + ", ".join("--" + n for n in sorted(needed - set(sources))))
+    data, report = build(sources, args.format, spec=spec, limit_mb=args.limite_mb or spec.get("limite_mb"))
     args.out.write_bytes(data)
     digest = hashlib.sha256(data).hexdigest()
     print(f"{args.out}: {len(data) / 1e6:.1f} MB, SHA-256 {digest}")
     args.out.with_suffix(args.out.suffix + ".json").write_text(
-        json.dumps({"sha256": digest, "bytes": len(data), "instruments": report}, indent=1) + "\n")
+        json.dumps({"name": spec["nome"], "title": spec.get("titolo", spec["nome"]), "sha256": digest, "bytes": len(data),
+                    "pcm_bytes": sum(r.get("pcm_bytes", 0) for r in report),
+                    "instruments": report}, indent=1, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":

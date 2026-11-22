@@ -1,0 +1,161 @@
+{
+ "nome": "SoundText Acustico",
+ "titolo": "Pacchetto acustico",
+ "copyright": "CC0 1.0 e pubblico dominio (Splendid Grand Piano, AKAI): FreePats, Karoryfer, Smolken, VSCO 2 CE",
+ "commento": "Pacchetto acustico di SoundText Mobile, costruito da mobile/tools/costruisci_sf3.py",
+ "limite_mb": 25,
+ "strumenti": [
+  {
+   "programma": 0,
+   "nome": "Acoustic Grand Piano",
+   "sorgente": "sorgenti",
+   "sfz": "splendid-piano/Splendid Grand Piano.sfz",
+   "classe": "piano",
+   "tipo": "colpo",
+   "licenza": "pubblico dominio",
+   "attribuzione": "Splendid Grand Piano (campioni AKAI), mappatura di kinwie",
+   "guadagno_db": -11.5
+  },
+  {
+   "programma": 1,
+   "nome": "Bright Acoustic Piano",
+   "sorgente": "sorgenti",
+   "sfz": "upright/UprightPianoKW-small-SFZ+FLAC-20190703/UprightPianoKW-small-20190703.sfz",
+   "classe": "piano",
+   "tipo": "colpo",
+   "licenza": "CC0",
+   "attribuzione": "FreePats, Upright Piano KW",
+   "guadagno_db": -7.9
+  },
+  {
+   "programma": 21,
+   "nome": "Accordion",
+   "classe": "organo",
+   "tipo": "tenuto",
+   "frequenza": 32000,
+   "sintesi": {
+    "tipo": "fisarmonica",
+    "parametri": {
+     "voci": [
+      -6.0,
+      0.0,
+      6.0
+     ],
+     "scuro": 0.0
+    },
+    "estensione": [
+     36,
+     96
+    ],
+    "passo": 4
+   },
+   "licenza": "suono generato",
+   "attribuzione": "sintesi di mobile/tools/sintesi.py"
+  },
+  {
+   "programma": 24,
+   "nome": "Nylon Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "chitarra/SpanishClassicalGuitar-SFZ+FLAC-20190618/SpanishClassicalGuitar-20190618.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0",
+   "attribuzione": "FreePats, Spanish Classical Guitar",
+   "guadagno_db": -0.9
+  },
+  {
+   "programma": 25,
+   "nome": "Steel Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "shinyguitar/Shinyguitar/Programs/acoustic.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0",
+   "attribuzione": "Karoryfer Samples, Shinyguitar (acustica)",
+   "guadagno_db": -3.8
+  },
+  {
+   "programma": 26,
+   "nome": "Jazz Guitar",
+   "sorgente": "sorgenti",
+   "sfz": "shinyguitar/Shinyguitar/Programs/electric_one.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0",
+   "attribuzione": "Karoryfer Samples, Shinyguitar (elettrica)",
+   "guadagno_db": 0.3
+  },
+  {
+   "programma": 32,
+   "nome": "Acoustic Bass",
+   "sorgente": "sorgenti",
+   "sfz": "contrabbasso/dsmolken_double_bass/d_smolken_rubner_bass_pizz.sfz",
+   "classe": "corde",
+   "tipo": "pizz",
+   "licenza": "CC0",
+   "attribuzione": "D. Smolken, Double Bass (pizzicato)",
+   "dinamiche": [
+    100
+   ],
+   "estendi_alto": 12,
+   "guadagno_db": -4.9
+  },
+  {
+   "programma": 40,
+   "nome": "Violin",
+   "sorgente": "sorgenti",
+   "sfz": "vsco-archi/SViolinVib.sfz",
+   "classe": "fiato",
+   "tipo": "tenuto",
+   "licenza": "CC0",
+   "attribuzione": "Versilian Studios, VSCO 2 Community Edition",
+   "guadagno_db": -0.1
+  },
+  {
+   "programma": 56,
+   "nome": "Trumpet",
+   "sorgente": "sorgenti",
+   "sfz": "vsco-ottoni/TrumpetSusVib.sfz",
+   "classe": "fiato",
+   "tipo": "tenuto",
+   "licenza": "CC0",
+   "attribuzione": "Versilian Studios, VSCO 2 Community Edition",
+   "guadagno_db": 1.3
+  },
+  {
+   "programma": 65,
+   "nome": "Alto Sax",
+   "sorgente": "sorgenti",
+   "sfz": "weresax/Weresax/Programs/alto_map_forte_condenser.sfz",
+   "classe": "fiato",
+   "tipo": "tenuto",
+   "licenza": "CC0",
+   "attribuzione": "Karoryfer Samples, Weresax (contralto)",
+   "guadagno_db": 0.3
+  },
+  {
+   "programma": 66,
+   "nome": "Tenor Sax",
+   "sorgente": "sorgenti",
+   "sfz": "sax/TenorSaxophone-SFZ+FLAC-20200717/TenorSaxophone-20200717.sfz",
+   "classe": "fiato",
+   "tipo": "tenuto",
+   "licenza": "CC0",
+   "attribuzione": "FreePats, Tenor Saxophone",
+   "guadagno_db": -1.2
+  },
+  {
+   "programma": 71,
+   "nome": "Clarinet",
+   "sorgente": "sorgenti",
+   "sfz": "vsco-legni/ClarinetSus.sfz",
+   "classe": "fiato",
+   "tipo": "tenuto",
+   "licenza": "CC0",
+   "attribuzione": "Versilian Studios, VSCO 2 Community Edition",
+   "guadagno_db": 1.2
+  }
+ ],
+ "normalizza": true,
+ "guadagno_pacchetto_db": -3.0
+}

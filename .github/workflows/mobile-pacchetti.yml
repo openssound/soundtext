@@ -1,0 +1,78 @@
+name: Pacchetti di strumenti di SoundText Mobile
+
+# Costruisce un SoundFont .sf3 di strumenti (mobile/tools/costruisci_sf3.py, elenco in mobile/tools/pacchetti/) dalle
+# librerie libere, scaricate come fa SoundText sul computer (scarica_strumenti.py, commit fissi), e lo mette fra gli asset
+# di una release. Si lancia a mano: stampa lo SHA-256 da scrivere in mobile/scarica_vendor.sh (la riga «pacchetto ...»).
+# Lo stesso file esce a parita' di sorgenti.
+on:
+  workflow_dispatch:
+    inputs:
+      pacchetto:
+        description: "Il pacchetto da costruire"
+        type: choice
+        options:
+          - orchestra
+          - acustico
+          - elettrico
+          - elettronico
+          - completo
+        default: orchestra
+      tag:
+        description: "Tag della release (quello in scarica_vendor.sh), per esempio mobile-elettrico-1"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write          # crea la release e ci allega il pacchetto
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - name: Strumenti
+        run: |
+          pip install "numpy>=1.24,<2"
+          sudo apt-get install -y -qq p7zip-full
+          ffmpeg -version | head -1
+      - name: Librerie VSCO 2 CE e VCSL (orchestra)
+        if: inputs.pacchetto == 'orchestra' || inputs.pacchetto == 'completo'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import scarica_strumenti as s
+          dest = Path("sorgenti")
+          for nome in ("vsco-percussioni", "vsco-legni", "vsco-ottoni", "vsco-archi", "vcsl-vibrafono", "vcsl-clavicembalo"):
+              base = s.VSCO_BASE if nome.startswith("vsco") else s.VCSL_BASE
+              s.scarica_orchestra(nome, base, dest / nome.split("-")[0])
+          PY
+      - name: Librerie del pacchetto elettrico
+        if: inputs.pacchetto == 'elettrico' || inputs.pacchetto == 'completo'
+        run: python scarica_strumenti.py epiano-vintage epiano chitarra-elettrica chitarra-dist basso basso-plettro
+      - name: Librerie del pacchetto acustico
+        if: inputs.pacchetto == 'acustico' || inputs.pacchetto == 'completo'
+        run: |
+          python scarica_strumenti.py splendid-piano upright chitarra shinyguitar contrabbasso sax weresax vsco-archi vsco-legni vsco-ottoni
+      - name: Costruzione
+        run: |
+          if [ "${{ inputs.pacchetto }}" = orchestra ]; then
+            python mobile/tools/costruisci_sf3.py --pacchetto orchestra --vsco sorgenti/vsco --vcsl sorgenti/vcsl --out soundtext-orchestra.sf3 --format sf3
+          elif [ "${{ inputs.pacchetto }}" = completo ]; then
+            python mobile/tools/costruisci_sf3.py --pacchetto completo --vsco sorgenti/vsco --vcsl sorgenti/vcsl --sorgenti "$HOME/Strumenti/sfz" --out soundtext-completo.sf3 --format sf3
+          else
+            python mobile/tools/costruisci_sf3.py --pacchetto "${{ inputs.pacchetto }}" --sorgenti "$HOME/Strumenti/sfz" --out "soundtext-${{ inputs.pacchetto }}.sf3" --format sf3
+          fi
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum "soundtext-${{ inputs.pacchetto }}.sf3"
+          gh release view "${{ inputs.tag }}" >/dev/null 2>&1 || gh release create "${{ inputs.tag }}" \
+            --title "Pacchetto ${{ inputs.pacchetto }} di SoundText Mobile" --latest=false \
+            --notes "SoundFont .sf3 di strumenti per SoundText Mobile (${{ inputs.pacchetto }}), costruito con mobile/tools/costruisci_sf3.py da librerie libere (CC0 e CC BY: vedi il .json accanto). SHA-256: vedi il log del workflow."
+          gh release upload "${{ inputs.tag }}" "soundtext-${{ inputs.pacchetto }}.sf3" "soundtext-${{ inputs.pacchetto }}.sf3.json" --clobber
