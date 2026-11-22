@@ -31,6 +31,12 @@ async function loadFontList() {
   } catch (e) {}
 }
 
+// La «base»: un SoundFont che sta sotto tutto (sopra TimGM6mb, sotto i pacchetti) e copre quasi tutti gli strumenti con un suono migliore
+const isBaseFont = (font) => !!font && font.name === "soundtext-base.sf3";
+const allInOneInstalled = () => fonts.list.some((f) => f.name === "soundtext-completo.sf3");
+// (con «Tutti gli strumenti» la base non serve: l'orchestra, il rock e il resto stanno gia' li', e due file grandi pesano troppo)
+const baseFont = () => allInOneInstalled() ? null : (fonts.list.find(isBaseFont) || null);
+
 const fontByName = (name) => fonts.list.find((f) => f.name === name) || null;
 // il banco di un SoundFont che non e' il predefinito: 1, 2, 3... nell'ordine dell'elenco
 const fontBank = (id) => fonts.list.findIndex((f) => f.id === id) + 1;
@@ -43,7 +49,7 @@ const fontBank = (id) => fonts.list.findIndex((f) => f.id === id) + 1;
 // caricano solo i pacchetti che il brano usa davvero.
 
 function installedPacks() {
-  return PACKS.map((pack) => ({ pack, font: fonts.list.find((f) => f.name === pack.file) })).filter((x) => x.font);
+  return PACKS.filter((pack) => !pack.underlay).map((pack) => ({ pack, font: fonts.list.find((f) => f.name === pack.file) })).filter((x) => x.font);
 }
 
 // il genere di un brano fatto da «Un brano in 60 secondi» (nel commento «// quick: {...}»), o ""
@@ -76,7 +82,7 @@ function soundPlan(doc = state.doc) {
     }
   }
   // il pacchetto consigliato: quello che copre di piu' fra tutti, se copre almeno meta' del brano e non c'e' ancora
-  const singles = PACKS.filter((p) => p.id !== "completo");
+  const singles = PACKS.filter((p) => p.id !== "completo" && !p.underlay);
   const best = singles.slice().sort((a, b) => score(b) - score(a))[0];
   const bestInstalled = best && have.some((x) => x.pack.id === best.id);
   if (best && covered(best) * 2 >= tracks.length && !bestInstalled && !(plan.defaultId && covered(best) <= covered(ranked[0].pack))) plan.recommend = best;
@@ -118,6 +124,8 @@ function fontBanks(doc = state.doc) {
 // Quelli che non servono piu' si scaricano dalla memoria.
 async function syncFonts(synth) {
   const needed = new Map();                       // id -> banco (0 = predefinito)
+  const underlay = baseFont();
+  if (underlay) needed.set(underlay.id, 0);                // per prima: sta sotto il predefinito e i pacchetti
   const base = effectiveDefaultId();
   if (base) needed.set(base, 0);
   for (const font of Object.values(docFonts())) if (!needed.has(font.id)) needed.set(font.id, fontBank(font.id));
@@ -193,12 +201,15 @@ function renderSoundsInUse() {
   if (!state.doc) { line.hidden = true; return; }
   const names = [];
   const base = effectiveDefaultId();
-  const baseFont = base && fonts.list.find((f) => f.id === base);
-  names.push(baseFont ? fontLabel(baseFont) : t("TimGM6mb (incluso)"));
+  const chosen = base && fonts.list.find((f) => f.id === base);
+  if (chosen) names.push(fontLabel(chosen));
   for (const font of Object.values(docFonts())) {
     const label = fontLabel(font);
     if (!names.includes(label)) names.push(label);
   }
+  const underlay = baseFont();
+  const bottom = underlay ? fontLabel(underlay) : t("TimGM6mb (incluso)");
+  if (!names.includes(bottom)) names.push(bottom);
   line.textContent = t("Suoni: {names}", { names: names.join(" + ") });
   line.title = line.textContent;
   line.hidden = false;
@@ -209,12 +220,17 @@ function renderPackHint() {
   const box = $("packHint");
   if (!box) return;
   const plan = soundPlan();
-  const pack = plan.recommend && PACKS.find((p) => p.id === plan.recommend.id);
+  let pack = plan.recommend && PACKS.find((p) => p.id === plan.recommend.id);
+  const baseP = PACKS.find((p) => p.underlay);
+  // niente di consigliato per il brano: la base migliore, se manca (vale per tutti i brani)
+  if (!pack && baseP && baseP.info && !baseFont() && !allInOneInstalled() && !fonts.list.some(isBaseFont)) pack = baseP;
   box.hidden = true;
   if (!pack || !pack.info || packHintDismissed.has(pack.id) || packBusy) return;
   if (fonts.autoDownload && onWifi()) { downloadPack(pack, { auto: true }).catch(showError); return; }
   const size = fontMegabytes(pack.info.bytes);
-  $("packHintText").textContent = t("Questo brano suona meglio con «{title}» ({size} MB).", { title: pack.title(), size });
+  $("packHintText").textContent = pack.underlay
+    ? t("Tutti i brani suonano meglio con «{title}» ({size} MB).", { title: pack.title(), size })
+    : t("Questo brano suona meglio con «{title}» ({size} MB).", { title: pack.title(), size });
   $("packHintGet").textContent = t("Scarica");
   $("packHintGet").onclick = () => { box.hidden = true; downloadPack(pack).catch(showError); };
   $("packHintClose").onclick = () => { packHintDismissed.add(pack.id); box.hidden = true; };
@@ -245,12 +261,13 @@ function renderFonts() {
   renderSoundsInUse();
   const ul = $("sfList");
   ul.innerHTML = "";
-  const row = (id, title, detail, extra) => {
+  const row = (id, title, detail, extra, noRadio = false) => {
     const li = document.createElement("li");
     const label = document.createElement("label");
     const radio = document.createElement("input");
     radio.type = "radio"; radio.name = "sfDefault"; radio.checked = fonts.defaultId === id;
     radio.onchange = () => setDefaultFont(id).catch(showError);
+    radio.hidden = noRadio;                          // la base non si sceglie come predefinito: sta sempre sotto
     const text = document.createElement("span");
     text.textContent = title;
     const small = document.createElement("small");
@@ -269,7 +286,7 @@ function renderFonts() {
     del.setAttribute("aria-label", t("Elimina il SoundFont {name}", { name: f.name }));
     del.onclick = () => removeFont(f.id).catch(showError);
     row(f.id, f.title && f.title !== f.name ? f.title : f.name, `${f.name} · ${t("{size} MB", { size: fontMegabytes(f.size) })}` +
-        (f.size > FONT_BIG_BYTES ? " · " + t("grande: su un telefono con poca memoria può non caricarsi") : ""), del);
+        (f.size > FONT_BIG_BYTES ? " · " + t("grande: su un telefono con poca memoria può non caricarsi") : ""), del, isBaseFont(f));
   }
   $("sfHint").hidden = fonts.list.length > 0;
   if (typeof renderPack === "function") renderPack();
@@ -324,12 +341,12 @@ async function removeFont(id) {
 
 // Il menu di una traccia nel mixer: Predefinito o uno dei SoundFont dell'utente
 function fontSelectFor(track) {
-  if (!fonts.list.length || track.percussion) return null;
+  if (!fonts.list.some((f) => !isBaseFont(f)) || track.percussion) return null;
   const select = document.createElement("select");
   select.className = "sfsel";
   select.setAttribute("aria-label", t("SoundFont di {name}", { name: track.name }));
   select.add(new Option(t("SoundFont: predefinito"), ""));
-  for (const f of fonts.list) select.add(new Option(f.title && f.title !== f.name ? f.title : f.name, f.name));
+  for (const f of fonts.list) if (!isBaseFont(f)) select.add(new Option(f.title && f.title !== f.name ? f.title : f.name, f.name));
   select.value = (state.doc && state.doc.fonts && state.doc.fonts[track.name]) || "";
   if (select.value !== ((state.doc && state.doc.fonts && state.doc.fonts[track.name]) || "")) select.value = "";
   select.onchange = () => {
@@ -352,6 +369,10 @@ function fontSelectFor(track) {
 // SHA-256 e l'elenco degli strumenti in un .json accanto.
 
 const PACKS = [
+  { id: "base", underlay: true, programs: [], replaces: [],
+    title: () => t("Base di suoni"),
+    what: () => t("Un suono migliore per quasi tutti gli strumenti, al posto di TimGM6mb: chitarre, bassi, archi, ottoni, sax, flauti, sintetizzatori e più kit di batteria."),
+    license: () => t("licenza MIT (MuseScore General)") },
   { id: "completo", programs: [0,1,4,5,6,9,11,12,13,14,16,17,18,21,24,25,26,27,28,29,30,32,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,56,57,58,59,60,61,65,66,68,70,71,72,73,80,81,88,89,90,95], replaces: ["soundtext-orchestra.sf2", "soundtext-orchestra.sf3", "soundtext-acustico.sf3", "soundtext-elettrico.sf3", "soundtext-elettronico.sf3"],
     title: () => t("Tutti gli strumenti"),
     what: () => t("Orchestra, acustico, elettrico ed elettronico in un solo file: ogni strumento ha il suo suono, senza scegliere un pacchetto."),
@@ -405,6 +426,7 @@ function buildPackBoxes() {
     const span = document.createElement("span");
     span.textContent = t("Usalo come SoundFont predefinito dopo il download");
     label.append(p.defaultEl, document.createTextNode(" "), span);
+    label.hidden = !!p.underlay;                     // la base non diventa il predefinito: sta sempre sotto
     p.getEl = document.createElement("button");
     p.getEl.onclick = () => downloadPack(p).catch(showError);
     p.barEl = document.createElement("progress");
@@ -437,7 +459,7 @@ function renderPack() {
     const installed = fonts.list.some((f) => f.name === p.file);
     const legacy = (p.replaces || []).some((n) => fonts.list.some((f) => f.name === n));
     const allInOne = PACKS.find((x) => x.id === "completo");
-    const coveredByAll = p.id !== "completo" && allInOne && fonts.list.some((f) => f.name === allInOne.file);
+    const coveredByAll = p.id !== "completo" && !p.underlay && allInOne && fonts.list.some((f) => f.name === allInOne.file);
     p.boxEl.hidden = !p.info || installed || coveredByAll;
     if (!p.info) continue;
     const size = fontMegabytes(p.info.bytes);
@@ -488,12 +510,15 @@ async function downloadPack(p, opts = {}) {
     const legacyWasDefault = replaced.some((f) => fonts.defaultId === f.id);
     await addFont(new File([blob], p.file));
     const added = fonts.list.find((f) => f.name === p.file);
+    if (p.underlay && state.synth) resetSynth();                // la base va caricata sotto tutto: il sintetizzatore si rifa'
     if (replaced.length && added) {                // il nuovo file prende il posto dei vecchi: si libera lo spazio
       for (const f of replaced) await SoundFonts.remove(f.id);
       await loadFontList();
       if (state.synth) resetSynth();
     }
-    if (added && (legacyWasDefault || (!opts.auto && p.defaultEl.checked))) {
+    if (p.underlay) {
+      fontSay(t("«{title}» pronta: suona sotto tutti i pacchetti. La senti dal prossimo Play.", { title: p.title() }));
+    } else if (added && (legacyWasDefault || (!opts.auto && p.defaultEl.checked))) {
       await setDefaultFont(added.id);
       fontSay(t("«{title}» pronto: è il SoundFont predefinito. Lo senti dal prossimo Play.", { title: p.title() }));
     } else {

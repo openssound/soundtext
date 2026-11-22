@@ -16,6 +16,7 @@ on:
           - elettrico
           - elettronico
           - completo
+          - base
         default: orchestra
       tag:
         description: "Tag della release (quello in scarica_vendor.sh), per esempio mobile-elettrico-1"
@@ -59,9 +60,17 @@ jobs:
         if: inputs.pacchetto == 'acustico' || inputs.pacchetto == 'completo'
         run: |
           python scarica_strumenti.py splendid-piano upright chitarra shinyguitar contrabbasso sax weresax vsco-archi vsco-legni vsco-ottoni
+      - name: MuseScore General (base)
+        if: inputs.pacchetto == 'base'
+        run: |
+          curl -fsSL -o MuseScore_General.sf3 https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3
+          echo "5b85b6c2c61d10b2b91cddd41efcce7b25cd31c8271d511c73afafbef20b6fa3  MuseScore_General.sf3" | sha256sum -c
+          curl -fsSL -o MuseScore_General_License.md https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General_License.md
       - name: Costruzione
         run: |
-          if [ "${{ inputs.pacchetto }}" = orchestra ]; then
+          if [ "${{ inputs.pacchetto }}" = base ]; then
+            python mobile/tools/riduci_sf3.py --in MuseScore_General.sf3 --out soundtext-base.sf3
+          elif [ "${{ inputs.pacchetto }}" = orchestra ]; then
             python mobile/tools/costruisci_sf3.py --pacchetto orchestra --vsco sorgenti/vsco --vcsl sorgenti/vcsl --out soundtext-orchestra.sf3 --format sf3
           elif [ "${{ inputs.pacchetto }}" = completo ]; then
             python mobile/tools/costruisci_sf3.py --pacchetto completo --vsco sorgenti/vsco --vcsl sorgenti/vcsl --sorgenti "$HOME/Strumenti/sfz" --out soundtext-completo.sf3 --format sf3
@@ -77,3 +86,4 @@ jobs:
             --title "Pacchetto ${{ inputs.pacchetto }} di SoundText Mobile" --latest=false \
             --notes "SoundFont .sf3 di strumenti per SoundText Mobile (${{ inputs.pacchetto }}), costruito con mobile/tools/costruisci_sf3.py da librerie libere (CC0 e CC BY: vedi il .json accanto). SHA-256: vedi il log del workflow."
           gh release upload "${{ inputs.tag }}" "soundtext-${{ inputs.pacchetto }}.sf3" "soundtext-${{ inputs.pacchetto }}.sf3.json" --clobber
+          if [ "${{ inputs.pacchetto }}" = base ]; then gh release upload "${{ inputs.tag }}" MuseScore_General_License.md --clobber; fi

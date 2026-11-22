@@ -3482,5 +3482,10 @@
  "🔊 Suona": "🔊 Jouer",
  "Aspetta qualche secondo: finché non è pronto non si può suonare né creare.": "Attends quelques secondes : tant qu'il n'est pas prêt, on ne peut ni jouer ni créer.",
  "({s} s)": "({s} s)",
- "Suoni: {names}": "Sons : {names}"
+ "Suoni: {names}": "Sons : {names}",
+ "Base di suoni": "Base de sons",
+ "Un suono migliore per quasi tutti gli strumenti, al posto di TimGM6mb: chitarre, bassi, archi, ottoni, sax, flauti, sintetizzatori e più kit di batteria.": "Un meilleur son pour presque tous les instruments, à la place de TimGM6mb : guitares, basses, cordes, cuivres, saxos, flûtes, synthétiseurs et plusieurs kits de batterie.",
+ "licenza MIT (MuseScore General)": "licence MIT (MuseScore General)",
+ "Tutti i brani suonano meglio con «{title}» ({size} MB).": "Tous les morceaux sonnent mieux avec « {title} » ({size} Mo).",
+ "«{title}» pronta: suona sotto tutti i pacchetti. La senti dal prossimo Play.": "« {title} » est prête : elle joue sous tous les paquets. Tu l'entendras au prochain Play."
 }

@@ -358,3 +358,60 @@ def test_the_electronic_package_file_has_the_kit_and_it_covers_what_the_rhythm_g
     assert _drum_notes_used_by_the_rhythm_generator() <= set(sintesi.DRUM_NOTES)
     complete = _tool().completo_spec()
     assert "kit" not in complete                                    # nel pacchetto completo le percussioni restano quelle di TimGM6mb
+
+
+def _reducer():
+    spec = importlib.util.spec_from_file_location("riduci_sf3", os.path.join(ROOT, "mobile", "tools", "riduci_sf3.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _synthetic_sf3(tool, tmp_path):
+    """Un SF3 di prova con tre programmi e una batteria, fatto con i suoni sintetici (al posto di MuseScore General)."""
+    spec = {"nome": "Prova", "copyright": "x", "commento": "x", "strumenti": [
+        {"programma": p, "nome": f"Synth {p}", "tipo": "tenuto", "classe": "organo", "frequenza": 32000,
+         "sintesi": {"tipo": "organo", "parametri": {"registri": [8, 8, 8, 0, 0, 0, 0, 0, 0]}, "estensione": [48, 72], "passo": 12}}
+        for p in (16, 17, 18)], "kit": [{"nome": "Kit", "programma": 0, "banco": 128, "frequenza": 32000}]}
+    data, _ = tool.build({}, "sf3", log=lambda *_: None, spec=spec)
+    path = tmp_path / "sorgente.sf3"
+    path.write_bytes(data)
+    return path
+
+
+def test_the_reducer_keeps_only_the_wanted_presets_and_their_samples_and_applies_the_gain(tmp_path):
+    tool, reducer = _tool(), _reducer()
+    source = reducer.SoundFont(_synthetic_sf3(tool, tmp_path))
+    everything = reducer.reduce_soundfont(source, [(0, 16), (0, 17), (0, 18), (128, 0)], {}, "Base", "prova")
+    part = reducer.reduce_soundfont(source, [(0, 17), (128, 0)], {"0/17": 6.0}, "Base", "prova")
+    assert len(part) < len(everything) and part[:4] == b"RIFF"
+    out = tmp_path / "ridotto.sf3"
+    out.write_bytes(part)
+    reduced = reducer.SoundFont(out)
+    assert [(h[2], h[1]) for h in reduced.phdr[:-1]] == [(0, 17), (128, 0)]
+    assert len(reduced.shdr) - 1 == 3 + len(tool.sintesi.DRUM_NOTES)                       # 3 note dell'organo + i colpi del kit
+    assert reducer.reduce_soundfont(source, [(0, 17), (128, 0)], {"0/17": 6.0}, "Base", "prova") == part      # sempre lo stesso
+    # +6 dB: l'attenuazione del preset scende di 6 dB / 0,4 = 15 dB = 150 centesimi di bel (cB, in 25 cB per dB)
+    gens = [(op, struct.unpack("<h", amount)[0]) for op, amount in reduced.pgen]
+    assert (48, -150) in gens
+    # niente ritocco: nessun generatore in piu'
+    flat = reducer.reduce_soundfont(source, [(0, 17)], {}, "Base", "prova")
+    assert all(op != 48 for op, _a in reducer.SoundFont(_write(tmp_path, "piatto.sf3", flat)).pgen)
+    # un preset che non c'e' si dice a voce alta
+    with pytest.raises(SystemExit):
+        reducer.reduce_soundfont(source, [(0, 99)], {}, "Base", "prova")
+
+
+def _write(tmp_path, name, data):
+    path = tmp_path / name
+    path.write_bytes(data)
+    return path
+
+
+def test_the_base_file_lists_valid_programs_and_kits_and_a_gain_per_program():
+    spec = json.loads(open(os.path.join(ROOT, "mobile", "tools", "pacchetti", "base.json"), encoding="utf-8").read())
+    assert len(spec["programmi"]) == len(set(spec["programmi"])) and all(0 <= p <= 127 for p in spec["programmi"])
+    assert not {0, 1, 2, 3} & set(spec["programmi"])                       # i pianoforti restano a TimGM6mb e al pacchetto acustico
+    assert 128 not in spec["batterie"] and 0 in spec["batterie"] and spec["limite_mb"] <= 20
+    assert all(abs(v) <= 12 for v in spec["guadagni_db"].values())
+    assert {f"0/{p}" for p in spec["programmi"]} <= set(spec["guadagni_db"])
