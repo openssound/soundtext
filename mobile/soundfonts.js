@@ -1,4 +1,4 @@
-// I SoundFont dell'utente: riconoscere un file .sf2 (e dire chiaro che un .sf3 questo motore non lo carica)
+// I SoundFont dell'utente: riconoscere un file .sf2 o .sf3 (campioni compressi, che questo motore legge)
 // e tenerli sul telefono, in IndexedDB, senza mandarli da nessuna parte. Si prova da Node con
 // mobile/tests/soundfonts.test.cjs (la parte che legge l'intestazione).
 "use strict";
@@ -6,7 +6,7 @@
 class SoundFontError extends Error {
   constructor(code, message) {
     super(message || code);
-    this.code = code;                      // "formato" | "sf3"
+    this.code = code;                      // "formato"
   }
 }
 
@@ -31,9 +31,9 @@ const SoundFontInfo = (() => {
       p += 8 + size + (size & 1);
     }
     if (!version) throw new SoundFontError("formato");
-    // un SF3 ha i campioni compressi in Ogg Vorbis (versione 3): la build di FluidSynth di questo
-    // motore non li legge
-    if (version[0] >= 3) throw new SoundFontError("sf3");
+    // un SF3 (versione 3) ha i campioni compressi in Ogg Vorbis: la FluidSynth di questo motore e' compilata con
+    // libsndfile e li legge; una versione che non e' la 2 ne' la 3 non si conosce
+    if (version[0] < 2 || version[0] > 3) throw new SoundFontError("formato");
     return { version, name };
   }
   return { inspect };

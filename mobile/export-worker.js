@@ -5,7 +5,7 @@
 // (serve alla clip video per tenere le immagini a tempo con l'audio).
 "use strict";
 
-importScripts("vendor/js-synthesizer/libfluidsynth-2.4.6.js", "vendor/js-synthesizer/js-synthesizer.js");
+importScripts("vendor/js-synthesizer/libfluidsynth-2.4.6-with-libsndfile.js", "vendor/js-synthesizer/js-synthesizer.js");
 
 const BLOCK = 1024;
 

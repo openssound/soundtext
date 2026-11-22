@@ -110,7 +110,7 @@ async function cached(url) {
 // primo Play e alla prima Partitura, entrano nella cache in background, uno
 // alla volta (il service worker li tiene in stmobile-vendor). Non se il
 // telefono chiede di risparmiare dati.
-const WORKLET_MODULES = ["vendor/js-synthesizer/libfluidsynth-2.4.6.js", "vendor/js-synthesizer/js-synthesizer.worklet.js"];
+const WORKLET_MODULES = ["vendor/js-synthesizer/libfluidsynth-2.4.6-with-libsndfile.js", "vendor/js-synthesizer/js-synthesizer.worklet.js"];
 // js-synthesizer.js lo carica la pagina, ma al primo avvio prima che il
 // service worker la controlli: senza questo non sarebbe nella cache.
 const OFFLINE_EXTRAS = ["vendor/js-synthesizer/js-synthesizer.js", ...WORKLET_MODULES, SOUNDFONT_URL,

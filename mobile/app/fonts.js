@@ -9,7 +9,7 @@
 // dal mixer. FluidSynth tiene piu' SoundFont insieme: ogni SoundFont oltre al predefinito ha un suo
 // scostamento di banco, e le note di una traccia scelgono il banco giusto con un Bank Select scritto nel
 // MIDI dal motore (engine.midi_bytes con banks). Le percussioni suonano sempre dal predefinito.
-// I file .sf3 (campioni in Ogg Vorbis) questo FluidSynth non li legge: si dice chiaro.
+// I file .sf3 (campioni in Ogg Vorbis) si leggono come gli .sf2: la FluidSynth e' quella con libsndfile.
 
 const fonts = { list: [], defaultId: "", loaded: new Map(), busy: null };
 const FONT_DEFAULT_KEY = "stmobile.soundfont";
@@ -152,10 +152,8 @@ async function addFont(file) {
     fontSay(t("«{name}» è tra i tuoi SoundFont ({size} MB). Scegli «{title}» come predefinito o assegnalo a una traccia dal mixer.",
               { name: meta.name, size: fontMegabytes(meta.size), title: meta.title || meta.name }));
   } catch (e) {
-    if (e instanceof SoundFontError && e.code === "sf3") {
-      fontSay(t("«{name}» è un SoundFont .sf3 (campioni compressi): il motore di SoundText Mobile non li legge. Serve un .sf2.", { name: file.name }), true);
-    } else if (e instanceof SoundFontError) {
-      fontSay(t("«{name}» non è un SoundFont .sf2.", { name: file.name }), true);
+    if (e instanceof SoundFontError) {
+      fontSay(t("«{name}» non è un SoundFont .sf2 o .sf3.", { name: file.name }), true);
     } else {
       fontSay(t("Non riesco a salvare «{name}»: {message}", { name: file.name, message: e.message }), true);
     }

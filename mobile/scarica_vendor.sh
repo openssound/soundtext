@@ -3,7 +3,7 @@
 # prototipo SoundText Mobile, con versioni fisse e controllo SHA-256:
 #   - Pyodide 314.0.7 (Python 3.14 in WebAssembly, MPL 2.0) con numpy e packaging;
 #   - st-language e mido, le stesse versioni di requirements.txt (wheel py3-none-any);
-#   - js-synthesizer 1.13.0 (FluidSynth 2.4.6 in WebAssembly, BSD-3 + LGPL 2.1);
+#   - js-synthesizer 1.13.0 (FluidSynth 2.4.6 in WebAssembly con libsndfile, per leggere i SoundFont .sf3: BSD-3 + LGPL 2.1);
 #   - il SoundFont TimGM6mb (GPL 2), dallo stesso pacchetto Debian di
 #     core/soundfont_downloads.py;
 #   - verovio 6.3.0 (incisione della partitura in WebAssembly, LGPL 3.0), la
@@ -55,11 +55,12 @@ test "$(openssl dgst -sha512 -binary "$TMP/jss.tgz" | base64 -w0)" = \
      "KXhyJcY90mUvJwbfF1aBNurodm16w8R/wrZYRRc+SSlm58EtL88bspbs7ixtAmoV9QQvf/2EuPAwxj2ExdZSmQ=="
 tar xzf "$TMP/jss.tgz" -C "$TMP"
 cp "$TMP/package/dist/js-synthesizer.js" "$TMP/package/dist/js-synthesizer.worklet.js" \
-   "$TMP/package/externals/libfluidsynth-2.4.6.js" "$TMP/package/LICENSE" $V/js-synthesizer/
+   "$TMP/package/externals/libfluidsynth-2.4.6-with-libsndfile.js" "$TMP/package/LICENSE" $V/js-synthesizer/
+rm -f $V/js-synthesizer/libfluidsynth-2.4.6.js   # la versione senza libsndfile (non legge gli SF3) non serve piu'
 ( cd $V/js-synthesizer && sha256sum -c --quiet <<'EOF'
 c7fac6ea6641c9b34ed68c9ea3bf506500f73236ed6389e77f214d627e2034b7  js-synthesizer.js
 1b5e85c6402546ad21e843f1a8499e6e0d278cc76cc97306135043734ede0078  js-synthesizer.worklet.js
-42ece3b53ef3289a3b30e0e1ebb4951e9da9987ae6ca975c57a0aabc91237f66  libfluidsynth-2.4.6.js
+c108b7f00ed348892d46f9e6236618d76ae7f3d2b6cb860b2990c0c2ce9dc67c  libfluidsynth-2.4.6-with-libsndfile.js
 EOF
 )
 

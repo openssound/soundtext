@@ -24,8 +24,9 @@ test("un .sf2 si riconosce, con versione e nome", () => {
   assert.deepStrictEqual(SoundFontInfo.inspect(header(2, 4, "Pari")).name, "Pari");       // nome di lunghezza pari: nessun riempimento
 });
 
-test("un .sf3 si rifiuta con un codice a parte, un file qualunque come formato sbagliato", () => {
-  assert.throws(() => SoundFontInfo.inspect(header(3, 1)), (e) => e instanceof SoundFontError && e.code === "sf3");
+test("un .sf3 si riconosce come un .sf2, un file qualunque (o una versione sconosciuta) come formato sbagliato", () => {
+  assert.deepStrictEqual(SoundFontInfo.inspect(header(3, 1, "Compresso")), { version: [3, 1], name: "Compresso" });
+  assert.throws(() => SoundFontInfo.inspect(header(4, 0)), (e) => e instanceof SoundFontError && e.code === "formato");
   const bad = (bytes) => assert.throws(() => SoundFontInfo.inspect(bytes), (e) => e instanceof SoundFontError && e.code === "formato");
   bad(new Uint8Array(0));
   bad(Uint8Array.from([0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, 0, 1, 1, 0xe0]));                        // un MIDI
@@ -46,5 +47,5 @@ test("i SoundFont veri del repository, se ci sono", () => {
   };
   const tim = read("TimGM6mb.sf2"), muse = read("MuseScore_General.sf3");
   if (tim) assert.deepStrictEqual(SoundFontInfo.inspect(tim).version, [2, 1]);
-  if (muse) assert.throws(() => SoundFontInfo.inspect(muse), (e) => e.code === "sf3");
+  if (muse) assert.strictEqual(SoundFontInfo.inspect(muse).version[0], 3);
 });

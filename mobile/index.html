@@ -68,7 +68,7 @@
       <h3 data-i18n>Privacy</h3>
       <p class="hint" data-i18n>I tuoi brani restano sul tuo telefono: SoundText non ha un server e non raccoglie dati. Un link condiviso contiene il brano e lo vede solo chi lo riceve. La voce e il microfono sono elaborati sul telefono e non vengono inviati.</p>
       <h3 data-i18n>Informazioni</h3>
-      <p class="hint" data-i18n>SoundText è software libero (GPL v3). L'app usa FluidSynth (LGPL) con il SoundFont TimGM6mb (GPL), Pyodide (MPL), verovio (LGPL), Vosk (Apache 2.0). Il pacchetto orchestra è costruito da VSCO 2 CE e VCSL (Versilian Studios, CC0).</p>
+      <p class="hint" data-i18n>SoundText è software libero (GPL v3). L'app usa FluidSynth (LGPL, con libsndfile, libogg e libvorbis: LGPL e BSD) con il SoundFont TimGM6mb (GPL), Pyodide (MPL), verovio (LGPL), Vosk (Apache 2.0). Il pacchetto orchestra è costruito da VSCO 2 CE e VCSL (Versilian Studios, CC0).</p>
     </details>
   </section>
 
@@ -219,7 +219,7 @@
     <button id="exportOpen" class="export-open" disabled data-i18n>Esporta audio e clip…</button>
     <details class="opts sf-box" id="sfBox">
       <summary data-i18n>SoundFont</summary>
-      <p class="hint" data-i18n>Un SoundFont .sf2 dal telefono suona al posto di quello incluso, e dal mixer si può dare un SoundFont diverso a una traccia. I file restano sul telefono. Le percussioni suonano sempre dal predefinito. I file .sf3 non si leggono.</p>
+      <p class="hint" data-i18n>Un SoundFont .sf2 o .sf3 (compresso) dal telefono suona al posto di quello incluso, e dal mixer si può dare un SoundFont diverso a una traccia. I file restano sul telefono. Le percussioni suonano sempre dal predefinito. Un file .sf3 pesa molto meno di un .sf2 con gli stessi campioni.</p>
       <div id="sfPack" class="sf-pack" hidden>
         <strong data-i18n>Pacchetto orchestra</strong>
         <p id="sfPackInfo" class="hint"></p>
@@ -229,7 +229,7 @@
       </div>
       <ul id="sfList" class="sf-list"></ul>
       <p id="sfHint" class="hint" data-i18n>Ancora nessun SoundFont tuo.</p>
-      <label class="button"><span data-i18n>Carica SoundFont…</span><input id="sfFile" type="file" accept=".sf2,application/octet-stream"></label>
+      <label class="button"><span data-i18n>Carica SoundFont…</span><input id="sfFile" type="file" accept=".sf2,.sf3,application/octet-stream"></label>
       <p id="sfStatus" class="hint" role="status" aria-live="polite"></p>
     </details>
     <h2 id="mixerTitle" data-i18n>Tracce</h2>
