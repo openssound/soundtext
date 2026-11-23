@@ -1166,7 +1166,7 @@ def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
 
 
 BASS_STYLES = ("root", "root_fifth", "walking", "pedal", "two_feel", "octaves", "blues",
-               "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie")
+               "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie", "funk16", "walk_up", "motown")
 
 
 def _note_token(pc: int, octave: int) -> str:
@@ -1309,6 +1309,19 @@ BASS_PATTERNS: Dict[str, dict] = {
                                      (2.0, "flat7"), (2.5, "sixth"), (3.0, "fifth"), (3.5, "third")],
                "variant": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "sixth"),
                            (2.0, "flat7"), (2.5, "sixth"), (3.0, "fifth"), (3.5, "approach")]},
+    # Funk a sedicesimi (slap): la fondamentale sull'"uno" e subito dopo, l'ottava e la settima di passaggio in sincope; la variante
+    # chiude sull'avvicinamento all'accordo che segue.
+    "funk16": {"grid": "16:", "bar": [(0.0, "root"), (0.5, "rest"), (0.75, "root"), (1.0, "rest"), (1.5, "root_hi"), (1.75, "flat7"),
+                                      (2.0, "root"), (2.5, "rest"), (2.75, "root"), (3.0, "rest"), (3.5, "fifth"), (3.75, "flat7")],
+               "variant": [(0.0, "root"), (0.5, "rest"), (0.75, "root"), (1.0, "rest"), (1.5, "root_hi"), (1.75, "flat7"),
+                           (2.0, "root"), (2.5, "rest"), (2.75, "fifth"), (3.0, "flat7"), (3.5, "fifth"), (3.75, "approach")]},
+    # Country: fondamentale e quinta sui quarti (boom), con l'avvicinamento cromatico all'accordo che segue sull'ultimo quarto.
+    "walk_up": {"grid": "4:", "bar": [(0.0, "root"), (1.0, "fifth"), (2.0, "root"), (3.0, "fifth")],
+                "variant": [(0.0, "root"), (1.0, "fifth"), (2.0, "root"), (3.0, "approach")]},
+    # Motown (soul): la fondamentale sull'uno e sul "levare" dopo, quinta e ottava in sincope, e una nota di passaggio sull'ultimo ottavo;
+    # la variante chiude sull'avvicinamento all'accordo che segue.
+    "motown": {"grid": "16:", "bar": [(0.0, "root"), (0.75, "root"), (1.5, "fifth"), (2.0, "root_hi"), (2.5, "fifth"), (3.0, "sixth"), (3.5, "fifth")],
+               "variant": [(0.0, "root"), (0.75, "root"), (1.5, "fifth"), (2.0, "root_hi"), (2.5, "flat7"), (3.0, "fifth"), (3.5, "approach")]},
     "waltz": {"grid": "4:", "bar": [(0.0, "root"), (1.0, "rest")],
               "variant": [(0.0, "root"), (1.0, "rest"), (2.0, "fifth")]},
     "shuffle": {"grid": "8T:", "bar": [(0.0, "root"), (2 * _T, "third"), (1.0, "fifth"), (1 + 2 * _T, "sixth"),
@@ -1523,6 +1536,14 @@ PATTERN_ALTS: Dict[str, List[list]] = {
                [(0.0, "rest"), (1.0, "root"), (2.0, "root"), (3.0, "fifth")]],
     "bossa": [[(0.0, "root"), (1.5, "root"), (2.0, "fifth"), (3.5, "fifth")],
               [(0.0, "root"), (1.5, "fifth"), (2.0, "fifth"), (3.5, "root")]],
+    "funk16": [[(0.0, "root"), (0.5, "rest"), (0.75, "flat7"), (1.0, "root"), (1.5, "rest"), (1.75, "root_hi"),
+                (2.0, "rest"), (2.25, "root"), (2.5, "flat7"), (3.0, "root"), (3.5, "fifth"), (3.75, "flat7")],
+               [(0.0, "root"), (0.25, "rest"), (0.5, "root"), (1.0, "rest"), (1.5, "fifth"), (1.75, "root"),
+                (2.0, "root_hi"), (2.5, "rest"), (2.75, "flat7"), (3.0, "fifth"), (3.5, "root"), (3.75, "approach")]],
+    "motown": [[(0.0, "root"), (0.75, "root"), (1.0, "third"), (1.5, "fifth"), (2.0, "sixth"), (2.5, "fifth"), (3.0, "third"), (3.5, "approach")],
+               [(0.0, "root"), (0.5, "rest"), (0.75, "root"), (1.5, "root_hi"), (2.0, "fifth"), (2.75, "fifth"), (3.0, "flat7"), (3.5, "fifth")]],
+    "walk_up": [[(0.0, "root"), (1.0, "third"), (2.0, "fifth"), (3.0, "approach")],
+                [(0.0, "root"), (1.0, "fifth"), (2.0, "root_hi"), (3.0, "fifth")]],
     "tumbao": [[(0.0, "rest"), (1.5, "root"), (2.5, "root"), (3.0, "fifth")],
                [(0.0, "rest"), (1.5, "root"), (3.0, "fifth"), (3.5, "fifth")]],
     "boogie": [[(0.0, "root"), (0.5, "root"), (1.0, "fifth"), (1.5, "fifth"), (2.0, "sixth"), (2.5, "sixth"), (3.0, "flat7"), (3.5, "sixth")],
@@ -1940,6 +1961,23 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                               (2.5, ["root", "third", "fifth"]), (3.0, "rest")]},
 
     # --- Accompagnamenti per genere (8.8.2) ---
+    # Scratch (chitarra funk): sedicesimi mutati con la terza, la settima di dominante e la fondamentale sopra, in sincope; il resto silenzio.
+    "scratch": {"grid": "16:", "polyphonic": True,
+                "bar": [(i * 0.25, ["third", "flat7", "root_hi"] if c == "x" else "rest") for i, c in enumerate("x.xx.xx.x.xx.xx.")],
+                "variant": [(i * 0.25, ["third", "flat7", "root_hi"] if c == "x" else "rest") for i, c in enumerate("x.x.xx.xx.x.xx.x")]},
+    # Comping del soul (pianoforte elettrico, organo): accordi con la settima e la nona, rilegati in sincope (uno, "e" del 2, 3, "e" del 4);
+    # la fondamentale la suona il basso. La variante anticipa il quarto tempo.
+    "soul_comp": {"grid": "16:", "polyphonic": True,
+                  "bar": [(0.0, ["third", "fifth", "seventh"]), (0.75, ["third", "fifth", "seventh"]), (1.25, ["third", "fifth", "seventh"]),
+                          (2.0, ["third", "fifth", "seventh"]), (2.75, ["third", "fifth", "seventh"]), (3.25, ["third", "fifth", "seventh"])],
+                  "variant": [(0.0, ["third", "fifth", "seventh"]), (1.0, ["third", "fifth", "seventh"]), (1.75, ["third", "fifth", "seventh"]),
+                              (2.5, ["third", "fifth", "seventh"]), (3.0, "rest"), (3.5, ["third", "fifth", "seventh"])]},
+    # Rullo di banjo (country): otto note per battuta in gruppi di tre, tre e due (fondamentale, terza, quinta).
+    "banjo_roll": {"grid": "8:", "polyphonic": True,
+                   "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "root"), (2.0, "third"), (2.5, "fifth"),
+                           (3.0, "root_hi"), (3.5, "fifth")],
+                   "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, "third"), (1.5, "root"), (2.0, "fifth"), (2.5, "third"),
+                               (3.0, "fifth"), (3.5, "third")]},
     # Pianoforte boogie-woogie (rock'n'roll, blues): la mano sinistra a ottavi (1-5-1-6-1-b7-1-6), la destra batte l'accordo sul 2 e sul 4,
     # tutto in una traccia; la variante porta la settima nell'accordo.
     "boogie_piano": {"grid": "8:", "polyphonic": True,
@@ -2232,6 +2270,14 @@ PROGRESSION_STYLES: Dict[str, dict] = {
     "minor_three": {"mode": "minor", "chords": [(0, "m", 1), (5, "m", 1), (7, "m", 1), (0, "m", 1)]},  # i-iv-v-i
     "minor_epic": {"mode": "minor", "chords": [(0, "m", 1), (8, "", 1), (10, "", 1), (0, "m", 1)]},    # i-VI-VII-i
     "dorian_vamp": {"mode": "minor", "chords": [(0, "m7", 2), (5, "7", 2)]},                           # i7-IV7
+    # funk: accordi di nona e di settima di dominante (non triadi), sul vamp
+    # soul: accordi di settima maggiore, di minore e di dominante (non triadi)
+    "soul_turn": {"mode": "major", "chords": [(0, "maj7", 1), (9, "m7", 1), (2, "m7", 1), (7, "7", 1)]},          # Imaj7-vi7-ii7-V7
+    "soul_plagal": {"mode": "major", "chords": [(0, "maj7", 1), (5, "maj7", 1), (5, "m7", 1), (0, "maj7", 1)]},  # I-IV-iv-I, la cadenza plagale del gospel
+    "soul_minor": {"mode": "minor", "chords": [(0, "m7", 1), (5, "m7", 1), (10, "maj7", 1), (7, "7", 1)]},        # i7-iv7-bVIImaj7-V7
+    "funk_vamp": {"mode": "major", "chords": [(0, "9", 2), (5, "9", 2)]},                                 # I9-IV9
+    "funk_walk": {"mode": "major", "flats": True, "chords": [(0, "9", 2), (10, "9", 1), (5, "9", 1)]},     # I9-bVII9-IV9
+    "funk_minor": {"mode": "minor", "flats": True, "chords": [(0, "m9", 2), (5, "9", 1), (10, "9", 1)]},  # i9-IV9-bVII9
     "line_cliche": {"mode": "minor", "chords": [(0, "m", 1), (0, "mMaj7", 1), (0, "m7", 1), (0, "m6", 1)]},
     "minor_circle": {"mode": "minor", "chords": [(0, "m7", 1), (5, "m7", 1), (10, "7", 1), (3, "maj7", 1),
                                                  (8, "maj7", 1), (2, "m7b5", 1), (7, "7", 1), (0, "m7", 1)]},

@@ -59,6 +59,9 @@ def generator_labels() -> dict:
         ("waltz", tr("Valzer (1 del 3/4, oom-pah-pah)")),
         ("tumbao", tr("Tumbao (cha cha, salsa)")),
         ("boogie", tr("Boogie (1-3-5-6-b7)")),
+        ("funk16", tr("Funk a sedicesimi (slap)")),
+        ("walk_up", tr("Country con avvicinamento")),
+        ("motown", tr("Motown (soul)")),
     ]
     comping_style_labels = [
         ("block_chords", tr("Accordi battuti (comping)")),
@@ -78,6 +81,9 @@ def generator_labels() -> dict:
         ("organ_bubble", tr("Organo bubble (reggae)")),
         ("horn_stabs", tr("Colpi dei fiati sugli accenti")),
         ("boogie_piano", tr("Pianoforte boogie-woogie")),
+        ("scratch", tr("Scratch (chitarra funk)")),
+        ("soul_comp", tr("Comping soul (accordi rilegati)")),
+        ("banjo_roll", tr("Rullo di banjo (country)")),
     ]
     progression_style_labels = [
         ("pop", tr("Pop (I-V-vi-IV)")),
@@ -104,6 +110,12 @@ def generator_labels() -> dict:
         ("minor_three", tr("Minore semplice (i-iv-v-i)")),
         ("minor_epic", tr("Minore epico (i-VI-VII-i)")),
         ("dorian_vamp", tr("Vamp dorico (i7-IV7)")),
+        ("soul_turn", tr("Soul (Imaj7-vi7-ii7-V7)")),
+        ("soul_plagal", tr("Soul plagale (I-IV-iv-I)")),
+        ("soul_minor", tr("Soul minore (i7-iv7-bVII-V7)")),
+        ("funk_vamp", tr("Vamp funk (I9-IV9)")),
+        ("funk_walk", tr("Funk (I9-bVII9-IV9)")),
+        ("funk_minor", tr("Funk minore (i9-IV9-bVII9)")),
         ("line_cliche", tr("Line cliché (i - i maj7 - i7 - i6)")),
         ("minor_circle", tr("Circolo delle quinte (minore)")),
         ("phrygian", tr("Frigio (i-bII)")),

@@ -72,6 +72,40 @@ MOODS_DATA = {
     "ipnotica": ("minor", 0.95, ("light", "normal"), ("dorian_vamp", "phrygian", "dorian_vamp"), 2),
 }
 
+# il colore di ogni atmosfera (quarta revisione, punto 1): oltre al modo, al tempo e all'intensita' di MOODS_DATA, ogni atmosfera ha
+# - tone: "warm" o "bright", il timbro della melodia fra gli strumenti che il genere ammette (non nei generi distorti);
+# - fx: gli effetti di partenza, che sostituiscono quelli del genere dello stesso tipo e si aggiungono agli altri;
+# - ending: il finale se non lo si sceglie (e il genere non ne ha uno suo); lo sfumato solo dai 45 secondi in su, mai in un loop;
+# - modulation: l'ultimo ritornello sale di un tono (dai 60 secondi in su, se non lo si sceglie);
+# - voice: la seconda voce in terze nei ritornelli (se il genere non ne ha una sua);
+# - swing: i punti di swing in piu' o in meno, nei generi che lo hanno;
+# - pedal_verse: nella strofa e nell'intro il basso tiene la tonica (la tensione che non si scioglie).
+_MOOD_COLOR = {
+    "festosa": {"tone": "bright", "modulation": True},
+    "giocosa": {"tone": "bright", "swing": 2},
+    "energica": {"fx": ("compressore: soglia=-20 rapporto=3 attacco=10 rilascio=120 guadagno=3",), "swing": -2},
+    "avventurosa": {"modulation": True, "fx": ("delay: suddivisione=1/8 tempo=375 ripetizioni=20 mix=10",)},
+    "epica": {"modulation": True, "ending": "rallentando", "fx": ("riverbero: stanza=70 smorzamento=40 ampiezza=100 mix=24",)},
+    "drammatica": {"ending": "rallentando", "fx": ("riverbero: stanza=55 smorzamento=45 ampiezza=100 mix=18",)},
+    "tesa": {"pedal_verse": True, "fx": ("riverbero: stanza=15 smorzamento=60 ampiezza=100 mix=6",)},
+    "oscura": {"tone": "warm", "fx": ("passa_basso: frequenza=4500 pendenza=12", "riverbero: stanza=60 smorzamento=50 ampiezza=100 mix=18")},
+    "misteriosa": {"fx": ("riverbero: stanza=85 smorzamento=30 ampiezza=100 mix=28",)},
+    "sognante": {"ending": "sfumato", "fx": ("delay: suddivisione=1/8p tempo=375 ripetizioni=30 mix=12",
+                                            "riverbero: stanza=80 smorzamento=35 ampiezza=100 mix=25")},
+    "ipnotica": {"ending": "sfumato", "fx": ("delay: suddivisione=1/4 tempo=375 ripetizioni=40 mix=16",)},
+    "malinconica": {"tone": "warm", "ending": "rallentando", "fx": ("riverbero: stanza=55 smorzamento=45 ampiezza=100 mix=18",)},
+    "nostalgica": {"tone": "warm", "voice": "thirds", "fx": ("passa_basso: frequenza=5500 pendenza=12", "eq: bassi=2 medi=0 alti=-2")},
+    "sensuale": {"tone": "warm", "swing": 3, "fx": ("riverbero: stanza=40 smorzamento=45 ampiezza=100 mix=14",)},
+    "romantica": {"tone": "warm", "voice": "thirds", "ending": "rallentando", "fx": ("riverbero: stanza=55 smorzamento=40 ampiezza=100 mix=18",)},
+    "solenne": {"ending": "rallentando", "fx": ("riverbero: stanza=75 smorzamento=40 ampiezza=100 mix=26",)},
+    "serena": {"voice": "thirds", "fx": ("riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=14",)},
+    "calma": {"ending": "rallentando", "fx": ("riverbero: stanza=50 smorzamento=40 ampiezza=100 mix=14",)},
+}
+# il timbro degli strumenti della melodia (gli altri sono neutri)
+_TONE = {"warm": ("Oboe", "Clarinet", "Cello", "Violin", "Fiddle", "Tenor_Sax", "Alto_Sax", "Harmonica", "Nylon_Guitar", "Acoustic_Guitar_Steel"),
+         "bright": ("Flute", "Trumpet", "Lead", "Clean_Guitar", "Marimba", "Trombone")}
+_NO_TONE_GENRES = ("rock", "punk", "metal")
+
 # gli strumenti di ogni organico (nomi che st-language riconosce, con il trattino basso)
 _ENSEMBLE_PARTS = {
     "piano": {"comp": "Piano"},
@@ -100,12 +134,12 @@ GENRES_DATA = {
     "swing": dict(meter="4/4", bpm=160, drums="swing", bass="walking", comp="quarter_chords", comp2="block_chords", melody="vivace",
                   ens="acustica", form="aaba", moods=("allegra", "festosa", "romantica", "nostalgica", "malinconica", "giocosa", "energica"),
                   prog={"major": ("rhythm_changes", "jazz_251", "turnaround"), "minor": ("minor_251", "minor_circle", "minor_251")}),
-    "funk": dict(meter="4/4", bpm=108, drums="funk", bass="octaves", comp="funk_stab", comp2="quarter_chords", melody="vivace",
+    "funk": dict(meter="4/4", bpm=108, drums="funk", bass="funk16", comp="funk_stab", comp2="scratch", melody="vivace",
                  ens="elettrica", form="canzone", moods=("allegra", "tesa", "festosa", "oscura", "misteriosa", "giocosa", "energica", "sensuale"),
-                 prog={"major": ("mixolydian", "mixolydian", "gospel"), "minor": ("dorian_vamp", "minor_three", "dorian_vamp")}),
-    "soul": dict(meter="4/4", bpm=92, drums="soul", bass="root_fifth", comp="broken_chord", comp2="block_chords", melody="ballata",
+                 prog={"major": ("funk_vamp", "funk_walk", "gospel"), "minor": ("dorian_vamp", "funk_minor", "dorian_vamp")}),
+    "soul": dict(meter="4/4", bpm=92, drums="soul", bass="motown", comp="soul_comp", comp2="sustained", melody="ballata",
                  ens="acustica", form="canzone", moods=("allegra", "malinconica", "romantica", "nostalgica", "calma", "festosa", "solenne", "sensuale", "serena"),
-                 prog={"major": ("gospel", "pop", "ballad"), "minor": ("minor_pop", "minor_cadence", "minor_circle")}),
+                 prog={"major": ("soul_turn", "gospel", "soul_plagal"), "minor": ("soul_minor", "minor_cadence", "minor_circle")}),
     "disco": dict(meter="4/4", bpm=118, drums="disco", bass="octaves", comp="funk_stab", comp2="quarter_chords", melody="vivace",
                   ens="elettrica", form="canzone", moods=("allegra", "festosa", "romantica", "malinconica", "giocosa", "energica", "sensuale"),
                   prog={"major": ("circle", "pop", "royal_road"), "minor": ("minor_circle", "minor_pop", "minor_cadence")}),
@@ -122,7 +156,7 @@ GENRES_DATA = {
     "reggae": dict(meter="4/4", bpm=76, drums="reggae", bass="reggae", comp="skank_chords", comp2="organ_bubble", melody="cantabile",
                    ens="elettrica", form="canzone", moods=("allegra", "calma", "festosa", "nostalgica", "sognante", "serena", "giocosa", "ipnotica", "sensuale"),
                    prog={"major": ("three_chord", "pop", "mixolydian"), "minor": ("minor_three", "minor_pop", "minor_cadence")}),
-    "country": dict(meter="4/4", bpm=108, drums="country", bass="root_fifth", comp="boom_chick", comp2="broken_chord", melody="cantabile",
+    "country": dict(meter="4/4", bpm=108, drums="country", bass="walk_up", comp="boom_chick", comp2="banjo_roll", melody="cantabile",
                     ens="acustica", form="canzone", moods=("allegra", "festosa", "malinconica", "nostalgica", "calma", "romantica", "giocosa", "serena", "avventurosa"),
                     prog={"major": ("three_chord", "pop", "canon"), "minor": ("minor_pop", "minor_three", "minor_cadence")}),
     "punk": dict(meter="4/4", bpm=170, drums="punk", bass="eighths", comp="power_chords", comp2="block_chords", melody="vivace",
@@ -167,7 +201,9 @@ _GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_bel
                  "funk": "approach_below", "soul": "approach_below,blue_bend", "disco": "approach_below",
                  "bossa": "approach", "samba": "approach,grace_above", "chacha": "approach", "country": "approach_below,grace_below",
                  "rock": "approach_below,blue_bend", "balcanico78": "grace_above", "valzer": "grace_above",
-                 "ballata": "grace_above", "ballata68": "grace_above"}
+                 "ballata": "grace_above", "ballata68": "grace_above",
+                 "orchestrale": "grace_above", "marcia": "grace_above", "afro68": "grace_above", "pop": "grace_below",
+                 "metal": "approach_below,blue_bend"}
 # gli strumenti che piegano la nota (il bend alla blues, 2b): chitarre, sax, armonica, archi, voce, synth; non il pianoforte
 BENDABLE = ("Overdriven_Guitar", "Distortion_Guitar", "Clean_Guitar", "Electric_Guitar_Jazz", "Nylon_Guitar", "Acoustic_Guitar_Steel",
             "Tenor_Sax", "Alto_Sax", "Soprano_Sax", "Baritone_Sax", "Harmonica", "Trumpet", "Trombone", "Violin", "Fiddle", "Cello",
@@ -191,8 +227,8 @@ _GENRE_INSTRUMENTS = {
     "jazz": {"bass": "Acoustic_Bass", "melody": "Tenor_Sax", "comp2": None},
     "swing": {"bass": "Acoustic_Bass", "melody": "Trumpet", "comp2": None, "horn": "Brass_Section"},
     "country": {"comp": "Acoustic_Guitar_Steel", "comp2": "Banjo", "melody": "Fiddle"},
-    "soul": {"comp": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
-    "funk": {"comp": "Clavinet", "comp2": "Clean_Guitar", "melody": "Tenor_Sax", "horn": "Brass_Section"},
+    "soul": {"comp": "Electric_Piano_1", "comp2": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
+    "funk": {"comp": "Clavinet", "comp2": "Electric_Guitar_Muted", "bass": "Slap_Bass_1", "melody": "Tenor_Sax", "horn": "Brass_Section"},
     "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
     "chacha": {"horn": "Brass_Section"},
@@ -201,7 +237,7 @@ _GENRE_INSTRUMENTS = {
     "rock": {"melody": "Overdriven_Guitar", "comp2": "Clean_Guitar"},
     "punk": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
     "metal": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
-    "marcia": {"melody": "Trumpet", "bass": "Tuba"},
+    "marcia": {"melody": "Trumpet", "bass": "Tuba", "comp": "Brass_Section", "comp2": "Accordion"},      # una banda: ottoni e fisarmonica, non archi e arpa
     "rocknroll": {"comp": "Piano", "comp2": "Clean_Guitar", "melody": "Tenor_Sax"},
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
@@ -222,17 +258,20 @@ _PROG_POOLS = {
              "minor": ("minor_251", "minor_circle", "minor_cadence", "dorian_vamp")},
     "groove": {"major": ("mixolydian", "gospel", "pop", "circle", "royal_road"),
                "minor": ("dorian_vamp", "minor_three", "minor_pop", "minor_circle")},
+    "funk": {"major": ("funk_vamp", "funk_walk", "mixolydian", "gospel"), "minor": ("dorian_vamp", "funk_minor", "minor_three")},
+    "soul": {"major": ("soul_turn", "gospel", "soul_plagal", "pop", "circle"),
+             "minor": ("soul_minor", "minor_cadence", "minor_circle", "minor_pop")},
     "folk": {"major": ("three_chord", "pop", "canon", "mixolydian", "doo_wop"),
              "minor": ("minor_three", "minor_pop", "minor_cadence", "andalusian")},
     "rock": {"major": ("rock", "mixolydian", "three_chord", "pop", "borrowed_flat6"),
              "minor": ("minor_rock", "minor_three", "phrygian", "minor_epic", "minor_pop")},
 }
 _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jazz", "chacha": "jazz", "lofi": "jazz",
-                 "funk": "groove", "soul": "groove", "disco": "groove", "reggae": "folk", "country": "folk",
+                 "funk": "funk", "soul": "soul", "disco": "groove", "reggae": "folk", "country": "folk",
                  "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
-_BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("root_fifth", "root", "eighths"),
-              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("root_fifth", "root", "octaves"),
-              "disco": ("octaves", "eighths", "root"), "funk": ("octaves", "eighths", "root"), "lofi": ("root", "root_fifth"),
+_BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("walk_up", "root_fifth", "root"),
+              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "root_fifth", "root"),
+              "disco": ("octaves", "eighths", "root"), "funk": ("funk16", "octaves", "eighths"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root")}
 _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
               "soul": ("soul", "halftime")}
@@ -256,14 +295,15 @@ _INSTRUMENT_ALTS_GENRE = {
     "afro68": {"comp": ("Marimba", "Kalimba", "Nylon_Guitar"), "comp2": ("Nylon_Guitar", "Acoustic_Guitar_Steel"),
                "melody": ("Flute", "Clarinet", "Violin")},
     "country": {"melody": ("Fiddle", "Acoustic_Guitar_Steel", "Harmonica"), "comp": ("Acoustic_Guitar_Steel", "Piano")},
-    "soul": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet")},
+    "soul": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet"), "comp": ("Electric_Piano_1", "Electric_Piano_2", "Clean_Guitar"),
+             "comp2": ("Drawbar_Organ", "Clean_Guitar")},
     "blues": {"melody": ("Harmonica", "Overdriven_Guitar", "Tenor_Sax")},
     "balcanico78": {"melody": ("Clarinet", "Accordion", "Violin")},
     "rock": {"melody": ("Overdriven_Guitar", "Clean_Guitar", "Rock_Organ", "Tenor_Sax"), "comp2": ("Clean_Guitar", "Rock_Organ")},
     "punk": {"melody": ("Overdriven_Guitar",)},
     "rocknroll": {"melody": ("Tenor_Sax", "Harmonica", "Trumpet"), "comp2": ("Clean_Guitar", "Rock_Organ")},
     "reggae": {"melody": ("Harmonica", "Rock_Organ", "Electric_Piano_1")},
-    "funk": {"melody": ("Tenor_Sax", "Trumpet", "Overdriven_Guitar")},
+    "funk": {"melody": ("Tenor_Sax", "Trumpet", "Overdriven_Guitar"), "bass": ("Slap_Bass_1", "Bass")},
     "disco": {"melody": ("Tenor_Sax", "Trumpet", "Clean_Guitar")},
 }
 _INSTRUMENT_ALTS = {
@@ -278,7 +318,7 @@ _INSTRUMENT_ALTS = {
 # gli accompagnamenti alternativi dei generi che non hanno uno stile caratteristico (4/4)
 _COMP_ALTS = {"pop": ("arpeggio_up", "broken_chord", "block_chords", "quarter_chords"), "ballata": ("arpeggio_up", "broken_chord", "sustained"),
               "lofi": ("broken_chord", "sustained", "arpeggio_up"), "elettronica": ("sustained", "arpeggio_up", "broken_chord"),
-              "soul": ("broken_chord", "arpeggio_up", "block_chords"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
+              "soul": ("soul_comp", "broken_chord", "block_chords"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
               "swing": ("quarter_chords", "block_chords", "broken_chord", "boogie_piano"),
               "blues": ("quarter_chords", "boogie_piano"), "rocknroll": ("boogie_piano", "quarter_chords")}
 _BUSY_DRUM_GENRES = ("rock", "funk", "metal", "rocknroll", "punk", "elettronica", "disco")
@@ -358,6 +398,14 @@ def _kit_name(kit: str) -> str:
             "electronic": tr("BatteriaElettronica"), "power": tr("BatteriaPotente"), "orchestra": tr("BatteriaOrchestra")}[kit]
 
 
+def _mood_fx(genre: str, mood: str) -> Tuple[str, ...]:
+    """Gli effetti di partenza: quelli del genere, con quelli dell'atmosfera al posto di quelli dello stesso tipo (un riverbero
+    sostituisce l'altro) e in piu' per gli altri."""
+    rows = {r.split(":")[0]: r for r in _GENRE_FX.get(genre, ())}
+    rows.update({r.split(":")[0]: r for r in _MOOD_COLOR.get(mood, {}).get("fx", ())})
+    return tuple(rows.values())
+
+
 # in quali sezioni suona ogni parte
 _ENTER = {
     "progression": (), "comp": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
@@ -373,7 +421,17 @@ _GENRE_ENTER = {
     "swing": {"comp": ("intro", "verse", "chorus", "bridge", "end", "loop", "fade"),
               "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
     "reggae": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},           # l'organo bubble anche nella strofa
-    "funk": {"horn": ("verse", "chorus", "solo", "end")},                                 # colpi di fiati anche nella strofa
+    "funk": {"horn": ("verse", "chorus", "solo", "end")},
+    # orchestrale: l'intro e' l'arpa sola, poi entrano gli archi, nel ritornello i corni
+    "orchestrale": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
+                    "comp2": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"),
+                    "horn": ("chorus", "bridge", "solo", "end")},
+    # marcia e afro 6/8: l'intro e' la sola batteria (il rullo, le percussioni), poi entrano gli accordi
+    "marcia": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"), "comp2": ("chorus", "bridge", "solo", "end", "loop"),
+               "drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
+    "afro68": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
+               "drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
+    "metal": {"drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},                # l'attacco: batteria e riff insieme                                 # colpi di fiati anche nella strofa
     "ballata": {"drums": ("chorus", "bridge", "solo", "end", "loop"),                    # strofa: pianoforte e melodia soli
                 "bass": ("chorus", "bridge", "solo", "end", "loop")},
     "ballata68": {"drums": ("chorus", "bridge", "solo", "end", "loop"), "bass": ("chorus", "bridge", "solo", "end", "loop")},
@@ -386,11 +444,14 @@ _GENRE_BREAK = {
     "funk": ("before_last_chorus", "hit", 1), "soul": ("before_last_chorus", "hit", 1), "rock": ("before_last_chorus", "hit", 1),
     "punk": ("before_last_chorus", "hit", 1), "reggae": ("before_last_chorus", "drop", 2),
     "jazz": ("before_solo", "fill", 1), "swing": ("before_solo", "fill", 1),
+    "metal": ("before_last_chorus", "hit", 1), "orchestrale": ("before_last_chorus", "hit", 1),          # il colpo d'insieme e il silenzio
+    "pop": ("before_last_chorus", "drop", 1),                                                             # restano gli accordi, poi rientra tutto
+    "marcia": ("before_last_chorus", "fill", 1), "afro68": ("before_last_chorus", "fill", 1),            # il rullo e le percussioni da soli
 }
 _BREAK_PARTS = {"hit": ("comp", "comp2", "horn", "bass", "drums"), "drop": ("comp", "comp2"), "fill": ("drums",)}
 
 # i finali per genere (3d): quello di partenza (se non lo si sceglie), il colore dell'ultimo accordo e i colpi finali
-_GENRE_ENDING = {"valzer": "rallentando", "ballata": "rallentando", "ballata68": "rallentando",
+_GENRE_ENDING = {"afro68": "sfumato", "soul": "sfumato", "valzer": "rallentando", "ballata": "rallentando", "ballata68": "rallentando",
                  "bossa": "sfumato", "lofi": "sfumato", "elettronica": "sfumato"}
 _FINAL_CHORD = {"jazz": "6", "swing": "6", "blues": "7", "rocknroll": "7", "bossa": "maj9"}
 _FINAL_HITS = ("marcia",)
@@ -443,7 +504,7 @@ def _final_hits(drums: str) -> str:
 
 
 # la seconda voce del genere (2c): terze o seste parallele sotto la melodia, nei ritornelli (con lo sviluppo del tema)
-_GENRE_SECOND_VOICE = {"pop": "thirds", "ballata": "thirds", "bossa": "thirds", "chacha": "thirds", "balcanico78": "thirds",
+_GENRE_SECOND_VOICE = {"pop": "thirds", "country": "thirds", "soul": "thirds", "orchestrale": "thirds", "ballata": "thirds", "bossa": "thirds", "chacha": "thirds", "balcanico78": "thirds",
                        "valzer": "sixths", "ballata68": "sixths"}
 
 # la melodia della strofa (3a): piu' rada del ritornello, che resta il culmine; non nei brani brevissimi
@@ -724,7 +785,10 @@ def resolve(options: Optional[dict] = None) -> dict:
     ending = options.get("ending") or ("cadenza" if options.get("loop") else _GENRE_ENDING.get(genre, "cadenza"))   # un loop si ripete: niente sfumato
     if ending == "sfumato" and not options.get("ending") and (options.get("duration") or 60) < 45:
         ending = "cadenza"                                  # lo sfumato aggiunge 4 battute: non nei brani corti
-    if not options.get("ending") and variety > 0 and genre not in _GENRE_ENDING:
+    mood_ending = _MOOD_COLOR.get(mood, {}).get("ending")
+    if mood_ending and not options.get("ending") and not options.get("loop") and genre not in _GENRE_ENDING:
+        ending = mood_ending if mood_ending != "sfumato" or (options.get("duration") or 60) >= 45 else "cadenza"
+    if not options.get("ending") and variety > 0 and genre not in _GENRE_ENDING and not mood_ending:
         roll = vrng.random()
         if roll < 0.15 * variety:
             ending = "rallentando"
@@ -778,6 +842,16 @@ def resolve(options: Optional[dict] = None) -> dict:
                 choices = [x for x in pool if x != current and x not in taken]
                 if choices:
                     instruments[part] = irng.choice(choices)
+    color = _MOOD_COLOR.get(mood, {})
+    if color.get("tone") and genre not in _NO_TONE_GENRES and ensemble == recipe["ens"] and "melody" in instruments \
+            and not (parts_in.get("melody") or {}).get("instrument"):
+        wanted = _TONE[color["tone"]]
+        pool = (_INSTRUMENT_ALTS_GENRE.get(genre, {}).get("melody") or _INSTRUMENT_ALTS.get(ensemble, {}).get("melody") or ())
+        if instruments["melody"] not in wanted:
+            taken = {instruments.get(o) for o in ("comp", "comp2", "bass", "horn", "pad")}
+            pick = next((x for x in pool if x in wanted and x not in taken), None)
+            if pick:
+                instruments["melody"] = pick
     if drums is not None and "drums" not in instruments and (options.get("drums") or recipe.get("drums_in_orchestra")):
         instruments["drums"] = "Drums"                       # l'orchestra non ha la batteria, salvo una marcia o se la si sceglie
     if drums is None:
@@ -787,7 +861,9 @@ def resolve(options: Optional[dict] = None) -> dict:
             instruments[part] = spec["instrument"]
     return {"genre": genre, "mood": mood, "requested_mood": options.get("mood", "allegra"), "fallback": fallback, "seed": seed, "key": key,
             "mode": mode, "bpm": bpm, "meter": meter, "form": form, "ensemble": ensemble, "melody": melody, "ending": ending,
-            "modulation": bool(options.get("modulation")), "density": density, "loop": bool(options.get("loop")),
+            "modulation": bool(options["modulation"]) if "modulation" in options else
+                          bool(_MOOD_COLOR.get(mood, {}).get("modulation")) and (options.get("duration") or 60) >= 60 and not options.get("loop"),
+            "density": density, "loop": bool(options.get("loop")),
             "duration": options.get("duration"), "bars": _int(options.get("bars"), 0), "variability": options.get("variability"),
             "prog": list(prog_triple), "intensities": list(intensities), "styles": styles, "instruments": instruments, "seeds": seeds,
             "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill}
@@ -912,6 +988,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
     compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     out_sections: List[dict] = []
     swing = swing_word(c["genre"], bpm, options.get("swing"))
+    delta = _MOOD_COLOR.get(c["mood"], {}).get("swing", 0)
+    if swing and delta and options.get("swing") in (None, ""):
+        word, _eq, value = swing.partition("=")
+        swing = f"{word}={max(52, min(72, int(value) + delta))}"                 # l'atmosfera tira o rilassa lo swing del genere
     start_bar = 0
     chords_track = "Piano"
     # sviluppo del tema (8.2, 8.4): con piu' ritornelli nella stessa tonalita' e un finale dopo, la melodia del ritornello si scrive
@@ -926,7 +1006,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     # la seconda voce: su richiesta il tema in terze nell'ultimo ritornello; senza richiesta, quella del genere (terze o seste
     # parallele sotto la melodia, 2c) in ogni ritornello. second_voice=False la toglie
     asked = options.get("second_voice")
-    auto_voice = _GENRE_SECOND_VOICE.get(c["genre"]) if asked in (None, "") else None
+    auto_voice = (_GENRE_SECOND_VOICE.get(c["genre"]) or (_MOOD_COLOR.get(c["mood"], {}).get("voice") if c["genre"] not in _NO_TONE_GENRES else None)) \
+        if asked in (None, "") else None
     if develop and (asked in (True, 1, "1", "si") or auto_voice):
         taken = {c["instruments"][p] for p in active if p in c["instruments"]}
         harm = _HARM_FOR.get(c["instruments"]["melody"], "Flute")
@@ -944,7 +1025,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
         seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
         lvl = section_level.get(idx, intensity[role])
         # il ponte di un'atmosfera quieta, sul pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano
-        bass_style = ("pedal" if role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2 and not (c["parts"].get("bass") or {}).get("style")
+        pedal_here = (role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2) or \
+                     (role in ("verse", "intro") and _MOOD_COLOR.get(c["mood"], {}).get("pedal_verse"))      # la tesa: la tonica tenuta sotto la strofa
+        bass_style = ("pedal" if pedal_here and not (c["parts"].get("bass") or {}).get("style")
                       and c["styles"]["bass"] not in ("walking", "blues", "shuffle") else c["styles"]["bass"])
         cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style)
         if cache not in harmony:
@@ -1075,9 +1158,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
             lines += [f"Traccia {part_track(c, part)} [{kit_name}]:", ""]
             continue
         lines += [E.add_track("", c["instruments"][part], "", name=part_track(c, part))["text"].rstrip("\n").split("\n")[0].rstrip(), ""]
-    fx_rows = _GENRE_FX.get(c["genre"], ()) if options.get("effects", True) not in (False, 0, "0", "no") else ()
+    fx_rows = _mood_fx(c["genre"], c["mood"]) if options.get("effects", True) not in (False, 0, "0", "no") else ()
     if fx_rows:
-        lines += [_tr("// Gli effetti di partenza del genere (catena master): si cambiano o si tolgono come gli altri."), "",
+        lines += [_tr("// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri."), "",
                   "Catena master:\n" + "\n".join("  " + r for r in fx_rows), ""]
     if patterns:
         lines.append(_tr("// I pattern: le battute che si ripetono, scritte una volta sola."))

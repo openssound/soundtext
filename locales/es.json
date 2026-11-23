@@ -3505,5 +3505,18 @@
  "BatteriaElettronica": "BateriaElectronica",
  "BatteriaPotente": "BateriaPotente",
  "BatteriaOrchestra": "BateriaOrquesta",
- "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// El kit de batería del género: cambia el programa (ver Gestión de instrumentos) o quita el bloque."
+ "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// El kit de batería del género: cambia el programa (ver Gestión de instrumentos) o quita el bloque.",
+ "Funk a sedicesimi (slap)": "Funk en semicorcheas (slap)",
+ "Country con avvicinamento": "Country con nota de aproximación",
+ "Scratch (chitarra funk)": "Scratch (guitarra funk)",
+ "Rullo di banjo (country)": "Rasgueo de banjo (country)",
+ "Vamp funk (I9-IV9)": "Vamp funk (I9-IV9)",
+ "Funk (I9-bVII9-IV9)": "Funk (I9-bVII9-IV9)",
+ "Funk minore (i9-IV9-bVII9)": "Funk menor (i9-IV9-bVII9)",
+ "Motown (soul)": "Motown (soul)",
+ "Comping soul (accordi rilegati)": "Acompañamiento soul (acordes ligados)",
+ "Soul (Imaj7-vi7-ii7-V7)": "Soul (Imaj7-vi7-ii7-V7)",
+ "Soul plagale (I-IV-iv-I)": "Soul plagal (I-IV-iv-I)",
+ "Soul minore (i7-iv7-bVII-V7)": "Soul menor (i7-iv7-bVII-V7)",
+ "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// Los efectos de partida del género y del ambiente (cadena master): se cambian o se quitan como los demás."
 }

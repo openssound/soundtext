@@ -3505,5 +3505,18 @@
  "BatteriaElettronica": "ElectronicKit",
  "BatteriaPotente": "PowerKit",
  "BatteriaOrchestra": "OrchestraKit",
- "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// The genre's drum kit: change the program (see Instrument manager) or remove the block."
+ "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// The genre's drum kit: change the program (see Instrument manager) or remove the block.",
+ "Funk a sedicesimi (slap)": "Sixteenth-note funk (slap)",
+ "Country con avvicinamento": "Country with walk-up",
+ "Scratch (chitarra funk)": "Scratch (funk guitar)",
+ "Rullo di banjo (country)": "Banjo roll (country)",
+ "Vamp funk (I9-IV9)": "Funk vamp (I9-IV9)",
+ "Funk (I9-bVII9-IV9)": "Funk (I9-bVII9-IV9)",
+ "Funk minore (i9-IV9-bVII9)": "Minor funk (i9-IV9-bVII9)",
+ "Motown (soul)": "Motown (soul)",
+ "Comping soul (accordi rilegati)": "Soul comping (tied chords)",
+ "Soul (Imaj7-vi7-ii7-V7)": "Soul (Imaj7-vi7-ii7-V7)",
+ "Soul plagale (I-IV-iv-I)": "Plagal soul (I-IV-iv-I)",
+ "Soul minore (i7-iv7-bVII-V7)": "Minor soul (i7-iv7-bVII-V7)",
+ "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// The starting effects of the genre and the mood (master chain): change or remove them like any other."
 }

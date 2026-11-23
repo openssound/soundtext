@@ -61,7 +61,8 @@ def test_registers_of_the_parts_do_not_overlap(genre):
         melody = statistics.mean(n[2][-1] for n in parts["melody"])
         assert bass + 5 <= comp, (genre, seed, bass, comp)               # il basso sta sotto l'accompagnamento (elettronica: il pad e' basso, 6 semitoni)
         assert melody >= comp - 8, (genre, seed, melody, comp)           # la melodia non scende sotto di esso
-        assert melody >= bass + 12, (genre, seed, melody, bass)
+        # un'ottava meno uno: nelle atmosfere tese il basso tiene la tonica sotto la strofa (pedale), che sta un po' sopra le fondamentali
+        assert melody >= bass + 11, (genre, seed, melody, bass)
         assert min(n[2][0] for n in parts["bass"]) >= 28, genre          # nessuna nota sotto il mi basso del contrabbasso
 
 

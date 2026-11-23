@@ -283,7 +283,8 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
         song = q.quick_song({"genre": genre, "mood": "calma", "duration": 30, "seed": 2, **extra})
         return [e.kind for e in parse_project_text(song["text"], "x").master_effects]
 
-    assert effects("reggae") == ["delay"] and effects("lofi") == ["passa_basso", "eq"]
+    # gli effetti del genere restano (con calma si aggiunge il riverbero dell'atmosfera, che sostituisce quello del genere)
+    assert effects("reggae") == ["delay", "riverbero"] and effects("lofi") == ["passa_basso", "eq", "riverbero"]
     assert effects("funk") == ["compressore"] and effects("blues") == ["riverbero"] and effects("orchestrale") == ["riverbero"]
     assert effects("marcia") == ["riverbero"] and effects("reggae", effects=False) == []
 
@@ -340,7 +341,7 @@ def test_the_bridge_of_a_quiet_mood_has_a_pedal_bass(q):
     song = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "variety": 0})
     assert any(s["role"] == "bridge" for s in song["sections"])
     assert "Pedal" in song["text"]                                   # i pattern del ponte portano il nome dello stile
-    loud = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 240, "seed": 1, "variety": 0, "form": "ponte"})
+    loud = q.quick_song({"genre": "rock", "mood": "energica", "duration": 240, "seed": 1, "variety": 0, "form": "ponte"})
     assert "Pedal" not in loud["text"]
     chosen = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "variety": 0, "parts": {"bass": {"style": "root"}}})
     assert "Pedal" not in chosen["text"]                                # uno stile scelto a mano vince
@@ -661,3 +662,128 @@ def test_ornamented_songs_export_to_musicxml_and_speak(q):
         from st_language.musicxml import project_to_musicxml
         xml = project_to_musicxml(parse_project_text(song["text"], "x"))
         assert "<score-partwise" in xml and (genre != "valzer" or "<grace" in xml)
+
+
+def test_funk_is_built_on_sixteenth_slap_bass_scratch_guitar_and_ninth_chords(q):
+    from core.project_io import parse_project_text
+    song = q.quick_song({"genre": "funk", "duration": 60, "seed": 2, "variety": 0})
+    assert song["choices"]["styles"]["bass"] == "funk16" and song["choices"]["styles"]["comp2"] == "scratch"
+    assert song["choices"]["instruments"]["bass"] == "Slap_Bass_1" and song["choices"]["instruments"]["comp2"] == "Electric_Guitar_Muted"
+    project = parse_project_text(song["text"], "x")
+    bass = next(t for t in project.tracks if t.name == "Slap_Bass_1")
+    events = [e for e in bass.parsed_events(project.patterns, meter=project.meter()) if e.kind in ("note", "slide")]
+    assert sum(abs(e.start * 4 - round(e.start * 4)) < 1e-6 and abs(e.start - round(e.start)) > 1e-6 for e in events) > len(events) / 3   # sedicesimi in sincope
+    assert song["choices"]["styles"].get("progression") in (None, "")
+    from core.rhythm_generate import PROGRESSION_STYLES
+    assert all(s in PROGRESSION_STYLES for s in ("funk_vamp", "funk_walk", "funk_minor"))
+    chords = [e for e in project.tracks[0].parsed_events(project.patterns, meter=project.meter())]
+    assert chords
+
+
+def test_country_has_banjo_rolls_a_walking_bass_and_a_second_voice_in_thirds(q):
+    song = q.quick_song({"genre": "country", "duration": 90, "seed": 2, "variety": 0})
+    assert song["choices"]["styles"]["bass"] == "walk_up" and song["choices"]["styles"]["comp2"] == "banjo_roll"
+    assert song["choices"]["instruments"]["comp2"] == "Banjo"
+    harm = song["choices"]["instruments"].get("harm")
+    assert harm and harm != song["choices"]["instruments"]["melody"]
+    assert ".step(-2)" in song["text"]
+    assert "harm" not in q.quick_song({"genre": "country", "duration": 90, "seed": 2, "second_voice": False})["parts"]
+
+
+def test_soul_has_a_motown_bass_electric_piano_organ_seventh_chords_and_a_fade(q):
+    import re as _re
+    from core.rhythm_generate import PROGRESSION_STYLES
+    song = q.quick_song({"genre": "soul", "mood": "romantica", "duration": 150, "seed": 2, "variety": 0})
+    styles, instruments = song["choices"]["styles"], song["choices"]["instruments"]
+    assert styles["bass"] == "motown" and styles["comp"] == "soul_comp"
+    assert instruments["comp"] == "Electric_Piano_1" and instruments["comp2"] == "Drawbar_Organ"
+    assert song["choices"]["ending"] == "sfumato" and any(s["role"] == "fade" for s in song["sections"])
+    assert instruments.get("harm") == "Alto_Sax" and ".step(-2)" in song["text"]               # i sax in terze, come la sezione fiati
+    assert all(s in PROGRESSION_STYLES for s in ("soul_turn", "soul_plagal", "soul_minor"))
+    assert all(all(any(c[1] in ("maj7", "m7", "7") for c in PROGRESSION_STYLES[s]["chords"]) for s in pool)
+               for pool in ([q._PROG_POOLS["soul"]["major"][0], q._PROG_POOLS["soul"]["major"][2]],))
+    assert q._PROG_POOL_OF["soul"] == "soul" and q._PROG_POOL_OF["funk"] == "funk"
+    assert not _re.search(r"Box Nylon_Guitar", song["text"])
+
+
+def _color_of(q, genre, mood, **extra):
+    song = q.quick_song({"genre": genre, "mood": mood, "seed": 3, "duration": 120, "variety": 0, **extra})
+    text = song["text"]
+    fx = text.split("Catena master:")[1].split("\n\n")[0] if "Catena master:" in text else ""
+    return (song["choices"]["instruments"]["melody"], song["choices"]["ending"], song["choices"]["modulation"], fx,
+            tuple(sorted({w for w in text.split() if w.startswith("swing")})), "Pedal" in text, "harm" in song["parts"])
+
+
+@pytest.mark.parametrize("pair", [("allegra", "festosa"), ("tesa", "drammatica"), ("nostalgica", "sognante"), ("sognante", "misteriosa"),
+                                  ("nostalgica", "misteriosa"), ("romantica", "solenne")])
+def test_moods_that_shared_every_setting_now_sound_different(q, pair):
+    seen = 0
+    for genre, data in q.GENRES_DATA.items():
+        if all(m in data["moods"] for m in pair):
+            seen += 1
+            assert _color_of(q, genre, pair[0]) != _color_of(q, genre, pair[1]), (genre, pair)
+    assert seen
+
+
+def test_mood_color_details(q):
+    from core.project_io import parse_project_text
+    assert _color_of(q, "pop", "festosa")[2] is True and _color_of(q, "pop", "allegra")[2] is False       # festosa sale di un tono
+    assert _color_of(q, "pop", "festosa", modulation=False)[2] is False                                     # la scelta esplicita vince
+    assert q.quick_song({"genre": "pop", "mood": "festosa", "seed": 3, "duration": 30})["choices"]["modulation"] is False  # non nei brani corti
+    assert _color_of(q, "pop", "malinconica")[1] == "rallentando" and _color_of(q, "pop", "sognante")[1] == "sfumato"
+    assert q.quick_song({"genre": "pop", "mood": "sognante", "seed": 3, "duration": 30, "variety": 0})["choices"]["ending"] == "cadenza"
+    assert q.quick_song({"genre": "pop", "mood": "sognante", "seed": 3, "duration": 120, "loop": True, "variety": 0})["choices"]["ending"] == "cadenza"
+    assert q.quick_song({"genre": "pop", "mood": "sognante", "seed": 3, "duration": 120, "ending": "rallentando", "variety": 0})["choices"]["ending"] == "rallentando"
+    assert _color_of(q, "pop", "tesa")[5] is True and _color_of(q, "pop", "allegra")[5] is False           # la tesa tiene la tonica
+    warm, bright = _color_of(q, "jazz", "sensuale")[0], _color_of(q, "jazz", "giocosa")[0]
+    assert warm in ("Tenor_Sax", "Alto_Sax", "Clarinet") and bright in ("Trumpet", "Flute") and warm != bright
+    assert _color_of(q, "rock", "tesa")[0] == _color_of(q, "rock", "allegra")[0]                           # i generi distorti non cambiano timbro
+    assert "swing16=56" in _color_of(q, "funk", "giocosa")[4][0] and "swing16=52" in _color_of(q, "funk", "energica")[4][0]
+    assert _color_of(q, "soul", "sensuale")[4][0].endswith("=57")
+    rows = q._mood_fx("pop", "sognante")
+    assert sum(r.startswith("riverbero") for r in rows) == 1 and any(r.startswith("delay") for r in rows) and any(r.startswith("compressore") for r in rows)
+    assert q.quick_song({"genre": "pop", "mood": "sognante", "seed": 3, "duration": 60, "effects": False})["text"].count("Catena master") == 0
+    parse_project_text(q.quick_song({"genre": "pop", "mood": "sognante", "seed": 3, "duration": 60})["text"], "x")
+
+
+def _boxes(song, section):
+    import re as _re
+    return sorted(set(_re.findall(r'Box (\S+) "' + section + '"', song["text"])))
+
+
+def test_orchestral_starts_with_the_harp_then_strings_and_the_horns_come_with_the_chorus(q):
+    song = q.quick_song({"genre": "orchestrale", "mood": "solenne", "duration": 120, "seed": 2, "variety": 0})
+    assert _boxes(song, "Intro") == ["Harp"]
+    assert "Strings" in _boxes(song, "Strofa") and "French_Horn" not in _boxes(song, "Strofa") and "French_Horn" in _boxes(song, "Ritornello")
+    assert song["choices"]["instruments"].get("harm") == "Clarinet" and "Clarinet" in _boxes(song, "Ritornello")      # i legni in terze
+    assert _boxes(song, "Break") == ["Cello", "French_Horn", "Harp", "Strings"]                                         # il tutti e il silenzio
+
+
+def test_the_march_is_a_brass_band_with_a_drum_intro_and_a_roll_before_the_last_chorus(q):
+    song = q.quick_song({"genre": "marcia", "mood": "solenne", "duration": 120, "seed": 2, "variety": 0})
+    instruments = song["choices"]["instruments"]
+    assert instruments["comp"] == "Brass_Section" and instruments["comp2"] == "Accordion" and "Strings" not in song["text"] and "Harp" not in song["text"]
+    assert _boxes(song, "Intro") == ["Drums"] and _boxes(song, "Break") == ["Drums"]
+    assert q.quick_song({"genre": "marcia", "mood": "solenne", "duration": 120, "seed": 2, "variety": 0, "breaks": False})["text"].count('"Break"') == 0
+
+
+def test_afro_six_eight_starts_with_the_percussion_and_fades(q):
+    song = q.quick_song({"genre": "afro68", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert _boxes(song, "Intro") == ["Drums"] and _boxes(song, "Break") == ["Drums"]
+    assert song["choices"]["ending"] == "sfumato" and any(s["role"] == "fade" for s in song["sections"])
+    assert q.quick_song({"genre": "afro68", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0, "loop": True})["choices"]["ending"] == "cadenza"
+
+
+def test_pop_drops_to_the_chords_before_the_last_chorus_and_metal_stops_dead(q):
+    pop = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert _boxes(pop, "Break") == sorted([pop["choices"]["instruments"]["comp"], pop["choices"]["instruments"]["comp2"]])
+    metal = q.quick_song({"genre": "metal", "mood": "tesa", "duration": 120, "seed": 2, "variety": 0})
+    assert "Drums" in _boxes(metal, "Intro") and set(_boxes(metal, "Break")) >= {"Drums", "Bass"}
+
+
+def test_figures_for_the_last_genres(q):
+    assert q._figures_for("pop", "Electric_Piano_1") == "grace_below" and q._figures_for("marcia", "Trumpet") == "grace_above"
+    assert q._figures_for("metal", "Overdriven_Guitar") == "approach_below,blue_bend" and q._figures_for("metal", "Piano") == "approach_below"
+    assert q._figures_for("orchestrale", "Oboe") == "grace_above" and q._figures_for("afro68", "Flute") == "grace_above"
+    for genre in ("orchestrale", "marcia", "afro68", "pop", "metal"):
+        assert q.quick_song({"genre": genre, "duration": 60, "seed": 2, "variety": 0})["text"]
