@@ -11,8 +11,18 @@ name: libsfizz
 # SFIZIOSO_COMMIT; dopo, gli SHA-256 del file SHA256SUMS della release
 # vanno copiati in LIBSFIZZ_FILES di scarica_strumenti.py e LICENSE-sfizz.txt
 # in licenses/sfizioso.txt.
+#
+# Senza la spunta "pubblica" e' solo una prova: compila, raccoglie i file e
+# scrive SHA256SUMS, ma non tocca le release. Con la spunta si ferma se la
+# release di quel commit esiste gia': ricompilando i file cambiano, e gli
+# SHA-256 scritti in scarica_strumenti.py non tornerebbero piu'.
 on:
   workflow_dispatch:
+    inputs:
+      pubblica:
+        description: "Pubblica la release libsfizz-<commit> (solo se SFIZIOSO_COMMIT e' nuovo)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -162,7 +172,18 @@ jobs:
           cd out
           sha256sum libsfizz-linux-x86_64.so sfizz-windows-x64.dll libsfizz-macos-universal.dylib > SHA256SUMS
           cat SHA256SUMS
-      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
+      - name: La release non deve esistere gia'
+        if: inputs.pubblica
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: libsfizz-${{ needs.commit.outputs.short }}
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::La release $TAG esiste gia': non si sovrascrive (gli SHA-256 in scarica_strumenti.py non tornerebbero)."
+            exit 1
+          fi
+      - if: inputs.pubblica
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: libsfizz-${{ needs.commit.outputs.short }}
           name: libsfizz ${{ needs.commit.outputs.short }} (motore SFZ interno)
