@@ -2064,7 +2064,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            variability=0.0, seed: Optional[int] = None,
                            bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
                            voice_leading: bool = False, key: Optional[str] = None,
-                           meter: Optional[str] = None, repeats=(), scale_kind: str = "") -> str:
+                           meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "") -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2096,7 +2096,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         return generate_phrase_melody(chords, style, octave, range_low, range_high, key=key,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
-                                      repeats=repeats, scale_kind=scale_kind)
+                                      repeats=repeats, scale_kind=scale_kind, figure=figure)
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
                or user_styles.get_user_style("riff", style))
     if pattern is None:
@@ -2625,6 +2625,28 @@ def _generated_timeline(text: str) -> Tuple[str, list]:
         items.append((t, end, tok.group(0), velocity))
         t = end
     return grid, items
+
+
+_SWING_HEAD = re.compile(r"\s*(swing(?:16)?=\d+)\s+")
+
+
+def with_swing(text: str, value, sixteenths: bool = False) -> str:
+    """Il testo con lo swing in testa (swing=N sulle crome, swing16=N sulle semicrome); 50 o meno = dritto, il testo resta com'e'.
+    Un testo che ha gia' una parola di swing la cambia."""
+    text = split_swing(text)[1]
+    try:
+        v = max(50, min(80, int(float(value))))
+    except (TypeError, ValueError):
+        return text
+    if v <= 50:
+        return text
+    return f"swing{'16' if sixteenths else ''}={v} {text.lstrip()}"
+
+
+def split_swing(text: str):
+    """(parola di swing o "", resto del testo): per compattare o contare le battute senza la parola in testa."""
+    m = _SWING_HEAD.match(text)
+    return (m.group(1), text[m.end():]) if m else ("", text)
 
 
 def splice_bars(base: str, alt: str, first_bar: int, last_bar: int, bar_beats: float) -> str:

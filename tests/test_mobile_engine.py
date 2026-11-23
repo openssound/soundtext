@@ -976,3 +976,13 @@ def test_personal_styles_from_the_computer_show_up_in_the_choices_and_are_used()
             e.install_user_styles("non e' json")
     finally:
         e.install_user_styles("")
+
+
+def test_generate_and_arrange_take_a_swing():
+    e = _quick()
+    plain = e.generate(SECTIONED, "bass", {"seed": 3})["text"]
+    swung = e.generate(SECTIONED, "bass", {"seed": 3, "swing": 64})["text"]
+    assert swung == "swing=64 " + plain
+    assert e.generate(SECTIONED, "drums", {"seed": 3, "swing": 64})["text"] == e.generate(SECTIONED, "drums", {"seed": 3})["text"]
+    boxes = e.arrange_song(SECTIONED, {"seed": 4, "swing": 62})["text"]
+    assert "swing=62" in boxes and "swing=62" not in e.arrange_song(SECTIONED, {"seed": 4})["text"]

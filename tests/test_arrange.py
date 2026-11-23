@@ -312,3 +312,22 @@ def test_energy_curve_fills_the_section_intensities_but_not_intro_or_finale(monk
     dlg.energy_combo.setCurrentIndex(0)
     assert [dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())] == falling[:0] + [
         dlg.table.cellWidget(r, 2).currentData() for r in range(dlg.table.rowCount())]    # "a mano": non tocca niente
+
+
+def test_swing_goes_on_bass_and_comping_not_on_drums():
+    p, acc = _song()
+    plain = arrange(p, song_sections(p, acc), ArrangeOptions(seed=3), 4.0)
+    swung = arrange(p, song_sections(p, acc), ArrangeOptions(seed=3, swing=64), 4.0)
+    for kind in ("bass", "comping"):
+        for a, b in zip(plain[kind], swung[kind]):
+            assert b.text == "swing=64 " + a.text and validate_track_text(b.text, {})[0]
+    assert [c.text for c in swung["drums"]] == [c.text for c in plain["drums"]]
+    assert not any(c.text.startswith("swing") for kind in plain.values() for c in kind)
+
+
+def test_swing_is_recorded_on_the_events_of_the_bass():
+    from core.notation import parse_track_text
+    p, acc = _song()
+    swung = arrange(p, song_sections(p, acc), ArrangeOptions(seed=3, swing=66, drum_style=None, comping_style=None), 4.0)
+    events = parse_track_text(swung["bass"][0].text, {})
+    assert any(getattr(e, "swing", None) not in (None, 0.5) for e in events if e.kind != "rest")

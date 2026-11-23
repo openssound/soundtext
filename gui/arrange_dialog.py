@@ -103,6 +103,13 @@ class ArrangeDialog(QDialog):
         self.variability_spin.setValue(30)
         self.variability_spin.setSuffix(" %")
         form.addRow(tr("Variabilita':"), self.variability_spin)
+        self.swing_spin = QSpinBox()
+        self.swing_spin.setRange(50, 80)
+        self.swing_spin.setValue(50)
+        self.swing_spin.setToolTip(tr(
+            "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria "
+            "resta com'e'."))
+        form.addRow(tr("Swing (50 = dritto, 66 = terzinato):"), self.swing_spin)
         self.melody_combo = QComboBox()
         self.melody_combo.setToolTip(tr(
             "Nelle battute in cui questa melodia ha molte note l'accompagnamento suona solo sul primo tempo "
@@ -213,7 +220,7 @@ class ArrangeDialog(QDialog):
                               ending=self.ending_check.isChecked(), rallentando=self.rallentando_check.isChecked(),
                               phrase_dynamics=self.dynamics_check.isChecked(),
                               melody_track=self.melody_combo.currentData(),
-                              modulation=self.modulation_combo.currentData())
+                              modulation=self.modulation_combo.currentData(), swing=self.swing_spin.value())
 
     def accept(self):
         for row, section in enumerate(self.sections):

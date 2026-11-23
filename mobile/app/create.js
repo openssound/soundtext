@@ -31,6 +31,7 @@ function genFields(kind) {
   const c = gen.choices;
   const opts = (list) => list.map((o) => [o.value, o.label]);
   const variability = ["variability", "range", t("Variabilità:")];
+  const swing = ["swing", "swing", t("Swing (50 = dritto, 66 = terzinato):")];
   const bars = ["bars", "number", t("Battute:")];
   const intensity = ["intensity", "select", t("Intensità:"), opts(c.intensities)];
   const sources = c.sources.map((n) => [n, n]);
@@ -55,14 +56,14 @@ function genFields(kind) {
   if (kind === "bass") {
     return [...common,
       ["style", "select", t("Stile:"), opts(c.bass)], ["instrument", "select", t("Strumento:"), instruments("bass")],
-      bars, intensity, variability,
+      bars, intensity, variability, swing,
       ["kick_track", "select", t("Segui la cassa di:"), [["", t("nessuna")], ...c.kick_tracks.map((n) => [n, n])]],
       ["performance", "check", t("Esecuzione dello strumento")],
     ];
   }
   return [...common,
     ["style", "select", t("Stile:"), opts(c.comping)], ["instrument", "select", t("Strumento:"), instruments("comping")],
-    bars, intensity, variability,
+    bars, intensity, variability, swing,
     ["voice_leading", "check", t("Rivolti vicini")], ["performance", "check", t("Esecuzione dello strumento")],
   ];
 }
@@ -70,7 +71,7 @@ function genFields(kind) {
 function genDefaults(kind) {
   const c = gen.choices;
   const songBars = c.bars > 0 ? Math.min(64, c.bars) : 8;
-  const base = { variability: 35, intensity: "normal" };
+  const base = { variability: 35, intensity: "normal", swing: 50 };
   if (kind === "progression") {
     const mode = /m$/.test(c.key) ? "minor" : "major";
     return { ...base, key: c.key, style: c.progression.find((p) => p.mode === mode).value, chord_bars: 1,
@@ -101,6 +102,9 @@ function arrangeOptions(parts) {
   if (c) { out.comping_style = c.style; out.comping_instrument = c.instrument; }
   const kind = parts.length === 1 ? parts[0] : null;
   if (kind && gen.seeds[kind] != null) out.seed = gen.seeds[kind];
+  const swung = (kind ? [gen.values[kind]] : [c, b]).filter(Boolean).map((x) => Number(x.swing) || 50);
+  const swing = Math.max(50, ...swung);                         // basso e accompagnamento: la batteria resta com'e'
+  if (swing > 50) out.swing = swing;
   return out;
 }
 
@@ -239,6 +243,12 @@ function renderGenForm() {
       input.max = "256";
       input.inputMode = "numeric";
       input.value = String(values[name]);
+    } else if (type === "swing") {
+      input = document.createElement("input");
+      input.type = "range";
+      input.min = "50"; input.max = "80"; input.step = "1";
+      input.value = String(values[name] ?? 50);
+      input.setAttribute("aria-valuetext", String(values[name] ?? 50));
     } else if (type === "range") {
       input = document.createElement("input");
       input.type = "range";
@@ -254,7 +264,7 @@ function renderGenForm() {
     input.name = name;
     const lab = document.createElement("label");
     lab.htmlFor = id;
-    lab.textContent = type === "range" ? `${label} ${values[name]}%` : label;
+    lab.textContent = type === "range" ? `${label} ${values[name]}%` : type === "swing" ? `${label} ${values[name] ?? 50}` : label;
     if (type === "check") {
       const row = document.createElement("label");
       row.className = "check";
@@ -265,14 +275,15 @@ function renderGenForm() {
     }
     const update = () => {
       let v = type === "check" ? input.checked : input.value;
-      if (type === "number" || type === "range") v = Number(v);
+      if (type === "number" || type === "range" || type === "swing") v = Number(v);
       if (name === "chord_bars") v = Number(v);
       values[name] = v;
       if (type === "range") { lab.textContent = `${label} ${v}%`; input.setAttribute("aria-valuetext", v + "%"); }
+      if (type === "swing") { lab.textContent = `${label} ${v}`; input.setAttribute("aria-valuetext", String(v)); }
       if (name === "key") { renderGenForm(); }     // gli stili seguono il modo della tonalita'
-      scheduleGenerate(type === "range" || type === "number" ? 250 : 0);
+      scheduleGenerate(type === "range" || type === "number" || type === "swing" ? 250 : 0);
     };
-    input.addEventListener(type === "range" || type === "number" ? "input" : "change", update);
+    input.addEventListener(type === "range" || type === "number" || type === "swing" ? "input" : "change", update);
   }
   if (kind !== "progression" && kind !== "drums" && !gen.choices.sources.length) {
     $("genStatus").textContent = t("Nel brano non c'è ancora una traccia con degli accordi da seguire.");

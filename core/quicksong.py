@@ -157,7 +157,15 @@ GENRES_DATA = {
 _GENRE_SCALE = {"blues": "blues", "rocknroll": "blues", "country": "pentatonic", "pop": "pentatonic", "punk": "pentatonic",
                 "rock": "rock", "metal": "metal", "balcanico78": "phrygian_dominant",
                 "funk": "groove", "soul": "groove", "lofi": "groove", "reggae": "groove",
-                "jazz": "bebop", "swing": "bebop"}
+                "jazz": "bebop", "swing": "bebop",
+                "bossa": "latin", "samba": "latin", "chacha": "latin", "disco": "groove", "afro68": "pentatonic",
+                "valzer": "classical", "ballata": "classical", "ballata68": "classical", "marcia": "classical",
+                "elettronica": "modal", "orchestrale": "classical"}
+# le figure della melodia per genere (8.9): note di avvicinamento cromatiche sul levare, prima di una nota sul tempo
+# (core.melody_generate._add_approaches): sopra o sotto nel jazz, sotto nel blues e nei generi che lo prendono
+_GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_below", "rocknroll": "approach_below",
+                 "funk": "approach_below", "soul": "approach_below", "disco": "approach_below",
+                 "bossa": "approach", "samba": "approach", "chacha": "approach", "country": "approach_below", "rock": "approach_below"}
 
 # gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
 # (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
@@ -182,6 +190,7 @@ _GENRE_INSTRUMENTS = {
     "rock": {"melody": "Overdriven_Guitar", "comp2": "Clean_Guitar"},
     "punk": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
     "metal": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
+    "marcia": {"melody": "Trumpet", "bass": "Tuba"},
     "rocknroll": {"comp": "Piano", "comp2": "Clean_Guitar", "melody": "Tenor_Sax"},
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
@@ -318,6 +327,8 @@ _GENRE_FX = {
     "ballata68": ("riverbero: stanza=70 smorzamento=40 ampiezza=100 mix=22",),
     "samba": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),        # percussioni in primo piano
     "chacha": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
+    "marcia": ("riverbero: stanza=55 smorzamento=45 ampiezza=100 mix=16",),               # una piazza: aria, senza coda lunga
+    "balcanico78": ("riverbero: stanza=30 smorzamento=50 ampiezza=100 mix=10",),
     "afro68": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
 }
 
@@ -819,7 +830,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     body = E._quick_melody(project, chords_track, c["instruments"]["melody"], _MELODY_STYLE[c["melody"]], skey, bars,
                                            seed_of("melody", 99), lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
-                                            "scale_kind": _GENRE_SCALE.get(c["genre"], "")})
+                                            "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
+                                            "figure": _GENRE_FIGURE.get(c["genre"], "")})
                 bodies[part] = body
             harmony[cache] = bodies
         bodies = dict(harmony[cache])

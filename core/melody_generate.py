@@ -326,7 +326,10 @@ SCALE_KINDS = {"pentatonic": ((0, 2, 4, 7, 9), (0, 3, 5, 7, 10)),
                # bebop maggiore (con la sesta bemolle di passaggio): jazz e swing; in minore la scala di sempre
                "bebop": ((0, 2, 4, 5, 7, 8, 9, 11), None),
                # frigia dominante in maggiore (balcanico: do re b mi fa sol la b si b), minore armonica in minore
-               "phrygian_dominant": ((0, 1, 4, 5, 7, 8, 10), (0, 2, 3, 5, 7, 8, 11)),
+               "latin": ((0, 2, 4, 5, 7, 9, 11), (0, 2, 3, 5, 7, 9, 11)),           # maggiore e minore melodico: la melodia latina sale con la sesta e la settima naturali
+    "classical": ((0, 2, 4, 5, 7, 9, 11), (0, 2, 3, 5, 7, 8, 11)),       # minore armonica: valzer e ballate hanno la sensibile
+    "modal": ((0, 2, 4, 6, 7, 9, 11), (0, 2, 3, 5, 7, 9, 10)),           # lidia e dorica: elettronica e colonne sonore
+    "phrygian_dominant": ((0, 1, 4, 5, 7, 8, 10), (0, 2, 3, 5, 7, 8, 11)),
                # metal: blues in maggiore, frigia in minore (do re b mi b fa sol la b si b)
                "metal": ((0, 2, 3, 4, 7, 9), (0, 1, 3, 5, 7, 8, 10))}
 
@@ -334,7 +337,7 @@ SCALE_KINDS = {"pentatonic": ((0, 2, 4, 7, 9), (0, 3, 5, 7, 10)),
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
-                           intensity: str = "normal", repeats=(), scale_kind: str = "") -> str:
+                           intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "") -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
@@ -463,6 +466,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
 
     if amount.rhythm > 0 and not compound:                   # prima delle ripetizioni: una sezione che torna copia anche le sue anacrusi interne
         notes = _add_pickups(notes, starts[1:], scale, 0.5 * amount.rhythm, random.Random(f"{seed}/pickup"), range_low, range_high)
+    if figure and not compound:                              # anche questa prima delle ripetizioni: una sezione che torna copia le sue figure
+        notes = _add_approaches(notes, figure, 0.3, random.Random(f"{seed if free else 0}/figure"), range_low, range_high)
     notes = _apply_repeats(notes, repeats)
     return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng)
 
@@ -487,6 +492,30 @@ def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Ra
             continue
         notes[previous] = (t, d - 0.5, p, b)
         notes.append((start - 0.5, 0.5, approach, first[3]))
+    return sorted(notes)
+
+
+FIGURES = ("approach", "approach_below")
+
+
+def _add_approaches(notes, figure: str, probability: float, rng: random.Random, range_low: int, range_high: int):
+    """Note di avvicinamento cromatiche (8.9): davanti a una nota sul tempo, l'ultimo ottavo della nota lunga che la precede diventa
+    la nota un semitono sotto (figure="approach_below": il passaggio del blues) o, a caso, sotto o sopra ("approach": il jazz).
+    Solo dove la nota prima dura almeno un tempo e non e' gia' quella: cade sul levare, fuori dai tempi forti."""
+    if figure not in FIGURES:
+        return notes
+    notes = sorted(notes)
+    for target in [n for n in notes if abs(n[0] - round(n[0])) < 1e-6]:
+        previous = next((i for i, n in enumerate(notes) if abs(n[0] + n[1] - target[0]) < 1e-6 and n[1] >= 1.0 - 1e-6), None)
+        if previous is None or rng.random() >= probability:
+            continue
+        step = -1 if figure == "approach_below" else rng.choice((-1, 1))
+        approach = target[2] + step
+        t, d, p, b = notes[previous]
+        if approach == p or not range_low <= approach <= range_high:
+            continue
+        notes[previous] = (t, d - 0.5, p, b)
+        notes.append((target[0] - 0.5, 0.5, approach, target[3]))
     return sorted(notes)
 
 

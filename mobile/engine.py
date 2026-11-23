@@ -1853,7 +1853,7 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
     """Le parti generate come un box per sezione, allineati alle sezioni del brano (core.arrange, come «Arrangia il brano» del
     computer): {text, sections, tracks, seed}. options: parts (["drums", "bass", "comping"]), drum_style, bass_style,
     comping_style, bass_instrument ("Bass"), comping_instrument ("Piano"), variability (0.3), seed, intensities {indice:
-    livello} per cambiare l'intensita' proposta, ending, rallentando, phrase_dynamics, melody (traccia della melodia),
+    livello} per cambiare l'intensita' proposta, swing (50 dritto - 80, per basso e accompagnamento), ending, rallentando, phrase_dynamics, melody (traccia della melodia),
     replace (le tracce che ci sono gia' si sostituiscono; senza, ValueError). Le sezioni con lo stesso nome e gli stessi
     accordi ricevono la stessa parte quando la variabilita' e' bassa."""
     from dataclasses import replace as _replace
@@ -1887,7 +1887,7 @@ def arrange_song(text: str, options: Optional[dict] = None) -> dict:
         bass_instrument=options.get("bass_instrument", "Bass"),
         variability=variability, seed=seed, ending=bool(options.get("ending", True)),
         rallentando=bool(options.get("rallentando", False)), phrase_dynamics=bool(options.get("phrase_dynamics", True)),
-        melody_track=options.get("melody"))
+        melody_track=options.get("melody"), swing=int(options.get("swing") or 50))
     made = ar.arrange(project, sections, opts, bar_beats, chord_octave=track.instrument.default_octave, chord_track=track.name)
     names = {"drums": "Drums", "bass": opts.bass_instrument, "comping": opts.comping_instrument}
     new = text

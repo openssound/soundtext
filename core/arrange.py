@@ -167,6 +167,7 @@ class ArrangeOptions:
     phrase_dynamics: bool = True    # crescendo di frase, accento sull'ingresso del ritornello
     melody_track: Optional[str] = None   # l'accompagnamento si dirada dove questa melodia e' fitta
     modulation: int = 0             # semitoni dell'ultimo ritornello (e di quel che segue)
+    swing: int = 50                 # 50 = dritto; 51-80 = crome (basso e accompagnamento) in terzina sempre piu' marcata; la batteria resta com'e'
 
 
 def _level(intensity: str) -> str:
@@ -502,6 +503,9 @@ def arrange(project: Project, sections: List[Section], options: ArrangeOptions,
             rit_bars = 2 if bars >= 3 else 1
             texts[kind] = _with_rallentando(texts[kind], ending_bar - rit_bars * bar_beats, ending_bar,
                                             _tempo_at(project, section.start_beat + ending_bar - rit_bars * bar_beats))
+        if options.swing > 50:
+            from .rhythm_generate import with_swing
+            texts = {kind: (text if kind == "drums" else with_swing(text, options.swing)) for kind, text in texts.items()}
         for kind, text in texts.items():
             parts[kind].append(Clip(section.name, text, section.start_beat))
     if not any(parts[kind] for kind in ("drums", "bass", "comping")):

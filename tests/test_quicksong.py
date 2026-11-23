@@ -285,7 +285,7 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
 
     assert effects("reggae") == ["delay"] and effects("lofi") == ["passa_basso", "eq"]
     assert effects("funk") == ["compressore"] and effects("blues") == ["riverbero"] and effects("orchestrale") == ["riverbero"]
-    assert effects("marcia") == [] and effects("reggae", effects=False) == []
+    assert effects("marcia") == ["riverbero"] and effects("reggae", effects=False) == []
 
 
 def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
@@ -505,10 +505,36 @@ def test_new_bass_and_piano_styles_write_full_bars_in_four_four(q):
         raise AssertionError("il blues non sceglie mai il boogie al piano")
 
 
-@pytest.mark.parametrize("genre,kind", [("funk", "groove"), ("soul", "groove"), ("jazz", "bebop"), ("balcanico78", "phrygian_dominant"), ("metal", "metal"), ("rock", "rock")])
+@pytest.mark.parametrize("genre,kind", [("funk", "groove"), ("soul", "groove"), ("jazz", "bebop"), ("balcanico78", "phrygian_dominant"), ("metal", "metal"), ("rock", "rock"),
+                                        ("bossa", "latin"), ("samba", "latin"), ("chacha", "latin"), ("valzer", "classical"),
+                                        ("ballata", "classical"), ("marcia", "classical"), ("elettronica", "modal"), ("orchestrale", "classical")])
 def test_the_new_scales_keep_the_strong_beats_inside_the_chord_or_the_scale(q, genre, kind):
     from core.project_io import parse_project_text
     from core.melody_generate import SCALE_KINDS
     assert q._GENRE_SCALE[genre] == kind and kind in SCALE_KINDS
     song = q.quick_song({"genre": genre, "mood": "allegra" if genre != "metal" else "tesa", "duration": 40, "seed": 2, "variety": 0})
     assert parse_project_text(song["text"], "x") is not None
+
+
+def test_jazz_and_blues_melodies_have_chromatic_approach_notes(q):
+    quicksong = q
+    from core.notation import parse_track_text
+    from core.project_io import parse_project_text
+
+    def approaches(genre):
+        found = total = 0
+        for seed in range(1, 7):
+            song = quicksong.quick_song({"genre": genre, "seed": seed, "variety": 0, "duration": 90})
+            project = parse_project_text(song["text"], "x")
+            track = next(t for t in project.tracks if t.name == song["choices"]["instruments"]["melody"])
+            events = [e for e in parse_track_text(track.text, project.patterns) if e.kind == "note"]
+            midi = lambda e: 12 * (e.octave + 1) + {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}[e.letter[0]] + e.letter.count("#") - e.letter[1:].count("b")  # noqa: E731
+            for a, b in zip(events, events[1:]):
+                total += 1
+                if abs(b.start - round(b.start)) < 1e-6 and abs(a.start % 1 - 0.5) < 1e-6 and abs(midi(a) - midi(b)) == 1:
+                    found += 1
+        return found, total
+    for genre in ("jazz", "blues"):
+        found, total = approaches(genre)
+        assert found >= 3, (genre, found, total)
+    assert approaches("marcia")[0] <= approaches("jazz")[0]

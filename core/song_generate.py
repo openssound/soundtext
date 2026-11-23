@@ -93,6 +93,7 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
     - progression: key, style, chord_bars (0.5, 1, 2), ending;
     - drums: style, fill_every (4), phrase_fills (si'), ending (no),
       section_fills (si' se le altre tracce hanno dei box);
+    - bass e comping: swing (50 dritto - 80: le crome in ritardo, come «swing=N»);
     - bass: source (traccia degli accordi), style, octave (2),
       variation_every (4), kick_track, performance, instrument ("Bass");
     - comping: source, style, instrument ("Piano"), octave, variation_every
@@ -160,6 +161,8 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
         out = _performed(out, instrument, options, seed, project)
     else:
         raise ValueError(f"generatore sconosciuto: {kind}")
+    if kind in ("bass", "comping") and int(options.get("swing") or 50) > 50:
+        out = rg.with_swing(out, options["swing"])
     return {"text": out, "seed": seed}
 
 
@@ -200,8 +203,10 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None,
     blocks = ""
     if compact and project is not None:
         from core.compact_text import compact_for_project
-        made = compact_for_project(project, body.strip(), re.sub(r"\W", "", candidate))
-        body = made["text"]
+        from core.rhythm_generate import split_swing
+        word, plain = split_swing(body.strip())                  # lo swing in testa resta fuori dai pattern
+        made = compact_for_project(project, plain, re.sub(r"\W", "", candidate))
+        body = (word + " " if word else "") + made["text"]
         blocks = "".join(f"Pattern %{n}:\n  {b}\n\n" for n, b in made["patterns"].items())
     lines = "\n".join("  " + line if line.strip() else "" for line in body.strip().split("\n"))
     head = text.rstrip("\n")

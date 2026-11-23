@@ -32,7 +32,7 @@ from core.playback import PlaybackEngine
 from core.rhythm_generate import (
     DRUM_STYLES, BASS_STYLES, COMPING_STYLES, RIFF_STYLES, PROGRESSION_STYLES, generate_drum_pattern,
     section_end_bars, track_end_beat, kick_beats_of_track, fit_register, part_registers,
-    extract_chords_from_track, generate_bass_from_chords, generate_melodic_line,
+    extract_chords_from_track, generate_bass_from_chords, generate_melodic_line, with_swing, split_swing,
     generate_chord_progression, parse_key, drum_styles_for_meter, INTENSITIES,
     Variability, splice_bars, MELODY_STYLES,
 )
@@ -438,7 +438,21 @@ class _GeneratedTrackDialogBase(QDialog):
         text = self._generate_text()
         for first, last, seed in self._overrides:
             text = splice_bars(text, self._generate_text(seed=seed), first, last, self.bar_beats)
-        return self._performed(text)
+        text = self._performed(text)
+        spin = getattr(self, "swing_spin", None)
+        return with_swing(text, spin.value()) if spin is not None else text
+
+    def _add_swing(self, options_row):
+        """«Swing»: le crome in ritardo (swing=N in testa al testo), per basso e accompagnamento."""
+        options_row.addSpacing(12)
+        options_row.addWidget(QLabel(tr("Swing:")))
+        self.swing_spin = QSpinBox()
+        self.swing_spin.setRange(50, 80)
+        self.swing_spin.setValue(50)
+        self.swing_spin.setAccessibleName(tr("Swing (50 = dritto, 66 = terzinato)"))
+        self.swing_spin.setToolTip(tr("50 = crome dritte, 66 = terzinato."))
+        self.swing_spin.valueChanged.connect(self._regenerate_preview)
+        options_row.addWidget(self.swing_spin)
 
     def _add_performance_check(self, options_row):
         """"Esecuzione dello strumento" (core.performance_style) se lo
@@ -576,7 +590,9 @@ class _GeneratedTrackDialogBase(QDialog):
             return
         if self.compact_check.isChecked():
             from core.compact_text import compact_into_project
-            text = compact_into_project(self.project, text, self._compact_label())
+            word, plain = split_swing(text)                      # lo swing in testa resta fuori dai pattern
+            text = compact_into_project(self.project, plain, self._compact_label())
+            text = (word + " " if word else "") + text
             ok, msg = validate_track_text(text, self.project.patterns)
             if not ok:
                 QMessageBox.critical(self, tr("Errore di sintassi"), msg)
@@ -824,6 +840,7 @@ class BassGenerateDialog(_GeneratedTrackDialogBase):
             "Piena: accordi con l'ottava sopra, basso che sale d'ottava a fine accordo.\n"
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
         self._add_performance_check(options_row)
+        self._add_swing(options_row)
         drums = [t for t in self.project.tracks
                  if not t.is_audio and t.name != self.track_name and t.instrument.is_percussion and t.text.strip()]
         if drums:
@@ -1048,6 +1065,7 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
             "In crescendo: leggera, poi normale, poi piena lungo il brano."))
         if self.polyphonic:
             self._add_performance_check(options_row)
+        self._add_swing(options_row)
         self._registers = part_registers(self.project, exclude_track_name=self.track_name)
         if fit_register(self.range_low, self.range_high, self.polyphonic, self._registers) != \
                 (self.range_low, self.range_high):

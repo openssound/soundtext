@@ -3494,5 +3494,9 @@
  "Pianoforte boogie-woogie": "Piano boogie-woogie",
  "Swing (del genere - 50 dritto - 66 terzinato):": "Swing (el del género - 50 recto - 66 ternario):",
  "Lo swing di melodia, accompagnamento e basso. Tutto a sinistra: quello del genere (jazz, blues, swing, rock'n'roll, soul, funk, lo-fi). 50 = ottavi dritti, 66 = terzinato.": "El swing de melodía, acompañamiento y bajo. Todo a la izquierda: el del género (jazz, blues, swing, rock'n'roll, soul, funk, lo-fi). 50 = corcheas rectas, 66 = ternario.",
- "Swing: del genere ↔ 50 dritto ↔ 66 terzinato": "Swing: el del género ↔ 50 recto ↔ 66 ternario"
+ "Swing: del genere ↔ 50 dritto ↔ 66 terzinato": "Swing: el del género ↔ 50 recto ↔ 66 ternario",
+ "Swing (50 = dritto, 66 = terzinato):": "Swing (50 = recto, 66 = ternario):",
+ "Swing (50 = dritto, 66 = terzinato)": "Swing (50 = recto, 66 = ternario)",
+ "50 = crome dritte, 66 = terzinato.": "50 = corcheas rectas, 66 = ternario.",
+ "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria resta com'e'.": "50 = corcheas rectas, 66 = ternario. El bajo y el acompañamiento tocan las corcheas con retraso; la batería queda como está."
 }

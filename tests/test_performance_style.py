@@ -81,3 +81,22 @@ def test_dialog_option_for_the_destination_instrument():
                              track_name="Basso")
     assert dlg.performance_check is not None
     dlg.reject()
+
+
+def test_dialog_swing_goes_in_front_and_stays_out_of_the_patterns():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication([])
+    from core.model import Project
+    from gui.rhythm_generate_dialog import BassGenerateDialog, chord_source_tracks
+    p = Project(tempo_bpm=100)
+    p.add_track("Accordi", "Piano", "4: 4C 4Am 4F 4G")
+    p.add_track("Basso", "Bass", "")
+    dlg = BassGenerateDialog(None, p, "Bass", "prova", chord_source_tracks(p, "Basso"), default_bars=4, track_name="Basso")
+    plain = dlg._compose_text()
+    assert not plain.startswith("swing")
+    dlg.swing_spin.setValue(64)
+    assert dlg._compose_text() == "swing=64 " + plain
+    dlg.compact_check.setChecked(True)
+    dlg.accept()
+    assert dlg.result_text().startswith("swing=64 ")
