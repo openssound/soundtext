@@ -115,7 +115,7 @@ jobs:
   # su Apple Silicon.
   macos:
     needs: commit
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Sorgenti di sfizioso
         run: |
