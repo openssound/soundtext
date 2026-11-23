@@ -285,7 +285,7 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
 
     assert effects("reggae") == ["delay"] and effects("lofi") == ["passa_basso", "eq"]
     assert effects("funk") == ["compressore"] and effects("blues") == ["riverbero"] and effects("orchestrale") == ["riverbero"]
-    assert effects("pop") == [] and effects("reggae", effects=False) == []
+    assert effects("marcia") == [] and effects("reggae", effects=False) == []
 
 
 def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
@@ -296,7 +296,7 @@ def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
     calls = re.findall(r"^  (%MelodiaRitornello(?:\.octave\(1\))?)$", song["text"], re.M)
     assert calls == ["%MelodiaRitornello"] * (len(calls) - 1) + ["%MelodiaRitornello.octave(1)"] and len(calls) >= 3
     project = parse_project_text(song["text"], "x")
-    track = project.get_track("Flute")
+    track = project.get_track(song["choices"]["instruments"]["melody"])
     notes = [max(resolve_event_notes(e, track.instrument)[0], default=0) for e in
              sounding_events(track.parsed_events(project.patterns, meter=project.meter()))]
     assert max(notes) >= 12 + min(n for n in notes if n) + 4          # il culmine sta nell'ultimo ritornello
@@ -356,12 +356,13 @@ def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_
         assert "harm" not in song["parts"], genre
     song = q.quick_song({**base, "second_voice": True})
     assert "harm" in song["parts"]
-    boxes = _re.findall(r'Box Clarinet "([^"]*)" \|\d+:\n  (%MelodiaRitornello\.thirds)', song["text"])
+    harm = song["choices"]["instruments"]["harm"]
+    boxes = _re.findall(r'Box ' + harm + r' "([^"]*)" \|\d+:\n  (%MelodiaRitornello\.thirds)', song["text"])
     assert boxes == [("Ritornello", "%MelodiaRitornello.thirds")]
     assert "harm" not in q.quick_song({**base, "second_voice": True, "development": False})["parts"]
     assert "harm" not in q.quick_song({**base, "second_voice": True, "duration": 45})["parts"]      # un solo ritornello
     rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True, "variety": 0})
-    assert q._HARM_FOR["Lead"] == "Lead_2_sawtooth" and any("Lead_2_sawtooth" in line for line in rock["text"].split("\n"))
+    assert q._HARM_FOR["Overdriven_Guitar"] == "Rock_Organ" and any("Rock_Organ" in line for line in rock["text"].split("\n"))
 
 
 def test_another_song_varies_more_than_the_key_and_the_choices_of_the_user_stay(q):
@@ -418,13 +419,96 @@ def test_another_song_changes_instruments_accompaniment_density_and_ending_but_k
         inst = song["choices"]["instruments"]
         assert len({inst[p] for p in ("comp", "comp2", "melody") if p in inst}) == len([p for p in ("comp", "comp2", "melody") if p in inst])
     # il punk e il metal non prendono tastiere o chitarre pulite per la melodia, il jazz resta con fiati e piano o chitarra
-    assert {made("punk", "tesa", s)["choices"]["instruments"]["melody"] for s in range(1, 15)} <= {"Lead", "Overdriven_Guitar"}
+    assert {made("punk", "tesa", s)["choices"]["instruments"]["melody"] for s in range(1, 15)} <= {"Overdriven_Guitar"}
     assert {made("jazz", "calma", s)["choices"]["instruments"]["comp"] for s in range(1, 15)} <= {"Piano", "Nylon_Guitar"}
     # la ricetta pura (variety 0) e le scelte dell'utente non cambiano
     pure = {made("pop", "allegra", s, variety=0)["choices"]["instruments"]["melody"] for s in range(1, 10)}
-    assert pure == {"Flute"}
+    assert pure == {"Electric_Piano_1"}
     chosen = made("pop", "allegra", 3, parts={"melody": {"instrument": "Oboe"}})
     assert chosen["choices"]["instruments"]["melody"] == "Oboe"
     # e i brani sono validi
     for song in pop[:6] + [made("country", "allegra", s) for s in range(1, 5)] + [made("elettronica", "ipnotica", s) for s in range(1, 5)]:
         _valid(q, song)
+
+
+# ------------------------------------------------------------ generi, seconda revisione
+
+def test_swing_genres_write_the_swing_word_in_every_melodic_box_and_keep_the_drums_in_triplets(q):
+    import re as _re
+    expected = {"jazz": "swing=", "swing": "swing=", "blues": "swing=", "rocknroll": "swing=",
+                "soul": "swing16=", "funk": "swing16=", "lofi": "swing16="}
+    for genre, word in expected.items():
+        song = q.quick_song({"genre": genre, "mood": "calma" if genre == "lofi" else "allegra", "duration": 40, "seed": 3})
+        boxes = _re.findall(r'^Box (\S+) "[^"]*" \|\d+:\n  (\S.*)', song["text"], _re.M)
+        assert boxes, genre
+        for track, first in boxes:
+            if track == "Drums":
+                assert "swing" not in first, genre
+            elif track != "Strings" and song["choices"]["instruments"].get("pad") != track:
+                assert first.startswith(word) or first.startswith("%"), (genre, track, first[:30])
+        assert any(first.startswith(word) for track, first in boxes if track != "Drums"), genre
+    assert "swing" not in quick_text(q, "pop") and "swing" not in quick_text(q, "bossa")
+    # il valore scende con il tempo nel jazz e nello swing; si sceglie anche a mano
+    assert q.swing_word("jazz", 100) == "swing=66" and q.swing_word("jazz", 200) == "swing=58"
+    assert q.swing_word("pop", 120) == "" and q.swing_word("pop", 120, 60) == "swing=60"
+    assert "swing=66" in q.quick_song({"genre": "jazz", "mood": "calma", "duration": 20, "seed": 1, "swing": 66})["text"]
+
+
+def quick_text(q, genre):
+    return q.quick_song({"genre": genre, "mood": "allegra", "duration": 30, "seed": 2})["text"]
+
+
+def test_swing_is_recorded_on_the_events_of_the_melodic_parts(q):
+    from core.project_io import parse_project_text
+    from st_language.midi import sounding_events
+    song = q.quick_song({"genre": "jazz", "mood": "allegra", "duration": 40, "seed": 3})
+    project = parse_project_text(song["text"], "x")
+    swung = {}
+    for track in project.tracks:
+        swung[track.name] = {e.swing for e in sounding_events(track.parsed_events(project.patterns, meter=project.meter())) if e.swing}
+    assert swung["Drums"] == set() and all(len(v) == 1 for k, v in swung.items() if k != "Drums" and v)
+    assert any(swung[k] for k in swung if k != "Drums")
+
+
+def test_only_electronic_genres_keep_a_synth_lead_and_the_acoustic_genres_have_their_own_bands(q):
+    leads = {"elettronica", "lofi"}
+    for genre in q.GENRES_DATA:
+        for variety in (0, 1):
+            for seed in (1, 2, 3):
+                inst = q.quick_song({"genre": genre, "mood": "allegra", "duration": 30, "seed": seed, "variety": variety})["choices"]["instruments"]
+                if inst.get("melody", "").startswith("Lead"):
+                    assert genre in leads, (genre, inst)
+    acoustic = ("pop", "ballata", "bossa", "samba", "valzer", "afro68", "ballata68")
+    bands = {g: tuple(sorted(q.quick_song({"genre": g, "mood": "calma", "duration": 30, "seed": 1, "variety": 0})["choices"]["instruments"].items()))
+             for g in acoustic}
+    assert len(set(bands.values())) == len(acoustic)
+    assert bands["bossa"] != bands["samba"] and dict(bands["valzer"])["comp"] == "Accordion"
+
+
+def test_new_bass_and_piano_styles_write_full_bars_in_four_four(q):
+    from core.project_io import parse_project_text
+    for genre, mood in (("chacha", "allegra"), ("rocknroll", "allegra"), ("blues", "calma")):
+        for variety in (0, 1):
+            song = q.quick_song({"genre": genre, "mood": mood, "duration": 40, "seed": 4, "variety": variety})
+            parse_project_text(song["text"], "x")
+            assert song["bars"] > 0
+    assert q.quick_song({"genre": "rocknroll", "mood": "allegra", "duration": 30, "seed": 1, "variety": 0})["choices"]["styles"]["bass"] == "boogie"
+    assert q.quick_song({"genre": "rocknroll", "mood": "allegra", "duration": 30, "seed": 1, "variety": 0})["choices"]["styles"]["comp"] == "boogie_piano"
+    assert q.quick_song({"genre": "chacha", "mood": "allegra", "duration": 30, "seed": 1, "variety": 0})["choices"]["styles"]["bass"] == "tumbao"
+    # il boogie-woogie si suona sempre al pianoforte
+    for seed in range(1, 30):
+        song = q.quick_song({"genre": "blues", "mood": "calma", "duration": 20, "seed": seed})
+        if song["choices"]["styles"]["comp"] == "boogie_piano":
+            assert song["choices"]["instruments"]["comp"] == "Piano"
+            break
+    else:
+        raise AssertionError("il blues non sceglie mai il boogie al piano")
+
+
+@pytest.mark.parametrize("genre,kind", [("funk", "groove"), ("soul", "groove"), ("jazz", "bebop"), ("balcanico78", "phrygian_dominant"), ("metal", "metal"), ("rock", "rock")])
+def test_the_new_scales_keep_the_strong_beats_inside_the_chord_or_the_scale(q, genre, kind):
+    from core.project_io import parse_project_text
+    from core.melody_generate import SCALE_KINDS
+    assert q._GENRE_SCALE[genre] == kind and kind in SCALE_KINDS
+    song = q.quick_song({"genre": genre, "mood": "allegra" if genre != "metal" else "tesa", "duration": 40, "seed": 2, "variety": 0})
+    assert parse_project_text(song["text"], "x") is not None

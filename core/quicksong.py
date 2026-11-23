@@ -131,13 +131,13 @@ GENRES_DATA = {
     "metal": dict(meter="4/4", bpm=150, drums="metal", bass="eighths", comp="metal_gallop", comp2="block_chords", melody="vivace",
                   ens="elettrica", form="canzone", dist=True, moods=("tesa", "epica", "oscura", "misteriosa", "drammatica", "energica", "avventurosa"),
                   prog={"major": ("mixolydian", "rock", "mixolydian"), "minor": ("phrygian", "minor_epic", "minor_three")}),
-    "rocknroll": dict(meter="4/4", bpm=150, drums="rocknroll", bass="root_fifth", comp="quarter_chords", comp2="block_chords", melody="vivace",
+    "rocknroll": dict(meter="4/4", bpm=150, drums="rocknroll", bass="boogie", comp="boogie_piano", comp2="quarter_chords", melody="vivace",
                       ens="elettrica", form="canzone", moods=("allegra", "festosa", "nostalgica", "tesa", "giocosa", "energica"),
                       prog={"major": ("doo_wop", "rock", "three_chord"), "minor": ("minor_rock", "minor_three", "minor_rock")}),
     "samba": dict(meter="4/4", bpm=100, drums="samba", bass="bossa", comp="bossa_comp", comp2="montuno", melody="vivace",
                   ens="acustica", form="canzone", moods=("allegra", "festosa", "romantica", "calma", "giocosa", "energica", "sensuale"),
                   prog={"major": ("jazz_251", "pop", "circle"), "minor": ("minor_251", "minor_circle", "minor_251")}),
-    "chacha": dict(meter="4/4", bpm=112, drums="cha_cha", bass="bossa", comp="montuno", comp2="block_chords", melody="cantabile",
+    "chacha": dict(meter="4/4", bpm=112, drums="cha_cha", bass="tumbao", comp="montuno", comp2="block_chords", melody="cantabile",
                    ens="acustica", form="canzone", moods=("allegra", "festosa", "romantica", "nostalgica", "giocosa", "sensuale", "energica"),
                    prog={"major": ("pop", "circle", "jazz_251"), "minor": ("minor_pop", "minor_circle", "minor_251")}),
     "valzer": dict(meter="3/4", bpm=96, drums="waltz", bass="waltz", comp="waltz_comp", comp2="sustained", melody="cantabile",
@@ -154,30 +154,43 @@ GENRES_DATA = {
 }
 
 # la scala della melodia per genere (8.8.3): pentatonica, blues o minore armonica (vedi core.melody_generate.SCALE_KINDS)
-_GENRE_SCALE = {"blues": "blues", "rock": "blues", "rocknroll": "blues", "metal": "blues", "country": "pentatonic", "pop": "pentatonic",
-                "punk": "pentatonic", "balcanico78": "harmonic_minor"}
+_GENRE_SCALE = {"blues": "blues", "rocknroll": "blues", "country": "pentatonic", "pop": "pentatonic", "punk": "pentatonic",
+                "rock": "rock", "metal": "metal", "balcanico78": "phrygian_dominant",
+                "funk": "groove", "soul": "groove", "lofi": "groove", "reggae": "groove",
+                "jazz": "bebop", "swing": "bebop"}
 
 # gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
 # (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
 _GENRE_INSTRUMENTS = {
-    "pop": {"pad": "Strings"}, "ballata": {"pad": "Strings"}, "ballata68": {"pad": "Strings"},
+    "pop": {"comp": "Acoustic_Guitar_Steel", "comp2": "Piano", "melody": "Electric_Piano_1", "pad": "Strings"},
+    "ballata": {"comp": "Piano", "comp2": "Acoustic_Guitar_Steel", "melody": "Oboe", "pad": "Strings"},
+    "ballata68": {"comp": "Piano", "comp2": "Acoustic_Guitar_Steel", "melody": "Clarinet", "pad": "Strings"},
+    "bossa": {"comp": "Nylon_Guitar", "comp2": "Electric_Piano_1", "bass": "Acoustic_Bass"},
+    "samba": {"comp": "Nylon_Guitar", "comp2": "Acoustic_Guitar_Steel", "melody": "Trumpet", "bass": "Acoustic_Bass"},
+    "valzer": {"comp": "Accordion", "comp2": "Pizzicato_Strings", "melody": "Clarinet", "bass": "Acoustic_Bass"},
+    "afro68": {"comp": "Marimba", "comp2": "Nylon_Guitar"},
     "jazz": {"bass": "Acoustic_Bass", "melody": "Tenor_Sax", "comp2": None},
     "swing": {"bass": "Acoustic_Bass", "melody": "Trumpet", "comp2": None, "horn": "Brass_Section"},
     "country": {"comp": "Acoustic_Guitar_Steel", "comp2": "Banjo", "melody": "Fiddle"},
     "soul": {"comp": "Drawbar_Organ", "melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
-    "funk": {"comp": "Clavinet", "comp2": "Clean_Guitar", "horn": "Brass_Section"},
+    "funk": {"comp": "Clavinet", "comp2": "Clean_Guitar", "melody": "Tenor_Sax", "horn": "Brass_Section"},
     "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
     "chacha": {"horn": "Brass_Section"},
-    "reggae": {"comp2": "Drawbar_Organ"},
-    "disco": {"horn": "Brass_Section", "pad": "Strings"},
+    "reggae": {"comp2": "Drawbar_Organ", "melody": "Harmonica"},
+    "disco": {"melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
+    "rock": {"melody": "Overdriven_Guitar", "comp2": "Clean_Guitar"},
+    "punk": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
+    "metal": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
+    "rocknroll": {"comp": "Piano", "comp2": "Clean_Guitar", "melody": "Tenor_Sax"},
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs"}
 
 # lo strumento della seconda voce (il tema in terze dell'ultimo ritornello), nella famiglia della melodia: la formazione di un
 # genere non cambia da sola, la seconda voce c'e' solo se la si chiede (opzione second_voice)
 _HARM_FOR = {"Flute": "Clarinet", "Oboe": "Clarinet", "Clarinet": "Flute", "Lead": "Lead_2_sawtooth", "Tenor_Sax": "Alto_Sax",
-             "Alto_Sax": "Tenor_Sax", "Trumpet": "Trombone", "Harmonica": "Clarinet", "Fiddle": "Violin", "Violin": "Flute"}
+             "Alto_Sax": "Tenor_Sax", "Trumpet": "Trombone", "Harmonica": "Clarinet", "Fiddle": "Violin", "Violin": "Flute",
+             "Overdriven_Guitar": "Rock_Organ", "Cello": "Violin", "Electric_Piano_1": "Flute", "Accordion": "Clarinet"}
 
 # La variabilita' fra un brano e il successivo («Un'altra»): con lo stesso genere e la stessa atmosfera, il seme sceglie fra
 # alternative che stanno bene nel genere (giri armonici, stili del basso e della batteria, stile della melodia, forma, un po' di
@@ -198,7 +211,7 @@ _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jaz
                  "funk": "groove", "soul": "groove", "disco": "groove", "reggae": "folk", "country": "folk",
                  "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
 _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("root_fifth", "root", "eighths"),
-              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("root_fifth", "eighths"), "soul": ("root_fifth", "root", "octaves"),
+              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("root_fifth", "root", "octaves"),
               "disco": ("octaves", "eighths", "root"), "funk": ("octaves", "eighths", "root"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root")}
 _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
@@ -210,11 +223,28 @@ _SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", 
 _INSTRUMENT_ALTS_GENRE = {
     "jazz": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet", "Clarinet", "Flute"), "comp": ("Piano", "Nylon_Guitar")},
     "swing": {"melody": ("Trumpet", "Tenor_Sax", "Clarinet", "Alto_Sax"), "comp": ("Piano", "Nylon_Guitar")},
-    "bossa": {"comp": ("Piano", "Nylon_Guitar")},
+    "pop": {"comp": ("Acoustic_Guitar_Steel", "Piano", "Nylon_Guitar"), "comp2": ("Piano", "Nylon_Guitar", "Electric_Piano_1"),
+            "melody": ("Electric_Piano_1", "Piano", "Flute", "Clarinet")},
+    "ballata": {"comp": ("Piano", "Acoustic_Guitar_Steel"), "comp2": ("Acoustic_Guitar_Steel", "Nylon_Guitar"),
+                "melody": ("Oboe", "Clarinet", "Flute")},
+    "ballata68": {"comp": ("Piano", "Nylon_Guitar"), "comp2": ("Acoustic_Guitar_Steel", "Nylon_Guitar"),
+                  "melody": ("Clarinet", "Oboe", "Flute")},
+    "bossa": {"comp": ("Nylon_Guitar", "Piano"), "comp2": ("Electric_Piano_1", "Piano"), "melody": ("Flute", "Tenor_Sax", "Alto_Sax")},
+    "samba": {"comp": ("Nylon_Guitar", "Acoustic_Guitar_Steel"), "comp2": ("Acoustic_Guitar_Steel", "Nylon_Guitar"),
+              "melody": ("Trumpet", "Flute", "Clarinet")},
+    "valzer": {"comp": ("Accordion", "Strings", "Piano"), "comp2": ("Pizzicato_Strings", "Nylon_Guitar"), "melody": ("Clarinet", "Flute", "Oboe")},
+    "afro68": {"comp": ("Marimba", "Kalimba", "Nylon_Guitar"), "comp2": ("Nylon_Guitar", "Acoustic_Guitar_Steel"),
+               "melody": ("Flute", "Clarinet", "Violin")},
     "country": {"melody": ("Fiddle", "Acoustic_Guitar_Steel", "Harmonica"), "comp": ("Acoustic_Guitar_Steel", "Piano")},
     "soul": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet")},
     "blues": {"melody": ("Harmonica", "Overdriven_Guitar", "Tenor_Sax")},
     "balcanico78": {"melody": ("Clarinet", "Accordion", "Violin")},
+    "rock": {"melody": ("Overdriven_Guitar", "Clean_Guitar", "Rock_Organ", "Tenor_Sax"), "comp2": ("Clean_Guitar", "Rock_Organ")},
+    "punk": {"melody": ("Overdriven_Guitar",)},
+    "rocknroll": {"melody": ("Tenor_Sax", "Harmonica", "Trumpet"), "comp2": ("Clean_Guitar", "Rock_Organ")},
+    "reggae": {"melody": ("Harmonica", "Rock_Organ", "Electric_Piano_1")},
+    "funk": {"melody": ("Tenor_Sax", "Trumpet", "Overdriven_Guitar")},
+    "disco": {"melody": ("Tenor_Sax", "Trumpet", "Clean_Guitar")},
 }
 _INSTRUMENT_ALTS = {
     "acustica": {"melody": ("Flute", "Clarinet", "Violin", "Piano", "Acoustic_Guitar_Steel", "Alto_Sax"),
@@ -229,10 +259,37 @@ _INSTRUMENT_ALTS = {
 _COMP_ALTS = {"pop": ("arpeggio_up", "broken_chord", "block_chords", "quarter_chords"), "ballata": ("arpeggio_up", "broken_chord", "sustained"),
               "lofi": ("broken_chord", "sustained", "arpeggio_up"), "elettronica": ("sustained", "arpeggio_up", "broken_chord"),
               "soul": ("broken_chord", "arpeggio_up", "block_chords"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
-              "swing": ("quarter_chords", "block_chords", "broken_chord")}
+              "swing": ("quarter_chords", "block_chords", "broken_chord", "boogie_piano"),
+              "blues": ("quarter_chords", "boogie_piano"), "rocknroll": ("boogie_piano", "quarter_chords")}
 _BUSY_DRUM_GENRES = ("rock", "funk", "metal", "rocknroll", "punk", "elettronica", "disco")
 _MELODY_ALTS = {"cantabile": ("cantabile", "vivace", "ballata"), "vivace": ("vivace", "cantabile"), "ballata": ("ballata", "cantabile"),
                 "aaba": ("aaba", "cantabile", "vivace")}
+
+
+# lo swing dei generi in terzine (8.8): la batteria e' gia' scritta in terzine; melodia, accompagnamenti, basso e fiati si scrivono
+# a ottavi dritti e una parola (swing=N, o swing16=N sulle semicrome) dice come suonarli. (parola, valore, bpm di riferimento):
+# nel jazz e nello swing, piu' il tempo e' veloce piu' il valore scende verso 56
+_GENRE_SWING = {"jazz": ("swing", 64, 140), "swing": ("swing", 60, 160), "blues": ("swing", 66, None), "rocknroll": ("swing", 62, None),
+                "soul": ("swing16", 54, None), "funk": ("swing16", 54, None), "lofi": ("swing16", 57, None)}
+_SWING_PARTS = ("comp", "comp2", "horn", "bass", "melody", "harm")
+
+
+def swing_word(genre: str, bpm: int, override=None) -> str:
+    """La parola di swing (swing=64...) da mettere in testa a un box di melodia, accompagnamento o basso; "" se il genere non la chiede.
+    override: un numero da 50 (dritto) a 80, o None per il valore del genere."""
+    if override not in (None, ""):
+        try:
+            v = max(50, min(80, int(float(override))))
+        except (TypeError, ValueError):
+            return ""
+        word = _GENRE_SWING.get(genre, ("swing",))[0]
+        return f"{word}={v}" if v != 50 else ""
+    if genre not in _GENRE_SWING:
+        return ""
+    word, value, ref = _GENRE_SWING[genre]
+    if ref:
+        value = max(56, min(66, int(round(value + (ref - bpm) * 0.1))))
+    return f"{word}={value}"
 
 
 # gli effetti con cui parte ogni genere (8.8.4): la catena master (riga per effetto), perche' e' quella che si sente sia sul
@@ -247,6 +304,21 @@ _GENRE_FX = {
     "ballata": ("riverbero: stanza=60 smorzamento=40 ampiezza=100 mix=18",),
     "funk": ("compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=3",),  # compressione piu' marcata
     "disco": ("compressore: soglia=-20 rapporto=4 attacco=10 rilascio=120 guadagno=3",),
+    "jazz": ("riverbero: stanza=25 smorzamento=50 ampiezza=100 mix=10",),                                                          # un club: asciutto ma non secco
+    "swing": ("riverbero: stanza=25 smorzamento=50 ampiezza=100 mix=10",),
+    "bossa": ("riverbero: stanza=25 smorzamento=50 ampiezza=100 mix=10",),
+    "elettronica": ("delay: suddivisione=1/8p tempo=375 ripetizioni=30 mix=14", "riverbero: stanza=80 smorzamento=35 ampiezza=100 mix=25"),
+    "pop": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=14"),         # compatto e radiofonico
+    "rock": ("compressore: soglia=-20 rapporto=3 attacco=12 rilascio=120 guadagno=3", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),       # potenza, niente coda
+    "punk": ("compressore: soglia=-20 rapporto=3 attacco=12 rilascio=120 guadagno=3", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
+    "metal": ("compressore: soglia=-20 rapporto=3 attacco=12 rilascio=120 guadagno=3", "passa_alto: frequenza=40 pendenza=12"),                       # cassa e chitarre piu' definite
+    "soul": ("riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=16",),               # calore
+    "country": ("riverbero: stanza=45 smorzamento=40 ampiezza=100 mix=16",),
+    "valzer": ("riverbero: stanza=70 smorzamento=40 ampiezza=100 mix=22",),                                                          # spazio
+    "ballata68": ("riverbero: stanza=70 smorzamento=40 ampiezza=100 mix=22",),
+    "samba": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),        # percussioni in primo piano
+    "chacha": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
+    "afro68": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
 }
 
 # in quali sezioni suona ogni parte
@@ -559,12 +631,14 @@ def resolve(options: Optional[dict] = None) -> dict:
                 instruments.pop(part, None)
             elif not (part == "comp" and name == "Overdriven_Guitar" and instruments.get("comp") == "Distortion_Guitar"):
                 instruments[part] = name
+    if styles["comp"] == "boogie_piano" and instruments.get("comp") not in (None, "Piano"):
+        instruments["comp"] = "Piano"                        # il boogie-woogie si suona al pianoforte
     if variety > 0:                                          # strumenti alternativi (sceglie il seme di ogni parte)
         genre_alts = _INSTRUMENT_ALTS_GENRE.get(genre, {}) if ensemble == recipe["ens"] else {}
         for part in ("comp", "comp2", "melody", "bass"):
             pool = genre_alts.get(part) or _INSTRUMENT_ALTS.get(ensemble, {}).get(part)
-            if part == "melody" and recipe.get("dist") and ensemble == "elettrica":
-                pool = ("Lead", "Overdriven_Guitar")        # punk e metal: niente tastiere o chitarre pulite per la melodia
+            if part == "melody" and recipe.get("dist") and ensemble == "elettrica" and not genre_alts.get("melody"):
+                pool = ("Overdriven_Guitar",)                # niente tastiere nei generi distorti
             current = instruments.get(part)
             if not pool or current not in pool:
                 continue                                     # lo strumento del genere (clavinet, chitarra distorta...) non si tocca
@@ -695,6 +769,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     human = _float(options.get("human"), 1.0)                # «Umano» (8.3): 0 = griglia esatta, 1 = il micro-tempo dello stile
     compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     out_sections: List[dict] = []
+    swing = swing_word(c["genre"], bpm, options.get("swing"))
     start_bar = 0
     chords_track = "Piano"
     # sviluppo del tema (8.2, 8.4): con piu' ritornelli nella stessa tonalita' e un finale dopo, la melodia del ritornello si scrive
@@ -791,9 +866,11 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     if top is not None and top + 12 <= get_instrument(c["instruments"]["melody"]).range_high:
                         body += ".octave(1)"
                     harm_body = "%" + dev_pattern + ".thirds"
+            if swing and part in _SWING_PARTS:
+                body = swing + " " + body.lstrip()
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
         if harm_body and "harm" in active and idx == chorus_ids[-1]:
-            boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent(harm_body))
+            boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent((swing + " " if swing else "") + harm_body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
 

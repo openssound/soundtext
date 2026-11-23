@@ -318,7 +318,17 @@ def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str) 
 # non ne fanno parte si aggiungono comunque (vedi _allowed_pcs).
 SCALE_KINDS = {"pentatonic": ((0, 2, 4, 7, 9), (0, 3, 5, 7, 10)),
                "blues": ((0, 2, 3, 4, 7, 9), (0, 3, 5, 6, 7, 10)),
-               "harmonic_minor": (None, (0, 2, 3, 5, 7, 8, 11))}
+               "harmonic_minor": (None, (0, 2, 3, 5, 7, 8, 11)),
+               # le scale modali dei generi da groove: misolidia in maggiore, dorica in minore (funk, soul, lo-fi, reggae)
+               "groove": ((0, 2, 4, 5, 7, 9, 10), (0, 2, 3, 5, 7, 9, 10)),
+               # rock: misolidia in maggiore, blues in minore
+               "rock": ((0, 2, 4, 5, 7, 9, 10), (0, 3, 5, 6, 7, 10)),
+               # bebop maggiore (con la sesta bemolle di passaggio): jazz e swing; in minore la scala di sempre
+               "bebop": ((0, 2, 4, 5, 7, 8, 9, 11), None),
+               # frigia dominante in maggiore (balcanico: do re b mi fa sol la b si b), minore armonica in minore
+               "phrygian_dominant": ((0, 1, 4, 5, 7, 8, 10), (0, 2, 3, 5, 7, 8, 11)),
+               # metal: blues in maggiore, frigia in minore (do re b mi b fa sol la b si b)
+               "metal": ((0, 2, 3, 4, 7, 9), (0, 1, 3, 5, 7, 8, 10))}
 
 
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,

@@ -1166,7 +1166,7 @@ def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
 
 
 BASS_STYLES = ("root", "root_fifth", "walking", "pedal", "two_feel", "octaves", "blues",
-               "eighths", "reggae", "bossa", "shuffle", "waltz")
+               "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie")
 
 
 def _note_token(pc: int, octave: int) -> str:
@@ -1300,6 +1300,15 @@ BASS_PATTERNS: Dict[str, dict] = {
     "bossa": {"grid": "8:", "bar": [(0.0, "root"), (1.5, "fifth"), (2.0, "root"), (3.5, "fifth")],
               "variant": [(0.0, "root"), (1.5, "fifth"), (2.0, "root"), (3.5, "approach")]},
     # Shuffle blues a terzine: 1-3-5-6-b7-6-5-3 in ottavi "dondolanti" (lunga-breve).
+    # Tumbao (cha cha, salsa, son): il primo tempo vuoto, la fondamentale sul "e" del 2 (anticipa il tempo forte che segue) e la quinta
+    # sul 4, che nell'ultima battuta dell'accordo si lega al cambio.
+    "tumbao": {"grid": "8:", "bar": [(0.0, "rest"), (1.5, "root"), (3.0, "fifth")],
+               "variant": [(0.0, "rest"), (1.5, "root"), (3.0, "fifth"), (3.5, "approach")]},
+    # Boogie (rock'n'roll, blues): 1-3-5-6-b7-6-5-3 a ottavi, da suonare in swing; la variante chiude sull'avvicinamento.
+    "boogie": {"grid": "8:", "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "sixth"),
+                                     (2.0, "flat7"), (2.5, "sixth"), (3.0, "fifth"), (3.5, "third")],
+               "variant": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "sixth"),
+                           (2.0, "flat7"), (2.5, "sixth"), (3.0, "fifth"), (3.5, "approach")]},
     "waltz": {"grid": "4:", "bar": [(0.0, "root"), (1.0, "rest")],
               "variant": [(0.0, "root"), (1.0, "rest"), (2.0, "fifth")]},
     "shuffle": {"grid": "8T:", "bar": [(0.0, "root"), (2 * _T, "third"), (1.0, "fifth"), (1 + 2 * _T, "sixth"),
@@ -1514,6 +1523,10 @@ PATTERN_ALTS: Dict[str, List[list]] = {
                [(0.0, "rest"), (1.0, "root"), (2.0, "root"), (3.0, "fifth")]],
     "bossa": [[(0.0, "root"), (1.5, "root"), (2.0, "fifth"), (3.5, "fifth")],
               [(0.0, "root"), (1.5, "fifth"), (2.0, "fifth"), (3.5, "root")]],
+    "tumbao": [[(0.0, "rest"), (1.5, "root"), (2.5, "root"), (3.0, "fifth")],
+               [(0.0, "rest"), (1.5, "root"), (3.0, "fifth"), (3.5, "fifth")]],
+    "boogie": [[(0.0, "root"), (0.5, "root"), (1.0, "fifth"), (1.5, "fifth"), (2.0, "sixth"), (2.5, "sixth"), (3.0, "flat7"), (3.5, "sixth")],
+               [(0.0, "root"), (0.5, "fifth"), (1.0, "root"), (1.5, "sixth"), (2.0, "root"), (2.5, "flat7"), (3.0, "root"), (3.5, "sixth")]],
     "shuffle": [[(0.0, "root"), (2 * _T, "root"), (1.0, "third"), (1 + 2 * _T, "fifth"),
                  (2.0, "sixth"), (2 + 2 * _T, "fifth"), (3.0, "third"), (3 + 2 * _T, "approach")],
                 [(0.0, "root"), (2 * _T, "root_hi"), (1.0, "root"), (1 + 2 * _T, "root_hi"),
@@ -1927,6 +1940,13 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                               (2.5, ["root", "third", "fifth"]), (3.0, "rest")]},
 
     # --- Accompagnamenti per genere (8.8.2) ---
+    # Pianoforte boogie-woogie (rock'n'roll, blues): la mano sinistra a ottavi (1-5-1-6-1-b7-1-6), la destra batte l'accordo sul 2 e sul 4,
+    # tutto in una traccia; la variante porta la settima nell'accordo.
+    "boogie_piano": {"grid": "8:", "polyphonic": True,
+                     "bar": [(0.0, "root"), (0.5, "fifth"), (1.0, ["root", "third", "fifth"]), (1.5, "sixth"),
+                             (2.0, "root"), (2.5, "flat7"), (3.0, ["root", "third", "fifth"]), (3.5, "sixth")],
+                     "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, ["root", "third", "seventh"]), (1.5, "sixth"),
+                                 (2.0, "root"), (2.5, "flat7"), (3.0, ["root", "third", "seventh"]), (3.5, "sixth")]},
     # Power chord (fondamentale e quinta) a ottavi: rock e punk.
     "power_chords": {"grid": "8:", "polyphonic": True,
                      "bar": [(0.5 * i, ["root", "fifth"]) for i in range(8)],

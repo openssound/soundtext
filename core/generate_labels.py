@@ -57,6 +57,8 @@ def generator_labels() -> dict:
         ("bossa", tr("Bossa nova")),
         ("shuffle", tr("Shuffle blues (terzine)")),
         ("waltz", tr("Valzer (1 del 3/4, oom-pah-pah)")),
+        ("tumbao", tr("Tumbao (cha cha, salsa)")),
+        ("boogie", tr("Boogie (1-3-5-6-b7)")),
     ]
     comping_style_labels = [
         ("block_chords", tr("Accordi battuti (comping)")),
@@ -75,6 +77,7 @@ def generator_labels() -> dict:
         ("boom_chick", tr("Boom-chick (country, marcia)")),
         ("organ_bubble", tr("Organo bubble (reggae)")),
         ("horn_stabs", tr("Colpi dei fiati sugli accenti")),
+        ("boogie_piano", tr("Pianoforte boogie-woogie")),
     ]
     progression_style_labels = [
         ("pop", tr("Pop (I-V-vi-IV)")),

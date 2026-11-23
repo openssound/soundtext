@@ -19,7 +19,7 @@ const quick = {
   previewing: null, resumed: null,
 };
 const QUICK_KEY = "stmobile.quick";
-const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact", "human", "energy", "second_voice"];
+const QUICK_FIELDS = ["key", "bpm", "meter", "form", "ensemble", "melody", "ending", "modulation", "density", "chords", "seed", "bars", "loop", "compact", "human", "swing", "energy", "second_voice"];
 
 // 64 s -> «1:04»
 function formatClock(seconds) {
@@ -155,6 +155,7 @@ function quickBuildDetail() {
   $("quickModulation").checked = !!o.modulation;
   $("quickDensity").value = o.density === undefined ? 0.5 : o.density;
   $("quickHuman").value = o.human === undefined ? 1 : o.human;
+  $("quickSwing").value = o.swing === undefined || o.swing === "" ? 49 : o.swing;
   $("quickChords").value = o.chords || "";
   $("quickSeed").value = o.seed === undefined || o.seed === null ? "" : o.seed;
   $("quickSeconds").value = o.seconds || "";
@@ -180,6 +181,7 @@ function quickReadFields() {
   set("modulation", $("quickModulation").checked);
   o.density = Number($("quickDensity").value);
   set("human", Number($("quickHuman").value) === 1 ? "" : Number($("quickHuman").value));
+  set("swing", Number($("quickSwing").value) >= 50 ? Number($("quickSwing").value) : "");
   set("chords", $("quickChords").value.trim());
   const seed = $("quickSeed").value.trim();
   set("seed", seed !== "" && Number.isFinite(Number(seed)) && Number(seed) >= 0 ? Math.floor(Number(seed)) : "");
@@ -563,7 +565,7 @@ function setupQuick() {
   $("quickMood").onchange = () => { quick.opts.mood = $("quickMood").value; quickSave(); quickAnnounceChoice(); };
   $("quickDuration").onchange = () => { quick.opts.duration = Number($("quickDuration").value); quickSave(); quickAnnounceChoice(); };
   for (const id of ["quickKey", "quickMeter", "quickForm", "quickEnsemble", "quickMelodyStyle", "quickEnding", "quickEnergy", "quickBpm", "quickModulation",
-                    "quickDensity", "quickHuman", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact", "quickSecondVoice"]) {
+                    "quickDensity", "quickHuman", "quickSwing", "quickChords", "quickSeed", "quickSeconds", "quickBars", "quickLoop", "quickCompact", "quickSecondVoice"]) {
     $(id).addEventListener("change", () => { quickReadFields(); quickSave(); });
   }
 }

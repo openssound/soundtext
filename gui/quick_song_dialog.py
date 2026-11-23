@@ -95,6 +95,11 @@ class QuickSongDialog(QDialog):
         self.human.setValue(100)
         self.human.setToolTip(tr("0 = tutte le note esattamente sulla griglia; 100 = il micro-tempo dello stile (per esempio il rullante un po' indietro nel funk)."))
         detail.addRow(tr("Umano (griglia esatta - micro-tempo dello stile):"), self.human)
+        self.swing = QSlider(Qt.Horizontal)
+        self.swing.setRange(49, 75)
+        self.swing.setValue(49)
+        self.swing.setToolTip(tr("Lo swing di melodia, accompagnamento e basso. Tutto a sinistra: quello del genere (jazz, blues, swing, rock'n'roll, soul, funk, lo-fi). 50 = ottavi dritti, 66 = terzinato."))
+        detail.addRow(tr("Swing (del genere - 50 dritto - 66 terzinato):"), self.swing)
         self.loop_check = QCheckBox(tr("Un loop senza fine"))
         detail.addRow("", self.loop_check)
         self.second_voice_check = QCheckBox(tr("Seconda voce in terze nell'ultimo ritornello"))
@@ -184,6 +189,8 @@ class QuickSongDialog(QDialog):
             o["density"] = self.density.value() / 100.0
             if self.human.value() != 100:
                 o["human"] = self.human.value() / 100.0
+            if self.swing.value() >= 50:
+                o["swing"] = self.swing.value()
             o["loop"] = self.loop_check.isChecked()
             if self.chords_edit.text().strip():
                 o["chords"] = self.chords_edit.text().strip()

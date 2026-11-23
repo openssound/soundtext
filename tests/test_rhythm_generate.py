@@ -256,7 +256,7 @@ def test_bass_variability_keeps_length_and_opening_root(style, seed):
     assert ok, msg
     events = parse_track_text(text, {})
     assert max(e.start + e.duration for e in events) == pytest.approx(16.0)
-    if style != "reggae":  # il reggae lascia volutamente vuoto il primo tempo
+    if style not in ("reggae", "tumbao"):  # il reggae lascia volutamente vuoto il primo tempo
         # la nota che suona al cambio d'accordo e' la sua fondamentale: attaccata
         # li', o anticipata di un ottavo e legata oltre il cambio (sincope)
         notes = [e for e in events if e.kind == "note"]
@@ -631,7 +631,7 @@ def test_bass_in_three_four_follows_the_chords(style):
     assert max(e.start + e.duration for e in events) == pytest.approx(12.0)
     notes = [e for e in events if e.kind == "note"]
     # nessun attacco oltre la battuta di 3/4 di ciascun accordo: ogni accordo inizia con una sua nota
-    if style != "reggae":
+    if style not in ("reggae", "tumbao"):
         starts = {e.start for e in notes}
         assert {0.0, 3.0, 6.0, 9.0} <= starts
 
