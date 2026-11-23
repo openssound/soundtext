@@ -610,7 +610,6 @@ def test_a_break_comes_before_the_last_chorus(q, genre):
 
 
 def test_genre_endings(q):
-    import re as _re
     assert q.quick_song({"genre": "valzer", "duration": 60, "seed": 2})["choices"]["ending"] == "rallentando"
     assert q.quick_song({"genre": "bossa", "duration": 60, "seed": 2})["choices"]["ending"] == "sfumato"
     assert q.quick_song({"genre": "bossa", "duration": 30, "seed": 2})["choices"]["ending"] == "cadenza"
