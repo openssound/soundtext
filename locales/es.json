@@ -3498,5 +3498,12 @@
  "Swing (50 = dritto, 66 = terzinato):": "Swing (50 = recto, 66 = ternario):",
  "Swing (50 = dritto, 66 = terzinato)": "Swing (50 = recto, 66 = ternario)",
  "50 = crome dritte, 66 = terzinato.": "50 = corcheas rectas, 66 = ternario.",
- "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria resta com'e'.": "50 = corcheas rectas, 66 = ternario. El bajo y el acompañamiento tocan las corcheas con retraso; la batería queda como está."
+ "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria resta com'e'.": "50 = corcheas rectas, 66 = ternario. El bajo y el acompañamiento tocan las corcheas con retraso; la batería queda como está.",
+ "BatteriaSpazzole": "BateriaEscobillas",
+ "BatteriaJazz": "BateriaJazz",
+ "BatteriaSala": "BateriaSala",
+ "BatteriaElettronica": "BateriaElectronica",
+ "BatteriaPotente": "BateriaPotente",
+ "BatteriaOrchestra": "BateriaOrquesta",
+ "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// El kit de batería del género: cambia el programa (ver Gestión de instrumentos) o quita el bloque."
 }

@@ -2621,7 +2621,15 @@ def _generated_timeline(text: str) -> Tuple[str, list]:
         mult, core = tok.group(2), tok.group(3)
         if core.endswith(":") or core.endswith("@"):
             raise ValueError(tr("Token non previsto in un testo generato: '{0}'", tok.group(0)))
-        end = t + unit * (int(mult) if mult else 1)
+        if re.search(r"'[gG]$", core):                 # acciaccatura o appoggiatura: non occupa tempo, va con la nota dopo
+            items.append((t, t, tok.group(0), velocity))
+            continue
+        if ">" in core and not core.startswith("["):  # slide o bend (d#*4>3e*4): la durata e' la somma dei tratti
+            points = tok.group(0).split(">")
+            steps = sum(int(re.match(r"\d*", pt).group() or (1 if i < len(points) - 1 else 0)) for i, pt in enumerate(points))
+            end = t + unit * max(1, steps)
+        else:
+            end = t + unit * (int(mult) if mult else 1)
         items.append((t, end, tok.group(0), velocity))
         t = end
     return grid, items

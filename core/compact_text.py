@@ -81,7 +81,7 @@ def _write(tokens: List[Tuple[int, str, Optional[int]]], current: Optional[int])
         if body != "r" and vel is not None and vel != current:
             out.append(f"{vel}@")
             current = vel
-        out.append((str(length) if length > 1 else "") + body)
+        out.append((str(length) if length > 1 and ">" not in body else "") + body)   # uno slide porta le sue durate nei tratti
     return " ".join(out), current
 
 

@@ -348,9 +348,9 @@ def test_the_bridge_of_a_quiet_mood_has_a_pedal_bass(q):
 
 def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_the_melody_family(q):
     import re as _re
-    base = {"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1}
+    base = {"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "second_voice": False}
     plain = q.quick_song(base)
-    assert "harm" not in plain["parts"] and "Clarinet" not in plain["text"]            # la formazione del genere non cambia da sola
+    assert "harm" not in plain["parts"] and "Clarinet" not in plain["text"]            # second_voice=False toglie anche quella del genere
     for genre in ("punk", "rock", "metal", "blues"):
         song = q.quick_song({"genre": genre, "mood": "allegra" if genre in ("punk",) else "tesa", "duration": 120, "seed": 2})
         assert "harm" not in song["parts"], genre
@@ -538,3 +538,127 @@ def test_jazz_and_blues_melodies_have_chromatic_approach_notes(q):
         found, total = approaches(genre)
         assert found >= 3, (genre, found, total)
     assert approaches("marcia")[0] <= approaches("jazz")[0]
+
+
+@pytest.mark.parametrize("genre,program", [("jazz", 40), ("rock", 16), ("lofi", 24), ("marcia", 48), ("ballata", 8)])
+def test_genres_declare_their_drum_kit(q, genre, program):
+    from core.project_io import parse_project_text
+    song = q.quick_song({"genre": genre, "duration": 60, "seed": 2})
+    drums = [t for t in parse_project_text(song["text"], "x").tracks if t.name == "Drums"]
+    assert drums and drums[0].instrument.is_percussion and drums[0].instrument.gm_program == program
+    assert f"program={program} percussione=si" in song["text"]
+
+
+def test_funk_keeps_the_standard_kit_and_the_kit_can_be_turned_off(q):
+    assert "Strumento" not in q.quick_song({"genre": "funk", "duration": 60, "seed": 2})["text"]
+    assert "Strumento" not in q.quick_song({"genre": "jazz", "duration": 60, "seed": 2, "kit": False})["text"]
+
+
+def test_the_jazz_kit_reaches_the_midi(q, tmp_path):
+    import mido
+    from core.project_io import parse_project_text
+    from core.midi_export import export_project_to_midi
+    song = q.quick_song({"genre": "jazz", "duration": 30, "seed": 2})
+    export_project_to_midi(parse_project_text(song["text"], "x"), str(tmp_path / "j.mid"))
+    msgs = [m for t in mido.MidiFile(str(tmp_path / "j.mid")).tracks for m in t if m.type == "program_change" and m.channel == 9]
+    assert msgs and msgs[0].program == 40
+
+
+def test_the_melody_plays_in_the_verse_lighter_than_in_the_chorus(q):
+    from core.project_io import parse_project_text
+    verse = chorus = 0
+    for seed in range(1, 7):
+        song = q.quick_song({"genre": "pop", "duration": 60, "seed": seed, "variety": 0})
+        melody = song["choices"]["instruments"]["melody"]
+        assert any(f'Box {melody} "Strofa"' in line for line in song["text"].split("\n")), seed
+        project = parse_project_text(song["text"], "x")
+        track = next(t for t in project.tracks if t.name == melody)
+        notes = [e for e in track.parsed_events(project.patterns, meter=project.meter()) if e.kind in ("note", "slide")]
+        for s in song["sections"]:
+            lo, hi = s["start_bar"] * 4, (s["start_bar"] + s["bars"]) * 4
+            count = sum(lo <= e.start < hi for e in notes) / s["bars"]
+            if s["role"] == "verse":
+                verse += count
+            elif s["role"] == "chorus":
+                chorus += count
+    assert 0 < verse < chorus
+    short = q.quick_song({"genre": "pop", "duration": 15, "seed": 1})
+    assert not any(s["role"] == "verse" for s in short["sections"]) or 'Box Flute "Strofa"' not in short["text"]
+
+
+def test_genre_entries_jazz_piano_rests_in_the_solo_and_the_ballad_verse_has_no_drums(q):
+    import re as _re
+    song = q.quick_song({"genre": "ballata", "duration": 60, "seed": 2, "variety": 0})
+    assert not _re.search(r'Box Drums "Strofa"', song["text"]) and _re.search(r'Box Drums "Ritornello"', song["text"])
+    assert q._enters("jazz", "comp") and "solo" not in q._enters("jazz", "comp") and "solo" in q._enters("pop", "comp")
+    assert "intro" in q._enters("elettronica", "drums") and "intro" not in q._enters("elettronica", "comp")
+
+
+@pytest.mark.parametrize("genre", ["funk", "rock", "reggae"])
+def test_a_break_comes_before_the_last_chorus(q, genre):
+    import re as _re
+    song = q.quick_song({"genre": genre, "duration": 120, "seed": 2, "variety": 0, "form": "canzone"})
+    roles = [s["role"] for s in song["sections"]]
+    k = roles.index("break")
+    assert roles[k + 1] == "chorus" and "chorus" not in roles[k + 1 + 1:]
+    drums = _re.search(r'Box Drums "Break"[^\n]*\n  ([^\n]*)', song["text"])
+    if genre == "reggae":
+        assert drums is None and _re.search(r'Box \S+ "Break"', song["text"])          # il drop: restano gli accordi
+    else:
+        assert drums and "[crash kick]" in drums.group(1)
+    assert q.quick_song({"genre": genre, "duration": 120, "seed": 2, "variety": 0, "form": "canzone", "breaks": False})["sections"][k]["role"] != "break"
+
+
+def test_genre_endings(q):
+    import re as _re
+    assert q.quick_song({"genre": "valzer", "duration": 60, "seed": 2})["choices"]["ending"] == "rallentando"
+    assert q.quick_song({"genre": "bossa", "duration": 60, "seed": 2})["choices"]["ending"] == "sfumato"
+    assert q.quick_song({"genre": "bossa", "duration": 30, "seed": 2})["choices"]["ending"] == "cadenza"
+    march = q.quick_song({"genre": "marcia", "duration": 60, "seed": 2, "ending": "cadenza"})["text"]
+    assert "[snare kick] r 105@ [snare kick] r 120@ [crash kick]" in march
+    assert q._color_last_voicing("4: [c*4 e*4 g*4 c*5]", "C", "6") == "4: [c*4 e*4 g*4 a*4 c*5]"
+    assert q._color_last_voicing("4: [c*4 e*4 g*4 c*5]", "C", "7") == "4: [c*4 e*4 g*4 a#*4 c*5]"
+    assert q._color_last_voicing("4: [d*4 f*4 a*4]", "C", "6") == "4: [d*4 f*4 a*4]"          # non e' l'accordo della tonica
+
+
+def test_ornaments_by_genre_and_instrument(q):
+    from core.project_io import parse_project_text
+
+    def count(genre, kind, seeds=range(1, 7), **extra):
+        n = 0
+        for seed in seeds:
+            song = q.quick_song({"genre": genre, "duration": 90, "seed": seed, "variety": 0, **extra})
+            project = parse_project_text(song["text"], "x")
+            track = next(t for t in project.tracks if t.name == song["choices"]["instruments"]["melody"])
+            events = track.parsed_events(project.patterns, meter=project.meter())
+            n += sum(1 for e in events if (e.grace if kind == "grace" else e.kind == "slide"))
+        return n
+    assert count("valzer", "grace") >= 3 and count("country", "grace") >= 3
+    assert count("rock", "bend") >= 3
+    assert count("rock", "bend", figures=False) == 0
+    assert q._figures_for("blues", "Piano") == "approach_below" and "blue_bend" in q._figures_for("blues", "Harmonica")
+
+
+def test_the_genre_second_voice_follows_the_melody_in_every_chorus(q):
+    import re as _re
+    song = q.quick_song({"genre": "valzer", "duration": 90, "seed": 2, "variety": 0})
+    harm = song["choices"]["instruments"].get("harm")
+    assert harm and harm != song["choices"]["instruments"]["melody"]
+    boxes = _re.findall(r'Box ' + harm + r' "Ritornello" \|\d+:\n  (?:swing\S* )?(%\S+)', song["text"])
+    assert len(boxes) == sum(s["role"] == "chorus" for s in song["sections"]) and all(".step(-5)" in b for b in boxes)
+    assert "harm" not in q.quick_song({"genre": "rock", "duration": 90, "seed": 2})["parts"]
+
+
+def test_ornamented_songs_export_to_musicxml_and_speak(q):
+    from core.project_io import parse_project_text
+    engine = _mobile_engine()
+    for genre in ("rock", "valzer"):
+        song = q.quick_song({"genre": genre, "duration": 60, "seed": 1, "variety": 0})
+        assert not engine.check_text(song["text"], song["name"])["warnings"]
+        melody = song["choices"]["instruments"]["melody"]
+        pos = song["text"].index(f'Box {melody} "Ritornello"')
+        spoken = engine.speak_at(song["text"], song["text"].index("\n", pos) + 4, "it")
+        assert spoken["text"]
+        from st_language.musicxml import project_to_musicxml
+        xml = project_to_musicxml(parse_project_text(song["text"], "x"))
+        assert "<score-partwise" in xml and (genre != "valzer" or "<grace" in xml)

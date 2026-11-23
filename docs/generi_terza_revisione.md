@@ -14,6 +14,24 @@ Regole comuni ai tre punti:
 - A variabilità 0 il risultato non dipende dal seme, come oggi (`random.Random(seed if free else 0)` in `core/melody_generate.py`).
 - Dopo ogni modifica al motore vanno rifatti il bundle (`mobile/build.py`) e la versione della cache (`mobile/sw.js`).
 
+## Stato: fatto, con queste differenze dalla proposta
+
+- **Kit:** fatto con la strada (a), cioè `Traccia Drums [BatteriaSpazzole]:`. I nomi dei kit sono tradotti: BatteriaSpazzole, BatteriaJazz, BatteriaSala, BatteriaElettronica, BatteriaPotente, BatteriaOrchestra. L'opzione `kit=False` li toglie. Il render con FluidSynth (FluidR3 e TimGM6mb) dà un suono diverso per ogni kit e nessun silenzio. Non ancora ascoltati sul telefono.
+- **Melodia nella strofa:** suona in tutti i brani con almeno tre sezioni, con lo stile della strofa più rado e a intensità leggera (`_VERSE_MELODY_STYLE`). L'opzione `verse_melody=False` la toglie. La soglia complessiva del test sulle note dei tempi forti (`tests/test_generator_quality.py`) scende da 0,90 a 0,85: nella strofa l'accompagnamento leggero lascia fuori settime e quinte che la melodia suona.
+- **Entrate per genere:** fatte come proposte (`_GENRE_ENTER`).
+- **Break:** fatti per funk, soul, rock, punk (colpo d'insieme), reggae (drop di due battute), jazz e swing (fill della batteria prima dell'assolo). Le forme AABA del jazz non hanno assolo, quindi lì il break non c'è. L'opzione `breaks=False` li toglie.
+- **Finali:**
+  - Rallentando di partenza per valzer e ballate, sfumato per bossa, lo-fi ed elettronica (solo dai 45 secondi in su, mai nei loop).
+  - Ultimo accordo con la sesta per jazz e swing, la settima per blues e rock'n'roll, la nona per la bossa. È scritto nella voicing dell'accompagnamento, perché nel testo finale non c'è una traccia di accordi.
+  - I tre colpi finali per la marcia.
+- **Fraseggio:**
+  - Acciaccature: sopra per samba, balcanico, valzer e ballate; sotto per il country.
+  - Bend alla blues: blues, rock'n'roll, rock e soul, solo sugli strumenti di `BENDABLE` in `core/quicksong.py`.
+  - Seconda voce automatica: terze o seste in ogni ritornello, solo quando c'è lo sviluppo del tema, cioè almeno due ritornelli e un finale.
+  - L'opzione `figures=False` toglie le figure, `second_voice=False` la seconda voce.
+- **Correzione collaterale:** il compattatore in battute (`core/compact_text.py`) e la lettura dei testi generati (`_generated_timeline`) ora contano gli abbellimenti come durata zero e gli slide con la somma dei loro tratti.
+- **Non fatto:** le caselle nei dialoghi del computer e del telefono per le nuove opzioni; per ora si usano dal motore.
+
 ---
 
 ## 1. Una batteria per genere

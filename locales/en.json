@@ -3498,5 +3498,12 @@
  "Swing (50 = dritto, 66 = terzinato):": "Swing (50 = straight, 66 = triplet):",
  "Swing (50 = dritto, 66 = terzinato)": "Swing (50 = straight, 66 = triplet)",
  "50 = crome dritte, 66 = terzinato.": "50 = straight eighths, 66 = triplet feel.",
- "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria resta com'e'.": "50 = straight eighths, 66 = triplet feel. Bass and accompaniment play the off-beat eighths late; the drums stay as they are."
+ "50 = crome dritte, 66 = terzinato. Basso e accompagnamento suonano le crome in ritardo; la batteria resta com'e'.": "50 = straight eighths, 66 = triplet feel. Bass and accompaniment play the off-beat eighths late; the drums stay as they are.",
+ "BatteriaSpazzole": "BrushKit",
+ "BatteriaJazz": "JazzKit",
+ "BatteriaSala": "RoomKit",
+ "BatteriaElettronica": "ElectronicKit",
+ "BatteriaPotente": "PowerKit",
+ "BatteriaOrchestra": "OrchestraKit",
+ "// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco.": "// The genre's drum kit: change the program (see Instrument manager) or remove the block."
 }

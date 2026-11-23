@@ -466,10 +466,13 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
 
     if amount.rhythm > 0 and not compound:                   # prima delle ripetizioni: una sezione che torna copia anche le sue anacrusi interne
         notes = _add_pickups(notes, starts[1:], scale, 0.5 * amount.rhythm, random.Random(f"{seed}/pickup"), range_low, range_high)
-    if figure and not compound:                              # anche questa prima delle ripetizioni: una sezione che torna copia le sue figure
-        notes = _add_approaches(notes, figure, 0.3, random.Random(f"{seed if free else 0}/figure"), range_low, range_high)
+    figures = [f for f in (figure or "").split(",") if f]
+    approach = next((f for f in figures if f in ("approach", "approach_below")), "")
+    if approach and not compound:                            # anche questa prima delle ripetizioni: una sezione che torna copia le sue figure
+        notes = _add_approaches(notes, approach, 0.3, random.Random(f"{seed if free else 0}/figure"), range_low, range_high)
     notes = _apply_repeats(notes, repeats)
-    return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng)
+    ornaments = _ornaments(notes, figures, scale, tonic, f"{seed if free else 0}", phrase_beats, range_low, range_high)
+    return _write(notes, total, amount.dynamics, phrase_beats, dyn_rng, ornaments)
 
 
 def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Random, range_low: int, range_high: int):
@@ -495,7 +498,40 @@ def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Ra
     return sorted(notes)
 
 
-FIGURES = ("approach", "approach_below")
+FIGURES = ("approach", "approach_below", "grace_above", "grace_below", "blue_bend")
+ORNAMENT_PROBABILITY = {"grace_above": 0.15, "grace_below": 0.15, "blue_bend": 0.25}
+
+
+def _ornaments(notes, figures, scale, tonic: int, seed: str, phrase_beats: float, range_low: int, range_high: int) -> dict:
+    """Abbellimenti e bend (terza revisione, 2a e 2b): {inizio della nota: ("grace", nota) o ("bend", nota di partenza)}.
+    Solo sulle note lunghe (almeno un tempo) sul tempo. Si scelgono dopo le ripetizioni con un caso che dipende dalla nota e
+    dal suo posto nella frase: una sezione che torna ha gli stessi abbellimenti.
+    - grace_above: acciaccatura un grado sopra, nella scala; grace_below: un semitono sotto;
+    - blue_bend: la terza maggiore presa dalla terza minore, o la quinta dalla quinta diminuita (parte un semitono sotto e sale)."""
+    out = {}
+    wanted = [f for f in figures if f in ORNAMENT_PROBABILITY]
+    if not wanted:
+        return out
+    for start, duration, pitch, _b in notes:
+        if duration < 1.0 - 1e-6 or abs(start - round(start)) > 1e-6:
+            continue
+        for kind in wanted:
+            rng = random.Random(f"{seed}/{kind}/{pitch}/{round((start % phrase_beats) * 2)}")
+            if rng.random() >= ORNAMENT_PROBABILITY[kind]:
+                continue
+            if kind == "blue_bend":
+                if (pitch - tonic) % 12 not in (4, 7) or pitch - 1 < range_low:
+                    continue
+                out[start] = ("bend", pitch - 1)
+            elif kind == "grace_below":
+                if pitch - 1 >= range_low:
+                    out[start] = ("grace", pitch - 1)
+            else:
+                above = next((pitch + k for k in (1, 2) if (pitch + k) % 12 in scale), None)
+                if above is not None and above <= range_high:
+                    out[start] = ("grace", above)
+            break
+    return out
 
 
 def _add_approaches(notes, figure: str, probability: float, rng: random.Random, range_low: int, range_high: int):
@@ -568,9 +604,11 @@ def section_repeats(project, track, part_start: float = 0.0) -> List[Tuple[float
     return [r for r in out if r[2] >= 0]
 
 
-def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: random.Random) -> str:
+def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: random.Random, ornaments=None) -> str:
     """Token '8:' della melodia, tagliata a 'total' beat; con la dinamica,
-    velocity che seguono l'arco della frase e accentano i tempi forti."""
+    velocity che seguono l'arco della frase e accentano i tempi forti.
+    'ornaments' (vedi _ornaments): l'acciaccatura (d*5'g) subito prima della nota, o il bend scritto come slide (d#*4>3e*4)."""
+    ornaments = ornaments or {}
     tokens = ["8:"]
     t = 0.0
     current = None
@@ -590,7 +628,14 @@ def _write(notes, total: float, dynamics: float, phrase_beats: float, rng: rando
                 tokens.append(f"{velocity}@")
                 current = velocity
         mult = max(1, round(duration / 0.5))
-        tokens.append((f"{mult}" if mult > 1 else "") + _note_token(pitch % 12, pitch // 12 - 1))
+        ornament = ornaments.get(start)
+        note = _note_token(pitch % 12, pitch // 12 - 1)
+        if ornament and ornament[0] == "grace":
+            tokens.append(_note_token(ornament[1] % 12, ornament[1] // 12 - 1) + "'g")
+        if ornament and ornament[0] == "bend" and mult >= 2:
+            tokens.append(_note_token(ornament[1] % 12, ornament[1] // 12 - 1) + f">{mult - 1}" + note)
+        else:
+            tokens.append((f"{mult}" if mult > 1 else "") + note)
         t = start + mult * 0.5
     return " ".join(tokens)
 

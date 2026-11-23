@@ -163,9 +163,20 @@ _GENRE_SCALE = {"blues": "blues", "rocknroll": "blues", "country": "pentatonic",
                 "elettronica": "modal", "orchestrale": "classical"}
 # le figure della melodia per genere (8.9): note di avvicinamento cromatiche sul levare, prima di una nota sul tempo
 # (core.melody_generate._add_approaches): sopra o sotto nel jazz, sotto nel blues e nei generi che lo prendono
-_GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_below", "rocknroll": "approach_below",
-                 "funk": "approach_below", "soul": "approach_below", "disco": "approach_below",
-                 "bossa": "approach", "samba": "approach", "chacha": "approach", "country": "approach_below", "rock": "approach_below"}
+_GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_below,blue_bend", "rocknroll": "approach_below,blue_bend",
+                 "funk": "approach_below", "soul": "approach_below,blue_bend", "disco": "approach_below",
+                 "bossa": "approach", "samba": "approach,grace_above", "chacha": "approach", "country": "approach_below,grace_below",
+                 "rock": "approach_below,blue_bend", "balcanico78": "grace_above", "valzer": "grace_above",
+                 "ballata": "grace_above", "ballata68": "grace_above"}
+# gli strumenti che piegano la nota (il bend alla blues, 2b): chitarre, sax, armonica, archi, voce, synth; non il pianoforte
+BENDABLE = ("Overdriven_Guitar", "Distortion_Guitar", "Clean_Guitar", "Electric_Guitar_Jazz", "Nylon_Guitar", "Acoustic_Guitar_Steel",
+            "Tenor_Sax", "Alto_Sax", "Soprano_Sax", "Baritone_Sax", "Harmonica", "Trumpet", "Trombone", "Violin", "Fiddle", "Cello",
+            "Lead", "Lead_2_sawtooth", "Voice_Oohs", "Choir_Aahs")
+
+
+def _figures_for(genre: str, instrument: str) -> str:
+    """Le figure della melodia del genere che lo strumento sa suonare (niente bend sul pianoforte)."""
+    return ",".join(f for f in _GENRE_FIGURE.get(genre, "").split(",") if f and (f != "blue_bend" or instrument in BENDABLE))
 
 # gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
 # (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
@@ -332,6 +343,21 @@ _GENRE_FX = {
     "afro68": ("compressore: soglia=-18 rapporto=2.5 attacco=15 rilascio=150 guadagno=2", "riverbero: stanza=20 smorzamento=50 ampiezza=100 mix=8"),
 }
 
+# il kit di batteria per genere (programma GM2 sul canale 10): nel testo un blocco «Strumento <Nome>: program=N percussione=si» e la
+# traccia «Traccia Drums [<Nome>]:», che resta Drums per il mixer, la cassa da seguire e la lettura. Il nome va tradotto ma resta
+# un identificatore (\w+). Funk e soul restano sul kit standard.
+_GENRE_KIT = {
+    "jazz": ("brush", 40), "swing": ("jazz", 32), "bossa": ("brush", 40), "ballata": ("room", 8), "ballata68": ("room", 8),
+    "valzer": ("room", 8), "lofi": ("electronic", 24), "elettronica": ("electronic", 24), "disco": ("electronic", 24),
+    "rock": ("power", 16), "metal": ("power", 16), "punk": ("power", 16), "marcia": ("orchestra", 48), "orchestrale": ("orchestra", 48),
+}
+
+
+def _kit_name(kit: str) -> str:
+    return {"brush": tr("BatteriaSpazzole"), "jazz": tr("BatteriaJazz"), "room": tr("BatteriaSala"),
+            "electronic": tr("BatteriaElettronica"), "power": tr("BatteriaPotente"), "orchestra": tr("BatteriaOrchestra")}[kit]
+
+
 # in quali sezioni suona ogni parte
 _ENTER = {
     "progression": (), "comp": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
@@ -340,6 +366,97 @@ _ENTER = {
     "melody": ("chorus", "solo", "end", "loop"),
 }
 _ENTER_FADE = ("comp",)
+# le eccezioni per genere (terza revisione, 3b): {genere: {parte: ruoli in cui suona}}, al posto di quelli di _ENTER
+_GENRE_ENTER = {
+    "jazz": {"comp": ("intro", "verse", "chorus", "bridge", "end", "loop", "fade"),       # nell'assolo del fiato: solo basso e batteria
+             "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},       # l'intro: pianoforte e contrabbasso
+    "swing": {"comp": ("intro", "verse", "chorus", "bridge", "end", "loop", "fade"),
+              "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
+    "reggae": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},           # l'organo bubble anche nella strofa
+    "funk": {"horn": ("verse", "chorus", "solo", "end")},                                 # colpi di fiati anche nella strofa
+    "ballata": {"drums": ("chorus", "bridge", "solo", "end", "loop"),                    # strofa: pianoforte e melodia soli
+                "bass": ("chorus", "bridge", "solo", "end", "loop")},
+    "ballata68": {"drums": ("chorus", "bridge", "solo", "end", "loop"), "bass": ("chorus", "bridge", "solo", "end", "loop")},
+    "elettronica": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),   # l'intro e' solo batteria: poi entrano gli strati
+                    "drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
+}
+# lo stacco per genere (3c): (dove, come, battute). "hit": colpo d'insieme sul primo tempo e silenzio; "drop": restano gli
+# accordi in levare, basso e batteria tacciono; "fill": suona solo la batteria, un fill
+_GENRE_BREAK = {
+    "funk": ("before_last_chorus", "hit", 1), "soul": ("before_last_chorus", "hit", 1), "rock": ("before_last_chorus", "hit", 1),
+    "punk": ("before_last_chorus", "hit", 1), "reggae": ("before_last_chorus", "drop", 2),
+    "jazz": ("before_solo", "fill", 1), "swing": ("before_solo", "fill", 1),
+}
+_BREAK_PARTS = {"hit": ("comp", "comp2", "horn", "bass", "drums"), "drop": ("comp", "comp2"), "fill": ("drums",)}
+
+# i finali per genere (3d): quello di partenza (se non lo si sceglie), il colore dell'ultimo accordo e i colpi finali
+_GENRE_ENDING = {"valzer": "rallentando", "ballata": "rallentando", "ballata68": "rallentando",
+                 "bossa": "sfumato", "lofi": "sfumato", "elettronica": "sfumato"}
+_FINAL_CHORD = {"jazz": "6", "swing": "6", "blues": "7", "rocknroll": "7", "bossa": "maj9"}
+_FINAL_HITS = ("marcia",)
+_LAST_CHORD = re.compile(r"(\d*)([A-G][#b]?)([^\s|]*)(\s*\|?\s*)$")
+
+
+def _color_last_chord(progression: str, quality: str) -> str:
+    """L'ultimo accordo del giro con il colore del genere (C -> C6, C7, Cmaj9), se e' un accordo maggiore o di settima."""
+    m = _LAST_CHORD.search(progression.rstrip())
+    if not m or m.group(3) not in ("", "7", "maj7", "6", "9", "maj9"):
+        return progression
+    return progression.rstrip()[:m.start()] + m.group(1) + m.group(2) + quality + m.group(4)
+
+
+_FINAL_INTERVAL = {"6": 9, "7": 10, "maj9": 2}
+_NOTE_IN_CHORD = re.compile(r"([a-g][#b]?)\*(\d)")
+
+
+def _color_last_voicing(body: str, key: str, quality: str) -> str:
+    """L'ultimo accordo dell'accompagnamento con la nota di colore del genere (la sesta, la settima o la nona della tonica),
+    messa sotto la nota piu' alta: il giro finisce su C6, C7 o Cmaj9 e l'accompagnamento lo fa sentire."""
+    from .rhythm_generate import _note_token, parse_key
+    groups = list(re.finditer(r"\[([^\]]+)\]", body))
+    if not groups or quality not in _FINAL_INTERVAL:
+        return body
+    tonic = parse_key(key)[0]
+    last = groups[-1]
+    names = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+    notes = [12 * (int(o) + 1) + names[n[0]] + n.count("#") - n[1:].count("b") for n, o in _NOTE_IN_CHORD.findall(last.group(1))]
+    if not notes or notes[0] % 12 != tonic % 12 and tonic % 12 not in {n % 12 for n in notes}:
+        return body                                       # l'ultimo accordo non e' quello della tonica
+    color = (tonic + _FINAL_INTERVAL[quality]) % 12
+    if color in {n % 12 for n in notes}:
+        return body
+    top = max(notes)
+    pitch = top - ((top - color) % 12 or 12)
+    if pitch < min(notes):
+        return body
+    tokens = last.group(1).split() + [_note_token(pitch % 12, pitch // 12 - 1)]
+    tokens.sort(key=lambda t: 12 * (int(t.split("*")[1]) + 1) + names[t[0]] + t.split("*")[0].count("#") - t.split("*")[0][1:].count("b"))
+    return body[:last.start()] + "[" + " ".join(tokens) + "]" + body[last.end():]
+
+
+def _final_hits(drums: str) -> str:
+    """I tre colpi finali della marcia (ta-ta-ta'): al posto del colpo solo dell'ultima battuta, tre colpi a crome."""
+    tail = re.search(r"(\d+@ )?\[crash kick\] 15r\s*$", drums)
+    if not drums.lstrip().startswith("16:") or not tail:
+        return drums
+    return drums[:tail.start()] + "100@ [snare kick] r 105@ [snare kick] r 120@ [crash kick] 11r"
+
+
+# la seconda voce del genere (2c): terze o seste parallele sotto la melodia, nei ritornelli (con lo sviluppo del tema)
+_GENRE_SECOND_VOICE = {"pop": "thirds", "ballata": "thirds", "bossa": "thirds", "chacha": "thirds", "balcanico78": "thirds",
+                       "valzer": "sixths", "ballata68": "sixths"}
+
+# la melodia della strofa (3a): piu' rada del ritornello, che resta il culmine; non nei brani brevissimi
+_VERSE_MELODY_STYLE = {"melody_lively": "melody_period", "melody_period": "melody_ballad", "melody_aaba": "melody_period",
+                       "melody_ballad": "melody_ballad"}
+
+
+def _enters(genre: str, part: str, verse_melody: bool = False) -> Tuple[str, ...]:
+    """I ruoli delle sezioni in cui suona una parte: quelli del genere o quelli di sempre (con la strofa per la melodia)."""
+    roles = _GENRE_ENTER.get(genre, {}).get(part, _ENTER[part])
+    if part == "melody" and verse_melody and "verse" not in roles:
+        roles = roles + ("verse",)
+    return roles
 
 
 # ------------------------------------------------------------ etichette
@@ -604,8 +721,10 @@ def resolve(options: Optional[dict] = None) -> dict:
         form = "ponte" if recipe["form"] == "canzone" else "canzone"
     if form not in FORMS:
         raise ValueError(f"forma sconosciuta: {form}")
-    ending = options.get("ending") or "cadenza"
-    if not options.get("ending") and variety > 0:
+    ending = options.get("ending") or ("cadenza" if options.get("loop") else _GENRE_ENDING.get(genre, "cadenza"))   # un loop si ripete: niente sfumato
+    if ending == "sfumato" and not options.get("ending") and (options.get("duration") or 60) < 45:
+        ending = "cadenza"                                  # lo sfumato aggiunge 4 battute: non nei brani corti
+    if not options.get("ending") and variety > 0 and genre not in _GENRE_ENDING:
         roll = vrng.random()
         if roll < 0.15 * variety:
             ending = "rallentando"
@@ -757,6 +876,18 @@ def quick_song(options: Optional[dict] = None) -> dict:
         total_bars = sum(b for _n, _r, b in sections)
     intensity["fade"] = "light"
     styles["fade"] = c["prog"][1]
+    # lo stacco del genere (3c): una o due battute prima dell'ultimo ritornello (o dell'assolo), solo con almeno due ritornelli
+    brk = _GENRE_BREAK.get(c["genre"]) if options.get("breaks", True) not in (False, 0, "0", "no") else None
+    if brk and not short:
+        where, kind, brk_bars = brk
+        chorus_at = [i for i, (_n, r, _b) in enumerate(sections) if r == "chorus"]
+        at = (chorus_at[-1] if len(chorus_at) >= 2 else None) if where == "before_last_chorus" else \
+            next((i for i, (_n, r, _b) in enumerate(sections) if r == "solo"), None)
+        if at is not None and at > 0:
+            sections.insert(at, (tr("Break"), "break", brk_bars))
+            total_bars = sum(b for _n, _r, b in sections)
+    intensity["break"] = "full"
+    styles["break"] = c["prog"][1]
     # la curva dell'energia (8.6): sale, picco o cala, al posto dell'intensita' ricavata dal nome della sezione
     curve = options.get("energy") if options.get("energy") in ENERGY_CURVES else None
     section_level: Dict[int, str] = {}
@@ -790,8 +921,18 @@ def quick_song(options: Optional[dict] = None) -> dict:
                and mod_from < 0 and chorus_ids[-1] < last and any(r == "end" for _n, r, _b in sections[chorus_ids[-1] + 1:]))
     dev_pattern = ""
     harm_body = ""
-    if develop and options.get("second_voice") in (True, 1, "1", "si"):      # solo su richiesta: il tema in terze (.thirds)
-        c["instruments"]["harm"] = _HARM_FOR.get(c["instruments"]["melody"], "Flute")
+    # la melodia anche nella strofa (3a): non nei brani brevissimi (una o due sezioni), dove la strofa e' l'attesa del ritornello
+    verse_melody = options.get("verse_melody", True) not in (False, 0, "0", "no") and not short and len(sections) >= 3
+    # la seconda voce: su richiesta il tema in terze nell'ultimo ritornello; senza richiesta, quella del genere (terze o seste
+    # parallele sotto la melodia, 2c) in ogni ritornello. second_voice=False la toglie
+    asked = options.get("second_voice")
+    auto_voice = _GENRE_SECOND_VOICE.get(c["genre"]) if asked in (None, "") else None
+    if develop and (asked in (True, 1, "1", "si") or auto_voice):
+        taken = {c["instruments"][p] for p in active if p in c["instruments"]}
+        harm = _HARM_FOR.get(c["instruments"]["melody"], "Flute")
+        if harm in taken:                                     # due parti non possono avere lo stesso strumento (il nome della traccia)
+            harm = next((h for h in ("Flute", "Clarinet", "Oboe", "Violin", "Alto_Sax") if h not in taken), harm)
+        c["instruments"]["harm"] = harm
         active.append("harm")
         from core.instruments import make_instrument_available as _available
         _available(c["instruments"]["harm"])
@@ -812,11 +953,16 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 "key": skey, "style": styles[role], "bars": bars, "chord_bars": 1.0, "seed": seed_of("progression"),
                 "ending": closing and c["ending"] != "sfumato", "variability": variability,
                 "inversions": _float(options.get("inversions"), 0.35)})["text"]
+            if closing and not written and c["ending"] != "sfumato" and c["genre"] in _FINAL_CHORD:
+                progression = _color_last_chord(progression, _FINAL_CHORD[c["genre"]])
             temp = E.add_track(base, chords_track, progression)["text"]
             project = parse_project_text(temp, "Brano")
             bodies = {}
             for p, part in enumerate(active):
-                if role not in _ENTER[part] or part == "drums" or (role == "fade" and part != "comp"):
+                if role == "break":
+                    if part == "drums" or part not in _BREAK_PARTS[_GENRE_BREAK[c["genre"]][1]]:
+                        continue
+                elif role not in _enters(c["genre"], part, verse_melody) or part == "drums" or (role == "fade" and part != "comp"):
                     continue
                 common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": lvl, "variability": variability}
                 if part in ("comp", "comp2", "horn", "pad"):
@@ -827,23 +973,38 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                      "instrument": c["instruments"]["bass"],
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
-                    body = E._quick_melody(project, chords_track, c["instruments"]["melody"], _MELODY_STYLE[c["melody"]], skey, bars,
-                                           seed_of("melody", 99), lvl,
+                    mstyle = _MELODY_STYLE[c["melody"]]
+                    if role == "verse" and "verse" not in _ENTER["melody"]:     # la strofa: piu' rada e piu' leggera del ritornello
+                        mstyle = _VERSE_MELODY_STYLE.get(mstyle, mstyle)
+                    body = E._quick_melody(project, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
+                                           seed_of("melody", 99 if role != "verse" else 98), "light" if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
-                                            "figure": _GENRE_FIGURE.get(c["genre"], "")})
+                                            "figure": _figures_for(c["genre"], c["instruments"]["melody"])
+                                            if options.get("figures", True) not in (False, 0, "0", "no") else ""})
+                if role == "break" and _GENRE_BREAK[c["genre"]][1] == "hit":
+                    from .arrange import _first_hit_only
+                    body = _first_hit_only(body)
+                    if body is None:
+                        continue
                 bodies[part] = body
             harmony[cache] = bodies
         bodies = dict(harmony[cache])
-        if "drums" in active and role in _ENTER["drums"]:
+        brk_kind = _GENRE_BREAK[c["genre"]][1] if role == "break" else None
+        if "drums" in active and brk_kind == "hit":
+            from .arrange import _break_drums
+            bodies["drums"] = _break_drums(bars * beats_per_bar)
+        elif "drums" in active and (role in _enters(c["genre"], "drums") or brk_kind == "fill"):
             variant = idx if form == "loop" else 0
             dkey = cache + (variant,)
             if dkey not in drum_texts:
                 drum_texts[dkey] = E.generate(base, "drums", {
                     "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
                     "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato",
-                    "fill_every": c.get("drum_fill", 4)})["text"]
+                    "fill_every": 1 if brk_kind == "fill" else c.get("drum_fill", 4)})["text"]
             bodies["drums"] = drum_texts[dkey]
+            if closing and c["ending"] != "sfumato" and c["genre"] in _FINAL_HITS:
+                bodies["drums"] = _final_hits(bodies["drums"])
         sec_start = start_bar * beats_per_bar
         for part in active:
             if part not in bodies:
@@ -853,6 +1014,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 body = _scale_velocity(body, 0.85)
             elif role == "fade":
                 body = _scale_velocity(body, 0.55)
+            if closing and part == "comp" and c["ending"] != "sfumato" and c["genre"] in _FINAL_CHORD:
+                body = _color_last_voicing(body, skey, _FINAL_CHORD[c["genre"]])
             if closing and c["ending"] == "rallentando" and part == "comp":
                 body = _rallentando(body, bars * beats_per_bar, bpm)
             if compact_on:                                    # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
@@ -878,10 +1041,13 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     if top is not None and top + 12 <= get_instrument(c["instruments"]["melody"]).range_high:
                         body += ".octave(1)"
                     harm_body = "%" + dev_pattern + ".thirds"
+                if auto_voice:
+                    harm_body = "%" + dev_pattern + {"thirds": ".step(-2)", "sixths": ".step(-5)"}[auto_voice] + \
+                        (".octave(1)" if body.endswith(".octave(1)") else "")
             if swing and part in _SWING_PARTS:
                 body = swing + " " + body.lstrip()
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
-        if harm_body and "harm" in active and idx == chorus_ids[-1]:
+        if harm_body and "harm" in active and (idx == chorus_ids[-1] or (auto_voice and role == "chorus")):
             boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent((swing + " " if swing else "") + harm_body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars
@@ -899,7 +1065,15 @@ def quick_song(options: Optional[dict] = None) -> dict:
     lines = [_tr("// Un brano in 60 secondi: genere {genre}, atmosfera {mood}, seme {seed}.", genre=c["genre"], mood=c["mood"], seed=c["seed"]),
              "// quick: " + json.dumps(saved, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
              "", header(key).rstrip("\n"), ""]
+    kit = _GENRE_KIT.get(c["genre"]) if "drums" in active and options.get("kit", True) not in (False, 0, "0", "no") else None
+    if kit:
+        kit_name = _kit_name(kit[0])
+        lines += [_tr("// Il kit di batteria del genere: si cambia il programma (vedi Gestione strumenti) o si toglie il blocco."), "",
+                  f"Strumento {kit_name}:\n  program={kit[1]} percussione=si", ""]
     for part in active:
+        if kit and part == "drums":
+            lines += [f"Traccia {part_track(c, part)} [{kit_name}]:", ""]
+            continue
         lines += [E.add_track("", c["instruments"][part], "", name=part_track(c, part))["text"].rstrip("\n").split("\n")[0].rstrip(), ""]
     fx_rows = _GENRE_FX.get(c["genre"], ()) if options.get("effects", True) not in (False, 0, "0", "no") else ()
     if fx_rows:
