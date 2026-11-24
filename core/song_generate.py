@@ -97,7 +97,9 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
     - bass: source (traccia degli accordi), style, octave (2),
       variation_every (4), kick_track, performance, instrument ("Bass");
     - comping: source, style, instrument ("Piano"), octave, variation_every
-      (4), voice_leading (si'), leave_space (si'), performance.
+      (4), voice_leading (si'), leave_space (si'), performance, symbols (no di
+      partenza; si': gli accordi della progressione si scrivono come simbolo, «Am7», e il motore li suona col voicing dello strumento;
+      "exact": solo i blocchi che un simbolo suona identici).
     ValueError con un messaggio leggibile se non si puo' generare."""
     from core.project_io import parse_project_text
     from core import rhythm_generate as rg
@@ -159,6 +161,12 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
             intensity=intensity, voice_leading=bool(options.get("voice_leading", True)),
             key=None, meter=project.time_sig, repeats=(), **variation)
         out = _performed(out, instrument, options, seed, project)
+        mode = options.get("symbols")
+        if mode in (True, 1, "1", "si", "exact"):
+            from core import chord_symbols as cs
+            if mode != "exact":                                  # gli accordi della progressione come simboli («Am7»): il motore li voicizza
+                out = cs.progression_symbols(out, rg._expand_chords_to_cover(chords, int(options.get("bars", 4)) * bar_beats))
+            out = cs.chords_as_symbols(out, instrument)          # e gli altri blocchi, dove un simbolo suona le stesse note
     else:
         raise ValueError(f"generatore sconosciuto: {kind}")
     if kind in ("bass", "comping") and int(options.get("swing") or 50) > 50:

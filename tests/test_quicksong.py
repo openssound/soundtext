@@ -49,7 +49,7 @@ def _valid(q, song, duration=None):
 
 def test_the_values_of_the_document_are_all_there(q):
     assert len(q.GENRES) == 25 and set(q.GENRES) == set(q.GENRES_DATA)
-    assert len(q.MOODS) == 19 and set(q.MOODS) == set(q.MOODS_DATA)
+    assert len(q.MOODS) == 22 and set(q.MOODS) == set(q.MOODS_DATA)
     assert q.DURATIONS == (15, 30, 45, 60, 90, 120, 180, 240)
     assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte"} and len(q.ENSEMBLES) == 5
     choices = q.quick_choices()
@@ -384,9 +384,9 @@ def test_another_song_varies_more_than_the_key_and_the_choices_of_the_user_stay(
 
 def test_the_drum_fills_come_at_different_distances_and_the_pure_recipe_keeps_four(q):
     from core import quicksong
-    fills = {quicksong.resolve({"genre": "rock", "mood": "tesa", "seed": s})["drum_fill"] for s in range(1, 30)}
+    fills = {quicksong.resolve({"genre": "rock", "mood": "allegra", "seed": s})["drum_fill"] for s in range(1, 30)}
     assert fills == {4, 8, 2}                                             # ogni 4 (di solito), ogni 8 o ogni 2 nel rock
-    assert {quicksong.resolve({"genre": "rock", "mood": "tesa", "seed": s, "variety": 0})["drum_fill"] for s in range(1, 30)} == {4}
+    assert {quicksong.resolve({"genre": "rock", "mood": "allegra", "seed": s, "variety": 0})["drum_fill"] for s in range(1, 30)} == {4}
     assert 2 not in {quicksong.resolve({"genre": "pop", "mood": "allegra", "seed": s})["drum_fill"] for s in range(1, 30)}
 
 
@@ -611,11 +611,12 @@ def test_a_break_comes_before_the_last_chorus(q, genre):
 
 
 def test_genre_endings(q):
+    import re as _re
     assert q.quick_song({"genre": "valzer", "duration": 60, "seed": 2})["choices"]["ending"] == "rallentando"
     assert q.quick_song({"genre": "bossa", "duration": 60, "seed": 2})["choices"]["ending"] == "sfumato"
     assert q.quick_song({"genre": "bossa", "duration": 30, "seed": 2})["choices"]["ending"] == "cadenza"
     march = q.quick_song({"genre": "marcia", "duration": 60, "seed": 2, "ending": "cadenza"})["text"]
-    assert "[snare kick] r 105@ [snare kick] r 120@ [crash kick]" in march
+    assert _re.search(r"\[snare kick\] r \d+@ \[snare kick\] r \d+@ \[crash kick\]", march)
     assert q._color_last_voicing("4: [c*4 e*4 g*4 c*5]", "C", "6") == "4: [c*4 e*4 g*4 a*4 c*5]"
     assert q._color_last_voicing("4: [c*4 e*4 g*4 c*5]", "C", "7") == "4: [c*4 e*4 g*4 a#*4 c*5]"
     assert q._color_last_voicing("4: [d*4 f*4 a*4]", "C", "6") == "4: [d*4 f*4 a*4]"          # non e' l'accordo della tonica
@@ -693,7 +694,7 @@ def test_country_has_banjo_rolls_a_walking_bass_and_a_second_voice_in_thirds(q):
 def test_soul_has_a_motown_bass_electric_piano_organ_seventh_chords_and_a_fade(q):
     import re as _re
     from core.rhythm_generate import PROGRESSION_STYLES
-    song = q.quick_song({"genre": "soul", "mood": "romantica", "duration": 150, "seed": 2, "variety": 0})
+    song = q.quick_song({"genre": "soul", "mood": "allegra", "duration": 150, "seed": 2, "variety": 0})
     styles, instruments = song["choices"]["styles"], song["choices"]["instruments"]
     assert styles["bass"] == "motown" and styles["comp"] == "soul_comp"
     assert instruments["comp"] == "Electric_Piano_1" and instruments["comp2"] == "Drawbar_Organ"
@@ -787,3 +788,137 @@ def test_figures_for_the_last_genres(q):
     assert q._figures_for("orchestrale", "Oboe") == "grace_above" and q._figures_for("afro68", "Flute") == "grace_above"
     for genre in ("orchestrale", "marcia", "afro68", "pop", "metal"):
         assert q.quick_song({"genre": genre, "duration": 60, "seed": 2, "variety": 0})["text"]
+
+
+@pytest.mark.parametrize("genre,program", [("chacha", 32), ("reggae", 8), ("balcanico78", 8)])
+def test_more_genres_declare_their_drum_kit(q, genre, program):
+    from core.project_io import parse_project_text
+    song = q.quick_song({"genre": genre, "duration": 60, "seed": 2})
+    drums = [t for t in parse_project_text(song["text"], "x").tracks if t.name == "Drums"]
+    assert drums and drums[0].instrument.gm_program == program
+
+
+def test_the_mood_changes_the_melody_style_the_drums_the_fills_and_how_loud_it_plays(q):
+    import re as _re
+
+    def velocity(song):
+        values = [int(v) for v in _re.findall(r"(\d+)@", song["text"])]
+        return sum(values) / len(values)
+    calm = q.quick_song({"genre": "pop", "mood": "calma", "duration": 90, "seed": 2, "variety": 0})
+    lively = q.quick_song({"genre": "pop", "mood": "energica", "duration": 90, "seed": 2, "variety": 0})
+    assert calm["choices"]["melody"] == "ballata" and lively["choices"]["melody"] == "vivace"
+    assert calm["choices"]["styles"]["drums"] == "halftime" and lively["choices"]["styles"]["drums"] == "rock"
+    assert q.resolve({"genre": "pop", "mood": "calma", "seed": 2, "variety": 0})["drum_fill"] == 8
+    assert q.resolve({"genre": "pop", "mood": "energica", "seed": 2, "variety": 0})["drum_fill"] == 2
+    assert velocity(calm) < velocity(lively) - 6
+    assert q.quick_song({"genre": "jazz", "mood": "allegra", "duration": 60, "seed": 2, "variety": 0})["choices"]["melody"] == "aaba"   # lo stile del genere non si tocca
+    assert q.quick_song({"genre": "pop", "mood": "calma", "duration": 60, "seed": 2, "variety": 0, "melody": "vivace"})["choices"]["melody"] == "vivace"
+    assert q.quick_song({"genre": "soul", "mood": "calma", "duration": 60, "seed": 2, "variety": 0})["choices"]["styles"]["drums"] == "soul"   # solo pop, rock e country
+
+
+def test_the_new_moods_exist_and_the_intimate_one_plays_with_fewer_parts(q):
+    for mood in ("intima", "grintosa", "elegante"):
+        assert mood in q.MOODS and mood in q._mood_labels() and any(mood in d["moods"] for d in q.GENRES_DATA.values())
+    plain = q.quick_song({"genre": "pop", "mood": "serena", "duration": 90, "seed": 2, "variety": 0})
+    intimate = q.quick_song({"genre": "pop", "mood": "intima", "duration": 90, "seed": 2, "variety": 0})
+    assert {"comp2", "pad"} <= set(plain["parts"]) and not {"comp2", "pad", "horn"} & set(intimate["parts"])
+    assert intimate["choices"]["ending"] == "rallentando"
+    assert q.quick_song({"genre": "rock", "mood": "grintosa", "duration": 60, "seed": 2, "variety": 0})["bpm"] > 110
+
+
+def test_more_endings_and_a_mood_ending_beats_the_genre_one(q):
+    from core.project_io import parse_project_text
+    assert q.quick_song({"genre": "reggae", "duration": 90, "seed": 2})["choices"]["ending"] == "sfumato"
+    assert q.quick_song({"genre": "country", "mood": "allegra", "duration": 90, "seed": 2})["choices"]["ending"] == "rallentando"
+    assert q.quick_song({"genre": "soul", "mood": "allegra", "duration": 90, "seed": 2})["choices"]["ending"] == "sfumato"
+    assert q.quick_song({"genre": "soul", "mood": "romantica", "duration": 90, "seed": 2})["choices"]["ending"] == "rallentando"        # l'atmosfera e' piu' specifica
+    assert q.quick_song({"genre": "soul", "mood": "romantica", "duration": 90, "seed": 2, "ending": "cadenza"})["choices"]["ending"] == "cadenza"
+    chacha = q.quick_song({"genre": "chacha", "mood": "allegra", "duration": 90, "seed": 2, "ending": "cadenza", "variety": 0})["text"]
+    import re as _re
+    assert _re.search(r"\[snare kick\] r \d+@ \[snare kick\] r \d+@ \[crash kick\]", chacha) or "[crash kick] 11r" in chacha          # i tre colpi del cha cha
+    parse_project_text(chacha, "x")
+
+
+def test_samba_chacha_and_balkan_have_their_own_entries_and_breaks(q):
+    samba = q.quick_song({"genre": "samba", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert _boxes(samba, "Intro") == ["Drums"] and _boxes(samba, "Break") == ["Drums"] and "swing16=" in samba["text"]
+    chacha = q.quick_song({"genre": "chacha", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert "Drums" in _boxes(chacha, "Intro") and _boxes(chacha, "Break") == ["Drums"]
+    balkan = q.quick_song({"genre": "balcanico78", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert balkan["choices"]["instruments"]["melody"] in _boxes(balkan, "Intro") and "Drums" in _boxes(balkan, "Break")
+    punk = q.quick_song({"genre": "punk", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert "Drums" in _boxes(punk, "Intro") and q._figures_for("punk", "Overdriven_Guitar") == "approach_below"
+
+
+@pytest.mark.parametrize("genre,instruments", [
+    ("lofi", {"comp": "Electric_Piano_1", "comp2": "Pad_2_warm", "bass": "Fretless_Bass", "melody": "Vibraphone"}),
+    ("elettronica", {"comp": "Pad_1_new_age", "bass": "Synth_Bass_1", "melody": "Lead_2_sawtooth"}),
+    ("orchestrale", {"comp": "Strings", "comp2": "Harp", "bass": "Cello", "horn": "French_Horn", "melody": "Oboe"})])
+def test_electronic_lofi_and_orchestral_have_their_own_instruments(q, genre, instruments):
+    song = q.quick_song({"genre": genre, "mood": "calma", "duration": 120, "seed": 2, "variety": 0})
+    for part, name in instruments.items():
+        assert song["choices"]["instruments"][part] == name, (genre, part)
+    assert q._INSTRUMENT_ALTS_GENRE[genre]
+
+
+def test_blues_rocknroll_bossa_valzer_afro_and_electronic_have_kits_entries_and_breaks(q):
+    for genre, program in (("blues", 8), ("rocknroll", 8), ("afro68", 8)):
+        assert q._GENRE_KIT[genre][1] == program
+    elettronica = q.quick_song({"genre": "elettronica", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert _boxes(elettronica, "Break") == sorted([elettronica["choices"]["instruments"]["comp"], elettronica["choices"]["instruments"]["comp2"]])
+    for genre in ("bossa", "valzer", "rocknroll"):
+        song = q.quick_song({"genre": genre, "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+        assert any(s["role"] == "break" for s in song["sections"]), genre
+    blues = q.quick_song({"genre": "blues", "mood": "allegra", "duration": 90, "seed": 2, "variety": 0})
+    roles = [s["role"] for s in blues["sections"]]
+    assert "break" in roles and roles.index("break") < roles.index("solo")
+    bossa = q.quick_song({"genre": "bossa", "mood": "allegra", "duration": 120, "seed": 2, "variety": 0})
+    assert bossa["choices"]["instruments"]["comp2"] not in _boxes(bossa, "Intro")
+    lofi = q.quick_song({"genre": "lofi", "mood": "calma", "duration": 120, "seed": 2, "variety": 0, "form": "canzone"})
+    assert lofi["choices"]["instruments"]["comp2"] not in _boxes(lofi, "Intro")
+    for genre in ("marcia", "afro68"):
+        assert q._GENRE_SECOND_VOICE[genre] == "thirds"
+
+
+def test_poor_moods_get_more_parts_and_harmony(q):
+    epic = q.quick_song({"genre": "pop", "mood": "epica", "duration": 120, "seed": 2, "variety": 0})
+    assert epic["choices"]["instruments"]["horn"] == "French_Horn" and "horn" in epic["parts"]
+    mysterious = q.quick_song({"genre": "jazz", "mood": "misteriosa", "duration": 120, "seed": 2, "variety": 0})
+    assert mysterious["choices"]["instruments"]["pad"] == "Pad_1_new_age"
+    band = q.quick_song({"genre": "marcia", "mood": "solenne", "duration": 120, "seed": 2, "variety": 0})
+    assert "pad" not in band["parts"]                                                         # le bande non prendono tappeti
+    assert "horn" not in q.quick_song({"genre": "rock", "mood": "epica", "duration": 60, "seed": 2, "variety": 0})["parts"]
+    assert "horn" not in q.quick_song({"genre": "pop", "mood": "intima", "duration": 60, "seed": 2, "variety": 0})["parts"]    # l'intima toglie
+
+
+def test_the_mood_colors_the_chords_but_not_the_bass_and_the_melody(q):
+    assert q._color_chords("4: 4C 4Am 4F 4G", 0, "seventh") == "4: 4Cmaj7 4Am7 4Fmaj7 4G7"
+    assert q._color_chords("4: 4Am 4Dm 4E 4Am", 9, "tension") == "4: 4AmMaj7 4Dm 4E7 4AmMaj7"
+    assert q._color_chords("4: 8E9 4A 2Bm7 4C#sus4", 4, "seventh") == "4: 8E9 4Amaj7 2Bm7 4C#sus4"      # chi ha gia' un colore resta com'e'
+    import re as _re
+    sevenths = q.quick_song({"genre": "pop", "mood": "romantica", "duration": 90, "seed": 2, "variety": 0, "chords": ""})
+    triads = q.quick_song({"genre": "pop", "mood": "serena", "duration": 90, "seed": 2, "variety": 0, "chords": ""})
+    comp2 = lambda song: " ".join(_re.findall(r'Box %s "[^"]+"[^\n]*\n  ([^\n]*)' % song["choices"]["instruments"]["comp2"], song["text"]))   # noqa: E731
+    sevenths_in = lambda text: len(_re.findall(r"\b\d*[A-G][#b]?(?:maj7|m7|7)\b", text))                                                      # noqa: E731
+    assert sevenths_in(comp2(sevenths)) >= 4 and sevenths_in(comp2(sevenths)) > 2 * sevenths_in(comp2(triads))   # il colore lo suonano gli accompagnamenti
+    assert q.quick_song({"genre": "pop", "mood": "romantica", "duration": 60, "seed": 2, "variety": 0, "chords": "Am F C G"})["text"]
+
+
+def test_quick_songs_write_chords_as_symbols_where_the_harmony_is_the_whole_chord(q):
+    import re as _re
+    from core.project_io import parse_project_text
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 90, "seed": 2, "variety": 0})
+    symbols = _re.findall(r"(?<![\w\[\]])\d*([A-G][#b]?(?:maj7|mMaj7|m7|m|7)?)(?=\s|$|\|)", song["text"])
+    blocks = [b for b in _re.findall(r"\[([^\[\]]+)\]", song["text"]) if _re.search(r"\*\d", b)]
+    assert len(symbols) > 5 * len(blocks) and {"C", "G", "Am", "F"} & set(symbols)       # i blocchi di note restano solo per i voicing particolari
+    plain = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 90, "seed": 2, "variety": 0, "symbols": False})
+    assert len(_re.findall(r"\[[a-g][#b]?\*\d", plain["text"])) > len(_re.findall(r"\[[a-g][#b]?\*\d", song["text"])) * 5
+    parse_project_text(song["text"], "x")                                                  # e il testo e' valido
+    from core.chord_symbols import progression_symbols, chords_as_symbols
+    from core.instruments import get_instrument
+    from core.rhythm_generate import extract_chords_from_track
+    chords = extract_chords_from_track("4: 4C 4Am 4F 4G7", {})
+    assert progression_symbols("4: 80@ 2[c*4 e*4 g*4] 2[e*4 g*4 c*5] 2[c*4 e*4 a*4] 2[a*4 c*5 e*5 a*5] 4[c*4 f*4 a*4 f*5] 2[b*3 d*4 g*4 f*4] 2[g*4 b*4]", chords) \
+        == "4: 80@ 2C 2C 2Am 2Am 4F 2G7 2[g*4 b*4]"                                           # la sola terza e quinta resta com'e'
+    assert chords_as_symbols("4: 2[c*4 e*4 g*4] 2[c*4 f*4 a*4] 4[g*4 b*4 d*5 f*5]", get_instrument("Piano")) == "4: 2C 2[c*4 f*4 a*4] 4G7"
+    assert progression_symbols("8: 4[c*4 e*4 g*4] { a ; b }", chords) == "8: 4[c*4 e*4 g*4] { a ; b }"        # voci: non si tocca

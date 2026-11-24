@@ -3518,5 +3518,8 @@
  "Soul (Imaj7-vi7-ii7-V7)": "Soul (Imaj7-vi7-ii7-V7)",
  "Soul plagale (I-IV-iv-I)": "Plagal soul (I-IV-iv-I)",
  "Soul minore (i7-iv7-bVII-V7)": "Minor soul (i7-iv7-bVII-V7)",
- "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// The starting effects of the genre and the mood (master chain): change or remove them like any other."
+ "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// The starting effects of the genre and the mood (master chain): change or remove them like any other.",
+ "intima": "intimate",
+ "grintosa": "gritty",
+ "elegante": "elegant"
 }

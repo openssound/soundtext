@@ -1521,7 +1521,7 @@ def _span_units(span: ChordSpan, unit: float) -> Tuple[int, int]:
 # accompagnamento e riff: con la variabilita', un accordo puo' usare uno di
 # questi invece del disegno base (vedi _bar_picker). Stesso formato di
 # 'bar' in BASS_PATTERNS/MELODIC_PATTERNS.
-_CHORD = ["root", "third", "fifth"]
+_CHORD = ["root", "third", "fifth", "seventh"]    # la settima c'e' solo se l'accordo ce l'ha (_resolve_roles): maj7, m7 e 7 si sentono nei comping
 PATTERN_ALTS: Dict[str, List[list]] = {
     # basso
     "two_feel": [[(0.0, "root"), (2.0, "third")], [(0.0, "root"), (2.0, "root_hi")]],
@@ -1902,8 +1902,8 @@ MELODIC_PATTERNS: Dict[str, dict] = {
     # --- Accompagnamento (chitarra, piano, organo, archi/pad, ensemble...) ---
     # Accordo battuto sul 1 e sul 3 (comping semplice, stile chitarra/piano).
     "block_chords": {"grid": "4:", "polyphonic": True,
-                      "bar": [(0.0, ["root", "third", "fifth"]), (2.0, ["root", "third", "fifth"])],
-                      "variant": [(0.0, ["root", "third", "fifth"]), (2.0, ["root", "third", "seventh"])]},
+                      "bar": [(0.0, _CHORD), (2.0, _CHORD)],
+                      "variant": [(0.0, _CHORD), (2.0, ["root", "third", "seventh"])]},
     # Note dell'accordo in sequenza ascendente, in ottavi (arpeggio classico).
     "arpeggio_up": {"grid": "8:",
                      "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "root_hi"),
@@ -1917,7 +1917,7 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                               (2.0, "root"), (2.5, ["third", "fifth"]), (3.0, "root_hi"), (3.5, ["third", "fifth"])]},
     # Un solo accordo lungo per l'intera durata (pad, archi, organo sostenuto).
     "sustained": {"grid": "4:", "polyphonic": True, "tile": False,
-                  "bar": [(0.0, ["root", "third", "fifth"])],
+                  "bar": [(0.0, ["root", "third", "fifth", "seventh"])],
                   "variant": [(0.0, ["root", "third", "seventh"])]},
     # Montuno latin/piano: ottavi sincopati a due note.
     "montuno": {"grid": "8:", "polyphonic": True,
@@ -1928,37 +1928,37 @@ MELODIC_PATTERNS: Dict[str, dict] = {
     # Skank reggae/ska: accordo solo in levare (il "e" di ogni beat), come
     # chitarra/tastiera offbeat - vedi reggae_skank fra i RIFF_STYLES.
     "skank_chords": {"grid": "8:", "polyphonic": True,
-                     "bar": [(0.5, ["root", "third", "fifth"]), (1.5, ["root", "third", "fifth"]),
-                             (2.5, ["root", "third", "fifth"]), (3.5, ["root", "third", "fifth"])],
-                     "variant": [(0.5, ["root", "third", "fifth"]), (1.5, ["root", "third", "seventh"]),
-                                 (2.5, ["root", "third", "fifth"]), (3.5, ["root", "third", "seventh"])]},
+                     "bar": [(0.5, _CHORD), (1.5, _CHORD),
+                             (2.5, _CHORD), (3.5, _CHORD)],
+                     "variant": [(0.5, _CHORD), (1.5, ["root", "third", "seventh"]),
+                                 (2.5, _CHORD), (3.5, ["root", "third", "seventh"])]},
     # Accordo su ogni quarto (comping semplice e regolare: pop/rock).
     "quarter_chords": {"grid": "4:", "polyphonic": True,
-                       "bar": [(0.0, ["root", "third", "fifth"]), (1.0, ["root", "third", "fifth"]),
-                               (2.0, ["root", "third", "fifth"]), (3.0, ["root", "third", "fifth"])],
-                       "variant": [(0.0, ["root", "third", "fifth"]), (1.0, ["root", "third", "fifth"]),
-                                   (2.0, ["root", "third", "fifth"]), (3.0, ["root", "third", "seventh"])]},
+                       "bar": [(0.0, _CHORD), (1.0, _CHORD),
+                               (2.0, _CHORD), (3.0, _CHORD)],
+                       "variant": [(0.0, _CHORD), (1.0, _CHORD),
+                                   (2.0, _CHORD), (3.0, ["root", "third", "seventh"])]},
     # Bossa nova: accordo su 1, sul "e" del 2, sul 3 e sul "e" del 4 - stesso
     # profilo ritmico del basso "bossa" gia' esistente, per coerenza fra le parti.
     "bossa_comp": {"grid": "8:", "polyphonic": True,
-                   "bar": [(0.0, ["root", "third", "fifth"]), (1.5, ["root", "third", "fifth"]),
-                           (2.0, ["root", "third", "fifth"]), (3.5, ["root", "third", "fifth"])],
-                   "variant": [(0.0, ["root", "third", "seventh"]), (1.5, ["root", "third", "fifth"]),
-                               (2.0, ["root", "third", "seventh"]), (3.5, ["root", "third", "fifth"])]},
+                   "bar": [(0.0, _CHORD), (1.5, _CHORD),
+                           (2.0, _CHORD), (3.5, _CHORD)],
+                   "variant": [(0.0, ["root", "third", "seventh"]), (1.5, _CHORD),
+                               (2.0, ["root", "third", "seventh"]), (3.5, _CHORD)]},
     # Stop-time funk: due colpi brevi e staccati (mezzo ottavo ciascuno),
     # silenzio nel resto della battuta - punteggiatura della sezione ritmica,
     # non un giro continuo.
     "waltz_comp": {"grid": "4:", "polyphonic": True,
-                   "bar": [(0.0, "rest"), (1.0, ["root", "third", "fifth"]), (2.0, ["root", "third", "fifth"])],
-                   "variant": [(0.0, "rest"), (1.0, ["root", "third", "fifth"]), (2.0, ["third", "fifth", "seventh"])]},
+                   "bar": [(0.0, "rest"), (1.0, _CHORD), (2.0, _CHORD)],
+                   "variant": [(0.0, "rest"), (1.0, _CHORD), (2.0, ["third", "fifth", "seventh"])]},
     "arpeggio_68": {"grid": "8:", "polyphonic": True,
                     "bar": [(0.0, "root"), (0.5, "fifth"), (1.0, "root_hi"), (1.5, "third"), (2.0, "fifth"), (2.5, "third")],
                     "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, "seventh"), (1.5, "third"), (2.0, "fifth"), (2.5, "root_hi")]},
     "funk_stab": {"grid": "8:", "polyphonic": True,
-                  "bar": [(0.0, ["root", "third", "fifth"]), (0.5, "rest"),
-                          (2.5, ["root", "third", "fifth"]), (3.0, "rest")],
+                  "bar": [(0.0, _CHORD), (0.5, "rest"),
+                          (2.5, _CHORD), (3.0, "rest")],
                   "variant": [(0.0, ["root", "third", "seventh"]), (0.5, "rest"),
-                              (2.5, ["root", "third", "fifth"]), (3.0, "rest")]},
+                              (2.5, _CHORD), (3.0, "rest")]},
 
     # --- Accompagnamenti per genere (8.8.2) ---
     # Scratch (chitarra funk): sedicesimi mutati con la terza, la settima di dominante e la fondamentale sopra, in sincope; il resto silenzio.
@@ -1981,8 +1981,8 @@ MELODIC_PATTERNS: Dict[str, dict] = {
     # Pianoforte boogie-woogie (rock'n'roll, blues): la mano sinistra a ottavi (1-5-1-6-1-b7-1-6), la destra batte l'accordo sul 2 e sul 4,
     # tutto in una traccia; la variante porta la settima nell'accordo.
     "boogie_piano": {"grid": "8:", "polyphonic": True,
-                     "bar": [(0.0, "root"), (0.5, "fifth"), (1.0, ["root", "third", "fifth"]), (1.5, "sixth"),
-                             (2.0, "root"), (2.5, "flat7"), (3.0, ["root", "third", "fifth"]), (3.5, "sixth")],
+                     "bar": [(0.0, "root"), (0.5, "fifth"), (1.0, _CHORD), (1.5, "sixth"),
+                             (2.0, "root"), (2.5, "flat7"), (3.0, _CHORD), (3.5, "sixth")],
                      "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, ["root", "third", "seventh"]), (1.5, "sixth"),
                                  (2.0, "root"), (2.5, "flat7"), (3.0, ["root", "third", "seventh"]), (3.5, "sixth")]},
     # Power chord (fondamentale e quinta) a ottavi: rock e punk.
@@ -2000,14 +2000,14 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                    "variant": [(0.0, "root"), (1.0, ["third", "fifth"]), (2.0, "root"), (3.0, ["third", "seventh"])]},
     # Organo "bubble" del reggae: due sedicesimi in levare di ogni quarto, il resto silenzio.
     "organ_bubble": {"grid": "16:", "polyphonic": True,
-                     "bar": [x for b in range(4) for x in ((float(b), "rest"), (b + 0.5, ["root", "third", "fifth"]),
-                                                           (b + 0.75, ["root", "third", "fifth"]))],
+                     "bar": [x for b in range(4) for x in ((float(b), "rest"), (b + 0.5, _CHORD),
+                                                           (b + 0.75, _CHORD))],
                      "variant": [x for b in range(4) for x in ((float(b), "rest"), (b + 0.5, ["root", "third", "seventh"]),
-                                                               (b + 0.75, ["root", "third", "fifth"]))]},
+                                                               (b + 0.75, _CHORD))]},
     # Colpi brevi dei fiati sugli accenti (1, "e" del 2, "e" del 4): funk, soul, swing, disco.
     "horn_stabs": {"grid": "8:", "polyphonic": True,
-                   "bar": [(0.0, ["root", "third", "fifth"]), (0.5, "rest"), (1.5, ["root", "third", "fifth"]),
-                           (2.0, "rest"), (3.5, ["root", "third", "fifth"])],
+                   "bar": [(0.0, _CHORD), (0.5, "rest"), (1.5, _CHORD),
+                           (2.0, "rest"), (3.5, _CHORD)],
                    "variant": [(0.0, ["root", "third", "seventh"]), (0.5, "rest"), (1.5, ["third", "fifth", "seventh"]),
                                (2.0, "rest"), (3.5, ["root", "third", "seventh"])]},
 

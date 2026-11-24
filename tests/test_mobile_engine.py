@@ -633,7 +633,7 @@ def test_chord_chart_reads_written_chords_and_chords_made_of_notes():
     made = e.quick_song({"genre": "pop", "mood": "malinconica", "duration": 30, "seed": 2, "key": "Am"})
     chart = e.chord_chart(made["text"])
     labels = [c[2] for c in chart]
-    assert labels and {"Am", "G", "F", "E"} & set(labels), labels          # il giro di La minore
+    assert labels and {"Am", "G", "F", "E"} & {label.split("7")[0].replace("maj", "").replace("Maj", "") for label in labels}, labels   # il giro di La minore, con le settime della malinconica
     assert e.chord_chart("ST: 2.6\nTempo: 100 BPM\nMetrica: 4/4\n\nDrums:\n  4: kick snare kick snare |\n") == []
 
 

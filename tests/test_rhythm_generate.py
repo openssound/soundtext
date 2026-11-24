@@ -1022,3 +1022,18 @@ def test_progression_inversions_write_slash_chords_and_the_bass_plays_them():
         generate_chord_progression("C", "pop", bars=8, variability=0, seed=3)      # senza variabilita' niente rivolti
     bass = generate_bass_from_chords(extract_chords_from_track("4C/E 4F", {}), "root", octave=2, min_total_beats=8)
     assert bass.split()[1].lower().startswith("e")                       # il basso suona il mi, non il do
+
+
+def test_chord_comping_plays_the_seventh_when_the_chord_has_one_and_stays_a_triad_otherwise():
+    import re as _re
+    from core.rhythm_generate import extract_chords_from_track, generate_melodic_line
+    triads = extract_chords_from_track("4: 4C 4Am 4F 4G", {})
+    sevenths = extract_chords_from_track("4: 4Cmaj7 4Am7 4Fmaj7 4G7", {})
+    for style in ("block_chords", "quarter_chords", "funk_stab", "sustained"):
+        plain = generate_melodic_line(triads, style, 4, 40, 88, True, min_total_beats=16, bar_beats=4.0, seed=1)
+        colored = generate_melodic_line(sevenths, style, 4, 40, 88, True, min_total_beats=16, bar_beats=4.0, seed=1)
+        assert plain != colored, style
+        assert _re.search(r"\bb\*[34]\b", colored), style                              # il si, la settima di Do maggiore 7
+        assert "f*" in colored, style                                                      # e il fa, la settima di Sol 7
+    one = generate_melodic_line(extract_chords_from_track("4: 4C", {}), "block_chords", 4, 40, 88, True, min_total_beats=4, bar_beats=4.0, seed=1)
+    assert "[c*4 e*4 g*4]" in one and "b*" not in one                                      # senza settima: la triade di sempre

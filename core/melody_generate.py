@@ -499,7 +499,8 @@ def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Ra
 
 
 FIGURES = ("approach", "approach_below", "grace_above", "grace_below", "blue_bend")
-ORNAMENT_PROBABILITY = {"grace_above": 0.15, "grace_below": 0.15, "blue_bend": 0.25}
+ORNAMENT_PROBABILITY = {"grace_above": 0.15, "grace_below": 0.15, "blue_bend": 0.16}
+BEND_MIN_BEATS = 1.5          # il bend solo sulle note lunghe: poche, e che si sentono
 
 
 def _ornaments(notes, figures, scale, tonic: int, seed: str, phrase_beats: float, range_low: int, range_high: int) -> dict:
@@ -516,6 +517,8 @@ def _ornaments(notes, figures, scale, tonic: int, seed: str, phrase_beats: float
         if duration < 1.0 - 1e-6 or abs(start - round(start)) > 1e-6:
             continue
         for kind in wanted:
+            if kind == "blue_bend" and duration < BEND_MIN_BEATS - 1e-6:
+                continue
             rng = random.Random(f"{seed}/{kind}/{pitch}/{round((start % phrase_beats) * 2)}")
             if rng.random() >= ORNAMENT_PROBABILITY[kind]:
                 continue
