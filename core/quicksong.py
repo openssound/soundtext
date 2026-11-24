@@ -274,6 +274,11 @@ _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs"
 
 # lo strumento della seconda voce (il tema in terze dell'ultimo ritornello), nella famiglia della melodia: la formazione di un
 # genere non cambia da sola, la seconda voce c'e' solo se la si chiede (opzione second_voice)
+# la seconda voce del genere, se lo strumento e' libero (prima di quella che segue lo strumento della melodia)
+_GENRE_HARM = {"country": "Fiddle"}
+# i generi che restano in maggiore anche nelle atmosfere in minore (se la tonalita' non e' scelta): i giri da usare (strofa,
+# ritornello, ponte), con il bVII misolidio al posto del minore
+_MAJOR_GENRES = {"country": ("three_chord", "mixolydian", "rock")}
 _HARM_FOR = {"Flute": "Clarinet", "Oboe": "Clarinet", "Clarinet": "Flute", "Lead": "Lead_2_sawtooth", "Tenor_Sax": "Alto_Sax",
              "Alto_Sax": "Tenor_Sax", "Trumpet": "Trombone", "Harmonica": "Clarinet", "Fiddle": "Violin", "Violin": "Flute",
              "Overdriven_Guitar": "Rock_Organ", "Cello": "Violin", "Electric_Piano_1": "Flute", "Accordion": "Clarinet"}
@@ -859,6 +864,9 @@ def resolve(options: Optional[dict] = None) -> dict:
     key = options.get("key") or ""
     if not key and options.get("chords"):
         key = _key_of_chords(str(options["chords"]))         # il giro scritto a mano decide la tonalita' (altrimenti e' a caso)
+    minor_mood_in_major = not key and mode == "minor" and genre in _MAJOR_GENRES
+    if minor_mood_in_major:
+        mode = "major"                                       # il country e' in maggiore: la grinta la danno il tempo, la batteria e il bVII
     if key:
         mode = rg.parse_key(key)[1]
         prog_mood = mood if MOODS_DATA[mood][0] == mode else ("malinconica" if mode == "minor" else "allegra")
@@ -866,6 +874,8 @@ def resolve(options: Optional[dict] = None) -> dict:
         key = rng.choice(_KEYS[mode])
         prog_mood = mood
     prog_triple = (recipe.get("prog") or {}).get(mode) or MOODS_DATA[prog_mood][3]
+    if minor_mood_in_major:
+        prog_triple = _MAJOR_GENRES[genre]
     variety = _float(options.get("variety"), 1.0)            # 0 = la ricetta pura, 1 = tutta la variabilita'
     # ogni scelta fra alternative dipende dal seme della sua parte: un lucchetto (stesso seme) tiene la sua parte uguale
     vrng = _random.Random(f"{seeds['progression']}/variety")                    # giri armonici, tempo e forma
@@ -1088,6 +1098,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     seeds, choices}."""
     from . import song_generate as E
     from .rhythm_generate import parse_key as rg_parse_key
+    parse_key_now = lambda k: tuple(rg_parse_key(k)[:2])
     from core.i18n import tr as _tr
     from core.instruments import make_instrument_available
     from core.project_io import parse_project_text
@@ -1203,7 +1214,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
         if asked in (None, "") else None
     if develop and (asked in (True, 1, "1", "si") or auto_voice):
         taken = {c["instruments"][p] for p in active if p in c["instruments"]}
-        harm = _HARM_FOR.get(c["instruments"]["melody"], "Flute")
+        harm = _GENRE_HARM.get(c["genre"]) if _GENRE_HARM.get(c["genre"]) not in taken else None
+        harm = harm or _HARM_FOR.get(c["instruments"]["melody"], "Flute")
         if harm in taken:                                     # due parti non possono avere lo stesso strumento (il nome della traccia)
             harm = next((h for h in ("Flute", "Clarinet", "Oboe", "Violin", "Alto_Sax") if h not in taken), harm)
         c["instruments"]["harm"] = harm
@@ -1280,6 +1292,16 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     if body is None:
                         continue
                 bodies[part] = body
+                if part == "melody" and role == "chorus" and "harm" in active:
+                    from core.instruments import get_instrument as _gi
+                    voice_kind = auto_voice or "thirds"
+                    harm_instrument = _gi(c["instruments"]["harm"])
+                    tonic_pc, mode_now = parse_key_now(skey)
+                    voice = _second_voice(body, E._chords_of(project_color, chords_track, None)[0],
+                                          _melody_scale(c["genre"], tonic_pc, mode_now), voice_kind,
+                                          harm_instrument.range_low, harm_instrument.range_high, bars * bar_beats)
+                    if voice:
+                        bodies["_voice"] = voice
                 if part in ("bass", "melody") and role != "break":
                     try:
                         grown = E.add_track(reg_text, c["instruments"][part], body, name="Registro" + part, compact=False)["text"]
@@ -1356,7 +1378,11 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 if auto_voice:
                     harm_body = "%" + dev_pattern + {"thirds": ".step(-2)", "sixths": ".step(-5)"}[auto_voice] + \
                         (".octave(1)" if body.endswith(".octave(1)") else "")
-                if auto_voice and "harm" in c["instruments"] and not harm_body.endswith(".octave(1)"):
+                if bodies.get("_voice") and (auto_voice or idx == chorus_ids[-1]):
+                    voice_pattern = dev_pattern + "Voce"
+                    patterns.setdefault(voice_pattern, bodies["_voice"])
+                    harm_body = "%" + voice_pattern + (".octave(1)" if body.endswith(".octave(1)") else "")
+                elif auto_voice and "harm" in c["instruments"] and not harm_body.endswith(".octave(1)"):
                     # la seconda voce sta sotto la melodia (terze, seste): se esce sotto l'estensione del suo strumento sale d'ottava
                     from core.instruments import get_instrument
                     low = _top_pitch(patterns[dev_pattern], c["instruments"]["melody"], c["meter"], lowest=True)
@@ -1421,6 +1447,75 @@ def _float(value, default: float) -> float:
         return max(0.0, min(1.0, float(value)))
     except (TypeError, ValueError):
         return default
+
+
+def _second_voice(body: str, chords, scale: set, kind: str, low: int, high: int, total: float) -> Optional[str]:
+    """La seconda voce sotto la melodia, costruita sugli accordi: per ogni nota la nota dell'accordo una terza (o una sesta) sotto;
+    se l'accordo non ce l'ha, la nota della scala a quella distanza che non sta a un semitono da una nota dell'accordo; altrimenti la
+    nota dell'accordo piu' vicina sotto. Gli abbellimenti non si raddoppiano, un bend si armonizza sulla nota d'arrivo. Il testo e'
+    sulla griglia dei sedicesimi; None se la melodia non ci sta (terzine): allora resta la voce per gradi della scala."""
+    from core.notation import parse_track_text
+    from .melody_generate import _chord_pcs
+    from .rhythm_generate import _note_token, pitch_to_midi
+    try:
+        events = parse_track_text(body, {}, default_octave=4)
+    except Exception:
+        return None
+    want = (3, 4) if kind == "thirds" else (8, 9)
+    center = sum(want) / 2.0
+
+    def chord_at(t):
+        current = chords[0]
+        for span in chords:
+            if span.start_beat <= t + 1e-6:
+                current = span
+        return current
+
+    def pick(m, span):
+        chord = set(_chord_pcs(span))
+        for d in want:
+            if (m - d) % 12 in chord:
+                return m - d
+        for d in want:
+            p = m - d
+            if p % 12 in scale and not any((p - c) % 12 in (1, 11) for c in chord):
+                return p
+        near = [m - d for d in range(2, 10) if (m - d) % 12 in chord]
+        return min(near, key=lambda p: abs((m - p) - center)) if near else None
+
+    tokens, cursor = [], 0.0
+    for ev in events:
+        if ev.kind not in ("note", "slide", "rest"):
+            return None
+        if ev.kind == "rest" or getattr(ev, "grace", None) or ev.duration <= 0:
+            continue
+        units, at = ev.duration * 4, ev.start * 4
+        if abs(units - round(units)) > 1e-6 or abs(at - round(at)) > 1e-6:
+            return None
+        if ev.start < cursor - 1e-6:
+            continue
+        letter, octave = (ev.slide_points[-1] if ev.kind == "slide" and ev.slide_points else (ev.letter, ev.octave))
+        pitch = pick(pitch_to_midi(letter, octave), chord_at(ev.start))
+        if pitch is None:
+            continue
+        while pitch < low:
+            pitch += 12
+        if pitch > high:
+            continue
+        if ev.start > cursor + 1e-6:
+            gap = int(round((ev.start - cursor) * 4))
+            tokens.append(f"{gap if gap > 1 else ''}r")
+        velocity = max(1, int((ev.velocity or 90) * 0.85))
+        n = int(round(units))
+        tokens.append(f"{velocity}@ {n if n > 1 else ''}{_note_token(pitch % 12, pitch // 12 - 1)}")
+        cursor = ev.start + ev.duration
+    if not tokens:
+        return None
+    if total > cursor + 1e-6:
+        gap = int(round((total - cursor) * 4))
+        if gap > 0:
+            tokens.append(f"{gap if gap > 1 else ''}r")
+    return "16: " + " ".join(tokens)
 
 
 def _top_pitch(body: str, instrument: str, meter: str, lowest: bool = False) -> Optional[int]:

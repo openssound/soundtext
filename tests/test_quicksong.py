@@ -363,8 +363,9 @@ def test_the_second_voice_in_thirds_only_plays_when_asked_with_an_instrument_of_
     song = q.quick_song({**base, "second_voice": True})
     assert "harm" in song["parts"]
     harm = song["choices"]["instruments"]["harm"]
-    boxes = _re.findall(r'Box ' + harm + r' "([^"]*)" \|\d+:\n  (%MelodiaRitornello\.thirds)', song["text"])
-    assert boxes == [("Ritornello", "%MelodiaRitornello.thirds")]
+    # la voce sugli accordi (pattern «...Voce»); la voce per gradi (.thirds) resta solo se la melodia non sta sulla griglia
+    boxes = _re.findall(r'Box ' + harm + r' "([^"]*)" \|\d+:\n  (%MelodiaRitornello(?:Voce|\.thirds))', song["text"])
+    assert len(boxes) == 1 and boxes[0][0] == "Ritornello"
     assert "harm" not in q.quick_song({**base, "second_voice": True, "development": False})["parts"]
     assert "harm" not in q.quick_song({**base, "second_voice": True, "duration": 45})["parts"]      # un solo ritornello
     rock = q.quick_song({"genre": "rock", "mood": "tesa", "duration": 120, "seed": 2, "second_voice": True, "variety": 0})
@@ -651,7 +652,7 @@ def test_the_genre_second_voice_follows_the_melody_in_every_chorus(q):
     harm = song["choices"]["instruments"].get("harm")
     assert harm and harm != song["choices"]["instruments"]["melody"]
     boxes = _re.findall(r'Box ' + harm + r' "Ritornello" \|\d+:\n  (?:swing\S* )?(%\S+)', song["text"])
-    assert len(boxes) == sum(s["role"] == "chorus" for s in song["sections"]) and all(".step(-5)" in b for b in boxes)
+    assert len(boxes) == sum(s["role"] == "chorus" for s in song["sections"]) and all("Voce" in b or ".step(-5)" in b for b in boxes)
     assert "harm" not in q.quick_song({"genre": "rock", "duration": 90, "seed": 2})["parts"]
 
 
@@ -692,7 +693,7 @@ def test_country_has_banjo_rolls_a_walking_bass_and_a_second_voice_in_thirds(q):
     assert song["choices"]["instruments"]["comp2"] == "Banjo"
     harm = song["choices"]["instruments"].get("harm")
     assert harm and harm != song["choices"]["instruments"]["melody"]
-    assert ".step(-2)" in song["text"]
+    assert "MelodiaRitornelloVoce" in song["text"] or ".step(-2)" in song["text"]
     assert "harm" not in q.quick_song({"genre": "country", "duration": 90, "seed": 2, "second_voice": False})["parts"]
 
 
@@ -704,7 +705,7 @@ def test_soul_has_a_motown_bass_electric_piano_organ_seventh_chords_and_a_fade(q
     assert styles["bass"] == "motown" and styles["comp"] == "soul_comp"
     assert instruments["comp"] == "Electric_Piano_1" and instruments["comp2"] == "Drawbar_Organ"
     assert song["choices"]["ending"] == "sfumato" and any(s["role"] == "fade" for s in song["sections"])
-    assert instruments.get("harm") == "Alto_Sax" and ".step(-2)" in song["text"]               # i sax in terze, come la sezione fiati
+    assert instruments.get("harm") == "Alto_Sax" and ("MelodiaRitornelloVoce" in song["text"] or ".step(-2)" in song["text"])   # i sax in terze
     assert all(s in PROGRESSION_STYLES for s in ("soul_turn", "soul_plagal", "soul_minor"))
     assert all(all(any(c[1] in ("maj7", "m7", "7") for c in PROGRESSION_STYLES[s]["chords"]) for s in pool)
                for pool in ([q._PROG_POOLS["soul"]["major"][0], q._PROG_POOLS["soul"]["major"][2]],))
@@ -1163,3 +1164,34 @@ def test_two_parts_never_share_an_instrument_and_the_genres_keep_their_bands(q):
     assert "comp2" not in pure("punk") and "comp2" not in pure("metal")                 # chitarre, basso e batteria
     assert pure("balcanico78")["bass"] == "Tuba" and pure("pop")["melody"] == "Flute"
     assert {q.resolve({"genre": "swing", "seed": s})["instruments"]["comp"] for s in range(1, 30)} <= {"Piano", "Jazz_Guitar"}
+
+
+def test_the_second_voice_follows_the_chords_and_country_stays_major_with_the_fiddle(q):
+    import json as _json
+    from core.harmony_check import check_project
+    from core.project_io import parse_project_text
+    options = {"bars": 40, "seed": 195133427, "genre": "country", "mood": "grintosa", "duration": 60, "ending": "rallentando",
+               "melody": "cantabile", "density": 0.7469179810274935}
+    song = q.quick_song(options)
+    assert not song["key"].endswith("m")                                              # il country resta in maggiore
+    assert song["choices"]["instruments"]["harm"] == "Fiddle"                          # la seconda voce del country e' il violino
+    assert "MelodiaRitornelloVoce" in song["text"]
+    project = parse_project_text(song["text"], "Brano")
+    assert check_project(project, melody_tracks=["Fiddle"]) == []                     # sugli accordi: nessuno scontro
+    _valid(q, song)
+    minor = q.quick_song({**options, "key": "Gm"})                                     # la tonalita' scelta vince
+    assert minor["key"] == "Gm"
+    assert check_project(parse_project_text(minor["text"], "Brano"), melody_tracks=[minor["choices"]["instruments"]["harm"]]) == []
+    assert _json.loads(re.search(r"// quick: (\{.*\})", song["text"]).group(1))["genre"] == "country"
+
+
+def test_second_voice_on_the_chords():
+    from core import quicksong as qs
+    from core.rhythm_generate import extract_chords_from_track
+    chords = extract_chords_from_track("4: 4Gm 4Cm", {})
+    scale = qs._melody_scale("", 7, "minor")
+    voice = qs._second_voice("8: 90@ 2g*4 2a#*4 2c*5 2d#*5", chords, scale, "thirds", 55, 90, 8.0)
+    # tutto su Sol minore (le note durano un quarto): sotto il sol il re (il mi b stride col re), sotto il si b il sol, sotto il do il si b
+    # (il la stride col si b), sotto il mi b il do della scala
+    assert voice == "16: 76@ 4d*4 76@ 4g*4 76@ 4a#*4 76@ 4c*5 16r"
+    assert qs._second_voice("8T: c*4 d*4 e*4", chords, scale, "thirds", 55, 90, 4.0) is None   # le terzine: resta la voce per gradi
