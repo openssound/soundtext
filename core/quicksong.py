@@ -612,7 +612,7 @@ def _genre_labels() -> Dict[str, str]:
             "elettronica": tr("Elettronica"), "orchestrale": tr("Orchestrale"), "blues": tr("Blues"), "reggae": tr("Reggae"),
             "country": tr("Country"), "punk": tr("Punk"), "metal": tr("Metal"), "rocknroll": tr("Rock'n'roll"),
             "samba": tr("Samba"), "chacha": tr("Cha-cha-cha"), "valzer": tr("Valzer"), "marcia": tr("Marcia"),
-            "ballata68": tr("Ballata 6/8"), "afro68": tr("Afro 6/8"), "balcanico78": tr("Balcanico 7/8")}
+            "ballata68": tr("Ballata 6/8"), "afro68": tr("Etnico 6/8"), "balcanico78": tr("Balcanico 7/8")}
 
 
 def _mood_labels() -> Dict[str, str]:
