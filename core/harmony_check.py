@@ -37,6 +37,8 @@ def _sounding(project, track) -> List[Tuple[float, float, int]]:
     from st_language.midi import resolve_event_notes, sounding_events
     out = []
     for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
+        if getattr(ev, "grace", None) or ev.duration <= 0:
+            continue                                          # l'acciaccatura si suona prima del tempo: non e' la nota che pesa
         try:
             notes, _velocity = resolve_event_notes(ev, track.instrument)
         except Exception:

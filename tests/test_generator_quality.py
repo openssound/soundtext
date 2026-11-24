@@ -75,6 +75,11 @@ def _strong_beat_hits(genre, seed):
             continue
         index = int(start // bar)
         pitch_classes = {n % 12 for s, _d, ns in harmony if index * bar - 1e-6 <= s < (index + 1) * bar - 1e-6 for n in ns}
+        if len(pitch_classes) < 2:
+            continue                  # nella battuta suona solo la fondamentale del basso: l'accordo non si sente, non c'e' da misurare
+        for root in list(pitch_classes):
+            if (root + 7) % 12 in pitch_classes and not {(root + 3) % 12, (root + 4) % 12} & pitch_classes:
+                pitch_classes |= {(root + 3) % 12, (root + 4) % 12}    # un power chord (fondamentale e quinta): la terza la mette la melodia
         hits += notes[-1] % 12 in pitch_classes
         total += 1
     return hits, total
@@ -88,11 +93,10 @@ def test_melody_notes_on_the_strong_beat_belong_to_the_chord():
             h, t = _strong_beat_hits(genre, seed)
             hits, total = hits + h, total + t
         if total >= 6:
-            assert hits / total >= 0.65, (genre, hits, total)    # 15 note a genere: una o due in piu' fuori fanno la differenza (nel totale il 93 %)
+            assert hits / total >= 0.85, (genre, hits, total)
         all_hits, all_total = all_hits + hits, all_total + total
-    # 0.85 e non 0.9 da quando la melodia suona anche nella strofa: li' l'accompagnamento leggero lascia fuori settime e quinte
-    # (sol maj7 suonato sol-si-re), e la settima della melodia, che sta nell'accordo, qui conta come fuori
-    assert all_hits / all_total >= 0.85, (all_hits, all_total)
+    # contando la terza sopra i power chord e saltando le battute col solo basso il totale e' il 98-99 %: 0.95 tiene il margine
+    assert all_hits / all_total >= 0.95, (all_hits, all_total)
 
 
 def test_parallel_fifths_and_octaves_between_bass_and_melody_stay_rare():

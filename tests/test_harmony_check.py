@@ -69,12 +69,13 @@ def sweep():
 
 
 def test_every_genre_and_mood_stays_under_the_clash_threshold(sweep):
-    """Le combinazioni di genere e atmosfera con il seme fisso: gli scontri sono pochi. Le soglie sono sopra i valori di oggi (circa il 5 %
-    delle note che pesano nel totale, il 37 % nel caso peggiore): scendono se i generatori migliorano e il test fallisce se peggiorano."""
+    """Le combinazioni di genere e atmosfera con il seme fisso: gli scontri sono pochi. Le soglie sono sopra i valori di oggi (circa il 2,3 %
+    delle note che pesano nel totale, il 6,5 % nel genere peggiore, il 37 % nella combinazione peggiore, l'orchestrale misteriosa con poche
+    note): scendono se i generatori migliorano e il test fallisce se peggiorano."""
     assert len(sweep) >= 250
     total = sum(len(c) for _g, _m, c, _n in sweep)
     weighty = sum(n for _g, _m, _c, n in sweep)
-    assert total / weighty <= 0.07, f"{total} scontri su {weighty} note"
+    assert total / weighty <= 0.035, f"{total} scontri su {weighty} note"
     tritones = sum(1 for _g, _m, clashes, _n in sweep for c in clashes if c.kind == "tritone")
     assert tritones / weighty <= 0.01, f"{tritones} tritoni col basso"
     worst = [(len(c) / n, g, m) for g, m, c, n in sweep if len(c) / n > 0.5]
@@ -83,7 +84,7 @@ def test_every_genre_and_mood_stays_under_the_clash_threshold(sweep):
     for genre, _m, clashes, n in sweep:
         per_genre[genre][0] += len(clashes)
         per_genre[genre][1] += n
-    bad = {g: round(a / b, 3) for g, (a, b) in per_genre.items() if a / b > 0.2}
+    bad = {g: round(a / b, 3) for g, (a, b) in per_genre.items() if a / b > 0.1}
     assert not bad, bad
 
 

@@ -293,7 +293,9 @@ def test_genres_start_with_their_own_effects_and_the_option_turns_them_off(q):
 def test_the_last_chorus_takes_the_theme_up_an_octave_through_a_pattern(q):
     from core.project_io import parse_project_text
     from st_language.midi import resolve_event_notes, sounding_events
-    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "variety": 0})
+    # il piano elettrico ha spazio sopra il tema (il flauto, la melodia di partenza del pop, e' gia' in alto e resta li')
+    song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "variety": 0,
+                         "parts": {"melody": {"instrument": "Electric_Piano_1"}}})
     assert "Pattern %MelodiaRitornello:" in song["text"]
     calls = re.findall(r"^  (%MelodiaRitornello(?:\.octave\(1\))?)$", song["text"], re.M)
     assert calls == ["%MelodiaRitornello"] * (len(calls) - 1) + ["%MelodiaRitornello.octave(1)"] and len(calls) >= 3
@@ -324,7 +326,9 @@ def test_energy_curve_changes_the_intensity_of_the_sections(q):
 
     base, rises, falls = drum_sizes(None), drum_sizes("sale"), drum_sizes("cala")
     assert rises[0] < rises[-2] and falls[0] > falls[-2]                       # sale: la prima sezione e' piu' leggera dell'ultima; cala: il contrario
-    assert base[0] == base[2] and len({tuple(drum_sizes("picco"))}) == 1
+    # senza curva le due strofe hanno la stessa intensita': lo stesso testo, salvo il crash d'ingresso e il fill d'uscita, che dipendono
+    # dalle sezioni vicine (dopo l'intro o dopo il ritornello)
+    assert abs(base[0] - base[2]) <= 0.05 * base[0] and len({tuple(drum_sizes("picco"))}) == 1
     assert "energies" in q.quick_choices() and [e["value"] for e in q.quick_choices()["energies"]] == ["sale", "picco", "cala"]
 
 
@@ -422,10 +426,10 @@ def test_another_song_changes_instruments_accompaniment_density_and_ending_but_k
         assert len({inst[p] for p in ("comp", "comp2", "melody") if p in inst}) == len([p for p in ("comp", "comp2", "melody") if p in inst])
     # il punk e il metal non prendono tastiere o chitarre pulite per la melodia, il jazz resta con fiati e piano o chitarra
     assert {made("punk", "tesa", s)["choices"]["instruments"]["melody"] for s in range(1, 15)} <= {"Overdriven_Guitar"}
-    assert {made("jazz", "calma", s)["choices"]["instruments"]["comp"] for s in range(1, 15)} <= {"Piano", "Nylon_Guitar"}
+    assert {made("jazz", "calma", s)["choices"]["instruments"]["comp"] for s in range(1, 15)} <= {"Piano", "Jazz_Guitar"}
     # la ricetta pura (variety 0) e le scelte dell'utente non cambiano
     pure = {made("pop", "allegra", s, variety=0)["choices"]["instruments"]["melody"] for s in range(1, 10)}
-    assert pure == {"Electric_Piano_1"}
+    assert pure == {"Flute"}
     chosen = made("pop", "allegra", 3, parts={"melody": {"instrument": "Oboe"}})
     assert chosen["choices"]["instruments"]["melody"] == "Oboe"
     # e i brani sono validi
@@ -1107,3 +1111,55 @@ def test_no_generated_note_is_outside_the_range_of_its_instrument(q):
                     [pitch_to_midi(i["letter"], i["octave"]) for i in (ev.items or []) if ev.kind == "block" and i.get("kind") == "note" and i.get("letter")]
                 for pitch in pitches:
                     assert track.instrument.range_low <= pitch <= track.instrument.range_high, (genre, track.name, pitch)
+
+
+def test_the_drums_fill_the_last_bar_of_a_section_and_open_the_chorus_with_a_crash(q):
+    from core.project_io import parse_project_text
+    from st_language.midi import sounding_events
+    song = q.quick_song({"genre": "pop", "seed": 1, "duration": 90, "variety": 0})
+    project = parse_project_text(song["text"], "Brano")
+    drums = next(t for t in project.tracks if t.name == "Drums")
+    events = sounding_events(drums.parsed_events(project.patterns, meter=project.meter()))
+
+    def names_at(beat):
+        return {n for e in events if abs(e.start - beat) < 1e-6 for n in ([e.name] if e.name else []) + [i.get("name") for i in (e.items or [])]}
+
+    def bar_of(index):
+        return sorted((round(e.start - index * 4, 3), tuple(sorted(([e.name] if e.name else []) + [i.get("name") for i in (e.items or [])])))
+                      for e in events if index * 4 - 1e-6 <= e.start < (index + 1) * 4 - 1e-6)
+    chorus = [s for s in song["sections"] if s["role"] == "chorus"]
+    assert chorus
+    for section in chorus:
+        assert "crash" in names_at(section["start_bar"] * 4.0), section            # il ritornello entra col crash
+        before = section["start_bar"] - 1
+        assert bar_of(before) != bar_of(before - 1), section                        # la battuta prima e' un fill, non il giro
+    from core import rhythm_generate as rg
+    plain = rg.generate_drum_pattern("rock", 4, fill_every=0)
+    assert "crash" not in plain.split("|")[0] and "crash" in rg.generate_drum_pattern("rock", 4, fill_every=0, crash_first=True)
+
+
+def test_on_the_strong_beat_the_melody_avoids_the_chord_tones_a_semitone_apart():
+    from core.melody_generate import generate_phrase_melody
+    from core.rhythm_generate import extract_chords_from_track
+    chords = extract_chords_from_track("4: 4Cmaj7 4Fmaj7 4Cmaj7 4Fmaj7", {})
+    text = generate_phrase_melody(chords, "melody_ballad", 5, 60, 84, key="C", seed=3, variability=0.5)
+    from core.notation import parse_track_text
+    for ev in parse_track_text(text, {}, default_octave=5):
+        if ev.kind == "note" and ev.letter and abs(ev.start % 4) < 1e-6:
+            bar = int(ev.start // 4)
+            root, seventh = ("c", "b") if bar % 2 == 0 else ("f", "e")
+            assert ev.letter not in (root, seventh), (ev.start, ev.letter)           # sul primo tempo: terza o quinta
+
+
+def test_two_parts_never_share_an_instrument_and_the_genres_keep_their_bands(q):
+    """Due parti con lo stesso strumento fanno due tracce con lo stesso nome (l'orchestrale dava il corno a melodia e fiati)."""
+    for genre in q.GENRES_DATA:
+        for mood in q.GENRES_DATA[genre]["moods"][:4]:
+            for seed in range(1, 9):
+                inst = q.resolve({"genre": genre, "mood": mood, "seed": seed})["instruments"]
+                names = [name for part, name in inst.items() if part != "drums"]
+                assert len(names) == len(set(names)), (genre, mood, seed, inst)
+    pure = lambda genre: q.quick_song({"genre": genre, "seed": 1, "duration": 30, "variety": 0})["choices"]["instruments"]
+    assert "comp2" not in pure("punk") and "comp2" not in pure("metal")                 # chitarre, basso e batteria
+    assert pure("balcanico78")["bass"] == "Tuba" and pure("pop")["melody"] == "Flute"
+    assert {q.resolve({"genre": "swing", "seed": s})["instruments"]["comp"] for s in range(1, 30)} <= {"Piano", "Jazz_Guitar"}

@@ -91,7 +91,8 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
       "normal", "full", "build"), track (la traccia di destinazione, che
       non fa da sorgente di accordi);
     - progression: key, style, chord_bars (0.5, 1, 2), ending;
-    - drums: style, fill_every (4), phrase_fills (si'), ending (no),
+    - drums: style, fill_every (4), phrase_fills (si'), ending (no), fill_last (no: fill sull'ultima battuta, la sezione cambia),
+      crash_first (no: crash sul primo tempo),
       section_fills (si' se le altre tracce hanno dei box);
     - bass e comping: swing (50 dritto - 80: le crome in ritardo, come «swing=N»);
     - bass: source (traccia degli accordi), style, octave (2),
@@ -129,10 +130,13 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
         use_sections = options.get("section_fills", bool(sections))
         section_bars = rg.section_end_bars(project, start_beat, bars, bar_beats,
                                            exclude_track_name=track_name) if use_sections else []
+        if options.get("fill_last"):
+            section_bars = list(section_bars) + [bars - 1]         # la sezione finisce qui: fill sull'ultima battuta
         out = rg.generate_drum_pattern(style, bars=bars, fill_every=int(options.get("fill_every", 4)),
                                        intensity=intensity, phrase_fills=bool(options.get("phrase_fills", True)),
                                        ending=bool(options.get("ending", False)), kick_accents=None,
-                                       section_fill_bars=section_bars, **variation)
+                                       section_fill_bars=section_bars,
+                                       crash_first=bool(options.get("crash_first")), **variation)
     elif kind == "bass":
         chords, _source = _chords_of(project, options.get("source"), track_name)
         instrument = _instrument(project, options.get("instrument", "Bass"))

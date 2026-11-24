@@ -278,7 +278,10 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
                     pcs = others or chord
                 candidates = harmony.notes(pcs)
             elif strength == "strong":
-                candidates = harmony.notes(chord)
+                # le note dell'accordo a un semitono da un'altra (fondamentale e settima di un maj7) stridono con l'accompagnamento che suona
+                # l'altra: sul tempo forte la terza e la quinta
+                strong = [pc for pc in chord if not any((pc - other) % 12 in (1, 11) for other in chord if other != pc)] or chord
+                candidates = harmony.notes(strong)
             else:
                 candidates = harmony.notes(_allowed_pcs(harmony.scale_pcs, span))
                 if strength == "beat":

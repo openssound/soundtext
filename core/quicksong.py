@@ -244,7 +244,7 @@ def _figures_for(genre: str, instrument: str) -> str:
 # gli strumenti che ogni genere sceglie per le sue parti (8.8.1): valgono quando si suona l'organico di partenza del genere
 # (se si sceglie un altro organico, vale quello); None toglie la parte; "horn" aggiunge i fiati, che suonano lo stile "horn_style"
 _GENRE_INSTRUMENTS = {
-    "pop": {"comp": "Acoustic_Guitar_Steel", "comp2": "Piano", "melody": "Electric_Piano_1", "pad": "Strings"},
+    "pop": {"comp": "Acoustic_Guitar_Steel", "comp2": "Piano", "melody": "Flute", "pad": "Strings"},
     "ballata": {"comp": "Piano", "comp2": "Acoustic_Guitar_Steel", "melody": "Oboe", "pad": "Strings"},
     "ballata68": {"comp": "Piano", "comp2": "Acoustic_Guitar_Steel", "melody": "Clarinet", "pad": "Strings"},
     "bossa": {"comp": "Nylon_Guitar", "comp2": "Electric_Piano_1", "bass": "Acoustic_Bass"},
@@ -261,12 +261,12 @@ _GENRE_INSTRUMENTS = {
     "orchestrale": {"comp": "Strings", "comp2": "Harp", "bass": "Cello", "horn": "French_Horn", "melody": "Oboe"},
     "funk": {"comp": "Clavinet", "comp2": "Electric_Guitar_Muted", "bass": "Slap_Bass_1", "melody": "Tenor_Sax", "horn": "Brass_Section"},
     "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
-    "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
+    "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section", "bass": "Tuba"},      # la banda di ottoni: il basso e' la tuba
     "reggae": {"comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "disco": {"melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
     "rock": {"melody": "Overdriven_Guitar", "comp2": "Clean_Guitar"},
-    "punk": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
-    "metal": {"melody": "Overdriven_Guitar", "comp2": "Rock_Organ"},
+    "punk": {"melody": "Overdriven_Guitar", "comp2": None},          # chitarre, basso e batteria: niente organo
+    "metal": {"melody": "Overdriven_Guitar", "comp2": None},
     "marcia": {"melody": "Trumpet", "bass": "Tuba", "comp": "Brass_Section", "comp2": "Accordion"},      # una banda: ottoni e fisarmonica, non archi e arpa
     "rocknroll": {"comp": "Piano", "comp2": "Clean_Guitar", "melody": "Tenor_Sax"},
 }
@@ -311,10 +311,10 @@ _SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", 
 # gli strumenti alternativi di ogni parte: il primo e' quello della ricetta; il seme puo' sceglierne un altro (stessa famiglia e,
 # dove si puo', gli stessi pacchetti di suoni del genere). Per genere se il genere ha il suo suono, se no per organico.
 _INSTRUMENT_ALTS_GENRE = {
-    "jazz": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet", "Clarinet", "Flute"), "comp": ("Piano", "Nylon_Guitar")},
-    "swing": {"melody": ("Trumpet", "Tenor_Sax", "Clarinet", "Alto_Sax"), "comp": ("Piano", "Nylon_Guitar")},
+    "jazz": {"melody": ("Tenor_Sax", "Alto_Sax", "Trumpet", "Clarinet", "Flute"), "comp": ("Piano", "Jazz_Guitar")},
+    "swing": {"melody": ("Trumpet", "Tenor_Sax", "Clarinet", "Alto_Sax"), "comp": ("Piano", "Jazz_Guitar")},
     "pop": {"comp": ("Acoustic_Guitar_Steel", "Piano", "Nylon_Guitar"), "comp2": ("Piano", "Nylon_Guitar", "Electric_Piano_1"),
-            "melody": ("Electric_Piano_1", "Piano", "Flute", "Clarinet")},
+            "melody": ("Flute", "Clarinet", "Piano", "Electric_Piano_1")},
     "ballata": {"comp": ("Piano", "Acoustic_Guitar_Steel"), "comp2": ("Acoustic_Guitar_Steel", "Nylon_Guitar"),
                 "melody": ("Oboe", "Clarinet", "Flute")},
     "ballata68": {"comp": ("Piano", "Nylon_Guitar"), "comp2": ("Acoustic_Guitar_Steel", "Nylon_Guitar"),
@@ -967,7 +967,7 @@ def resolve(options: Optional[dict] = None) -> dict:
                 continue                                     # lo strumento del genere (clavinet, chitarra distorta...) non si tocca
             irng = random.Random(f"{seeds[part]}/strumento")
             if irng.random() < 0.6 * variety:
-                taken = {instruments.get(o) for o in ("comp", "comp2", "melody") if o != part}
+                taken = {name for other, name in instruments.items() if other != part}      # anche fiati, tappeto e basso: due parti, due strumenti
                 choices = [x for x in pool if x != current and x not in taken]
                 if choices:
                     instruments[part] = irng.choice(choices)
@@ -1172,7 +1172,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     last = len(sections) - 1
     fading = c["ending"] == "sfumato"
     harmony: Dict[Tuple, dict] = {}                          # accordi, accompagnamenti, basso, melodia: uguali nelle ripetizioni
-    drum_texts: Dict[Tuple, str] = {}                        # la batteria: in un loop cambia a ogni giro (i fill)
+    drum_texts: Dict[Tuple, str] = {}
+    section_filled: Dict[int, bool] = {}                   # le sezioni che finiscono con un fill (la dopo entra col crash)                        # la batteria: in un loop cambia a ogni giro (i fill)
     boxes: List[str] = []
     patterns: Dict[str, str] = {}                            # i pattern del testo compatto (core.compact_text), uno per battuta ripetuta
     raw_patterns: Dict[str, str] = {}                        # gli stessi, come li ha scritti il generatore (prima del micro-tempo)
@@ -1294,12 +1295,20 @@ def quick_song(options: Optional[dict] = None) -> dict:
             bodies["drums"] = _break_drums(bars * beats_per_bar)
         elif "drums" in active and (role in _enters(c["genre"], "drums") or brk_kind == "fill"):
             variant = idx if form == "loop" else 0
-            dkey = cache + (variant,)
+            # i fill legati alla forma: il fill sull'ultima battuta quando cambia sezione (non prima di un break, che e' gia' un fill, ne' in
+            # un loop) e il crash sul primo tempo della sezione che arriva dopo un fill, e sempre su quello del ritornello
+            fill_last = (form != "loop" and idx < last and role not in ("break", "fade") and brk_kind is None
+                         and sections[idx + 1][1] not in ("break", "fade"))
+            crash_first = idx > 0 and form != "loop" and role not in ("break", "fade") and (
+                role == "chorus" or section_filled.get(idx - 1, False))
+            section_filled[idx] = fill_last
+            dkey = cache + (variant, fill_last, crash_first)
             if dkey not in drum_texts:
                 drum_texts[dkey] = E.generate(base, "drums", {
                     "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
                     "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato",
-                    "fill_every": 1 if brk_kind == "fill" else c.get("drum_fill", 4)})["text"]
+                    "fill_every": 1 if brk_kind == "fill" else c.get("drum_fill", 4),
+                    "fill_last": fill_last, "crash_first": crash_first})["text"]
             bodies["drums"] = drum_texts[dkey]
             if closing and c["ending"] != "sfumato" and c["genre"] in _FINAL_HITS:
                 bodies["drums"] = _final_hits(bodies["drums"])

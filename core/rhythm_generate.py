@@ -972,7 +972,7 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
                           variability=0.0, seed: Optional[int] = None,
                           intensity: str = "normal", phrase_fills: bool = False,
                           ending: bool = False, kick_accents: Optional[List[float]] = None,
-                          section_fill_bars=()) -> str:
+                          section_fill_bars=(), crash_first: bool = False) -> str:
     """Genera 'bars' battute di batteria nello stile scelto (vedi
     DRUM_STYLES), ripetendo il giro base e sostituendolo ogni 'fill_every'
     battute con un fill (0 o un numero <=0 disabilita i fill: solo il giro
@@ -1006,7 +1006,9 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
 
     'section_fill_bars': le battute (da 0) che chiudono una sezione del
     brano (vedi section_end_bars): li' c'e' sempre un fill completo, oltre
-    a quelli ogni 'fill_every', e la battuta dopo rientra con il crash."""
+    a quelli ogni 'fill_every', e la battuta dopo rientra con il crash.
+
+    'crash_first': la prima battuta si apre con il crash (una sezione che arriva dopo il fill di quella prima, il ritornello)."""
     spec = _drum_spec(style)
     if bars <= 0:
         raise ValueError(tr("Il numero di battute deve essere positivo"))
@@ -1056,6 +1058,8 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
         bar = _apply_drum_intensity(bar, style, grid, level)
         if kick_accents and not is_fill_bar and not (ending and is_last):
             bar = _kick_on_accents(bar, grid, kick_accents)
+        if bar_idx == 0 and crash_first:
+            bar = _with_crash(bar)
         if bar_idx > 0:
             prev_was_fill = (bar_idx - 1) in section_ends or (
                 fill_every > 0 and bar_idx % fill_every == 0 and bar_idx != 1)
