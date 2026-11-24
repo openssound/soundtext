@@ -137,7 +137,8 @@ jobs:
       - name: Compila
         run: |
           for arch in arm64 x86_64; do
-            cmake -S src -B build-$arch $CMAKE_FLAGS -DCMAKE_OSX_ARCHITECTURES=$arch -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+            # clang di macos-15: atomic_queue.h (di terzi) usa "template" senza argomenti, ora errore di default
+            cmake -S src -B build-$arch $CMAKE_FLAGS -DCMAKE_CXX_FLAGS=-Wno-missing-template-arg-list-after-template-kw -DCMAKE_OSX_ARCHITECTURES=$arch -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
             cmake --build build-$arch --target sfizz_shared --parallel
           done
           lipo -create -output libsfizz-macos-universal.dylib \
