@@ -95,7 +95,7 @@ def progression_symbols(text: str, chords) -> str:
         return text
     unit = 4.0 / int(head.group(1)) * (2.0 / 3.0 if head.group(2) else 1.0)
     body = text[head.end():]
-    t, out, last = 0.0, [], 0
+    t, out = 0.0, []
     for tok in _TOKEN.finditer(body):
         if tok.group(1):                                              # la velocity: non occupa tempo
             continue

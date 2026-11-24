@@ -262,7 +262,6 @@ _GENRE_INSTRUMENTS = {
     "funk": {"comp": "Clavinet", "comp2": "Electric_Guitar_Muted", "bass": "Slap_Bass_1", "melody": "Tenor_Sax", "horn": "Brass_Section"},
     "blues": {"comp": "Overdriven_Guitar", "comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "balcanico78": {"comp": "Accordion", "melody": "Clarinet", "horn": "Brass_Section"},
-    "chacha": {"horn": "Brass_Section"},
     "reggae": {"comp2": "Drawbar_Organ", "melody": "Harmonica"},
     "disco": {"melody": "Tenor_Sax", "horn": "Brass_Section", "pad": "Strings"},
     "rock": {"melody": "Overdriven_Guitar", "comp2": "Clean_Guitar"},
