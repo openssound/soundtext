@@ -1369,8 +1369,9 @@ def _resolve_learned_role(role: str, span: ChordSpan) -> Tuple[int, int]:
     return absolute % 12, absolute // 12
 
 
-def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int]) -> Optional[Tuple[int, int]]:
-    """(classe di altezza, scarto d'ottava) per un ruolo; None per una pausa.
+def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool = False) -> Optional[Tuple[int, int]]:
+    """(classe di altezza, scarto d'ottava) per un ruolo; None per una pausa. Col basso ('bass') l'accordo rivoltato («C/E»)
+    suona la sua nota di basso al posto della fondamentale (la quinta resta quella della fondamentale vera).
     Un ruolo gia' risolto (tupla) passa invariato: e' cosi' che gli stili
     storici (_bass_notes_for_span) usano lo stesso emettitore."""
     if isinstance(role, tuple):
@@ -1387,9 +1388,9 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int]) -> Optiona
     if role == "rest":
         return None
     if role == "root":
-        return (root, 0)
+        return (span.bass_pc if bass and span.bass_pc is not None else root, 0)
     if role == "root_hi":
-        return (root, 1)
+        return (span.bass_pc if bass and span.bass_pc is not None else root, 1)
     if role == "fifth":
         return (fifth, 0)
     if role == "third":
@@ -1397,7 +1398,10 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int]) -> Optiona
     if role == "sixth":
         return ((root + 9) % 12, 0)
     if role == "flat7":
-        return ((root + 10) % 12, 0)
+        # la settima dell'accordo se ce l'ha (la maggiore sotto un maj7); su una triade minore la minore, su una maggiore la quinta
+        if span.seventh is not None:
+            return ((root + span.seventh) % 12, 0)
+        return (((root + 10) % 12, 0) if span.third == 3 else (fifth, 0))
     if role == "seventh":
         return (((root + span.seventh) % 12) if span.seventh is not None else root, 0 if span.seventh is not None else 1)
     if role in _APPROACH_STEPS:
@@ -1877,7 +1881,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         return starts
 
     def render(role, span, next_root):
-        resolved = _resolve_role(role, span, next_root)
+        resolved = _resolve_role(role, span, next_root, bass=True)
         return None if resolved is None else _note_token(resolved[0], octave + resolved[1])
 
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,

@@ -103,14 +103,23 @@ def estimate_key(chords: List[ChordSpan]) -> Tuple[int, str]:
 def _allowed_pcs(scale_pcs: List[int], span: ChordSpan) -> List[int]:
     """Le note della scala, corrette con le note dell'accordo che non ne
     fanno parte (il sol# di E7 in la minore, il sib di C7 in do): la nota
-    alterata prende il posto di quella naturale vicina."""
+    alterata prende il posto di quella naturale vicina. Se le due vicine
+    sono in scala si toglie quella da cui la nota e' alterata: di solito la
+    sopra (la nota e' abbassata: sib al posto del si, lab al posto del la,
+    anche come fondamentale di bII, bVI, bVII), la sotto per la terza e la
+    settima maggiori (sol# al posto del sol). Una nota dell'accordo non si
+    toglie mai."""
     pcs = set(scale_pcs)
-    for i, pc in enumerate(_chord_pcs(span)):
+    chord = _chord_pcs(span)
+    for pc in chord:
         if pc in pcs:
             continue
         interval = (pc - span.root_pc) % 12
-        lowered = interval in (3, 10) or (i == 0 and (pc + 1) % 12 in pcs and (pc - 1) % 12 not in pcs)
-        pcs.discard((pc + 1) % 12 if lowered else (pc - 1) % 12)
+        near = [n for n in ((pc + 1) % 12, (pc - 1) % 12) if n in pcs and n not in chord]
+        if len(near) == 2:
+            near = [near[1] if interval in (4, 11) else near[0]]
+        for n in near:
+            pcs.discard(n)
         pcs.add(pc)
     return sorted(pcs)
 
@@ -272,6 +281,12 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
                 candidates = harmony.notes(chord)
             else:
                 candidates = harmony.notes(_allowed_pcs(harmony.scale_pcs, span))
+                if strength == "beat":
+                    # sui tempi non forti niente tritono dal basso ne' seconda minore (sopra o sotto) una nota dell'accordo (la7b sopra si7b
+                    # col basso re): restano al levare, dove passano
+                    bass = span.bass_pc if span.bass_pc is not None else span.root_pc
+                    avoid = {(bass + 6) % 12} | {(pc + d) % 12 for pc in chord for d in (1, -1)}
+                    candidates = [m for m in candidates if m % 12 not in avoid or m % 12 in chord] or candidates
             candidates = candidates or harmony.notes(chord) or [harmony.low]
             target = targets[i]
 

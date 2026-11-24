@@ -446,11 +446,21 @@ _PLAIN_CHORD = re.compile(r"^(\d*)([A-G][#b]?)(m?)$")
 _ROOT_PC = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 
 
-def _color_chords(progression: str, tonic: int, how: str) -> str:
+def _melody_scale(genre: str, tonic: int, mode: str) -> set:
+    """Le note (classi di altezza) della scala che la melodia del genere usa, come in generate_phrase_melody."""
+    from .melody_generate import MAJOR_SCALE, MINOR_SCALE, SCALE_KINDS
+    kind = SCALE_KINDS.get(_GENRE_SCALE.get(genre, ""))
+    index = 0 if mode == "major" else 1
+    steps = kind[index] if kind and kind[index] else (MAJOR_SCALE if mode == "major" else MINOR_SCALE)
+    return {(tonic + s) % 12 for s in steps}
+
+
+def _color_chords(progression: str, tonic: int, how: str, scale=None) -> str:
     """L'armonia dell'atmosfera: le triadi semplici del giro prendono la settima ("seventh": maj7, m7 e la dominante) o la tensione
     ("tension": la tonica minore con la settima maggiore, la dominante); gli accordi che hanno gia' un colore (di settima, di nona,
-    sospesi) restano come sono. Il colore lo suonano gli accompagnamenti, i tappeti e i fiati; la melodia e il basso seguono le
-    triadi, cosi' sui tempi forti restano su note che l'accompagnamento suona."""
+    sospesi) restano come sono. Il colore lo suonano gli accompagnamenti, i tappeti, i fiati e la melodia, che lo riceve
+    nei suoi accordi (ne evita le note vicine): per questo, se si passa la scala della melodia, la settima si aggiunge solo
+    dove sta nella scala; altrimenti l'accordo resta una triade e melodia e accompagnamento non si contraddicono."""
     out = []
     for tok in progression.split():
         m = _PLAIN_CHORD.match(tok)
@@ -464,6 +474,10 @@ def _color_chords(progression: str, tonic: int, how: str) -> str:
             quality = ("m7" if minor else "7" if degree == 7 else "maj7")
         else:                                                       # tension
             quality = "mMaj7" if (minor and degree == 0) else ("7" if (not minor and degree == 7) else minor)
+        if scale is not None and quality != minor:
+            seventh = (pc + (11 if quality in ("maj7", "mMaj7") else 10)) % 12
+            if seventh not in scale:
+                quality = minor                      # la settima non e' nella scala della melodia: resta la triade
         out.append(f"{count}{root}{quality}")
     return " ".join(out)
 
@@ -554,17 +568,37 @@ _FINAL_INTERVAL = {"6": 9, "7": 10, "maj9": 2}
 _NOTE_IN_CHORD = re.compile(r"([a-g][#b]?)\*(\d)")
 
 
+_FINAL_SYMBOL = re.compile(r"^(\d*)([A-G][#b]?)(|maj7|7|6|9|maj9)(\*\d+)?$")
+_CHORD_TOKEN = re.compile(r"(?<![\w\]\[=])(\d*\[[^\[\]]+\]|\d*[A-G][#b]?[A-Za-z0-9]*(?:\*\d+)?)(?![\w\]\[=@:])")
+
+
 def _color_last_voicing(body: str, key: str, quality: str) -> str:
-    """L'ultimo accordo dell'accompagnamento con la nota di colore del genere (la sesta, la settima o la nona della tonica),
-    messa sotto la nota piu' alta: il giro finisce su C6, C7 o Cmaj9 e l'accompagnamento lo fa sentire."""
+    """L'ultimo accordo dell'accompagnamento con il colore del genere (la sesta, la settima o la nona della tonica): il giro finisce
+    su C6, C7 o Cmaj9 e l'accompagnamento lo fa sentire. L'ultimo accordo e' un simbolo («C», «Cmaj7»: il colore prende il posto della
+    qualita') o un blocco di note (la nota di colore va sotto la piu' alta). Solo in maggiore: sulla tonica minore la sesta maggiore
+    stride. Un ultimo accordo che non e' quello della tonica resta com'e'."""
     from .rhythm_generate import _note_token, parse_key
-    groups = list(re.finditer(r"\[([^\]]+)\]", body))
-    if not groups or quality not in _FINAL_INTERVAL:
+    if quality not in _FINAL_INTERVAL:
         return body
-    tonic = parse_key(key)[0]
-    last = groups[-1]
+    tonic, mode, _flats = parse_key(key)
+    if mode != "major":
+        return body
+    chords = list(_CHORD_TOKEN.finditer(body))
+    if not chords:
+        return body
+    last = chords[-1]
+    token = last.group(1)
     names = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
-    notes = [12 * (int(o) + 1) + names[n[0]] + n.count("#") - n[1:].count("b") for n, o in _NOTE_IN_CHORD.findall(last.group(1))]
+    m = _FINAL_SYMBOL.match(token)
+    if m:
+        root = (_ROOT_PC[m.group(2)[0]] + m.group(2).count("#") - m.group(2)[1:].count("b")) % 12
+        if root != tonic % 12:
+            return body
+        return body[:last.start(1)] + m.group(1) + m.group(2) + quality + (m.group(4) or "") + body[last.end(1):]
+    inner = re.match(r"\d*\[([^\]]+)\]$", token)
+    if not inner:
+        return body
+    notes = [12 * (int(o) + 1) + names[n[0]] + n.count("#") - n[1:].count("b") for n, o in _NOTE_IN_CHORD.findall(inner.group(1))]
     if not notes or notes[0] % 12 != tonic % 12 and tonic % 12 not in {n % 12 for n in notes}:
         return body                                       # l'ultimo accordo non e' quello della tonica
     color = (tonic + _FINAL_INTERVAL[quality]) % 12
@@ -574,9 +608,10 @@ def _color_last_voicing(body: str, key: str, quality: str) -> str:
     pitch = top - ((top - color) % 12 or 12)
     if pitch < min(notes):
         return body
-    tokens = last.group(1).split() + [_note_token(pitch % 12, pitch // 12 - 1)]
+    tokens = inner.group(1).split() + [_note_token(pitch % 12, pitch // 12 - 1)]
     tokens.sort(key=lambda t: 12 * (int(t.split("*")[1]) + 1) + names[t[0]] + t.split("*")[0].count("#") - t.split("*")[0][1:].count("b"))
-    return body[:last.start()] + "[" + " ".join(tokens) + "]" + body[last.end():]
+    mult = re.match(r"\d*", token).group(0)
+    return body[:last.start(1)] + mult + "[" + " ".join(tokens) + "]" + body[last.end(1):]
 
 
 def _final_hits(drums: str) -> str:
@@ -822,6 +857,8 @@ def resolve(options: Optional[dict] = None) -> dict:
         seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
     mode, tempo_factor, intensities, mood_prog, _energy = MOODS_DATA[mood]
     key = options.get("key") or ""
+    if not key and options.get("chords"):
+        key = _key_of_chords(str(options["chords"]))         # il giro scritto a mano decide la tonalita' (altrimenti e' a caso)
     if key:
         mode = rg.parse_key(key)[1]
         prog_mood = mood if MOODS_DATA[mood][0] == mode else ("malinconica" if mode == "minor" else "allegra")
@@ -977,15 +1014,68 @@ def _scale_velocity(text: str, factor: float) -> str:
     return re.sub(r"(\d+)@", lambda m: f"{max(1, min(127, int(int(m.group(1)) * factor)))}@", text)
 
 
-def _chord_loop(written: str, bars: int) -> Optional[str]:
-    """Il giro scritto a mano («Am F C G») ripetuto per 'bars' battute, come testo di accordi (un accordo per battuta)."""
+_KEY_NAMES = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+
+
+def _key_of_chords(written: str) -> str:
+    """La tonalita' che meglio spiega un giro scritto a mano («Am F C G» -> «Am» o «C»), come la stima della melodia;
+    '' se il giro non si legge (l'errore lo dara' _chord_loop)."""
+    from core.chords import parse_chord_symbol
+    from .melody_generate import estimate_key
+    from .rhythm_generate import ChordSpan
+    spans = []
+    try:
+        for i, symbol in enumerate(s for s in re.split(r"[\s,|]+", written) if s):
+            chord = parse_chord_symbol(symbol)
+            third = 3 if 3 in chord.intervals else 4 if 4 in chord.intervals else None
+            seventh = 11 if 11 in chord.intervals else 10 if 10 in chord.intervals else None
+            spans.append(ChordSpan(float(i), 1.0, chord.root_pc, 7 in chord.intervals, third, seventh))
+    except ValueError:
+        return ""
+    if not spans:
+        return ""
+    tonic, mode = estimate_key(spans)
+    return _KEY_NAMES[tonic] + ("m" if mode == "minor" else "")
+
+
+def _tonic_progression(progression: str, key: str) -> str:
+    """Il giro con ogni accordo sostituito dall'accordo della tonica («Am F C G» in La minore -> «Am Am Am Am»): il basso del pedale
+    tiene la tonica sotto gli accordi che cambiano, con la fondamentale (e la quinta) della tonica."""
+    from .rhythm_generate import parse_key
+    tonic, mode, _flats = parse_key(key)
+    symbol = _KEY_NAMES[tonic] + ("m" if mode == "minor" else "")
+    return " ".join(re.sub(r"^(\d*)[A-G][#b]?\S*$", lambda m: m.group(1) + symbol, tok) if not tok.endswith((":", "@")) else tok
+                    for tok in progression.split())
+
+
+_SYMBOL_NOTE = re.compile(r"([A-G][#b]?)")
+
+
+def _transpose_symbol(symbol: str, semitones: int) -> str:
+    """Un simbolo d'accordo («Am7», «C/E») trasposto di 'semitones': la fondamentale e l'eventuale basso dopo la barra."""
+    if not semitones % 12:
+        return symbol
+
+    def move(m):
+        pc = (_ROOT_PC[m.group(1)[0]] + m.group(1).count("#") - m.group(1)[1:].count("b") + semitones) % 12
+        return _KEY_NAMES[pc]
+    head, slash, bass = symbol.partition("/")
+    head = _SYMBOL_NOTE.sub(move, head, count=1)
+    return head + slash + (_SYMBOL_NOTE.sub(move, bass, count=1) if bass else "")
+
+
+def _chord_loop(written: str, bars: int, bar_beats: float = 4.0, transpose: int = 0) -> Optional[str]:
+    """Il giro scritto a mano («Am F C G») ripetuto per 'bars' battute, come testo di accordi: un accordo per battuta intera,
+    qualunque sia la metrica (la griglia e' l'ottavo, e ogni accordo dura quanti ottavi ha la battuta), trasposto di
+    'transpose' semitoni quando il brano modula."""
     from core.chords import parse_chord_symbol
     symbols = [s for s in re.split(r"[\s,|]+", written) if s]
     if not symbols:
         return None
     for s in symbols:
         parse_chord_symbol(s)                               # ValueError se non e' un accordo
-    return "4: " + " ".join(f"4{symbols[i % len(symbols)]}" for i in range(bars))
+    eighths = max(1, int(round(bar_beats * 2)))
+    return "8: " + " ".join(f"{eighths}{_transpose_symbol(symbols[i % len(symbols)], transpose)}" for i in range(bars))
 
 
 def quick_song(options: Optional[dict] = None) -> dict:
@@ -997,6 +1087,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     Restituisce {text, name, seed, key, bpm, meter, bars, seconds, genre, mood, form, ensemble, fallback, sections, loop,
     seeds, choices}."""
     from . import song_generate as E
+    from .rhythm_generate import parse_key as rg_parse_key
     from core.i18n import tr as _tr
     from core.instruments import make_instrument_available
     from core.project_io import parse_project_text
@@ -1077,7 +1168,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     mod_from = -1
     if c["modulation"]:
         chorus_idx = [i for i, (_n, r, _b) in enumerate(sections) if r == "chorus"]
-        mod_from = chorus_idx[-1] if chorus_idx else max(0, len(sections) - 1)
+        mod_from = chorus_idx[-1] if chorus_idx else -1          # senza un ritornello (aaba, blues) niente modulazione: il salto arriverebbe secco
     last = len(sections) - 1
     fading = c["ending"] == "sfumato"
     harmony: Dict[Tuple, dict] = {}                          # accordi, accompagnamenti, basso, melodia: uguali nelle ripetizioni
@@ -1126,13 +1217,16 @@ def quick_song(options: Optional[dict] = None) -> dict:
         seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
         lvl = section_level.get(idx, intensity[role])
         # il ponte di un'atmosfera quieta, sul pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano
-        pedal_here = (role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2) or \
-                     (role in ("verse", "intro") and _MOOD_COLOR.get(c["mood"], {}).get("pedal_verse"))      # la tesa: la tonica tenuta sotto la strofa
-        bass_style = ("pedal" if pedal_here and not (c["parts"].get("bass") or {}).get("style")
-                      and c["styles"]["bass"] not in ("walking", "blues", "shuffle") else c["styles"]["bass"])
-        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style)
+        pedal_bridge = role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2
+        pedal_verse = role in ("verse", "intro") and _MOOD_COLOR.get(c["mood"], {}).get("pedal_verse")      # la tesa: la tonica tenuta sotto la strofa
+        pedal_ok = not (c["parts"].get("bass") or {}).get("style") and c["styles"]["bass"] not in ("walking", "blues", "shuffle")
+        # il pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano. Una nota lunga per battuta; solo il basso a
+        # ottavi del rock tiene il suo disegno, ma sempre sulla tonica
+        bass_style = "pedal" if (pedal_bridge or (pedal_verse and c["styles"]["bass"] != "eighths")) and pedal_ok else c["styles"]["bass"]
+        tonic_bass = bool((pedal_bridge or pedal_verse) and pedal_ok)
+        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style, tonic_bass)
         if cache not in harmony:
-            written = _chord_loop(c["chords"], bars) if c["chords"] else None
+            written = _chord_loop(c["chords"], bars, bar_beats, (rg_parse_key(skey)[0] - rg_parse_key(key)[0]) % 12) if c["chords"] else None
             progression = written or E.generate(base, "progression", {
                 "key": skey, "style": styles[role], "bars": bars, "chord_bars": 1.0, "seed": seed_of("progression"),
                 "ending": closing and c["ending"] != "sfumato", "variability": variability,
@@ -1141,15 +1235,19 @@ def quick_song(options: Optional[dict] = None) -> dict:
             how = _MOOD_COLOR.get(c["mood"], {}).get("chords")
             if how and not written:
                 from .rhythm_generate import parse_key
-                colored = _color_chords(progression, parse_key(skey)[0], how)       # accompagnamenti, tappeti e fiati
+                tonic_pc, mode_now = parse_key(skey)[:2]
+                colored = _color_chords(progression, tonic_pc, how, _melody_scale(c["genre"], tonic_pc, mode_now))   # solo settime della scala
             if closing and not written and c["ending"] != "sfumato" and c["genre"] in _FINAL_CHORD:
                 progression = _color_last_chord(progression, _FINAL_CHORD[c["genre"]])
                 colored = _color_last_chord(colored, _FINAL_CHORD[c["genre"]])
-            temp = E.add_track(base, chords_track, progression)["text"]                # basso e melodia: le triadi
+            temp = E.add_track(base, chords_track, progression)["text"]                # il basso: le triadi
             temp_color = E.add_track(base, chords_track, colored)["text"] if colored != progression else temp
+            temp_bass = E.add_track(base, chords_track, _tonic_progression(progression, skey))["text"] if tonic_bass else temp
             project = parse_project_text(temp, "Brano")
+            project_color = parse_project_text(temp_color, "Brano") if colored != progression else project       # la melodia: gli accordi suonati
             bodies = {}
-            for p, part in enumerate(active):
+            reg_text = temp_color                              # gli accompagnamenti vedono dove suonano il basso e la melodia (registri)
+            for p, part in sorted(enumerate(active), key=lambda ip: ip[1] not in ("bass", "melody")):
                 if role == "break":
                     if part == "drums" or part not in _BREAK_PARTS[_GENRE_BREAK[c["genre"]][1]]:
                         continue
@@ -1157,19 +1255,19 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     continue
                 common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": lvl, "variability": variability}
                 if part in ("comp", "comp2", "horn", "pad"):
-                    body = E.generate(temp_color, "comping", {**common, "source": chords_track, "style": c["styles"][part],
+                    body = E.generate(reg_text, "comping", {**common, "source": chords_track, "style": c["styles"][part],
                                                         "instrument": c["instruments"][part],
                                                         "voice_leading": options.get("voice_leading", True) not in (False, 0, "0", "no"),
                                                         "symbols": options.get("symbols", True) not in (False, 0, "0", "no")})["text"]
                 elif part == "bass":
-                    body = E.generate(temp, "bass", {**common, "source": chords_track, "style": bass_style,
+                    body = E.generate(temp_bass, "bass", {**common, "source": chords_track, "style": bass_style,
                                                      "instrument": c["instruments"]["bass"],
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
                     mstyle = _MELODY_STYLE[c["melody"]]
                     if role == "verse" and "verse" not in _ENTER["melody"]:     # la strofa: piu' rada e piu' leggera del ritornello
                         mstyle = _VERSE_MELODY_STYLE.get(mstyle, mstyle)
-                    body = E._quick_melody(project, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
+                    body = E._quick_melody(project_color, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
                                            seed_of("melody", 99 if role != "verse" else 98), "light" if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
@@ -1181,6 +1279,13 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     if body is None:
                         continue
                 bodies[part] = body
+                if part in ("bass", "melody") and role != "break":
+                    try:
+                        grown = E.add_track(reg_text, c["instruments"][part], body, name="Registro" + part, compact=False)["text"]
+                        parse_project_text(grown, "Brano")
+                        reg_text = grown
+                    except Exception:
+                        pass                                   # il registro e' solo un riguardo: senza, l'accompagnamento resta com'era
             harmony[cache] = bodies
         bodies = dict(harmony[cache])
         brk_kind = _GENRE_BREAK[c["genre"]][1] if role == "break" else None
@@ -1242,6 +1347,12 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 if auto_voice:
                     harm_body = "%" + dev_pattern + {"thirds": ".step(-2)", "sixths": ".step(-5)"}[auto_voice] + \
                         (".octave(1)" if body.endswith(".octave(1)") else "")
+                if auto_voice and "harm" in c["instruments"] and not harm_body.endswith(".octave(1)"):
+                    # la seconda voce sta sotto la melodia (terze, seste): se esce sotto l'estensione del suo strumento sale d'ottava
+                    from core.instruments import get_instrument
+                    low = _top_pitch(patterns[dev_pattern], c["instruments"]["melody"], c["meter"], lowest=True)
+                    if low is not None and low - (9 if auto_voice == "sixths" else 4) < get_instrument(c["instruments"]["harm"]).range_low:
+                        harm_body += ".octave(1)"
             if swing and part in _SWING_PARTS:
                 body = swing + " " + body.lstrip()
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
@@ -1303,19 +1414,20 @@ def _float(value, default: float) -> float:
         return default
 
 
-def _top_pitch(body: str, instrument: str, meter: str) -> Optional[int]:
-    """La nota piu' alta (MIDI) di un testo di melodia, o None se non si legge."""
+def _top_pitch(body: str, instrument: str, meter: str, lowest: bool = False) -> Optional[int]:
+    """La nota piu' alta (MIDI; la piu' bassa con lowest=True) di un testo di melodia, o None se non si legge."""
     try:
         from core.model import Project
         from st_language.midi import resolve_event_notes, sounding_events
         project = Project(name="t", time_sig=meter)
         track = project.add_track("M", instrument, body)
-        top = None
+        found = None
         for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
             notes, _v = resolve_event_notes(ev, track.instrument)
             if notes:
-                top = max(top or 0, max(notes))
-        return top
+                value = min(notes) if lowest else max(notes)
+                found = value if found is None else (min(found, value) if lowest else max(found, value))
+        return found
     except Exception:
         return None
 

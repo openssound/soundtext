@@ -4,6 +4,7 @@ durate da 15 secondi a 4 minuti, forme, organici, finali, modulazione e le parti
 essere valido (nessun avviso di battuta), suonare e durare quanto dice.
 """
 
+import json
 import os
 import re
 import sys
@@ -934,3 +935,175 @@ def test_the_organ_plays_softer_than_its_written_velocity(monkeypatch):
     plain = q.quick_song(options)["text"]
     top = lambda text: max(int(v) for v in re.findall(r"(\d+)@", text))
     assert softer != plain and top(softer) <= top(plain)
+
+
+# ------------------------------------------------- melodia e accompagnamento: la stessa armonia (terza revisione, correzioni)
+
+def _scale_of(q, tonic, kind, mode):
+    from core.melody_generate import SCALE_KINDS
+    steps = SCALE_KINDS[kind][0 if mode == "major" else 1]
+    return {(tonic + s) % 12 for s in steps}
+
+
+def test_the_colour_of_the_chords_only_adds_sevenths_the_melody_scale_has(q):
+    phrygian = _scale_of(q, 7, "metal", "minor")                      # Sol frigia: Sol La b Si b Do Re Mi b Fa
+    harmonic = _scale_of(q, 7, "classical", "minor")                  # Sol minore armonica: ha il Fa#
+    assert q._color_chords("Gm Eb F Gm", 7, "tension", phrygian) == "Gm Eb F Gm"        # niente GmMaj7: il Fa# contraddice il Fa
+    assert q._color_chords("Gm Eb F Gm", 7, "tension", harmonic) == "GmMaj7 Eb F GmMaj7"
+    assert q._color_chords("Gm Eb F Gm", 7, "tension") == "GmMaj7 Eb F GmMaj7"          # senza scala come prima
+    seventh = q._color_chords("Gm Eb F Gm", 7, "seventh", harmonic)
+    assert seventh.split()[0] == "Gm" and "Fmaj7" not in seventh and seventh.split()[1] == "Ebmaj7"     # Gm7 (Fa) e Fmaj7 (Mi) stonano
+    mixolydian = _scale_of(q, 0, "groove", "major")                   # Do misolidia: il Si e' bemolle
+    assert q._color_chords("C F G C", 0, "seventh", mixolydian) == "C Fmaj7 G7 C"        # Cmaj7 no (Si), Fmaj7 si' (Mi), G7 si' (Fa)
+
+
+def test_every_coloured_chord_is_in_the_scale_of_the_melody_in_every_genre_and_mood(q):
+    from core.rhythm_generate import parse_key
+    for genre in q.GENRES_DATA:
+        for mood in q.GENRES_DATA[genre]["moods"]:
+            how = q._MOOD_COLOR.get(mood, {}).get("chords")
+            if not how:
+                continue
+            tonic, mode = parse_key(q.quick_song({"genre": genre, "mood": mood, "seed": 11, "duration": 15, "variety": 0})["key"])[:2]
+            scale = q._melody_scale(genre, tonic, mode)
+            colored = q._color_chords("Am F C G Dm E7", tonic, how, scale)
+            for tok in colored.split():
+                m = re.match(r"([A-G][#b]?)(mMaj7|maj7|m7|7)$", tok)
+                if m:
+                    root = q._ROOT_PC[m.group(1)[0]] + m.group(1).count("#") - m.group(1)[1:].count("b")
+                    assert (root + (11 if m.group(2) in ("maj7", "mMaj7") else 10)) % 12 in scale, (genre, mood, tok)
+
+
+def test_the_metal_drammatica_song_of_the_report_has_no_major_seventh_on_the_tonic(q):
+    song = q.quick_song({"genre": "metal", "mood": "drammatica", "seed": 972825931, "key": "Gm", "duration": 60})
+    assert "mMaj7" not in song["text"] and "GmMaj7" not in song["text"]
+    classic = q.quick_song({"genre": "orchestrale", "mood": "tesa", "seed": 3, "key": "Gm", "duration": 60, "variety": 0})
+    assert "mMaj7" in classic["text"] or "Gm" in classic["text"]          # la scala armonica ha il Fa#: lì il colore resta ammesso
+
+
+def test_the_melody_receives_the_chords_the_accompaniment_plays(q):
+    from core.melody_generate import _allowed_pcs, MINOR_SCALE
+    from core.rhythm_generate import ChordSpan
+    gm_maj7 = ChordSpan(0.0, 4.0, 7, True, 3, 11)
+    pcs = _allowed_pcs([(7 + s) % 12 for s in MINOR_SCALE], gm_maj7)
+    assert 6 in pcs and 5 not in pcs                                    # col Fa# dell'accordo il Fa naturale esce dalla scala
+
+
+def test_allowed_pcs_replaces_the_right_neighbour_for_chromatic_chords():
+    from core.melody_generate import _allowed_pcs, MAJOR_SCALE, MINOR_SCALE
+    from core.rhythm_generate import ChordSpan
+    a_minor = [(9 + s) % 12 for s in MINOR_SCALE]
+    b_flat = _allowed_pcs(a_minor, ChordSpan(0.0, 4.0, 10, True, 4))                  # i - bII: il Si b prende il posto del Si
+    assert 10 in b_flat and 11 not in b_flat and 9 in b_flat
+    harmonic = [(9 + s) % 12 for s in (0, 2, 3, 5, 7, 8, 11)]
+    assert 11 not in _allowed_pcs(harmonic, ChordSpan(0.0, 4.0, 10, True, 4))        # La minore armonica sopra Si b: il Si naturale non e' ammesso
+    c_major = [(0 + s) % 12 for s in MAJOR_SCALE]
+    b_flat_major = _allowed_pcs(c_major, ChordSpan(0.0, 4.0, 10, True, 4))            # bVII in Do: il Si b al posto del Si, il La resta
+    assert 10 in b_flat_major and 11 not in b_flat_major and 9 in b_flat_major
+    a_flat = _allowed_pcs(c_major, ChordSpan(0.0, 4.0, 8, True, 4))                   # bVI: il La b al posto del La, il Sol resta (e' la quinta del Do)
+    assert 8 in a_flat and 9 not in a_flat and 7 in a_flat
+    e_major = _allowed_pcs(a_minor, ChordSpan(0.0, 4.0, 4, True, 4))                  # V maggiore in minore: il Sol# al posto del Sol, il La resta
+    assert 8 in e_major and 7 not in e_major and 9 in e_major
+    c7 = _allowed_pcs(c_major, ChordSpan(0.0, 4.0, 0, True, 4, 10))                   # C7: il Si b al posto del Si
+    assert 10 in c7 and 11 not in c7
+
+
+def test_a_written_progression_decides_the_key_and_the_bars(q):
+    for chords, keys in (("Am F C G", ("Am", "C")), ("Dm Bb F C", ("Dm", "F")), ("Em C G D", ("Em", "G"))):
+        song = q.quick_song({"genre": "pop", "mood": "allegra", "seed": 5, "chords": chords, "duration": 30})
+        assert song["key"] in keys, (chords, song["key"])
+    assert q.quick_song({"genre": "pop", "mood": "allegra", "seed": 5, "chords": "Am F C G", "key": "Dm", "duration": 30})["key"] == "Dm"   # la tonalita' scelta vince
+    assert q._chord_loop("Am F", 2, 3.0) == "8: 6Am 6F"                                # 3/4: tre quarti = sei ottavi per battuta
+    assert q._chord_loop("Am F", 2, 3.5) == "8: 7Am 7F"                                # 7/8
+    assert q._chord_loop("Am F", 2, 4.0, 2) == "8: 8Bm 8G"                              # trasposto di un tono (modulazione)
+    assert q._transpose_symbol("F/A", 2) == "G/B" and q._transpose_symbol("Bbmaj7", 1) == "Bmaj7" and q._transpose_symbol("C", 0) == "C"
+    waltz = q.quick_song({"genre": "valzer", "mood": "malinconica", "seed": 2, "chords": "Am Dm E7 Am", "duration": 30, "variety": 0})
+    _valid(q, waltz)
+
+
+def test_a_written_progression_follows_the_modulation(q):
+    song = q.quick_song({"genre": "pop", "mood": "festosa", "seed": 5, "chords": "C G Am F", "key": "C", "duration": 90, "modulation": True, "variety": 0})
+    assert song["sections"][0]["key"] == "C" and song["sections"][-1]["key"] == "D"
+    engine = _mobile_engine()
+    assert not engine.check_text(song["text"], song["name"])["warnings"]
+
+
+def test_the_final_colour_of_the_genre_is_kept_on_the_last_chord(q):
+    assert q._color_last_voicing("4: 90@ Cmaj7 G7 100@ C", "C", "6") == "4: 90@ Cmaj7 G7 100@ C6"
+    assert q._color_last_voicing("4: Dm7 G7 2Cmaj7*3", "C", "maj9") == "4: Dm7 G7 2Cmaj9*3"
+    assert q._color_last_voicing("4: G7 Dm7", "C", "6") == "4: G7 Dm7"                  # l'ultimo accordo non e' la tonica
+    assert q._color_last_voicing("4: Am7 Am7", "Am", "6") == "4: Am7 Am7"               # in minore la sesta maggiore stride
+    assert q._color_last_voicing("4: [c*3 e*3 g*3] [a*3 c*4 e*4]", "Am", "6") == "4: [c*3 e*3 g*3] [a*3 c*4 e*4]"
+    song = q.quick_song({"genre": "jazz", "mood": "allegra", "seed": 3, "key": "C", "duration": 30, "variety": 0})
+    assert re.search(r"\bC6\b", song["text"])
+    minor = q.quick_song({"genre": "jazz", "mood": "malinconica", "seed": 3, "key": "Am", "duration": 30, "variety": 0})
+    assert not re.search(r"\bAm6\b|\bA6\b", minor["text"])
+
+
+def test_the_bass_follows_the_inversions_and_the_seventh_of_the_chord():
+    from core.rhythm_generate import ChordSpan, _resolve_role
+    c_over_e = ChordSpan(0.0, 4.0, 0, True, 4, None, 4)
+    assert _resolve_role("root", c_over_e, None, bass=True) == (4, 0)                  # il basso suona il Mi
+    assert _resolve_role("root_hi", c_over_e, None, bass=True) == (4, 1)
+    assert _resolve_role("fifth", c_over_e, None, bass=True) == (7, 0)                 # la quinta resta quella del Do
+    assert _resolve_role("root", c_over_e, None) == (0, 0)                             # un accompagnamento no
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, 11), None) == (11, 0)   # sotto Cmaj7 il Si naturale
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, 10), None) == (10, 0)
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, None), None) == (7, 0)  # su una triade maggiore la quinta
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 9, True, 3, None), None) == (7, 0)  # su una minore la settima minore (Am -> Sol)
+
+
+def test_the_pedal_holds_the_tonic_under_the_changing_chords(q):
+    assert q._tonic_progression("4: 4Am 4F 4C 4G/B", "Am") == "4: 4Am 4Am 4Am 4Am"
+    assert q._tonic_progression("4: 2C 2G7 4Dm", "C") == "4: 2C 2C 4C"
+    song = q.quick_song({"genre": "ballata", "mood": "calma", "duration": 240, "seed": 1, "variety": 0, "key": "Am"})
+    assert any(s["role"] == "bridge" for s in song["sections"])
+    _valid(q, song)
+    rock = q.quick_song({"genre": "rock", "mood": "tesa", "seed": 4, "duration": 60, "variety": 0, "key": "Am"})
+    _valid(q, rock)
+
+
+def test_without_a_chorus_the_song_does_not_modulate(q):
+    song = q.quick_song({"genre": "jazz", "mood": "allegra", "seed": 2, "form": "aaba", "modulation": True, "duration": 60, "variety": 0})
+    assert len({s["key"] for s in song["sections"]}) == 1
+
+
+def test_the_accompaniment_stays_under_the_melody(q):
+    from core.project_io import parse_project_text
+    from core.rhythm_generate import part_registers
+    song = q.quick_song({"genre": "metal", "mood": "drammatica", "seed": 972825931, "key": "Gm", "duration": 60})
+    project = parse_project_text(song["text"], "Brano")
+    registers = part_registers(project)
+    if "melody_low" in registers and "comp_top" in registers:
+        assert registers["comp_top"] <= registers["melody_low"] + 12            # nessuna sovrapposizione grossa (prima l'organo copriva la melodia)
+
+
+@pytest.mark.parametrize("genre,mood", [("metal", "drammatica"), ("rock", "tesa"), ("jazz", "misteriosa"), ("bossa", "nostalgica"),
+                                        ("valzer", "malinconica"), ("soul", "romantica"), ("lofi", "sognante"), ("punk", "oscura")])
+def test_the_generated_songs_are_valid_after_the_harmony_changes(q, genre, mood):
+    _valid(q, q.quick_song({"genre": genre, "mood": mood, "seed": 7, "duration": 45, "variety": 0}))
+
+
+def test_the_same_seed_and_options_give_the_same_text(q):
+    for options in ({"genre": "pop", "seed": 9, "duration": 60}, {"genre": "jazz", "mood": "malinconica", "seed": 4, "duration": 45},
+                    {"genre": "metal", "mood": "drammatica", "seed": 972825931, "key": "Gm", "duration": 60}):
+        first, second = q.quick_song(options), q.quick_song(options)
+        assert first["text"] == second["text"]
+        again = q.quick_song(json.loads(re.search(r"// quick: (\{.*\})", first["text"]).group(1)))      # l'intestazione riproduce il brano
+        assert again["text"] == first["text"]
+
+
+def test_no_generated_note_is_outside_the_range_of_its_instrument(q):
+    from core.project_io import parse_project_text
+    from core.rhythm_generate import pitch_to_midi
+    for genre in q.GENRES_DATA:
+        song = q.quick_song({"genre": genre, "seed": 21, "duration": 60})
+        project = parse_project_text(song["text"], "Brano")
+        for track in project.tracks:
+            if track.is_audio or track.instrument.is_percussion or track.instrument_name == "Tuba":
+                continue                       # la tuba suona il basso della marcia sotto la sua estensione di catalogo (52-82), dove sta una tuba vera
+            for ev in track.parsed_events(project.patterns, meter=project.meter()):
+                pitches = [pitch_to_midi(ev.letter, ev.octave)] if ev.kind == "note" and ev.letter else \
+                    [pitch_to_midi(i["letter"], i["octave"]) for i in (ev.items or []) if ev.kind == "block" and i.get("kind") == "note" and i.get("letter")]
+                for pitch in pitches:
+                    assert track.instrument.range_low <= pitch <= track.instrument.range_high, (genre, track.name, pitch)
