@@ -922,3 +922,15 @@ def test_quick_songs_write_chords_as_symbols_where_the_harmony_is_the_whole_chor
         == "4: 80@ 2C 2C 2Am 2Am 4F 2G7 2[g*4 b*4]"                                           # la sola terza e quinta resta com'e'
     assert chords_as_symbols("4: 2[c*4 e*4 g*4] 2[c*4 f*4 a*4] 4[g*4 b*4 d*5 f*5]", get_instrument("Piano")) == "4: 2C 2[c*4 f*4 a*4] 4G7"
     assert progression_symbols("8: 4[c*4 e*4 g*4] { a ; b }", chords) == "8: 4[c*4 e*4 g*4] { a ; b }"        # voci: non si tocca
+
+
+def test_the_organ_plays_softer_than_its_written_velocity(monkeypatch):
+    """L'organo tiene note lunghe: a pari velocity copre le altre parti, quindi suona piu' piano."""
+    from core import quicksong as q
+    options = {"genre": "soul", "seed": 3}
+    assert q._ORGAN_VELOCITY < 1
+    softer = q.quick_song(options)["text"]
+    monkeypatch.setattr(q, "_ORGAN_VELOCITY", 1.0)
+    plain = q.quick_song(options)["text"]
+    top = lambda text: max(int(v) for v in re.findall(r"(\d+)@", text))
+    assert softer != plain and top(softer) <= top(plain)

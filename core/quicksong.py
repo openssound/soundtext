@@ -970,6 +970,9 @@ def resolve(options: Optional[dict] = None) -> dict:
 _LEVELS = ("light", "normal", "full")
 
 
+_ORGAN_VELOCITY = 0.68
+
+
 def _scale_velocity(text: str, factor: float) -> str:
     return re.sub(r"(\d+)@", lambda m: f"{max(1, min(127, int(int(m.group(1)) * factor)))}@", text)
 
@@ -1203,6 +1206,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
             vfactor = _MOOD_COLOR.get(c["mood"], {}).get("velocity")
             if vfactor and vfactor != 1:                       # l'atmosfera suona piu' piano o piu' forte
                 body = _scale_velocity(body, vfactor)
+            if "Organ" in str(c["instruments"].get(part, "")):   # l'organo tiene le note lunghe e a pari velocity copre tutto: piu' piano
+                body = _scale_velocity(body, _ORGAN_VELOCITY)
             if fading and role == "end":
                 body = _scale_velocity(body, 0.85)
             elif role == "fade":
