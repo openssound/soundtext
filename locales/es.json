@@ -3521,5 +3521,7 @@
  "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// Los efectos de partida del género y del ambiente (cadena master): se cambian o se quitan como los demás.",
  "intima": "íntima",
  "grintosa": "con garra",
- "elegante": "elegante"
+ "elegante": "elegante",
+ "Accordi come simboli": "Acordes como símbolos",
+ "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Escribe los acordes como símbolos en mayúscula («Am7», «G») en lugar de bloques de notas entre corchetes: el texto es más corto y más fácil de editar, la armonía es la misma."
 }

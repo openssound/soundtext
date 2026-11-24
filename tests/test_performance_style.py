@@ -72,6 +72,7 @@ def test_dialog_option_for_the_destination_instrument():
                                default_octave=4, range_low=40, range_high=88, default_bars=4,
                                track_name="Chitarra")
     assert not dlg.performance_check.isChecked()
+    dlg.symbols_check.setChecked(False)
     plain = dlg._compose_text()
     dlg.performance_check.setChecked(True)
     assert "shift=" in dlg._compose_text() and "shift=" not in plain

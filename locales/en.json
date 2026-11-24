@@ -3521,5 +3521,7 @@
  "// Gli effetti di partenza del genere e dell'atmosfera (catena master): si cambiano o si tolgono come gli altri.": "// The starting effects of the genre and the mood (master chain): change or remove them like any other.",
  "intima": "intimate",
  "grintosa": "gritty",
- "elegante": "elegant"
+ "elegante": "elegant",
+ "Accordi come simboli": "Chords as symbols",
+ "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Writes chords as uppercase symbols (\"Am7\", \"G\") instead of note blocks in square brackets: the text is shorter and easier to edit, the harmony is the same."
 }

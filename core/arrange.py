@@ -498,6 +498,9 @@ def arrange(project: Project, sections: List[Section], options: ArrangeOptions,
                 texts["comping"] = text
         if options.phrase_dynamics and not pause:
             texts = {kind: _phrase_dynamics(text, bar_beats, chorus_entry) for kind, text in texts.items()}
+        if "comping" in texts and chords:
+            from .chord_symbols import chords_as_symbols, progression_symbols
+            texts["comping"] = chords_as_symbols(progression_symbols(texts["comping"], _expand_chords_to_cover(chords, section.length_beats)), comp)
         if last and options.ending and options.rallentando and bars > 1 and texts:
             kind = next(kind for kind in ("drums", "bass", "comping") if kind in texts)
             rit_bars = 2 if bars >= 3 else 1

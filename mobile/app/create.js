@@ -64,7 +64,7 @@ function genFields(kind) {
   return [...common,
     ["style", "select", t("Stile:"), opts(c.comping)], ["instrument", "select", t("Strumento:"), instruments("comping")],
     bars, intensity, variability, swing,
-    ["voice_leading", "check", t("Rivolti vicini")], ["performance", "check", t("Esecuzione dello strumento")],
+    ["voice_leading", "check", t("Rivolti vicini")], ["symbols", "check", t("Accordi come simboli")], ["performance", "check", t("Esecuzione dello strumento")],
   ];
 }
 
@@ -84,7 +84,7 @@ function genDefaults(kind) {
              kick_track: "", performance: false };
   }
   return { ...base, source, style: c.comping[0].value, instrument: c.instruments.comping[0], bars: songBars,
-           voice_leading: true, performance: false };
+           voice_leading: true, symbols: true, performance: false };
 }
 
 // Le parti seguono le sezioni del brano? (solo batteria, basso e accompagnamento, e se il brano ha sezioni)

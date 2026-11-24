@@ -135,7 +135,7 @@ def test_comping_like_soundtext(seed, instrument, style, performance):
     dlg.performance_check.setChecked(performance)
     expected = _text(dlg, seed)
     got = engine.generate(SONG, "comping", {"source": "Piano", "style": style, "bars": 8, "instrument": instrument,
-                                            "performance": performance, "seed": seed,
+                                            "performance": performance, "symbols": True, "seed": seed,
                                             "track": "Accompagnamento"})
     assert got["text"] == expected
 

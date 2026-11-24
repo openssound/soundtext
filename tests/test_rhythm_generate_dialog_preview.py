@@ -360,6 +360,7 @@ def test_comping_dialog_uses_voice_leading_by_default_and_riff_dialog_has_none()
     )
     dlg.style_combo.setCurrentIndex(dlg.style_combo.findData("sustained"))
     dlg.variability_slider.setValue(0)
+    dlg.symbols_check.setChecked(False)                      # qui si confronta il testo in blocchi di note
     assert dlg.voice_leading_check.isChecked()
     spans = extract_chords_from_track(p.tracks[0].text, {})
     kwargs = dict(octave=4, range_low=36, range_high=96, polyphonic=True, variation_every=4,
@@ -413,3 +414,17 @@ def test_drum_dialog_compact_text_same_midi_and_patterns_in_project():
     compact_ = dlg2.result_text()
     assert "|" in compact_
     assert midi_of(Project(name="t"), extended) == midi_of(project, compact_)
+
+
+def test_comping_dialog_writes_chords_as_symbols_unless_unchecked():
+    p = Project(name="t")
+    p.add_track("Chords", "Piano", "4: 4C 4F 4G 4Am")
+    dlg = MelodyGenerateDialog(
+        None, p, "Piano", "traccia 'Piano'", [("Chords", p.tracks[0].text)],
+        polyphonic=True, default_octave=4, range_low=36, range_high=96, default_bars=4, track_name="Piano",
+    )
+    dlg.style_combo.setCurrentIndex(dlg.style_combo.findData("block_chords"))
+    assert dlg.symbols_check.isChecked()
+    assert "[" not in dlg.preview_edit.toPlainText()
+    dlg.symbols_check.setChecked(False)
+    assert "[" in dlg.preview_edit.toPlainText()

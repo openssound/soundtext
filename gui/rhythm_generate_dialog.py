@@ -990,6 +990,14 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
             key=self._melody_key(source_text) if is_melody else None, meter=self.project.time_sig,
             repeats=self._repeats() if is_melody else (), **self._variation_kwargs(seed),
         )
+        if self.polyphonic and not is_melody and self._as_symbols():
+            from core.chord_symbols import chords_as_symbols, progression_symbols
+            from core.rhythm_generate import _expand_chords_to_cover
+            text = progression_symbols(text, _expand_chords_to_cover(chords, self.bars_spin.value() * self.bar_beats))
+            try:
+                text = chords_as_symbols(text, get_instrument(self.instrument_name))
+            except ValueError:
+                pass
         regions = self._voice_regions()
         if regions:
             from core.melody_generate import rest_where
@@ -1053,6 +1061,10 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
         except (NotationError, ValueError):
             return None
 
+    def _as_symbols(self) -> bool:
+        check = getattr(self, "symbols_check", None)
+        return check is not None and check.isChecked()
+
     def _voice_leading(self) -> bool:
         check = getattr(self, "voice_leading_check", None)
         return check is not None and check.isChecked()
@@ -1115,6 +1127,14 @@ class MelodyGenerateDialog(_GeneratedTrackDialogBase):
                 "e saltare da una posizione all'altra."))
             self.voice_leading_check.toggled.connect(self._regenerate_preview)
             options_row.addWidget(self.voice_leading_check)
+            options_row.addSpacing(12)
+            self.symbols_check = QCheckBox(tr("Accordi come simboli"))
+            self.symbols_check.setChecked(True)
+            self.symbols_check.setToolTip(
+                tr("Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: "
+                "il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa."))
+            self.symbols_check.toggled.connect(self._regenerate_preview)
+            options_row.addWidget(self.symbols_check)
 
 
 class LyricsMelodyDialog(_GeneratedTrackDialogBase):
