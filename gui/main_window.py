@@ -644,6 +644,24 @@ class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QM
             tooltip=tr("Analizza le note di tutte le tracce non percussive del progetto e stima la "
             "tonalità (algoritmo di Krumhansl-Schmuckler), impostandola nel campo Tonalità.")))
 
+        compose_menu.addSeparator()
+        compose_menu.addAction(self._action(
+            tr("Alterazioni con i simboli"), self.accidentals_with_symbols_action,
+            tooltip=tr("Riscrive bemolli e diesis con ♭ e ♯ (eb diventa e♭, F#m7 diventa F♯m7): sulla selezione, "
+                       "se c'e', altrimenti su tutto il brano. Il suono non cambia.")))
+        compose_menu.addAction(self._action(
+            tr("Alterazioni come b e #"), self.accidentals_as_letters_action,
+            tooltip=tr("Riscrive ♭ e ♯ con le lettere b e #, per i file letti da altri programmi: sulla "
+                       "selezione, se c'e', altrimenti su tutto il brano.")))
+        compose_menu.addAction(self._action(
+            tr("Percussioni con le abbreviazioni"), self.percussion_abbreviations_action,
+            tooltip=tr("Scrive le percussioni con le abbreviazioni (kick diventa bd, hihat diventa hh): sulla "
+                       "selezione, se c'e', altrimenti su tutto il brano.")))
+        compose_menu.addAction(self._action(
+            tr("Percussioni con i nomi lunghi"), self.percussion_long_names_action,
+            tooltip=tr("Scrive per intero le abbreviazioni delle percussioni (bd diventa kick): sulla "
+                       "selezione, se c'e', altrimenti su tutto il brano.")))
+
         playback_menu = menubar.addMenu(tr("&Riproduzione"))
         self.play_pause_action = self._action(tr("Play ensemble"), self.toggle_play_pause, "F5")
         playback_menu.addAction(self.play_pause_action)
@@ -761,6 +779,22 @@ class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QM
             tr("Sorgenti dei download..."), self.edit_download_sources,
             tooltip=tr("Gli indirizzi da cui \"Scarica e installa\" prende strumenti, plugin e SoundFont.")
         ))
+
+        symbols_action = QAction(tr("Scrivi ♭ e ♯ con i simboli"), self, checkable=True)
+        symbols_action.setChecked(app_settings.get_accidental_symbols())
+        symbols_action.setToolTip(
+            tr("Acceso: scrivendo, eb diventa e♭ e F# diventa F♯ appena chiudi la nota o l'accordo, e il testo "
+               "che i generatori scrivono usa gli stessi simboli. Spento: restano b e #. Chi usa uno screen "
+               "reader che legge male i simboli puo' spegnerlo."))
+        symbols_action.toggled.connect(app_settings.set_accidental_symbols)
+        options_menu.addAction(symbols_action)
+        abbreviations_action = QAction(tr("Abbreviazioni nelle percussioni generate"), self, checkable=True)
+        abbreviations_action.setChecked(app_settings.get_percussion_abbreviations())
+        abbreviations_action.setToolTip(
+            tr("Acceso: i generatori scrivono le percussioni con le abbreviazioni (bd hh sn). Spento: con i "
+               "nomi lunghi (kick hihat snare), che si leggono meglio per chi comincia."))
+        abbreviations_action.toggled.connect(app_settings.set_percussion_abbreviations)
+        options_menu.addAction(abbreviations_action)
 
         midi_import_menu = options_menu.addMenu(tr("Import MIDI"))
         recognize_chords_action = QAction(tr("Riconosci accordi nell'import MIDI"), self, checkable=True)

@@ -20,7 +20,7 @@ from .i18n import tr
 # Strumenti e percussioni della notazione: definiti nella libreria
 # st_language (usabile anche senza SoundText), qui riesportati.
 from st_language.instruments import (  # noqa: F401
-    PERCUSSION_MAP, DRUM_MIDI_CHANNEL, GM_FAMILIES, GM_FAMILY_DEFAULTS, GM_DRUM_KITS,
+    PERCUSSION_MAP, PERCUSSION_ALIASES, percussion_name, percussion_short_name, DRUM_MIDI_CHANNEL, GM_FAMILIES, GM_FAMILY_DEFAULTS, GM_DRUM_KITS,
     gm_instrument_catalog, gm_family_for_program, InstrumentProfile, DEFAULT_INSTRUMENTS,
     INSTRUMENT_TYPE_ALIASES, PERCUSSION_TYPE_ALIASES, resolve_instrument_type,
     suggest_instrument, unknown_instrument_message, unrecognized_header_message,

@@ -6,8 +6,8 @@
 //
 // Toccare e' piu' naturale che scrivere sul telefono. Due schermate a pad, a tempo col brano:
 //  - gli accordi della tonalita' (nove pad: i gradi della scala e due colori). Si provano soli oppure si registra
-//    con conteggio e metronomo: ogni tocco vale fino al tocco dopo, quantizzato alla battuta o alla meta'. Tenendo
-//    premuto un pad si cambia l'accordo: settima, sospeso, rivolto. Il risultato e' una traccia di accordi.
+//    con conteggio e metronomo: ogni tocco vale fino al tocco dopo, quantizzato alla battuta o alla meta'. Ogni pad ha sotto tre tasti per cambiare l'accordo (settima,
+//    sospeso, rivolto); tenendo premuto un tasto l'accordo dura quanto lo si tiene. Il risultato e' una traccia di accordi.
 //  - otto suoni di batteria su un giro di 1, 2 o 4 battute che si ripete: i colpi si sommano a ogni giro come in
 //    una drum machine, a sedicesimi. Il risultato e' una traccia o un pattern (%Groove).
 // I suoni partono subito dal tocco (note del sintetizzatore, senza passare dal file MIDI); il tempo registrato si
@@ -17,9 +17,8 @@
 const pad = {
   kind: "chords", info: null, key: "C", bpm: 100, barBeats: 4, latency: 0,
   recording: false, t0Perf: 0, t0Audio: 0, countBeats: 4, nextClick: 0, timer: null, lastPos: -1,
-  events: [], hits: [], loopBars: 1, text: "", down: new Map(), popover: null, loops: 0,
+  events: [], hits: [], loopBars: 1, text: "", down: new Map(), loops: 0,
 };
-const PAD_HOLD_MS = 450;           // tenuto premuto: le varianti dell'accordo
 // i nomi dei pad della batteria (scritti per intero perche' l'estrattore delle traduzioni li trovi)
 const padDrumLabel = (name) => ({ kick: t("Cassa"), snare: t("Rullante"), hihat: t("Charleston"), hihat_open: t("Charleston aperto"),
                                   tom_hi: t("Tom alto"), tom2: t("Tom basso"), crash: t("Crash"), ride: t("Ride") })[name] || name;
@@ -144,7 +143,6 @@ function padStopAll() {
   pad.recording = false;
   for (const [, d] of pad.down) padNotesOff(d.chan, d.notes);
   pad.down.clear();
-  padClosePopover();
 }
 
 function padClose() {
@@ -170,17 +168,42 @@ function padMake(label, small, index) {
   return b;
 }
 
+// Ogni accordo e' un blocco di quattro tasti: l'accordo e, sotto, le tre varianti (settima, sospeso, rivolto).
+// Tenuto premuto, l'accordo dura quanto lo si tiene (il motore scrive la durata dal rilascio).
 function padBuildChords() {
   const grid = $("padGrid");
   grid.className = "pad-grid chords";
   grid.innerHTML = "";
   pad.info.chords.forEach((chord, i) => {
-    const b = padMake(chord.symbol, chord.label, i);
-    b.addEventListener("pointerdown", (ev) => padChordDown(ev, i, b));
-    for (const type of ["pointerup", "pointercancel"]) b.addEventListener(type, (ev) => padChordUp(ev));
-    b.addEventListener("contextmenu", (ev) => ev.preventDefault());
-    grid.append(b);
+    const cell = document.createElement("div");
+    cell.className = "pad-chord";
+    const variants = [
+      [t("settima"), chord.seventh.symbol, chord.seventh.notes],
+      [t("sospeso"), chord.sus.symbol, chord.sus.notes],
+      [t("rivolto"), chord.inversion.text, chord.inversion.notes],
+    ];
+    const main = padMake(chord.symbol, chord.label, i);
+    padWire(main, chord.symbol, chord.notes);
+    cell.append(main);
+    const row = document.createElement("div");
+    row.className = "pad-variants";
+    for (const [name, text, notes] of variants) {
+      const v = document.createElement("button");
+      v.className = "pad-btn pad-variant";
+      v.setAttribute("aria-label", text === chord.inversion.text ? `${chord.symbol}, ${name}` : `${chord.symbol}, ${name}, ${text}`);
+      v.textContent = name;
+      padWire(v, text, notes);
+      row.append(v);
+    }
+    cell.append(row);
+    grid.append(cell);
   });
+}
+
+function padWire(button, text, notes) {
+  button.addEventListener("pointerdown", (ev) => padChordDown(ev, text, notes, button));
+  for (const type of ["pointerup", "pointercancel"]) button.addEventListener(type, (ev) => padChordUp(ev));
+  button.addEventListener("contextmenu", (ev) => ev.preventDefault());
 }
 
 function padBuildDrums() {
@@ -202,66 +225,25 @@ function padFlash(button) {
 
 // ---- accordi
 
-function padChordDown(ev, index, button) {
+function padChordDown(ev, text, notes, button) {
   ev.preventDefault();
   if (!state.synth) return;
   const beat = padBeatNow();
-  const chord = pad.info.chords[index];
   padBuzz();
   padFlash(button);
   try { button.setPointerCapture(ev.pointerId); } catch (e) {}          // il dito che esce dal pad lo rilascia lo stesso
-  padNotesOn(0, chord.notes);
-  const record = pad.recording && beat >= -0.25 ? { beat: Math.max(0, beat), text: chord.symbol } : null;
+  padNotesOn(0, notes);
+  const record = pad.recording && beat >= -0.25 ? { beat: Math.max(0, beat), text } : null;
   if (record) pad.events.push(record);
-  const entry = { chan: 0, notes: chord.notes, record, index };
-  entry.hold = setTimeout(() => padOpenVariants(button, entry), PAD_HOLD_MS);
-  pad.down.set(ev.pointerId, entry);
+  pad.down.set(ev.pointerId, { chan: 0, notes, record });
 }
 
 function padChordUp(ev) {
   const entry = pad.down.get(ev.pointerId);
   if (!entry) return;
-  clearTimeout(entry.hold);
   padNotesOff(entry.chan, entry.notes);
+  if (entry.record && pad.recording) entry.record.end = Math.max(entry.record.beat, padBeatNow());   // la durata e' il tempo tenuto
   pad.down.delete(ev.pointerId);
-}
-
-// Le varianti, quando si tiene premuto: settima, sospeso, rivolto, o l'accordo com'era
-function padOpenVariants(button, entry) {
-  padClosePopover();
-  const chord = pad.info.chords[entry.index];
-  const options = [
-    [t("settima"), chord.seventh.symbol, chord.seventh.notes],
-    [t("sospeso"), chord.sus.symbol, chord.sus.notes],
-    [t("rivolto"), chord.inversion.text, chord.inversion.notes],
-    [t("com'era"), chord.symbol, chord.notes],
-  ];
-  const box = document.createElement("div");
-  box.className = "pad-popover";
-  box.setAttribute("role", "menu");
-  for (const [label, text, notes] of options) {
-    const b = document.createElement("button");
-    b.setAttribute("role", "menuitem");
-    b.textContent = label + (text === chord.inversion.text ? "" : " · " + text);
-    b.onpointerdown = (ev) => {
-      ev.preventDefault();
-      padNotesOff(0, entry.notes);
-      padNotesOn(0, notes);
-      setTimeout(() => padNotesOff(0, notes), 500);
-      if (entry.record) entry.record.text = text;          // l'accordo registrato diventa la variante
-      padClosePopover();
-    };
-    box.append(b);
-  }
-  button.parentElement.append(box);
-  const rect = button.getBoundingClientRect(), parent = button.parentElement.getBoundingClientRect();
-  box.style.left = Math.max(4, Math.min(rect.left - parent.left, parent.width - box.offsetWidth - 4)) + "px";
-  box.style.top = Math.max(4, rect.top - parent.top - box.offsetHeight - 6) + "px";
-  pad.popover = box;
-}
-
-function padClosePopover() {
-  if (pad.popover) { pad.popover.remove(); pad.popover = null; }
 }
 
 // ---- batteria
@@ -419,5 +401,4 @@ function setupPads() {
   $("padListen").onclick = () => padListen().catch((e) => setPadStatus(shortError(e), true));
   $("padAddTrack").onclick = () => padAddTrack().catch((e) => setPadStatus(shortError(e), true));
   $("padAddPattern").onclick = () => padAddPattern().catch((e) => setPadStatus(shortError(e), true));
-  document.addEventListener("pointerdown", (ev) => { if (pad.popover && !pad.popover.contains(ev.target)) padClosePopover(); });
 }

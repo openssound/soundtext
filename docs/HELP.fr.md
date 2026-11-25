@@ -190,10 +190,19 @@ Quatre mesures, pour voir comment ça marche :
    `.st` de texte.
 
 Pour un morceau déjà complet, sans rien écrire : **Projet → Nouveau morceau en 60 secondes...**. Choisissez un genre (25),
-une ambiance et une durée ; **Composer et écouter** écrit un morceau entier, en sections (boîtes) avec accords, basse, batterie,
+une ambiance et une durée, et si vous voulez la **Formation** (voir plus bas) ; **Composer et écouter** écrit un morceau entier, en sections (boîtes) avec accords, basse, batterie,
 accompagnement et mélodie. **Un autre** change la graine, **Surprenez-moi** choisit au hasard ; avec **Détails** vous choisissez aussi
 tonalité, tempo, forme, effectif et une grille d'accords à vous. **Créer le morceau** en fait le projet, à modifier comme les autres
 (les sections apparaissent dans la vue Structure). Le même morceau, avec la même graine, sort aussi sur SoundText Mobile.
+
+**Formation...** ouvre la liste de tous les instruments disponibles (la batterie, les 128 General MIDI par famille et ceux de
+la Gestion des instruments), chacun avec une case : cochez ceux qui doivent jouer et validez avec **Confirmer la formation**.
+Chaque instrument joue la partie de son rôle (accords, basse, mélodie, nappe de cordes ou de chœurs, cuivres d'ensemble,
+batterie) : « guitare seule » écrit les accords pour la guitare, « guitare, basse et batterie » trois pistes, « sax, piano, basse
+et batterie » quatre avec la mélodie au sax, « basse seule » la ligne de basse. Les parties que personne ne joue disparaissent
+(sans instrument mélodique, pas de mélodie). Il y a de la place pour deux instruments d'accords plus une nappe, une basse, une
+batterie et deux mélodiques ; les autres restent dehors et la fenêtre le dit. Sans case cochée, c'est l'effectif de la recette
+qui compte (dans « Détails »).
 
 Les détails ajoutent aussi : **Texte compact** (le texte s'écrit en mesures, avec un motif pour chaque mesure qui se répète : le son reste identique), **Humain** (de 0, toutes les notes sur la grille, à 100, le micro-tempo du style : la caisse claire un peu en arrière dans le funk, la grosse caisse en avant dans le punk ; écrit dans le texte comme `shift=N`) et **Énergie du morceau** (monte, monte puis redescend, descend : elle remplace l'intensité tirée du nom de la section). Chaque genre a ses instruments, ses gammes (pentatonique dans la country, blues dans le blues et le rock, mineure harmonique dans le balkanique), ses effets de départ sur le master et, en pop, ballade, soul et disco, une couche de cordes dans les refrains ; avec plusieurs refrains, le dernier reprend le thème une octave au-dessus, par un motif.
 
@@ -599,6 +608,21 @@ audible, un bug silencieux difficile à remarquer à l'écoute seule). Un
 changement de grille (`N:`) au milieu d'une rampe déjà ouverte ne la ferme
 pas et ne la casse pas — il peut apparaître librement avant la note/l'accord
 qui la ferme.
+
+### Bémols et dièses en symboles : `b` `♭` `#` `♯` (ST 2.13)
+
+`♯` vaut `#` partout (notes, accords et basse après `/`, `key=`, symboles `$Bb7`, `Tonalite:`), comme `♭` vaut `b`. Le texte se
+réécrit d'une forme à l'autre sans changer le son ; une altération dans la qualité d'un accord (`C7#9`, `Cm7b5`) est une
+extension et reste telle quelle.
+
+- **En écrivant** (Options → « Écrire ♭ et ♯ avec les symboles », activé par défaut) : dès que vous terminez une note, un
+  accord ou une tonalité (espace, retour à la ligne, `|`, `]`, `)`, `}`), `eb` devient `e♭`, `Bb7` devient `B♭7`, `F#m` devient
+  `F♯m`. Un Annuler rend le texte comme il était. Commentaires, texte chanté, renvois `%Nom` et `&fichier` et la note `b` seule
+  ne changent pas. Le texte écrit par les générateurs, l'import MIDI/ABC/MusicXML et le morceau en 60 secondes suit le même choix.
+- **Commandes** (menu Composer) : **Altérations avec les symboles** et **Altérations en b et #** réécrivent la sélection ou,
+  sans sélection, tout le morceau (pistes, boîtes, motifs) ; utiles pour les vieux fichiers ou pour qui veut des lettres seules.
+- Un fichier qui utilise `♯` déclare `ST: 2.13` ; les anciennes versions de la bibliothèque avertissent. Si votre lecteur
+  d'écran lit mal les symboles, désactivez l'option.
 
 ### Bémol : `b`, `♭` ou `-` (raccourci de saisie)
 
@@ -1836,6 +1860,15 @@ utilisées dans « Jouer au clavier » (section 23) : rangée des chiffres
 - Percussions latines (rangée A) : `bongo_hi`, `bongo_low`, `conga_mute`,
   `conga_open`, `conga_low`, `timbale_hi`, `timbale_low`, `cabasa`,
   `maracas`, `claves`, `woodblock_hi`, `woodblock_low`.
+
+**Abréviations** (ST 2.13). Chaque nom peut s'écrire plus court, partout où le nom long est valable (pistes, motifs, blocs
+`[bd hh]`) : `bd` ou `kk` pour `kick`, `sn` ou `sd` pour `snare`, `hh` pour `hihat`, `oh` pour `hihat_open`, `cr` pour `crash`,
+`rd` pour `ride`, `ht` `t1` `mt` `t2` `ft` pour les toms, `cp` pour `clap`, `cow` pour `cowbell`, etc. (53 au total, la liste est
+dans la spécification). Aucune n'est une lettre seule ni ne se lit comme une note : `cb`, `ab`, `eb`... restent des bémols. Les
+noms longs restent valables. Dans le menu Composer, **Percussions avec les abréviations** et **Percussions avec les noms longs**
+réécrivent la sélection ou tout le morceau ; dans Options, « Abréviations dans les percussions générées » fait écrire les
+abréviations aux générateurs (désactivé par défaut). La saisie semi-automatique les propose avec le nom long à côté
+(`hh — hihat`), et la lecture à voix haute dit toujours le nom entier.
 
 ## 13. La spécification et la bibliothèque ST-language
 

@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import settings as app_settings
+from core.accidental_style import styled
 from core.model import Project, copy_synth
 from core.instruments import get_instrument, DRUM_MIDI_CHANNEL, PERCUSSION_MAP
 from core.chords import parse_key_signature
@@ -940,4 +941,4 @@ class KeyboardPlayDialog(MidiKeyboardMixin, KeyboardPerformanceMixin, QDialog):
         super().reject()
 
     def result_text(self):
-        return self._generated_text
+        return styled(self._generated_text)

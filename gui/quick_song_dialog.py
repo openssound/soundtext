@@ -34,6 +34,7 @@ class QuickSongDialog(QDialog):
         self.song = None                   # l'ultimo brano composto (il dizionario di quick_song)
         self._seed = None                  # None: un seme nuovo a ogni brano
         self._daily_seed = None            # il seme del brano del giorno, usato una volta (vedi _daily)
+        self._formation_dialog = None
         self._playback = PlaybackEngine()
 
         layout = QVBoxLayout(self)
@@ -57,6 +58,17 @@ class QuickSongDialog(QDialog):
             self.duration_combo.addItem(d["label"], d["value"])
         self.duration_combo.setCurrentIndex(3)             # 1 minuto
         form.addRow(tr("Durata:"), self.duration_combo)
+        # la formazione: gli strumenti scelti uno per uno (core.quick_formation); senza, vale l'organico della ricetta
+        self.formation = []
+        formation_row = QHBoxLayout()
+        self.formation_button = QPushButton(tr("Formazione..."))
+        self.formation_button.setToolTip(tr("Apre l'elenco di tutti gli strumenti: spunti quelli che devono suonare nel brano."))
+        self.formation_button.clicked.connect(self.choose_formation)
+        formation_row.addWidget(self.formation_button)
+        self.formation_label = QLabel("")
+        self.formation_label.setWordWrap(True)
+        formation_row.addWidget(self.formation_label, 1)
+        form.addRow(tr("Formazione:"), formation_row)
         layout.addLayout(form)
 
         self.detail_check = QCheckBox(tr("Dettagli"))
@@ -117,6 +129,7 @@ class QuickSongDialog(QDialog):
         self.seed_spin.setSpecialValueText(tr("nuovo ogni volta"))
         detail.addRow(tr("Seme:"), self.seed_spin)
         self.detail_box.setVisible(False)
+        self.set_formation([])
         layout.addWidget(self.detail_box)
 
         self.summary = QLabel("")
@@ -193,6 +206,30 @@ class QuickSongDialog(QDialog):
         item = self.genre_list.currentItem()
         return item.data(Qt.UserRole) if item else "pop"
 
+    def choose_formation(self):
+        """Il bottone «Formazione»: l'elenco di tutti gli strumenti con una casella ciascuno."""
+        from .quick_formation_dialog import FormationDialog
+        dlg = FormationDialog(self, self.formation)
+        self._formation_dialog = dlg           # per i test
+        if dlg.exec() == QDialog.Accepted:
+            self.set_formation(dlg.selected())
+
+    def set_formation(self, instruments):
+        """Gli strumenti scelti ([] = l'organico della ricetta): il bottone dice quali sono, e l'organico si spegne."""
+        self.formation = list(instruments)
+        if self.formation:
+            from core import quick_formation
+            try:
+                parts, _left_out = quick_formation.assign(self.formation)
+                self.formation_label.setText(quick_formation.describe(parts))
+            except ValueError as e:
+                self.formation_label.setText("✗ " + str(e))
+        else:
+            self.formation_label.setText(tr("della ricetta"))
+        self.ensemble_combo.setEnabled(not self.formation)
+        self.ensemble_combo.setToolTip(tr("Con una formazione scelta non serve: suonano gli strumenti della formazione.")
+                                       if self.formation else "")
+
     def _genre_changed(self, _row):
         data = next(g for g in self.choices["genres"] if g["value"] == self._genre())
         labels = {m["value"]: m["label"] for m in self.choices["moods"]}
@@ -206,6 +243,8 @@ class QuickSongDialog(QDialog):
     def options(self) -> dict:
         """Le scelte per core.quicksong.quick_song."""
         o = {"genre": self._genre(), "mood": self.mood_combo.currentData(), "duration": self.duration_combo.currentData()}
+        if self.formation:
+            o["formation"] = list(self.formation)
         self._seed = None
         if self.detail_check.isChecked():
             if self.key_combo.currentData():
@@ -252,6 +291,12 @@ class QuickSongDialog(QDialog):
         s = self.song
         parts = [s["name"], _clock(s["seconds"]), s["key"], f"{s['bpm']} BPM", s["meter"], tr("{n} battute", n=s["bars"])]
         text = " · ".join(str(p) for p in parts) + (f"\n{s['fallback']}" if s.get("fallback") else "")
+        if s.get("formation"):
+            from core import quick_formation
+            text += "\n" + tr("Formazione: {list}", list=quick_formation.describe(
+                {p: (s["choices"]["instruments"].get(p) or "") for p in s["parts"] if p in s["choices"]["instruments"]}))
+            if s.get("left_out"):
+                text += "\n" + tr("Non c'e' posto per: {list}", list=", ".join(n.replace("_", " ") for n in s["left_out"]))
         self.summary.setText(text + "\n" + tr("Seme: {seed}", seed=s["seed"]))
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(True)
         self._update_sounds()

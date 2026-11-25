@@ -370,7 +370,25 @@ def _uses_arpeggio(project: Project) -> bool:
                for text in [track.text] + [clip.text for clip in track.clips])
 
 
+# 2.13: il simbolo ♯ e le abbreviazioni delle percussioni
+_SYMBOLS_VERSION = (2, 13)
+
+
+def _uses_2_13(project: Project) -> bool:
+    """Se un testo del brano usa '♯' o le abbreviazioni delle percussioni
+    (st_language.language_version): i lettori della 2.12 non li conoscono."""
+    from st_language import language_version
+    texts = [" ".join(p.tokens) for p in project.patterns.values()]
+    for track in project.tracks:
+        texts.append(track.text)
+        texts.extend(clip.text for clip in track.clips)
+    keys = [project.key] + [key for _bar, key in getattr(project, "key_changes", [])] if project.key else []
+    return any(language_version(text) for text in texts) or any("♯" in str(key) for key in keys)
+
+
 def _file_language_version(project: Project) -> tuple:
+    if _uses_2_13(project):
+        return _SYMBOLS_VERSION
     if project.patterns or _uses_arpeggio(project):
         return PATTERN_SCOPE_VERSION
     if any(linked_conversion(project, t) for t in project.tracks):

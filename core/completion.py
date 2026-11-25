@@ -20,7 +20,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 from st_language.transform import is_transform_reference, list_transforms, parse_reference
 
 from .i18n import current_language
-from .instruments import PERCUSSION_MAP, InstrumentProfile
+from .instruments import PERCUSSION_ALIASES, PERCUSSION_MAP, InstrumentProfile
 from .notation import DECORATIONS, DYNAMICS_TO_VELOCITY, NotationError, Pattern, find_references
 from .chords import CHORD_QUALITIES, applicable_voicings
 
@@ -237,6 +237,11 @@ def completions_for_word(
             _LOWERCASE_WORDS if instrument is None or instrument.is_percussion
             else _NON_PERCUSSION_LOWERCASE_WORDS
         )
-        return [f"{mult}{w}" for w in words if w.startswith(rest) and w != rest]
+        found = [f"{mult}{w}" for w in words if w.startswith(rest) and w != rest]
+        if words is _LOWERCASE_WORDS:
+            # le abbreviazioni delle percussioni, col nome lungo accanto
+            found += [Completion(f"{mult}{short}", label=f"{mult}{short} — {long}")
+                      for short, long in PERCUSSION_ALIASES.items() if short.startswith(rest) and short != rest]
+        return found
 
     return []

@@ -321,3 +321,19 @@ def test_prefetch_scans_in_the_background_and_reads_the_regions(instruments):
     sound_advice.prefetch().join(timeout=30)
     assert [f.path for f in sound_advice.installed_sfz(load_script())] == [str(path)]
     assert str(path) in sfz_coverage._cache                                           # gia' letto: comporre non aspetta
+
+
+def test_the_archtop_plays_a_few_dB_lower_but_a_volume_you_set_stays(instruments):
+    """La Shinyguitar suonava gli accordi del jazz 6 dB sopra il contrabbasso: apply_sfz porta la traccia a 55; un volume
+    gia' scelto dall'utente non si tocca."""
+    project, guitar = _with_track("jazz", "Jazz_Guitar")
+    _install(instruments, "shinyguitar", "Shinyguitar/Programs/electric_one.sfz")
+    sound_advice.forget_installed()
+    advice = sound_advice.sound_advice(project)
+    assert guitar.volume == 100
+    sound_advice.apply_sfz(project, advice)
+    assert guitar.synth.startswith("sfz:") and guitar.volume == sound_advice.SFZ_VOLUME["shinyguitar"] == 55
+    project2, guitar2 = _with_track("jazz", "Jazz_Guitar")
+    guitar2.volume = 80
+    sound_advice.apply_sfz(project2, sound_advice.sound_advice(project2))
+    assert guitar2.volume == 80

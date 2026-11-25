@@ -7,6 +7,8 @@ se c'e' uno screen reader.
 import re
 from typing import List, Optional
 
+from st_language.instruments import PERCUSSION_ALIASES
+
 LANGUAGES = ("it", "en", "fr", "es")
 
 NOTES = {
@@ -62,8 +64,8 @@ QUALITIES = {
     "add9": {"it": "con nona aggiunta", "en": "add nine", "fr": "avec neuvième ajoutée", "es": "con novena añadida"},
 }
 
-_NOTE = re.compile(r"^(\d+)?([a-g])(#|b)?(?:\*(-?\d+))?(?![A-Za-z_#])")
-_CHORD = re.compile(r"^(\d+)?([A-G])(#|b)?([^/!.'<>~\s]*)(?:/([A-G])(#|b)?)?")
+_NOTE = re.compile(r"^(\d+)?([a-g])([#♯b♭])?(?:\*(-?\d+))?(?![A-Za-z_#♯])")
+_CHORD = re.compile(r"^(\d+)?([A-G])([#♯b♭])?([^/!.'<>~\s]*)(?:/([A-G])([#♯b♭])?)?")
 _REST = re.compile(r"^(\d+)?r$")
 
 
@@ -87,9 +89,9 @@ def _pitch_name(letter: str, accidental: str, lang: str) -> str:
     name = NOTES[lang][LETTERS.index(letter.lower())]
     if lang == "en":
         name = letter.upper()
-    if accidental == "#":
+    if accidental in ("#", "♯"):
         return f"{name} {SHARP[lang]}"
-    if accidental == "b":
+    if accidental in ("b", "♭"):
         return f"{name} {FLAT[lang]}"
     return name
 
@@ -101,6 +103,14 @@ def _quality_words(quality: str, lang: str) -> str:
     return " ".join(quality)                                          # una sigla rara: si sillaba
 
 
+def _percussion_words(token: str) -> str:
+    """Il nome di una percussione in parole: un'abbreviazione (bd, hh, sn) si
+    legge col nome intero (kick, hihat, snare)."""
+    mult = re.match(r"^\d+", token)
+    name = token[mult.end():] if mult else token
+    return (mult.group() if mult else "") + PERCUSSION_ALIASES.get(name, name).replace("_", " ")
+
+
 def token_words(token: str, beats: Optional[float], lang: str) -> Optional[str]:
     """Un token della notazione in parole, con la durata se si conosce; None se non si sa leggere."""
     lang = _lang(lang)
@@ -109,7 +119,7 @@ def token_words(token: str, beats: Optional[float], lang: str) -> Optional[str]:
         return f"{PATTERN[lang]} {token[1:]}"
     if token.startswith("["):
         inner = [w for w in re.findall(r"[^\s\[\]]+", token)]
-        return " ".join(w.replace("_", " ") for w in inner) + tail
+        return " ".join(_percussion_words(w) for w in inner) + tail
     if _REST.match(token):
         return REST[lang] + tail
     m = _NOTE.match(token)
@@ -123,7 +133,7 @@ def token_words(token: str, beats: Optional[float], lang: str) -> Optional[str]:
             words += {"it": " con basso ", "en": " over ", "fr": " avec basse ", "es": " con bajo "}[lang] + _pitch_name(m.group(5), m.group(6) or "", lang)
         return words + tail
     if re.match(r"^\w+$", token):
-        return token.replace("_", " ") + tail                         # una percussione: kick, snare...
+        return _percussion_words(token) + tail                        # una percussione: kick, snare...
     return None
 
 

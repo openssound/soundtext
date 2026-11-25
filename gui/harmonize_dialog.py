@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout,
 )
 
+from core.accidental_style import styled
 from core.harmonize import harmonize, melody_key, melody_notes
 from core.i18n import tr
 
@@ -100,7 +101,7 @@ class HarmonizeDialog(QDialog):
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(bool(self._result))
 
     def result_text(self):
-        return self._result
+        return styled(self._result)
 
 
 def add_harmony_track(view, source_name: str, text: str, start_beat: float) -> str:

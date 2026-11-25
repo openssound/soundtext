@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from core.accidental_style import styled
 from core.i18n import tr
 from core.key_detect import detect_key_of_text
 from core.rhythm_generate import reharmonize_text
@@ -103,4 +104,4 @@ class ReharmonizeDialog(QDialog):
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(bool(self._result))
 
     def result_text(self):
-        return self._result
+        return styled(self._result)

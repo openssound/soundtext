@@ -379,10 +379,40 @@ class SfzInstance:
             self.close()
             raise SfzError(tr("il file SFZ non si puo' caricare: {path}", path=path))
         self.regions = lib.sfizz_get_num_regions(self._synth)
+        if self.regions == 0 and sys.platform != "win32":
+            self._reload_with_slashes(path)
         self._left = np.zeros(self.block, dtype=np.float32)
         self._right = np.zeros(self.block, dtype=np.float32)
         ptr = ctypes.POINTER(ctypes.c_float)
         self._channels = (ptr * 2)(self._left.ctypes.data_as(ptr), self._right.ctypes.data_as(ptr))
+
+    def _reload_with_slashes(self, path: str):
+        """Un file .sfz scritto per Windows ('sample=electric\\db2.wav', come la Shinyguitar) su Linux e macOS non
+        trova nessun campione e non carica nessuna regione: si ricarica una copia, accanto all'originale (i percorsi
+        restano quelli giusti), con la barra al posto del backslash. La copia si toglie subito: sfizz l'ha gia' letta."""
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except OSError:
+            return
+        fixed = re.sub(r"(?im)^(\s*(?:sample|default_path)\s*=.*)$", lambda m: m.group(1).replace("\\", "/"), text)
+        fixed = re.sub(r'(?m)^(\s*#include\s+"[^"]*")', lambda m: m.group(1).replace("\\", "/"), fixed)
+        if fixed == text:
+            return
+        folder, name = os.path.split(path)
+        copy = os.path.join(folder, f".soundtext-{os.getpid()}-{name}")
+        try:
+            with open(copy, "w", encoding="utf-8") as f:
+                f.write(fixed)
+            if self._lib.sfizz_load_file(self._synth, os.fsencode(copy)):
+                self.regions = self._lib.sfizz_get_num_regions(self._synth)
+        except OSError:
+            pass
+        finally:
+            try:
+                os.remove(copy)
+            except OSError:
+                pass
 
     def _send(self, delay: int, data: bytes):
         if not data:

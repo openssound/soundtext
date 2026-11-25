@@ -22,6 +22,7 @@ from core.chords import (
     parse_chord_symbol, voice_chord, midi_to_token, pitch_to_midi,
     pc_to_letter, applicable_voicings, recognize_chord, apply_bass_note,
 )
+from core.accidental_style import CLOSERS, closed_token_replacement, symbols_enabled
 from core.completion import Completion, current_word_bounds
 from core.instruments import InstrumentProfile
 from core.notation import (
@@ -279,7 +280,28 @@ class NotationEditor(QPlainTextEdit):
             cursor.insertText("♭")
             self.setTextCursor(cursor)
             return
+        closer = event.text() in ("\r", "\n") or (len(event.text()) == 1 and event.text() in CLOSERS)
         super().keyPressEvent(event)
+        if closer and not self.isReadOnly() and symbols_enabled():
+            self._write_accidental_symbols()
+
+    def _write_accidental_symbols(self):
+        """Appena si chiude un token (spazio, a capo, '|', ']', ')', '}') con
+        una nota, un accordo o una tonalita' scritti con 'b' o '#', li riscrive
+        con ♭ e ♯: 'eb ' diventa 'e♭ '. Un Annulla riporta il token com'era."""
+        end = self.textCursor().position() - 1
+        if end < 1:
+            return
+        found = closed_token_replacement(self.toPlainText(), end)
+        if found is None:
+            return
+        start, stop, new = found
+        cursor = QTextCursor(self.document())
+        cursor.beginEditBlock()
+        cursor.setPosition(start)
+        cursor.setPosition(stop, QTextCursor.KeepAnchor)
+        cursor.insertText(new)
+        cursor.endEditBlock()
 
     def _flat_shortcut_applies(self) -> bool:
         cursor = self.textCursor()

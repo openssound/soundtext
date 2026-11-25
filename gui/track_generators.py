@@ -13,6 +13,7 @@ import math
 
 from PySide6.QtWidgets import QDialog, QInputDialog, QMessageBox
 
+from core.accidental_style import styled
 from core.i18n import tr
 from core.rhythm_generate import project_has_chords, tracks_duration_beats
 from .keyboard_play_dialog import KeyboardPlayDialog
@@ -70,6 +71,7 @@ class TrackGenerators:
         ('box_name') dopo l'ultimo: il testo di una traccia con box viene
         dai box, e accodato li' non si vedrebbe nella Struttura."""
         window = self.window
+        new_text = styled(new_text)
         if track.clips or window.arrangement_action.isChecked():
             from core.model import Clip
             view = window.arrangement_view

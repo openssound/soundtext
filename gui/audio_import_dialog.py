@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import settings as app_settings
+from core.accidental_style import styled
 from core.model import Project, copy_synth
 from core.instruments import get_instrument
 from core.audio_import import ConversionCancelled, SilentAudio, convert_audio_to_track_text
@@ -810,4 +811,4 @@ class AudioImportDialog(QDialog):
         super().done(result)
 
     def result_text(self):
-        return self._generated_text
+        return styled(self._generated_text)

@@ -4,7 +4,7 @@
 # di una libreria non rompe i test da un giorno all'altro: si aggiorna questa
 # riga, si rilanciano i test, e la modifica resta nella storia.
 PySide6==6.11.2
-st-language==2.12.2
+st-language==2.13.0
 mido==1.3.3
 python-rtmidi==1.5.8
 sounddevice==0.5.6

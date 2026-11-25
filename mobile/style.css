@@ -90,13 +90,14 @@ dialog.pad-sheet::backdrop { background: rgba(0, 0, 0, .6); }
   background: var(--panel, #2b2d31); border: 2px solid var(--line); color: var(--text); padding: 4px; }
 .pad-btn small { font-size: 12px; font-weight: 400; color: var(--dim); margin-top: 2px; }
 .pad-grid.drums .pad-btn { font-size: 15px; }
+.pad-chord { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.pad-chord > .pad-btn { flex: 1 1 auto; }
+.pad-variants { display: flex; gap: 4px; }
+.pad-variants .pad-variant { flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px; }
 .pad-btn.down, .pad-btn:active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .pad-btn.down small, .pad-btn:active small { color: var(--on-accent); }
 .pad-controls { display: flex; gap: 8px; flex-wrap: wrap; }
 .pad-controls button { flex: 1 1 0; min-height: 44px; }
-.pad-popover { position: absolute; z-index: 5; display: flex; flex-direction: column; background: var(--panel, #2b2d31); border: 1px solid var(--line);
-  border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); padding: 4px; }
-.pad-popover button { min-height: 44px; text-align: left; padding: 0 14px; white-space: nowrap; }
 .pad-sheet .gentext { max-height: 120px; overflow: auto; }
 .export-result { margin: 8px 0; }
 .export-result video { display: block; width: 100%; max-height: 40vh; background: #000; border-radius: 8px; margin: 6px 0; }

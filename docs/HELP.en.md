@@ -185,10 +185,18 @@ Four bars, to see how it works:
    file.
 
 For a ready-made song without writing anything: **Project → New song in 60 seconds...**. Pick a genre (25), a mood
-and a length; **Compose and listen** writes a whole song, in sections (boxes) with chords, bass, drums, accompaniment
+and a length, and if you like the **Lineup** (see below); **Compose and listen** writes a whole song, in sections (boxes) with chords, bass, drums, accompaniment
 and melody. **Another** changes the seed, **Surprise me** picks at random; with **Details** you also choose key, tempo,
 form, ensemble and a chord loop of your own. **Create the song** makes it the project, to edit like any other (the
 sections show in the Structure view). The same song, with the same seed, also comes out on SoundText Mobile.
+
+**Lineup...** opens the list of all the instruments available (drums, the 128 General MIDI ones by family, and those of
+Instrument manager), each with a box: tick the ones that should play and confirm with **Confirm lineup**. Each instrument
+plays the part of its role (chords, bass, melody, a pad of strings or choirs, horn section, drums): "guitar only" writes the
+chords for the guitar, "guitar, bass and drums" three tracks, "sax, piano, bass and drums" four with the melody on the sax,
+"bass only" the bass line. Parts nobody plays disappear (with no melodic instrument there is no melody). There is room for two
+chord instruments plus one pad, one bass, one drum kit and two melodic ones; the others are left out and the window says so.
+With nothing ticked, the recipe's ensemble applies (under "Details").
 
 The details also add: **Compact text** (the text is written in bars, with a pattern for each repeated bar: the sound stays identical), **Human** (from 0, every note on the grid, to 100, the style's micro-timing: the snare slightly behind in funk, the kick ahead in punk; written in the text as `shift=N`) and **Song energy** (rises, rises then falls, falls: it replaces the intensity taken from the section name). Each genre has its own instruments, scales (pentatonic in country, blues in blues and rock, harmonic minor in Balkan), starting master effects and, in pop, ballad, soul and disco, a string layer in the choruses; with several choruses the last one takes the theme up an octave, through a pattern.
 
@@ -562,6 +570,21 @@ ramp "orphaned" (open but with no audible effect, a silent bug that is hard
 to notice just by listening). A grid change (`N:`) in the middle of a ramp
 already open neither closes nor breaks it — it can appear freely before the
 note/chord that closes it.
+
+### Flats and sharps as symbols: `b` `♭` `#` `♯` (ST 2.13)
+
+`♯` means `#` everywhere (notes, chords and the bass after `/`, `key=`, `$Bb7` symbols, `Key:`), just as `♭` means `b`. A text
+can be rewritten from one form to the other without changing how it sounds; an accidental inside a chord quality (`C7#9`,
+`Cm7b5`) is an extension and stays as written.
+
+- **While you type** (Options → "Write ♭ and ♯ with symbols", on by default): as soon as you finish a note, a chord or a key
+  (space, new line, `|`, `]`, `)`, `}`), `eb` becomes `e♭`, `Bb7` becomes `B♭7`, `F#m` becomes `F♯m`. One Undo gives the text
+  back as it was. Comments, sung text, `%Name` and `&file` references and the lone note `b` are left alone. The text the
+  generators, the MIDI/ABC/MusicXML import and the 60-second song write follows the same choice.
+- **Commands** (Compose menu): **Accidentals with symbols** and **Accidentals as b and #** rewrite the selection or, with no
+  selection, the whole song (tracks, boxes, patterns); they are for old files or for anyone who wants plain letters.
+- A file that uses `♯` declares `ST: 2.13`; older versions of the library warn. If your screen reader reads the symbols badly,
+  switch the option off.
 
 ### Flat: `b`, `♭` or `-` (typing shortcut)
 
@@ -1740,6 +1763,14 @@ row.
 - Latin percussion (A row): `bongo_hi`, `bongo_low`, `conga_mute`,
   `conga_open`, `conga_low`, `timbale_hi`, `timbale_low`, `cabasa`,
   `maracas`, `claves`, `woodblock_hi`, `woodblock_low`.
+
+**Abbreviations** (ST 2.13). Every name can be written shorter, wherever the long name is valid (tracks, patterns, blocks
+`[bd hh]`): `bd` or `kk` for `kick`, `sn` or `sd` for `snare`, `hh` for `hihat`, `oh` for `hihat_open`, `cr` for `crash`, `rd`
+for `ride`, `ht` `t1` `mt` `t2` `ft` for the toms, `cp` for `clap`, `cow` for `cowbell`, and so on (53 in all, the list is in
+the specification). None is a single letter or reads as a note: `cb`, `ab`, `eb`... stay flats. The long names stay valid. In
+the Compose menu, **Percussion with abbreviations** and **Percussion with long names** rewrite the selection or the whole
+song; in Options, "Abbreviations in generated percussion" makes the generators write abbreviations (off by default).
+Autocomplete offers them with the long name beside them (`hh — hihat`), and the spoken reading always says the full name.
 
 ## 13. The ST-language specification and library
 

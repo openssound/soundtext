@@ -189,11 +189,19 @@ Quattro battute, per vedere come funziona:
    testo.
 
 Per un brano già completo, senza scrivere niente: **Progetto → Nuovo brano in 60 secondi...**. Scegli un genere (25),
-un'atmosfera e una durata; **Componi e ascolta** scrive un brano intero, in sezioni (box) con accordi, basso, batteria,
+un'atmosfera e una durata, e se vuoi la **Formazione** (vedi sotto); **Componi e ascolta** scrive un brano intero, in sezioni (box) con accordi, basso, batteria,
 accompagnamento e melodia. **Un'altra** cambia il seme, **Sorprendimi** sceglie a caso; con **Dettagli** scegli anche
 tonalità, tempo, forma, organico e un giro di accordi tuo. Con **Crea il brano** diventa il progetto, da modificare
 come ogni altro (le sezioni si vedono nella vista Struttura). Lo stesso brano, con lo stesso seme, esce anche su
 SoundText Mobile.
+
+**Formazione...** apre l'elenco di tutti gli strumenti disponibili (la batteria, i 128 General MIDI per famiglia e quelli di
+Gestione strumenti), ognuno con una casella: spunti quelli che devono suonare e confermi con **Conferma formazione**. Ogni
+strumento suona la parte del suo ruolo (accordi, basso, melodia, tappeto di archi o cori, fiati d'insieme, batteria): «solo
+chitarra» scrive gli accordi per la chitarra, «chitarra, basso e batteria» tre tracce, «sax, piano, basso e batteria» quattro
+con la melodia al sax, «solo basso» la linea di basso. Le parti che nessuno suona spariscono (senza uno strumento melodico non
+c'è la melodia). Ci sono al massimo due strumenti per accordi più un tappeto, un basso, una batteria e due melodici; gli altri
+restano fuori e la finestra lo dice. Senza nessuna spunta vale l'organico della ricetta (negli «Dettagli»).
 
 I dettagli aggiungono anche: **Testo compatto** (il testo si scrive in battute, con un pattern per ogni battuta che si ripete: il suono resta identico), **Umano** (da 0, tutte le note sulla griglia, a 100, il micro-tempo dello stile: il rullante un po' indietro nel funk, la cassa avanti nel punk; si scrive nel testo come `shift=N`) e **Energia del brano** (sale, sale e poi cala, cala: sostituisce l'intensità ricavata dal nome della sezione). Ogni genere ha i suoi strumenti, le sue scale (pentatonica nel country, blues nel blues e nel rock, minore armonica nel balcanico), i suoi effetti di partenza sul master e, in pop, ballata, soul e disco, uno strato di archi nei ritornelli; con più ritornelli l'ultimo riprende il tema un'ottava sopra, tramite un pattern.
 
@@ -584,6 +592,21 @@ lasciare la rampa "orfana" (aperta ma senza alcun effetto udibile, un bug
 silenzioso difficile da notare solo ascoltando). Un cambio di griglia (`N:`)
 in mezzo a una rampa gia' aperta non la chiude ne' la rompe — puo' comparire
 liberamente prima della nota/accordo che la chiude.
+
+### Bemolle e diesis con i simboli: `b` `♭` `#` `♯` (ST 2.13)
+
+`♯` vale `#` ovunque (note, accordi e basso dopo `/`, `key=`, sigle `$Bb7`, `Tonalita:`), come `♭` vale `b`. Il testo si
+riscrive dall'una all'altra forma senza cambiare il suono; le alterazioni dentro la sigla di un accordo (`C7#9`, `Cm7b5`)
+sono estensioni e restano come sono.
+
+- **Mentre si scrive** (Opzioni → «Scrivi ♭ e ♯ con i simboli», acceso di partenza): appena chiudi una nota, un accordo o
+  una tonalità (spazio, a capo, `|`, `]`, `)`, `}`), `eb` diventa `e♭`, `Bb7` diventa `B♭7`, `F#m` diventa `F♯m`. Un
+  Annulla riporta il testo com'era. Non cambiano commenti, testi cantati, richiami `%Nome` e `&file`, né la nota `b` da sola.
+  Anche il testo che i generatori, l'importazione MIDI/ABC/MusicXML e il brano in 60 secondi scrivono segue la stessa scelta.
+- **Comandi** (menu Componi): **Alterazioni con i simboli** e **Alterazioni come b e #** riscrivono la selezione o, senza
+  selezione, tutto il brano (tracce, box, pattern); servono per i file vecchi o per chi vuole file con lettere sole.
+- Un file che usa `♯` dichiara `ST: 2.13`; le versioni più vecchie della libreria avvisano. Chi usa uno screen reader che
+  legge male i simboli può spegnere l'opzione.
 
 ### Bemolle: `b`, `♭` o `-` (scorciatoia di digitazione)
 
@@ -1780,6 +1803,15 @@ senza supporto alle ottave. Corrispondono, nell'ordine, ai tasti usati in "Suona
 - Percussioni latine (riga A): `bongo_hi`, `bongo_low`, `conga_mute`,
   `conga_open`, `conga_low`, `timbale_hi`, `timbale_low`, `cabasa`,
   `maracas`, `claves`, `woodblock_hi`, `woodblock_low`.
+
+**Abbreviazioni** (ST 2.13). Ogni nome si può scrivere più corto, dovunque vale il nome lungo (tracce, pattern, blocchi
+`[bd hh]`): `bd` o `kk` per `kick`, `sn` o `sd` per `snare`, `hh` per `hihat`, `oh` per `hihat_open`, `cr` per `crash`, `rd` per
+`ride`, `ht` `t1` `mt` `t2` `ft` per i tom, `cp` per `clap`, `cow` per `cowbell`, e così via (53 in tutto, l'elenco è nella
+specifica). Nessuna è una lettera sola né si legge come una nota: `cb`, `ab`, `eb`... restano bemolli. I nomi lunghi restano
+validi. Nel menu Componi, **Percussioni con le abbreviazioni** e **Percussioni con i nomi lunghi** riscrivono la selezione o
+tutto il brano; in Opzioni, «Abbreviazioni nelle percussioni generate» fa scrivere le abbreviazioni ai generatori (spento di
+partenza). L'autocompletamento le propone con il nome lungo accanto (`hh — hihat`) e la lettura a voce dice sempre il nome
+intero.
 
 ## 13. La specifica e la libreria ST-language
 
