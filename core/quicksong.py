@@ -862,6 +862,8 @@ def resolve(options: Optional[dict] = None) -> dict:
         seeds[part] = _int(given, 0) if given not in (None, "") else _random.Random(f"{seed}/{part}").randrange(2 ** 31)
     mode, tempo_factor, intensities, mood_prog, _energy = MOODS_DATA[mood]
     key = options.get("key") or ""
+    if options.get("chords"):
+        _written_symbols(str(options["chords"]))            # un giro illeggibile si ferma qui, prima di scegliere tonalita' e modo
     if not key and options.get("chords"):
         key = _key_of_chords(str(options["chords"]))         # il giro scritto a mano decide la tonalita' (altrimenti e' a caso)
     minor_mood_in_major = not key and mode == "minor" and genre in _MAJOR_GENRES
@@ -1027,6 +1029,15 @@ def _scale_velocity(text: str, factor: float) -> str:
 _KEY_NAMES = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
 
 
+def _written_symbols(written: str) -> List[str]:
+    """I simboli del giro scritto a mano («Am F C G», anche con virgole o stanghette); ValueError se uno non e' un accordo."""
+    from core.chords import parse_chord_symbol
+    symbols = [s for s in re.split(r"[\s,|]+", written) if s]
+    for symbol in symbols:
+        parse_chord_symbol(symbol)
+    return symbols
+
+
 def _key_of_chords(written: str) -> str:
     """La tonalita' che meglio spiega un giro scritto a mano («Am F C G» -> «Am» o «C»), come la stima della melodia;
     '' se il giro non si legge (l'errore lo dara' _chord_loop)."""
@@ -1078,12 +1089,9 @@ def _chord_loop(written: str, bars: int, bar_beats: float = 4.0, transpose: int 
     """Il giro scritto a mano («Am F C G») ripetuto per 'bars' battute, come testo di accordi: un accordo per battuta intera,
     qualunque sia la metrica (la griglia e' l'ottavo, e ogni accordo dura quanti ottavi ha la battuta), trasposto di
     'transpose' semitoni quando il brano modula."""
-    from core.chords import parse_chord_symbol
-    symbols = [s for s in re.split(r"[\s,|]+", written) if s]
+    symbols = _written_symbols(written)                     # ValueError se non e' un accordo
     if not symbols:
         return None
-    for s in symbols:
-        parse_chord_symbol(s)                               # ValueError se non e' un accordo
     eighths = max(1, int(round(bar_beats * 2)))
     return "8: " + " ".join(f"{eighths}{_transpose_symbol(symbols[i % len(symbols)], transpose)}" for i in range(bars))
 
@@ -1183,8 +1191,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     last = len(sections) - 1
     fading = c["ending"] == "sfumato"
     harmony: Dict[Tuple, dict] = {}                          # accordi, accompagnamenti, basso, melodia: uguali nelle ripetizioni
-    drum_texts: Dict[Tuple, str] = {}
-    section_filled: Dict[int, bool] = {}                   # le sezioni che finiscono con un fill (la dopo entra col crash)                        # la batteria: in un loop cambia a ogni giro (i fill)
+    drum_texts: Dict[Tuple, str] = {}                        # la batteria: in un loop cambia a ogni giro (i fill)
+    section_filled: Dict[int, bool] = {}                     # le sezioni che finiscono con un fill (quella dopo entra col crash)
     boxes: List[str] = []
     patterns: Dict[str, str] = {}                            # i pattern del testo compatto (core.compact_text), uno per battuta ripetuta
     raw_patterns: Dict[str, str] = {}                        # gli stessi, come li ha scritti il generatore (prima del micro-tempo)
@@ -1495,13 +1503,14 @@ def _second_voice(body: str, chords, scale: set, kind: str, low: int, high: int,
         if ev.start < cursor - 1e-6:
             continue
         letter, octave = (ev.slide_points[-1] if ev.kind == "slide" and ev.slide_points else (ev.letter, ev.octave))
-        pitch = pick(pitch_to_midi(letter, octave), chord_at(ev.start))
+        melody_pitch = pitch_to_midi(letter, octave)
+        pitch = pick(melody_pitch, chord_at(ev.start))
         if pitch is None:
             continue
         while pitch < low:
             pitch += 12
-        if pitch > high:
-            continue
+        if pitch > high or pitch >= melody_pitch:
+            continue                                   # alzata d'ottava salirebbe sopra la melodia: le voci non si incrociano
         if ev.start > cursor + 1e-6:
             gap = int(round((ev.start - cursor) * 4))
             tokens.append(f"{gap if gap > 1 else ''}r")

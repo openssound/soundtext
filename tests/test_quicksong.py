@@ -983,7 +983,7 @@ def test_the_metal_drammatica_song_of_the_report_has_no_major_seventh_on_the_ton
     song = q.quick_song({"genre": "metal", "mood": "drammatica", "seed": 972825931, "key": "Gm", "duration": 60})
     assert "mMaj7" not in song["text"] and "GmMaj7" not in song["text"]
     classic = q.quick_song({"genre": "orchestrale", "mood": "tesa", "seed": 3, "key": "Gm", "duration": 60, "variety": 0})
-    assert "mMaj7" in classic["text"] or "Gm" in classic["text"]          # la scala armonica ha il Fa#: lì il colore resta ammesso
+    assert "mMaj7" in classic["text"]                                     # la scala armonica ha il Fa#: li' il colore resta
 
 
 def test_the_melody_receives_the_chords_the_accompaniment_plays(q):
@@ -1011,6 +1011,8 @@ def test_allowed_pcs_replaces_the_right_neighbour_for_chromatic_chords():
     assert 8 in e_major and 7 not in e_major and 9 in e_major
     c7 = _allowed_pcs(c_major, ChordSpan(0.0, 4.0, 0, True, 4, 10))                   # C7: il Si b al posto del Si
     assert 10 in c7 and 11 not in c7
+    g7 = _allowed_pcs([0, 2, 4, 7, 9], ChordSpan(0.0, 4.0, 7, True, 4, 10))           # G7 nella pentatonica di Do: il Fa e il Si si aggiungono,
+    assert {0, 4, 5, 11} <= set(g7)                                                    # il Do e il Mi restano
 
 
 def test_a_written_progression_decides_the_key_and_the_bars(q):
@@ -1054,8 +1056,8 @@ def test_the_bass_follows_the_inversions_and_the_seventh_of_the_chord():
     assert _resolve_role("root", c_over_e, None) == (0, 0)                             # un accompagnamento no
     assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, 11), None) == (11, 0)   # sotto Cmaj7 il Si naturale
     assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, 10), None) == (10, 0)
-    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, None), None) == (7, 0)  # su una triade maggiore la quinta
-    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 9, True, 3, None), None) == (7, 0)  # su una minore la settima minore (Am -> Sol)
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 0, True, 4, None), None) == (10, 0)  # su una triade la settima minore (boogie, blues)
+    assert _resolve_role("flat7", ChordSpan(0.0, 4.0, 9, True, 3, None), None) == (7, 0)   # Am -> Sol
 
 
 def test_the_pedal_holds_the_tonic_under_the_changing_chords(q):
@@ -1076,11 +1078,11 @@ def test_without_a_chorus_the_song_does_not_modulate(q):
 def test_the_accompaniment_stays_under_the_melody(q):
     from core.project_io import parse_project_text
     from core.rhythm_generate import part_registers
-    song = q.quick_song({"genre": "metal", "mood": "drammatica", "seed": 972825931, "key": "Gm", "duration": 60})
-    project = parse_project_text(song["text"], "Brano")
-    registers = part_registers(project)
-    if "melody_low" in registers and "comp_top" in registers:
-        assert registers["comp_top"] <= registers["melody_low"] + 12            # nessuna sovrapposizione grossa (prima l'organo copriva la melodia)
+    for genre in ("pop", "ballata", "bossa", "soul", "valzer"):                 # melodie a una voce, accompagnamenti polifonici
+        song = q.quick_song({"genre": genre, "seed": 3, "duration": 60, "variety": 0})
+        registers = part_registers(parse_project_text(song["text"], "Brano"))
+        assert "melody_low" in registers and "comp_top" in registers, genre
+        assert registers["comp_top"] <= registers["melody_low"] + 6, (genre, registers)   # l'accompagnamento resta sotto la melodia
 
 
 @pytest.mark.parametrize("genre,mood", [("metal", "drammatica"), ("rock", "tesa"), ("jazz", "misteriosa"), ("bossa", "nostalgica"),
@@ -1195,3 +1197,14 @@ def test_second_voice_on_the_chords():
     # (il la stride col si b), sotto il mi b il do della scala
     assert voice == "16: 76@ 4d*4 76@ 4g*4 76@ 4a#*4 76@ 4c*5 16r"
     assert qs._second_voice("8T: c*4 d*4 e*4", chords, scale, "thirds", 55, 90, 4.0) is None   # le terzine: resta la voce per gradi
+
+
+def test_the_second_voice_never_crosses_above_the_melody_and_bad_chords_stop_early(q):
+    from core.rhythm_generate import extract_chords_from_track
+    chords = extract_chords_from_track("4: 4C", {})
+    scale = q._melody_scale("", 0, "major")
+    # il mi4 sotto il sol4 starebbe sotto l'estensione (do5 in su): alzato d'ottava sarebbe sopra la melodia, quindi la nota si salta
+    voice = q._second_voice("4: g*4 c*6 e*6 g*6", chords, scale, "thirds", 72, 96, 4.0)
+    assert voice == "16: 4r 68@ 4a*5 68@ 4c*6 68@ 4e*6"                                # la prima nota (sol4) non ha seconda voce, le altre una terza sotto
+    with pytest.raises(ValueError):
+        q.resolve({"genre": "country", "mood": "grintosa", "chords": "Am F/X C G"})       # l'errore arriva subito, prima della tonalita'

@@ -68,7 +68,8 @@ def test_registers_of_the_parts_do_not_overlap(genre):
 
 def _strong_beat_hits(genre, seed):
     parts, bar = _song(genre, seed)
-    harmony = parts.get("comp", []) + parts.get("bass", []) + parts.get("comp2", [])
+    comping = parts.get("comp", []) + parts.get("comp2", [])
+    harmony = comping + parts.get("bass", [])
     hits = total = 0
     for start, _dur, notes in parts.get("melody", []):
         if abs(start % bar) > 1e-6:
@@ -77,9 +78,11 @@ def _strong_beat_hits(genre, seed):
         pitch_classes = {n % 12 for s, _d, ns in harmony if index * bar - 1e-6 <= s < (index + 1) * bar - 1e-6 for n in ns}
         if len(pitch_classes) < 2:
             continue                  # nella battuta suona solo la fondamentale del basso: l'accordo non si sente, non c'e' da misurare
-        for root in list(pitch_classes):
-            if (root + 7) % 12 in pitch_classes and not {(root + 3) % 12, (root + 4) % 12} & pitch_classes:
-                pitch_classes |= {(root + 3) % 12, (root + 4) % 12}    # un power chord (fondamentale e quinta): la terza la mette la melodia
+        chord = {n % 12 for s, _d, ns in comping if index * bar - 1e-6 <= s < (index + 1) * bar - 1e-6 for n in ns}
+        if len(chord) == 2 and any((root + 7) % 12 in chord for root in chord):
+            # l'accompagnamento suona solo power chord (fondamentale e quinta): la terza la mette la melodia
+            root = next(r for r in chord if (r + 7) % 12 in chord)
+            pitch_classes |= {(root + 3) % 12, (root + 4) % 12}
         hits += notes[-1] % 12 in pitch_classes
         total += 1
     return hits, total
@@ -95,7 +98,7 @@ def test_melody_notes_on_the_strong_beat_belong_to_the_chord():
         if total >= 6:
             assert hits / total >= 0.85, (genre, hits, total)
         all_hits, all_total = all_hits + hits, all_total + total
-    # contando la terza sopra i power chord e saltando le battute col solo basso il totale e' il 98-99 %: 0.95 tiene il margine
+    # contando la terza sopra i power chord e saltando le battute col solo basso il totale e' circa il 97,6 %: 0.95 tiene il margine
     assert all_hits / all_total >= 0.95, (all_hits, all_total)
 
 

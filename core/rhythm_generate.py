@@ -1402,10 +1402,9 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool
     if role == "sixth":
         return ((root + 9) % 12, 0)
     if role == "flat7":
-        # la settima dell'accordo se ce l'ha (la maggiore sotto un maj7); su una triade minore la minore, su una maggiore la quinta
-        if span.seventh is not None:
-            return ((root + span.seventh) % 12, 0)
-        return (((root + 10) % 12, 0) if span.third == 3 else (fifth, 0))
+        # la settima dell'accordo se ce l'ha (la maggiore sotto un maj7, niente si b sotto Cmaj7); su una triade la settima minore,
+        # che e' il suono del boogie, del blues e del funk
+        return ((root + (span.seventh if span.seventh is not None else 10)) % 12, 0)
     if role == "seventh":
         return (((root + span.seventh) % 12) if span.seventh is not None else root, 0 if span.seventh is not None else 1)
     if role in _APPROACH_STEPS:

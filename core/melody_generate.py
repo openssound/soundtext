@@ -116,8 +116,13 @@ def _allowed_pcs(scale_pcs: List[int], span: ChordSpan) -> List[int]:
             continue
         interval = (pc - span.root_pc) % 12
         near = [n for n in ((pc + 1) % 12, (pc - 1) % 12) if n in pcs and n not in chord]
-        if len(near) == 2:
-            near = [near[1] if interval in (4, 11) else near[0]]
+        if interval == 0 and len(near) == 1:
+            pass                                  # una fondamentale cromatica con una sola vicina in scala: prende il suo posto
+        else:
+            # la nota da cui e' alterata: sotto per la terza e la settima maggiori, sopra per le altre (abbassate); se quella non e'
+            # in scala non si toglie nulla (il fa di G7 nella pentatonica di do non toglie il mi)
+            from_note = (pc - 1) % 12 if interval in (4, 11) else (pc + 1) % 12
+            near = [from_note] if from_note in near else []
         for n in near:
             pcs.discard(n)
         pcs.add(pc)
