@@ -43,11 +43,11 @@ get $PY/packaging-26.1-py3-none-any.whl $V/pyodide/packaging-26.1-py3-none-any.w
 
 PYPI=https://files.pythonhosted.org/packages/py3
 rm -f $V/wheels/st_language-*.whl   # una sola versione: la snapshot di Pyodide dipende dalle wheel
-get $PYPI/s/st-language/st_language-2.12.2-py3-none-any.whl $V/wheels/st_language-2.12.2-py3-none-any.whl \
-    d647dc82fa2656a67cbd61a4903d67a9b7c8219ce01a8a27bf9e53329f500bb8
+get $PYPI/s/st-language/st_language-2.13.0-py3-none-any.whl $V/wheels/st_language-2.13.0-py3-none-any.whl \
+    63f7419bfce031d430903b001134d36484086b58abfaeca97c718dd62396753e
 get $PYPI/m/mido/mido-1.3.3-py3-none-any.whl $V/wheels/mido-1.3.3-py3-none-any.whl \
     01033c9b10b049e4436fca2762194ca839b09a4334091dd3c34e7f4ae674fd8a
-echo '["mido-1.3.3-py3-none-any.whl", "st_language-2.12.2-py3-none-any.whl"]' > $V/wheels/wheels.json
+echo '["mido-1.3.3-py3-none-any.whl", "st_language-2.13.0-py3-none-any.whl"]' > $V/wheels/wheels.json
 
 # npm pubblica l'impronta SHA-512 (campo "integrity" del pacchetto)
 curl -fsSL https://registry.npmjs.org/js-synthesizer/-/js-synthesizer-1.13.0.tgz -o "$TMP/jss.tgz"
