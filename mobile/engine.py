@@ -1329,7 +1329,8 @@ def pad_chords_text(events: list, options: Optional[dict] = None) -> dict:
 
     events: [{beat, text}] con 'beat' dall'inizio della registrazione e 'text' l'accordo come si scrive in
     ST (Am, G7, Gsus4, oppure un blocco [b*3 d*4 g*4]). options: bar_beats (4), total_beats (la fine della
-    registrazione: l'ultimo accordo dura fin li', portata a una battuta intera), grid ("bar", "half" o
+    registrazione: l'ultimo accordo dura fin li', portata a una battuta intera; un evento con 'end', il battito
+    in cui si e' lasciato il pad, dura quanto e' stato tenuto, almeno un passo, e poi viene la pausa), grid ("bar", "half" o
     "beat": a che passo si quantizza l'attacco; il passo si riduce al battito se la meta' battuta non e' intera).
     Restituisce {text: "4: 4Am 4F ...", bars, chords}. ValueError se non c'e' nessun accordo."""
     options = dict(options or {})
@@ -1340,16 +1341,20 @@ def pad_chords_text(events: list, options: Optional[dict] = None) -> dict:
         raise ValueError(f"griglia sconosciuta: {grid}")
     if unit != int(unit):
         unit = 1.0                                                    # durate intere: il token ST e' «4Am»
-    placed = {}
+    placed, held = {}, {}
     for ev in sorted(events, key=lambda e: float(e["beat"])):
         step = max(0, round(float(ev["beat"]) / unit))
         placed[step] = str(ev["text"])
+        held.pop(step, None)
+        if ev.get("end") is not None:                                 # tenuto fino a «end»: dura quanto e' tenuto
+            held[step] = max(step + 1, round(float(ev["end"]) / unit))
     if not placed:
         raise ValueError("Nessun accordo: tocca almeno un pad.")
     steps = sorted(placed)
     total = float(options.get("total_beats") or 0)
     # la fine: quella della registrazione, alla battuta piu' vicina, ma non prima dell'ultimo accordo
-    last_bar = math.ceil((steps[-1] + 1) * unit / bar - 1e-9) * bar
+    last_step = max(steps[-1] + 1, held.get(steps[-1], 0))
+    last_bar = math.ceil(last_step * unit / bar - 1e-9) * bar
     end = max(round(total / bar) * bar, last_bar)
     end_step = round(end / unit)
     tokens = []
@@ -1357,7 +1362,10 @@ def pad_chords_text(events: list, options: Optional[dict] = None) -> dict:
         tokens.append(f"{steps[0] * unit:g}r")
     for i, step in enumerate(steps):
         nxt = steps[i + 1] if i + 1 < len(steps) else end_step
-        tokens.append(f"{(nxt - step) * unit:g}{placed[step]}")
+        stop = min(nxt, held[step]) if step in held else nxt          # un accordo tenuto non va oltre il successivo
+        tokens.append(f"{(stop - step) * unit:g}{placed[step]}")
+        if stop < nxt:
+            tokens.append(f"{(nxt - stop) * unit:g}r")                # poi, fino al successivo, silenzio
     return {"text": "4: " + " ".join(tokens), "bars": round(end / bar), "chords": len(steps)}
 
 

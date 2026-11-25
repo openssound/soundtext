@@ -761,6 +761,16 @@ def test_pad_chords_text_quantizes_taps_to_bars_or_half_bars():
         e.pad_chords_text([{"beat": 0, "text": "C"}], {"grid": "mai"})
 
 
+def test_pad_chords_text_held_chord_lasts_as_long_as_it_is_held():
+    e = _quick()
+    taps = [{"beat": 0.1, "end": 7.9, "text": "Am"}, {"beat": 8.1, "end": 8.4, "text": "F"}, {"beat": 12.0, "text": "G"}]
+    # Am tenuto due battute, F toccato appena (un passo, poi pausa), G senza fine (fino al termine)
+    assert e.pad_chords_text(taps, {"total_beats": 16, "grid": "bar"})["text"] == "4: 8Am 4F 4G"
+    assert e.pad_chords_text([{"beat": 0, "end": 0.2, "text": "C"}, {"beat": 8, "text": "G"}], {"grid": "bar"})["text"] == "4: 4C 4r 4G"
+    # tenuto oltre il tocco dopo: si ferma li'
+    assert e.pad_chords_text([{"beat": 0, "end": 20, "text": "C"}, {"beat": 4, "text": "G"}], {"total_beats": 8})["text"] == "4: 4C 4G"
+
+
 def test_pad_drums_text_makes_a_groove_that_suona():
     e = _quick()
     from core.project_io import parse_project_text
