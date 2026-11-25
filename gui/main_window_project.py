@@ -540,6 +540,31 @@ class ProjectMixin:
                 return False
         return True
 
+    def copy_share_link(self):
+        """Copia negli appunti il link del brano per SoundText Mobile: chi lo apre (telefono o browser) lo ascolta, lo salva
+        fra i suoi brani o ne fa un remix, senza installare niente. Il brano sta tutto nel link: non passa da nessun server."""
+        from core.project_io import project_to_text
+        from core.share_link import LONG_LINK, make_url
+        if not self._check_tracks_syntax():
+            return
+        name = (self.project.name or "").strip() or (os.path.splitext(os.path.basename(self.current_path or ""))[0]) or "SoundText"
+        try:
+            url = make_url(name, project_to_text(self.project))
+        except ValueError:
+            QMessageBox.warning(self, tr("Link del brano"), tr("Il brano è troppo grande per un link: manda il file .st."))
+            return
+        QApplication.clipboard().setText(url)
+        lines = [tr("Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.", name=name, n=len(url)),
+                 "",
+                 tr("Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, "
+                    "e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.")]
+        if len(url) > LONG_LINK:
+            lines += ["", tr("Il link è lungo: alcune app lo tagliano. Se non si apre, manda il file .st.")]
+        if any(t.is_audio or t.synth for t in self.project.tracks):          # audio, SFZ o plugin: il telefono non li ha
+            lines += ["", tr("Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.")]
+        QMessageBox.information(self, tr("Link del brano"), "\n".join(lines))
+        self.statusBar().showMessage(tr("Link del brano copiato negli appunti"), 4000)
+
     def export_midi(self):
         if not self._check_tracks_syntax():
             return

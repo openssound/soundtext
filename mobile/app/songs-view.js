@@ -249,7 +249,35 @@ async function openSharedLink() {
   setEditable(false);                          // prima l'ascolto; per modificare si fa una copia
   setView("testo");
   announce(t("Brano condiviso aperto: {name}. Si può ascoltare; per modificarlo si fa una copia.", { name: shared.name }));
+  showLinkWelcome(shared.name, f.text);
   return ready;
+}
+
+// Chi apre un link vede subito che cosa puo' fare: ascoltare (il tocco serve anche a sbloccare l'audio), farne un remix
+// se il brano e' di «Un brano in 60 secondi» (le sue scelte sono nel commento "// quick:"), salvarlo fra i suoi brani.
+function showLinkWelcome(name, text) {
+  const dialog = $("linkWelcome");
+  if (!dialog || dialog.open) return;
+  $("linkWelcomeTitle").textContent = name;
+  const remix = /^\/\/ quick: \{/m.test(text || "");
+  $("linkWelcomeRemix").hidden = !remix;
+  $("linkWelcomeRemixHint").hidden = !remix;
+  dialog.showModal();
+}
+
+async function remixShared() {
+  $("linkWelcome").close();
+  await openQuick();
+  await quickFromDoc();
+  setQuickStatus(t("Le scelte del brano condiviso sono qui: cambia genere o atmosfera e tocca Crea."));
+}
+
+function setupLinkWelcome() {
+  const dialog = $("linkWelcome");
+  $("linkWelcomePlay").onclick = () => { dialog.close(); play(); };
+  $("linkWelcomeRemix").onclick = () => remixShared().catch(showError);
+  $("linkWelcomeSave").onclick = () => { dialog.close(); copyShared().catch(showError); };
+  $("linkWelcomeClose").onclick = () => dialog.close();
 }
 
 async function copyShared() {

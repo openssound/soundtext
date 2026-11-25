@@ -45,6 +45,7 @@ async function main() {
   setupVoice();
   setupHum();
   setupQuick();
+  setupLinkWelcome();
   setupStudy();
   setupAccess();
   setupBackup();

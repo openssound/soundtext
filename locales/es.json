@@ -3535,5 +3535,18 @@
  "Usa gli strumenti campionati già scaricati": "Usar los instrumentos muestreados ya descargados",
  "Usa il SoundFont completo": "Usar el SoundFont completo",
  "Usa {name}": "Usar {name}",
- "nessun SoundFont": "ningún SoundFont"
+ "nessun SoundFont": "ningún SoundFont",
+ "Ti hanno mandato un brano fatto con SoundText:": "Te han enviado una canción hecha con SoundText:",
+ "Fanne un remix": "Haz un remix",
+ "Lo stesso brano in un altro genere o con un'altra atmosfera.": "La misma canción en otro género o con otro ambiente.",
+ "Salva fra i miei brani": "Guardar en mis canciones",
+ "Le scelte del brano condiviso sono qui: cambia genere o atmosfera e tocca Crea.": "Las opciones de la canción compartida están aquí: cambia el género o el ambiente y toca Crear.",
+ "Copia il link del brano": "Copiar el enlace de la canción",
+ "Copia negli appunti un link che apre il brano nell'app web di SoundText (telefono o browser): chi lo riceve lo ascolta e lo salva senza installare niente.": "Copia al portapapeles un enlace que abre la canción en la aplicación web de SoundText (teléfono o navegador): quien lo recibe la escucha y la guarda sin instalar nada.",
+ "Link del brano": "Enlace de la canción",
+ "Il brano è troppo grande per un link: manda il file .st.": "La canción es demasiado grande para un enlace: envía el archivo .st.",
+ "Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.": "El enlace de «{name}» está en el portapapeles ({n} caracteres): pégalo en un mensaje, un correo o una publicación.",
+ "Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.": "Quien lo abre escucha la canción en la aplicación web de SoundText, en el teléfono o en el navegador, sin instalar nada, y puede guardarla en sus canciones. La canción va entera en el enlace: no pasa por ningún servidor.",
+ "Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.": "En la aplicación web no están las pistas de audio y los instrumentos SFZ o plugins suenan con el SoundFont.",
+ "Link del brano copiato negli appunti": "Enlace de la canción copiado al portapapeles"
 }

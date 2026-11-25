@@ -434,6 +434,10 @@ class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QM
             tr("MTXT..."), self.export_mtxt,
             tooltip=tr("Esporta le tracce udibili in MTXT (testo, un evento per riga): note, strumenti, "
             "automazioni, tempo e metrica, come nel MIDI.")))
+        file_menu.addAction(self._action(
+            tr("Copia il link del brano"), self.copy_share_link,
+            tooltip=tr("Copia negli appunti un link che apre il brano nell'app web di SoundText (telefono o browser): "
+                       "chi lo riceve lo ascolta e lo salva senza installare niente.")))
         file_menu.addSeparator()
         file_menu.addAction(self._action(
             tr("Cache su disco..."), self.manage_disk_cache,

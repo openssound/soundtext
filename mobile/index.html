@@ -520,6 +520,17 @@
   <button id="qrClose" class="sheet-close" data-i18n>Chiudi</button>
 </dialog>
 
+<!-- Chi apre un link condiviso: prima si ascolta, poi si salva o se ne fa un remix -->
+<dialog id="linkWelcome" class="sheet link-welcome" aria-labelledby="linkWelcomeTitle">
+  <p class="hint" data-i18n>Ti hanno mandato un brano fatto con SoundText:</p>
+  <h2 id="linkWelcomeTitle"></h2>
+  <button id="linkWelcomePlay" class="primary link-welcome-play"><span aria-hidden="true">▶ </span><span data-i18n>Ascolta</span></button>
+  <button id="linkWelcomeRemix" class="quick-song"><span aria-hidden="true">✦ </span><span data-i18n>Fanne un remix</span></button>
+  <p id="linkWelcomeRemixHint" class="hint" data-i18n>Lo stesso brano in un altro genere o con un'altra atmosfera.</p>
+  <button id="linkWelcomeSave" data-i18n>Salva fra i miei brani</button>
+  <button id="linkWelcomeClose" class="sheet-close" data-i18n>Chiudi</button>
+</dialog>
+
 <!-- Canta: una melodia canticchiata diventa testo nella traccia del cursore -->
 <dialog id="humDialog" class="sheet" aria-labelledby="humTitle">
   <h2 id="humTitle"></h2>

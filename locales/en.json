@@ -3535,5 +3535,18 @@
  "Usa gli strumenti campionati già scaricati": "Use the sampled instruments already downloaded",
  "Usa il SoundFont completo": "Use the full SoundFont",
  "Usa {name}": "Use {name}",
- "nessun SoundFont": "no SoundFont"
+ "nessun SoundFont": "no SoundFont",
+ "Ti hanno mandato un brano fatto con SoundText:": "Someone sent you a song made with SoundText:",
+ "Fanne un remix": "Remix it",
+ "Lo stesso brano in un altro genere o con un'altra atmosfera.": "The same song in another genre or with another mood.",
+ "Salva fra i miei brani": "Save to my songs",
+ "Le scelte del brano condiviso sono qui: cambia genere o atmosfera e tocca Crea.": "The shared song's choices are here: change genre or mood and tap Create.",
+ "Copia il link del brano": "Copy song link",
+ "Copia negli appunti un link che apre il brano nell'app web di SoundText (telefono o browser): chi lo riceve lo ascolta e lo salva senza installare niente.": "Copies to the clipboard a link that opens the song in the SoundText web app (phone or browser): whoever receives it can listen and save it without installing anything.",
+ "Link del brano": "Song link",
+ "Il brano è troppo grande per un link: manda il file .st.": "The song is too large for a link: send the .st file.",
+ "Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.": "The link to “{name}” is on the clipboard ({n} characters): paste it into a message, an email or a post.",
+ "Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.": "Whoever opens it listens to the song in the SoundText web app, on a phone or in a browser, without installing anything, and can save it to their songs. The whole song is inside the link: it goes through no server.",
+ "Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.": "In the web app audio tracks are left out and SFZ or plugin instruments play with the SoundFont.",
+ "Link del brano copiato negli appunti": "Song link copied to the clipboard"
 }

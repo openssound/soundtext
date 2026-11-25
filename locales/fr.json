@@ -3535,5 +3535,18 @@
  "Usa gli strumenti campionati già scaricati": "Utiliser les instruments échantillonnés déjà téléchargés",
  "Usa il SoundFont completo": "Utiliser le SoundFont complet",
  "Usa {name}": "Utiliser {name}",
- "nessun SoundFont": "aucun SoundFont"
+ "nessun SoundFont": "aucun SoundFont",
+ "Ti hanno mandato un brano fatto con SoundText:": "On t'a envoyé un morceau créé avec SoundText :",
+ "Fanne un remix": "Fais-en un remix",
+ "Lo stesso brano in un altro genere o con un'altra atmosfera.": "Le même morceau dans un autre genre ou avec une autre ambiance.",
+ "Salva fra i miei brani": "Enregistrer dans mes morceaux",
+ "Le scelte del brano condiviso sono qui: cambia genere o atmosfera e tocca Crea.": "Les choix du morceau partagé sont ici : change de genre ou d'ambiance et touche Créer.",
+ "Copia il link del brano": "Copier le lien du morceau",
+ "Copia negli appunti un link che apre il brano nell'app web di SoundText (telefono o browser): chi lo riceve lo ascolta e lo salva senza installare niente.": "Copie dans le presse-papiers un lien qui ouvre le morceau dans l'application web SoundText (téléphone ou navigateur) : qui le reçoit l'écoute et l'enregistre sans rien installer.",
+ "Link del brano": "Lien du morceau",
+ "Il brano è troppo grande per un link: manda il file .st.": "Le morceau est trop grand pour un lien : envoie le fichier .st.",
+ "Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.": "Le lien de « {name} » est dans le presse-papiers ({n} caractères) : colle-le dans un message, un e-mail ou une publication.",
+ "Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.": "Qui l'ouvre écoute le morceau dans l'application web SoundText, sur téléphone ou dans le navigateur, sans rien installer, et peut l'enregistrer dans ses morceaux. Le morceau tient entièrement dans le lien : il ne passe par aucun serveur.",
+ "Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.": "Dans l'application web, les pistes audio sont absentes et les instruments SFZ ou plugins jouent avec le SoundFont.",
+ "Link del brano copiato negli appunti": "Lien du morceau copié dans le presse-papiers"
 }

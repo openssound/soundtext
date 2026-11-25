@@ -493,3 +493,8 @@ body.loading-sounds #play { opacity: .5; }
   background: var(--card, #223); border-bottom: 1px solid var(--line); }
 .pack-hint[hidden] { display: none; }
 .pack-hint button { min-height: 44px; }
+/* chi apre un link condiviso: ascoltare, fare un remix, salvare */
+.link-welcome h2 { font-size: 20px; margin: 4px 0 14px; }
+.link-welcome button { display: block; width: 100%; min-height: 48px; margin: 0 0 8px; }
+.link-welcome .link-welcome-play { min-height: 56px; font-size: 18px; }
+.link-welcome .hint { margin: 0 0 10px; }
