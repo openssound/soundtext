@@ -12,7 +12,7 @@ from core.instruments import list_instrument_names, set_session_instruments
 from core.notation import (validate_track_text, rewrite_tokens, map_nested_tokens, split_note_value,
                            RE_ARPEGGIO_SUFFIX, RE_CHORD, relative_text, key_signature_alters, NotationError)
 from core.chords import parse_chord_symbol, voice_chord, midi_to_token, apply_bass_note
-from core.project_io import load_project_file, parse_project_text, save_project_file, ensure_songs_dir, EXAMPLES_DIR
+from core.project_io import load_project_file, save_project_file, ensure_songs_dir, EXAMPLES_DIR
 from core.midi_export import export_project_to_midi
 from core.musicxml_export import export_project_to_musicxml
 from core.midi_import import import_midi_file
