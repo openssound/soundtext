@@ -1224,3 +1224,15 @@ def test_daily_song_depends_only_on_the_day(q):
     assert q.quick_song(options)["text"] == q.quick_song(options)["text"]
     with pytest.raises(ValueError):
         q.quick_daily("ieri")
+
+
+def test_loud_chord_instruments_are_trimmed(monkeypatch):
+    """La chitarra jazz con accordi a 4-6 note copriva basso e melodia: la sua velocity scritta e' ridotta."""
+    from core import quicksong as q
+    assert q._instrument_velocity("Jazz_Guitar") < 1 and q._instrument_velocity("Rock_Organ") < 1
+    assert q._instrument_velocity("Acoustic_Bass") == 1.0
+    options = {"genre": "jazz", "seed": 5}
+    assert q.quick_song(options)["choices"]["instruments"]["comp"] == "Jazz_Guitar"
+    trimmed = q.quick_song(options)["text"]
+    monkeypatch.setattr(q, "_INSTRUMENT_VELOCITY", {})
+    assert trimmed != q.quick_song(options)["text"]

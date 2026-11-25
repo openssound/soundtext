@@ -1020,6 +1020,16 @@ _LEVELS = ("light", "normal", "full")
 
 
 _ORGAN_VELOCITY = 0.68
+# Misurato col pacchetto di suoni del telefono (FluidSynth, un brano per genere): a pari velocity questi strumenti, con gli accordi a
+# 4-6 note, stanno 3-7 dB sopra il basso e la melodia e hanno picchi vicini al fondo scala. La velocity scritta si riduce di questo fattore.
+_INSTRUMENT_VELOCITY = {"Jazz_Guitar": 0.78, "Electric_Piano_1": 0.8, "Overdriven_Guitar": 0.65}
+
+
+def _instrument_velocity(name) -> float:
+    name = str(name)
+    if "Organ" in name:                                    # l'organo tiene le note lunghe e a pari velocity copre tutto
+        return _ORGAN_VELOCITY
+    return _INSTRUMENT_VELOCITY.get(name, 1.0)
 
 
 def _scale_velocity(text: str, factor: float) -> str:
@@ -1350,8 +1360,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
             vfactor = _MOOD_COLOR.get(c["mood"], {}).get("velocity")
             if vfactor and vfactor != 1:                       # l'atmosfera suona piu' piano o piu' forte
                 body = _scale_velocity(body, vfactor)
-            if "Organ" in str(c["instruments"].get(part, "")):   # l'organo tiene le note lunghe e a pari velocity copre tutto: piu' piano
-                body = _scale_velocity(body, _ORGAN_VELOCITY)
+            hot = _instrument_velocity(c["instruments"].get(part, ""))
+            if hot != 1:                                       # gli strumenti che a pari velocity coprono le altre parti suonano piu' piano
+                body = _scale_velocity(body, hot)
             if fading and role == "end":
                 body = _scale_velocity(body, 0.85)
             elif role == "fade":
