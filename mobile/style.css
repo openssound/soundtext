@@ -90,10 +90,12 @@ dialog.pad-sheet::backdrop { background: rgba(0, 0, 0, .6); }
   background: var(--panel, #2b2d31); border: 2px solid var(--line); color: var(--text); padding: 4px; }
 .pad-btn small { font-size: 12px; font-weight: 400; color: var(--dim); margin-top: 2px; }
 .pad-grid.drums .pad-btn { font-size: 15px; }
-.pad-chord { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
-.pad-chord > .pad-btn { flex: 1 1 auto; }
-.pad-variants { display: flex; gap: 4px; }
-.pad-variants .pad-variant { flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px; }
+.pad-chord { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; min-height: 0; }
+.pad-chord > .pad-btn, .pad-variants .pad-variant { min-width: 0; min-height: 0; border-radius: 12px; padding: 2px; }
+.pad-chord > .pad-btn { font-size: 18px; }
+.pad-chord > .pad-btn small { font-size: 10px; margin-top: 0; }
+.pad-variants { display: contents; }
+.pad-variants .pad-variant { font-size: 12px; font-weight: 600; }
 .pad-btn.down, .pad-btn:active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .pad-btn.down small, .pad-btn:active small { color: var(--on-accent); }
 .pad-controls { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -499,3 +501,7 @@ body.loading-sounds #play { opacity: .5; }
 .link-welcome button { display: block; width: 100%; min-height: 48px; margin: 0 0 8px; }
 .link-welcome .link-welcome-play { min-height: 56px; font-size: 18px; }
 .link-welcome .hint { margin: 0 0 10px; }
+
+.qf-list { max-height: 50vh; overflow-y: auto; }
+.qf-list summary { padding: 10px 0; font-weight: 600; min-height: 44px; }
+.qf-list label.check { min-height: 40px; }

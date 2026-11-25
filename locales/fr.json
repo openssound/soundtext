@@ -3598,5 +3598,11 @@
  "Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono.": "Le genre, l'ambiance et la graine d'aujourd'hui : le même morceau pour tous, sur l'ordinateur et sur le téléphone.",
  "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Morceau du jour ({day}) : {genre}, ambiance {mood}. Touche « Créer et écouter » : c'est le même pour tous.",
  "Bemolli e diesis come simboli": "Bémols et dièses en symboles",
- "Percussioni abbreviate": "Percussions abrégées"
+ "Percussioni abbreviate": "Percussions abrégées",
+ "Scegli gli strumenti…": "Choisir les instruments…",
+ "Cambia gli strumenti…": "Changer les instruments…",
+ "rimasti fuori: {names}": "laissés de côté : {names}",
+ "Nessuna (della ricetta)": "Aucun (celui de la recette)",
+ "Fatto": "Terminé",
+ "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Coche les instruments qui doivent jouer dans le morceau : « guitare seule », « guitare, basse et batterie », « basse seule »."
 }

@@ -347,6 +347,17 @@
 </dialog>
 
 <!-- I pad: gli accordi della tonalità e la batteria, per creare toccando -->
+<!-- La formazione di «Un brano in 60 secondi»: gli strumenti scelti uno per uno -->
+<dialog id="quickFormation" class="pad-sheet" aria-labelledby="qfTitle">
+  <h2 id="qfTitle" data-i18n>Formazione</h2>
+  <p class="hum-status" data-i18n>Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».</p>
+  <div id="qfList" class="qf-list"></div>
+  <div class="sheet-actions columns two">
+    <button id="qfOk" class="primary" data-i18n>Fatto</button>
+    <button id="qfClear" data-i18n>Nessuna (della ricetta)</button>
+  </div>
+</dialog>
+
 <dialog id="padDialog" class="pad-sheet" aria-labelledby="padTitle">
   <h2 id="padTitle"></h2>
   <p id="padInfo" class="hint"></p>
@@ -446,6 +457,8 @@
   <div id="quickGenres" class="quick-genres" role="group" aria-label="Genere"></div>
   <label class="hum-grid"><span data-i18n>Atmosfera:</span><select id="quickMood"></select></label>
   <label class="hum-grid"><span data-i18n>Durata:</span><select id="quickDuration"></select></label>
+  <div class="hum-grid"><span data-i18n>Formazione:</span><button id="quickFormationOpen" type="button" data-i18n>Scegli gli strumenti…</button></div>
+  <p id="quickFormationText" class="hum-status" role="status" aria-live="polite"></p>
   <div id="quickDetail" class="quick-detail" hidden>
     <h3 data-i18n>Dettagli</h3>
     <label class="hum-grid"><span data-i18n>Tonalità:</span><select id="quickKey"></select></label>

@@ -1201,6 +1201,22 @@ def quick_choices() -> dict:
     return quicksong.quick_choices()
 
 
+def quick_formation_catalog() -> list:
+    """Tutti gli strumenti da proporre nella formazione, a gruppi: [{label, instruments: [{value, label, role}]}]."""
+    from core import quick_formation
+    return quick_formation.catalog()
+
+
+def quick_formation_describe(names: list) -> dict:
+    """La formazione scelta in una riga ({text}), con gli strumenti rimasti fuori ({left_out}); {error} se non si legge."""
+    from core import quick_formation
+    try:
+        parts, left_out = quick_formation.assign([str(n) for n in names])
+    except ValueError as e:
+        return {"error": str(e)}
+    return {"text": quick_formation.describe(parts), "left_out": left_out}
+
+
 def quick_song(options: Optional[dict] = None) -> dict:
     from core import quicksong
     return quicksong.quick_song(options)

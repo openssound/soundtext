@@ -98,6 +98,9 @@ engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "r
 engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "sfumato", "chords": "Am F C G", "seed": 1})
 engine.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 1})
 engine.quick_choices(); engine.quick_read("// quick: {}")
+# la formazione: gli strumenti scelti uno per uno
+engine.quick_formation_catalog(); engine.quick_formation_describe(["Nylon_Guitar", "Bass", "Drums"])
+engine.quick_song({"genre": "pop", "mood": "calma", "duration": 15, "seed": 1, "formation": ["Nylon_Guitar", "Bass", "Drums"]})
 # modalita' studio: le note di una traccia e gli accordi per la vista accordi
 engine.track_notes(source, "Piano"); engine.chord_chart(source); engine.speak_at(source, 400); engine.visual_notes(source)
 # partire da un'idea: la melodia armonizzata, gli stili personali e le parti che seguono la struttura

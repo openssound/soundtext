@@ -168,7 +168,7 @@ function padMake(label, small, index) {
   return b;
 }
 
-// Ogni accordo e' un blocco di quattro tasti: l'accordo e, sotto, le tre varianti (settima, sospeso, rivolto).
+// Ogni accordo e' un quadrato diviso in quattro parti uguali: l'accordo e le tre varianti (settima, sospeso, rivolto).
 // Tenuto premuto, l'accordo dura quanto lo si tiene (il motore scrive la durata dal rilascio).
 function padBuildChords() {
   const grid = $("padGrid");

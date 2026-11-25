@@ -3598,5 +3598,11 @@
  "Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono.": "El género, el ambiente y la semilla de hoy: la misma canción para todos, en el ordenador y en el teléfono.",
  "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Canción del día ({day}): {genre}, ambiente {mood}. Toca «Crear y escuchar»: es la misma para todos.",
  "Bemolli e diesis come simboli": "Bemoles y sostenidos como símbolos",
- "Percussioni abbreviate": "Percusión abreviada"
+ "Percussioni abbreviate": "Percusión abreviada",
+ "Scegli gli strumenti…": "Elegir los instrumentos…",
+ "Cambia gli strumenti…": "Cambiar los instrumentos…",
+ "rimasti fuori: {names}": "fuera: {names}",
+ "Nessuna (della ricetta)": "Ninguno (el de la receta)",
+ "Fatto": "Hecho",
+ "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Marca los instrumentos que deben tocar en la canción: «solo guitarra», «guitarra, bajo y batería», «solo bajo»."
 }

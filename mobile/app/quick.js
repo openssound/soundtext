@@ -142,6 +142,52 @@ function quickLabelOf(id, value) {
   return item ? item.label : String(value);
 }
 
+// ---- la formazione: gli strumenti scelti uno per uno (core/quick_formation.py); senza, vale l'organico della ricetta
+
+async function quickFormationOpen() {
+  if (!quick.formationCatalog) quick.formationCatalog = (await call("quick_formation_catalog", { args: [] })).result;
+  const chosen = new Set(quick.opts.formation || []);
+  const list = $("qfList");
+  list.innerHTML = "";
+  for (const group of quick.formationCatalog) {
+    const box = document.createElement("details");
+    box.open = group.instruments.some((i) => chosen.has(i.value)) || group.instruments.length <= 1;
+    const head = document.createElement("summary");
+    head.textContent = group.label;
+    box.append(head);
+    for (const item of group.instruments) {
+      const label = document.createElement("label");
+      label.className = "check";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = item.value;
+      input.checked = chosen.has(item.value);
+      const text = document.createElement("span");
+      text.textContent = item.label;
+      label.append(input, " ", text);
+      box.append(label);
+    }
+    list.append(box);
+  }
+  $("quickFormation").showModal();
+}
+
+function quickFormationApply(names) {
+  if (names.length) quick.opts.formation = names; else delete quick.opts.formation;
+  quickSave();
+  quickFormationShow().catch(() => {});
+}
+
+async function quickFormationShow() {
+  const names = quick.opts.formation || [];
+  $("quickEnsemble").disabled = names.length > 0;
+  $("quickFormationOpen").textContent = names.length ? t("Cambia gli strumenti…") : t("Scegli gli strumenti…");
+  if (!names.length) { $("quickFormationText").textContent = t("della ricetta"); return; }
+  const r = (await call("quick_formation_describe", { args: [names] })).result;
+  $("quickFormationText").textContent = r.error ? "✗ " + r.error
+    : r.text + (r.left_out.length ? " — " + t("rimasti fuori: {names}", { names: r.left_out.join(", ").replace(/_/g, " ") }) : "");
+}
+
 function quickBuildDetail() {
   const c = quick.choices, o = quick.opts;
   quickFill($("quickKey"), c.keys, o.key, t("della ricetta"));
@@ -475,6 +521,7 @@ async function quickSaveSong(made) {
 function quickShowResult(made) {
   const parts = [made.name, formatClock(made.seconds), made.key.replace(/m$/, " " + t("minore")), t("{n} BPM", { n: made.bpm }),
                  made.meter, t("{n} battute", { n: made.sections.reduce((n, s) => n + s.bars, 0) })];
+  if (made.formation && made.formation.length) parts.push(made.formation.map((n) => n.replace(/_/g, " ")).join(", "));
   $("quickSummary").textContent = parts.join(" · ");
   $("quickFallback").textContent = made.fallback || "";
   $("quickFallback").hidden = !made.fallback;
@@ -498,6 +545,7 @@ function quickSyncControls() {
   for (const b of document.querySelectorAll("#quickGenres .quick-genre")) b.setAttribute("aria-pressed", String(b.dataset.genre === quick.opts.genre));
   quickBuildDetail();
   quickDefaults();
+  quickFormationShow().catch(() => {});
 }
 
 // «Parti da questo brano»: le scelte salvate nel brano aperto tornano nella finestra
@@ -506,7 +554,7 @@ async function quickFromDoc() {
   const saved = (await call("quick_read", { args: [state.doc.text] })).result;
   if (!saved) { setQuickStatus(t("Questo brano non è stato fatto da «Un brano in 60 secondi»."), true); return; }
   quick.opts = { genre: saved.genre, mood: saved.mood, duration: quick.opts.duration || 60, key: saved.key, bpm: saved.bpm, meter: saved.meter,
-                 form: saved.form, ensemble: saved.ensemble, melody: saved.melody, ending: saved.ending, modulation: saved.modulation,
+                 form: saved.form, ensemble: saved.ensemble, formation: saved.formation, melody: saved.melody, ending: saved.ending, modulation: saved.modulation,
                  density: saved.density, chords: saved.chords || "", bars: saved.bars, loop: saved.loop, seed: saved.seed };
   quick.parts = {};
   for (const [p, seed] of Object.entries(saved.seeds || {})) quick.parts[p] = { seed, style: (saved.styles || {})[p], locked: false };
@@ -573,6 +621,12 @@ function setupQuick() {
   $("quickAgain").onclick = () => quickRegenerate("again");
   $("quickSurprise").onclick = () => quickRegenerate("surprise");
   $("quickClose").onclick = quickClose;
+  $("quickFormationOpen").onclick = () => quickFormationOpen().catch(showError);
+  $("qfOk").onclick = () => {
+    quickFormationApply([...document.querySelectorAll("#qfList input:checked")].map((i) => i.value));
+    $("quickFormation").close();
+  };
+  $("qfClear").onclick = () => { quickFormationApply([]); $("quickFormation").close(); };
   $("quickPlay").onclick = () => play();
   $("quickOpenCrea").onclick = () => { quickClose(); setView("crea"); };
   $("quickFromDoc").onclick = () => quickFromDoc().catch(showError);

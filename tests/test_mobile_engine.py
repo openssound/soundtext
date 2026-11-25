@@ -1019,3 +1019,22 @@ def test_phone_writes_flats_and_sharps_as_symbols_and_abbreviates_percussion():
     plain = engine.dictate("Piano:\n  4: c", "do diesis semiminima", "it")
     styled = engine.dictate("Piano:\n  4: c", "do diesis semiminima", "it", "auto", True)
     assert "#" in plain["text"] and "♯" in styled["text"] and "#" not in styled["text"]
+
+
+def test_phone_quick_song_formation_lists_describes_and_plays_only_the_chosen_instruments():
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    groups = engine.quick_formation_catalog()
+    values = {i["value"] for g in groups for i in g["instruments"]}
+    assert {"Drums", "Acoustic_Guitar_nylon", "Acoustic_Grand_Piano"} <= values
+    described = engine.quick_formation_describe(["Nylon_Guitar", "Bass", "Drums"])
+    assert described == {"text": "Nylon Guitar, Bass, Drums", "left_out": []}
+    assert "error" in engine.quick_formation_describe([])
+    for formation in (["Nylon_Guitar"], ["Nylon_Guitar", "Bass", "Drums"], ["Bass"]):
+        made = engine.quick_song({"genre": "pop", "mood": "calma", "duration": 15, "seed": 1, "formation": formation})
+        assert made["formation"] == formation
+        tracks = re.findall(r"^(\w+):\s*$", made["text"], re.M)
+        assert all(name.replace("_", "") in "".join(tracks).replace("_", "") for name in formation if name != "Drums")
