@@ -35,7 +35,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>A song in the structure view, with the mixer</caption>
-      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.21.0/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.22.0/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <categories>
@@ -58,6 +58,17 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.22.0" date="2026-11-25">
+      <description>
+        <p>Songs in 60 seconds sound more coherent, with an automatic harmony check and a phone app with instrument packs.</p>
+        <ul>
+          <li>Song in 60 seconds: melody and coloured chords agree, fills and crashes at section changes, a second voice over the chords, and a lineup checked genre by genre</li>
+          <li>New harmony check (python -m core.harmony_check song.st) that finds melody notes clashing with bass and accompaniment</li>
+          <li>More genres and moods, swing, borrowed chords and chord symbols in the Generate windows</li>
+          <li>SoundText Mobile: instrument packs in SF3 and a reduced General MIDI sound base</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.21.0" date="2026-11-21">
       <description>
         <p>A whole song in 60 seconds, a more readable generated text, richer generators and screen reader support.</p>
