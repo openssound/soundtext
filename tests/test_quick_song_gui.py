@@ -93,6 +93,20 @@ def test_another_and_surprise_change_the_song_and_the_menu_command_replaces_the_
     assert w._dirty                                                                  # un brano nuovo da salvare
 
 
+def test_daily_button_composes_todays_song(app, monkeypatch):
+    """«Brano del giorno»: il dialogo compone con le scelte e il seme di oggi, qualunque cosa ci sia nei dettagli."""
+    from core.quicksong import quick_daily
+    dlg = _dialog(app, monkeypatch)
+    dlg.detail_check.setChecked(True)
+    dlg.density.setValue(100)
+    seen = []
+    monkeypatch.setattr(dlg, "compose", lambda listen=True: seen.append(dlg.options()))
+    dlg._daily()
+    daily = quick_daily()
+    assert seen == [{"genre": daily["genre"], "mood": daily["mood"], "duration": 60, "seed": daily["seed"]}]
+    assert dlg._daily_seed is None
+
+
 def test_arrange_dialog_lists_every_section_and_says_where_the_chords_are_missing(app):
     from core.project_io import parse_project_text
     from core.quicksong import quick_song

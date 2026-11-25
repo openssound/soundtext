@@ -1177,6 +1177,11 @@ def quick_surprise(seed: Optional[int] = None) -> dict:
     return quicksong.quick_surprise(seed)
 
 
+def quick_daily(day: Optional[str] = None) -> dict:
+    from core import quicksong
+    return quicksong.quick_daily(day)
+
+
 def install_user_styles(json_text: str = "") -> dict:
     """Gli stili personali del computer (core.user_styles, il file generator_styles.json della cartella di
     configurazione di SoundText): si installano per questa sessione del motore e i generatori li riconoscono come

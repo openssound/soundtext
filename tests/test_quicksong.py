@@ -1208,3 +1208,19 @@ def test_the_second_voice_never_crosses_above_the_melody_and_bad_chords_stop_ear
     assert voice == "16: 4r 68@ 4a*5 68@ 4c*6 68@ 4e*6"                                # la prima nota (sol4) non ha seconda voce, le altre una terza sotto
     with pytest.raises(ValueError):
         q.resolve({"genre": "country", "mood": "grintosa", "chords": "Am F/X C G"})       # l'errore arriva subito, prima della tonalita'
+
+
+def test_daily_song_depends_only_on_the_day(q):
+    """Il brano del giorno: stesse scelte per lo stesso giorno (su ogni dispositivo), scelte valide, altre scelte nei giorni dopo."""
+    import datetime
+    a = q.quick_daily("2026-11-25")
+    assert a == q.quick_daily("2026-11-25")
+    assert a["genre"] in q.GENRES and a["mood"] in q.GENRES_DATA[a["genre"]]["moods"] and a["duration"] == 60
+    days = [(datetime.date(2026, 11, 25) + datetime.timedelta(days=n)).isoformat() for n in range(30)]
+    picks = {(d["genre"], d["mood"], d["seed"]) for d in map(q.quick_daily, days)}
+    assert len(picks) == 30 and len({p[0] for p in picks}) > 5
+    assert q.quick_daily()["day"] == datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    options = {k: v for k, v in a.items() if k != "day"}
+    assert q.quick_song(options)["text"] == q.quick_song(options)["text"]
+    with pytest.raises(ValueError):
+        q.quick_daily("ieri")

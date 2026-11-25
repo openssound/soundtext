@@ -3548,5 +3548,8 @@
  "Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.": "Le lien de « {name} » est dans le presse-papiers ({n} caractères) : colle-le dans un message, un e-mail ou une publication.",
  "Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.": "Qui l'ouvre écoute le morceau dans l'application web SoundText, sur téléphone ou dans le navigateur, sans rien installer, et peut l'enregistrer dans ses morceaux. Le morceau tient entièrement dans le lien : il ne passe par aucun serveur.",
  "Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.": "Dans l'application web, les pistes audio sont absentes et les instruments SFZ ou plugins jouent avec le SoundFont.",
- "Link del brano copiato negli appunti": "Lien du morceau copié dans le presse-papiers"
+ "Link del brano copiato negli appunti": "Lien du morceau copié dans le presse-papiers",
+ "Brano del giorno": "Morceau du jour",
+ "Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono.": "Le genre, l'ambiance et la graine d'aujourd'hui : le même morceau pour tous, sur l'ordinateur et sur le téléphone.",
+ "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Morceau du jour ({day}) : {genre}, ambiance {mood}. Touche « Créer et écouter » : c'est le même pour tous."
 }

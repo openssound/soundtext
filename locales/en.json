@@ -3548,5 +3548,8 @@
  "Il link di «{name}» è negli appunti ({n} caratteri): incollalo in un messaggio, una mail o un post.": "The link to “{name}” is on the clipboard ({n} characters): paste it into a message, an email or a post.",
  "Chi lo apre ascolta il brano nell'app web di SoundText, sul telefono o nel browser, senza installare niente, e può salvarlo fra i suoi brani. Il brano sta tutto nel link: non passa da nessun server.": "Whoever opens it listens to the song in the SoundText web app, on a phone or in a browser, without installing anything, and can save it to their songs. The whole song is inside the link: it goes through no server.",
  "Nell'app web le tracce audio non ci sono e gli strumenti SFZ o plugin suonano con il SoundFont.": "In the web app audio tracks are left out and SFZ or plugin instruments play with the SoundFont.",
- "Link del brano copiato negli appunti": "Song link copied to the clipboard"
+ "Link del brano copiato negli appunti": "Song link copied to the clipboard",
+ "Brano del giorno": "Song of the day",
+ "Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono.": "Today's genre, mood and seed: the same song for everyone, on the computer and on the phone.",
+ "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Song of the day ({day}): {genre}, {mood} mood. Tap “Create and play”: it is the same for everyone."
 }

@@ -1564,6 +1564,21 @@ def quick_surprise(seed: Optional[int] = None) -> dict:
             "ensemble": rng.choice(ENSEMBLES) if rng.random() < 0.3 else recipe["ens"], "seed": rng.randrange(2 ** 31)}
 
 
+def quick_daily(day: Optional[str] = None) -> dict:
+    """Il brano del giorno: genere, atmosfera, durata e seme che dipendono solo dalla data (AAAA-MM-GG, di default quella di oggi
+    in UTC), uguali per tutti. Si passa a quick_song; lo stesso giorno, con la stessa versione di SoundText, esce lo stesso brano
+    su ogni computer e telefono. {day, genre, mood, duration, seed}."""
+    import datetime
+    import hashlib
+    if day is None:
+        day = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    day = datetime.date.fromisoformat(day).isoformat()
+    digest = int(hashlib.sha256(("soundtext-brano-del-giorno/" + day).encode()).hexdigest(), 16)
+    rng = random.Random(digest)
+    genre = rng.choice(GENRES)
+    return {"day": day, "genre": genre, "mood": rng.choice(GENRES_DATA[genre]["moods"]), "duration": 60, "seed": rng.randrange(2 ** 31)}
+
+
 def quick_read(text: str) -> Optional[dict]:
     """Le scelte salvate in un brano fatto da «Un brano in 60 secondi» (il commento «// quick: {...}»), o None."""
     for line in text.split("\n")[:8]:

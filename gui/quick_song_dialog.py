@@ -33,6 +33,7 @@ class QuickSongDialog(QDialog):
         self.choices = quick_choices()
         self.song = None                   # l'ultimo brano composto (il dizionario di quick_song)
         self._seed = None                  # None: un seme nuovo a ogni brano
+        self._daily_seed = None            # il seme del brano del giorno, usato una volta (vedi _daily)
         self._playback = PlaybackEngine()
 
         layout = QVBoxLayout(self)
@@ -159,9 +160,12 @@ class QuickSongDialog(QDialog):
         self.surprise_btn = QPushButton(tr("Sorprendimi"))
         self.surprise_btn.setToolTip(tr("Una combinazione di genere e atmosfera scelta a caso."))
         self.surprise_btn.clicked.connect(self._surprise)
+        self.daily_btn = QPushButton(tr("Brano del giorno"))
+        self.daily_btn.setToolTip(tr("Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono."))
+        self.daily_btn.clicked.connect(self._daily)
         self.stop_btn = QPushButton(tr("■ Ferma"))
         self.stop_btn.clicked.connect(self._playback.stop)
-        for b in (self.make_btn, self.again_btn, self.surprise_btn, self.stop_btn):
+        for b in (self.make_btn, self.again_btn, self.surprise_btn, self.daily_btn, self.stop_btn):
             row.addWidget(b)
         layout.addLayout(row)
 
@@ -229,6 +233,9 @@ class QuickSongDialog(QDialog):
         if self.detail_check.isChecked() and self.second_voice_check.isChecked():
             o["second_voice"] = True
         o["seed"] = self._seed if self._seed is not None else random.randrange(2 ** 31)
+        if self._daily_seed is not None:                 # il brano del giorno: solo le scelte di oggi, uguali per tutti
+            o = {"genre": o["genre"], "mood": o["mood"], "duration": o["duration"], "seed": self._daily_seed}
+            self._daily_seed = None
         return o
 
     # ---- comporre e ascoltare
@@ -320,6 +327,19 @@ class QuickSongDialog(QDialog):
     def _another(self):
         self._seed = None
         self.seed_spin.setValue(0)
+        self.compose(listen=True)
+
+    def _daily(self):
+        """Il brano del giorno (core.quicksong.quick_daily): genere, atmosfera, durata e seme di oggi, uguali per tutti."""
+        from core.quicksong import quick_daily
+        daily = quick_daily()
+        genres = self.choices["genres"]
+        self.genre_list.setCurrentRow(next((i for i, g in enumerate(genres) if g["value"] == daily["genre"]), 0))
+        self.mood_combo.setCurrentIndex(max(0, self.mood_combo.findData(daily["mood"])))
+        self.duration_combo.setCurrentIndex(max(0, self.duration_combo.findData(daily["duration"])))
+        self.seed_spin.setValue(0)
+        self._seed = None
+        self._daily_seed = daily["seed"]
         self.compose(listen=True)
 
     def _surprise(self):

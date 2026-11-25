@@ -541,6 +541,24 @@ async function openQuick() {
   $("quickMake").disabled = false;
 }
 
+// Il brano del giorno: genere, atmosfera e seme dipendono solo dalla data (core.quicksong.quick_daily), uguali per tutti. Si apre la
+// finestra con quelle scelte: «Crea e ascolta» lo suona (il tocco serve a sbloccare l'audio), «Un'altra» e il resto lo rifanno a modo tuo.
+async function openQuickDaily() {
+  await openQuick();
+  const daily = (await call("quick_daily")).result;
+  quick.simple = true;
+  quick.opts = { genre: daily.genre, mood: daily.mood, duration: daily.duration, seed: daily.seed };
+  quick.parts = {};
+  quickSyncControls();
+  $("quickSeed").value = String(daily.seed);
+  quickShowMode();
+  quickSave();
+  const genre = quick.choices.genres.find((g) => g.value === daily.genre);
+  const mood = quick.choices.moods.find((m) => m.value === daily.mood);
+  setQuickStatus(t("Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.",
+                   { day: daily.day, genre: genre ? genre.label : daily.genre, mood: mood ? mood.label : daily.mood }));
+}
+
 function quickClose() {
   quickStopPreview();
   quickReadFields();
@@ -550,6 +568,7 @@ function quickClose() {
 
 function setupQuick() {
   $("quickSong").onclick = () => openQuick().catch(showError);
+  $("quickDaily").onclick = () => openQuickDaily().catch(showError);
   $("quickMake").onclick = () => quickRegenerate("new");
   $("quickAgain").onclick = () => quickRegenerate("again");
   $("quickSurprise").onclick = () => quickRegenerate("surprise");
