@@ -129,7 +129,7 @@ async function onPhrase(result) {
   const raw = result.text || "";
   const heard = raw.replace(/\[unk\]/g, " ").replace(/\s+/g, " ").trim();
   if (!heard) return;
-  let r = (await call("dictate", { args: [state.doc.text, heard, I18n.language] })).result;
+  let r = (await call("dictate", { args: [state.doc.text, heard, I18n.language, "auto", symbolsOn(), abbreviationsOn()] })).result;
   // Una pausa in mezzo alla frase la spezza in due risultati: se il pezzo
   // prima non si era capito, si riprova con la frase intera.
   const carry = voice.carry;
@@ -137,7 +137,7 @@ async function onPhrase(result) {
   let shown = heard;
   if (carry && performance.now() - carry.at < VOICE_JOIN_MS) {
     const joined = carry.text + " " + heard;
-    const rj = (await call("dictate", { args: [state.doc.text, joined, I18n.language] })).result;
+    const rj = (await call("dictate", { args: [state.doc.text, joined, I18n.language, "auto", symbolsOn(), abbreviationsOn()] })).result;
     const nothing = !r.text && !r.commands.length;
     if (rj.unknown.length < carry.unknown + r.unknown.length || (nothing && (rj.text || rj.commands.length))) {
       r = rj;

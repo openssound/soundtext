@@ -3596,5 +3596,7 @@
  "Link del brano copiato negli appunti": "Enlace de la canción copiado al portapapeles",
  "Brano del giorno": "Canción del día",
  "Genere, atmosfera e seme di oggi: lo stesso brano per tutti, sul computer e sul telefono.": "El género, el ambiente y la semilla de hoy: la misma canción para todos, en el ordenador y en el teléfono.",
- "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Canción del día ({day}): {genre}, ambiente {mood}. Toca «Crear y escuchar»: es la misma para todos."
+ "Brano del giorno ({day}): {genre}, atmosfera {mood}. Tocca «Crea e ascolta»: è lo stesso per tutti.": "Canción del día ({day}): {genre}, ambiente {mood}. Toca «Crear y escuchar»: es la misma para todos.",
+ "Bemolli e diesis come simboli": "Bemoles y sostenidos como símbolos",
+ "Percussioni abbreviate": "Percusión abreviada"
 }

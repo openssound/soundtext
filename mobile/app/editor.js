@@ -465,6 +465,14 @@ function K(label, run, cls = "", aria = "") {
 }
 const SEP = { sep: true };
 
+// Le due scelte dello stile del testo, come sul computer: ♭ ♯ al posto di b # (di partenza si') e le percussioni abbreviate
+// (bd al posto di kick, di partenza no). Valgono per i tasti, per la scrittura e per la dettatura.
+const SYMBOLS_KEY = "stmobile.symbols";
+const ABBR_KEY = "stmobile.abbr";
+const stylePrefs = { symbols: true, abbreviations: false, drumShort: {} };
+const symbolsOn = () => stylePrefs.symbols;
+const abbreviationsOn = () => stylePrefs.abbreviations;
+
 // I pezzi della batteria, nell'ordine di st-language (PERCUSSION_MAP)
 const DRUM_KEYS = ["kick", "snare", "hihat", "hihat_open", "tom1", "tom2", "floor", "crash", "ride",
                    "rimshot", "clap", "hihat_pedal", "cowbell", "tambourine"];
@@ -495,7 +503,10 @@ function drumsAtCaret() {
 function pageKeys(page) {
   if (page === 0 && bar.drums) {
     return [
-      ...DRUM_KEYS.map((n) => K(n, () => insertToken(n), "", t("batteria: {name}", { name: n }))),
+      ...DRUM_KEYS.map((n) => {
+        const shown = (stylePrefs.abbreviations && stylePrefs.drumShort[n]) || n;
+        return K(shown, () => insertToken(shown), "", t("batteria: {name}", { name: n }));
+      }),
       K("r", () => insertToken("r"), "", t("pausa")),
     ];
   }
@@ -504,7 +515,8 @@ function pageKeys(page) {
       ..."cdefgab".split("").map((n) => K(n, () => insertToken(n), "", t("nota {n}", { n: n.toUpperCase() }))),
       K("r", () => insertToken("r"), "", t("pausa")),
       SEP,
-      K("#", () => attach("#"), "", t("diesis")), K("♭", () => attach("b"), "", t("bemolle")),
+      K(stylePrefs.symbols ? "♯" : "#", () => attach(stylePrefs.symbols ? "♯" : "#"), "", t("diesis")),
+      K("♭", () => attach(stylePrefs.symbols ? "♭" : "b"), "", t("bemolle")),
       ...[3, 4, 5, 6].map((o) => K("*" + o, () => attach("*" + o), "", t("ottava {n}", { n: o }))),
       K("~", () => attach("~"), "", t("legatura")),
     ];
@@ -673,6 +685,30 @@ function setWrap(on) {
   try { localStorage.setItem(WRAP_KEY, on ? "1" : "0"); } catch (e) {}
 }
 
+function setStylePref(name, on) {
+  stylePrefs[name] = on;
+  $(name === "symbols" ? "symToggle" : "abbrToggle").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem(name === "symbols" ? SYMBOLS_KEY : ABBR_KEY, on ? "1" : "0"); } catch (e) {}
+  renderKeys();
+}
+
+// Scrivendo «bb» e uno spazio, il token chiuso diventa «b♭» (la regola del computer, calcolata dal motore): solo se il testo e il cursore
+// non si sono mossi nel frattempo.
+async function convertClosedToken(ev) {
+  if (!stylePrefs.symbols || !state.doc || ev.inputType !== "insertText" || !ev.data || !/^[ \t\n|\])}]$/.test(ev.data)) return;
+  const pos = caretPos();
+  if (pos === null || pos === undefined || pos < 2) return;
+  const text = state.doc.text;
+  const end = pos - 1;
+  if (!/[b#]/.test((text.slice(0, end).split(/[\s\[({|;]/).pop() || ""))) return;
+  const r = (await call("accidental_token", { args: [text, end] })).result;
+  if (!r || state.doc.text !== text || caretPos() !== pos) return;
+  selectRange(r[0], r[1]);
+  typeText(r[2]);
+  const after = pos + r[2].length - (r[1] - r[0]);
+  selectRange(after, after);
+}
+
 function setupMusicBar() {
   for (const b of document.querySelectorAll(".pages button")) b.onclick = () => setPage(Number(b.dataset.page));
   const run = (f) => () => Promise.resolve(f()).catch(showError);
@@ -683,6 +719,14 @@ function setupMusicBar() {
   let wrap = false;
   try { wrap = localStorage.getItem(WRAP_KEY) === "1"; } catch (e) {}
   setWrap(wrap);
+  for (const [name, key, fallback] of [["symbols", SYMBOLS_KEY, true], ["abbreviations", ABBR_KEY, false]]) {
+    let on = fallback;
+    try { const saved = localStorage.getItem(key); if (saved !== null) on = saved === "1"; } catch (e) {}
+    stylePrefs[name] = on;
+    $(name === "symbols" ? "symToggle" : "abbrToggle").setAttribute("aria-pressed", String(on));
+    $(name === "symbols" ? "symToggle" : "abbrToggle").onclick = () => setStylePref(name, !stylePrefs[name]);
+  }
+  call("percussion_keys", { args: [] }).then((r) => { stylePrefs.drumShort = r.result || {}; renderKeys(); }).catch(() => {});
   $("newTrack").onclick = () => chooseNewTrack().catch(showError);
   $("wrapToggle").onclick = () => setWrap(!$("text").classList.contains("wrap"));
   // I tasti non prendono il fuoco: il cursore e la tastiera restano nel testo.
@@ -695,6 +739,7 @@ function setupMusicBar() {
     if (document.activeElement !== pre) document.body.classList.remove("editing");
   }, 100));
   pre.addEventListener("input", scheduleSuggest);
+  pre.addEventListener("input", (ev) => { convertClosedToken(ev).catch(() => {}); });
   document.addEventListener("selectionchange", () => {
     if (document.activeElement === pre) {
       scheduleSuggest();

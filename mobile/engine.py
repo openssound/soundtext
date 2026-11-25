@@ -792,7 +792,38 @@ def transform_apply(text: str, pos: int, token: str, freeze: bool = False) -> di
 
 # ------------------------------------------------------------ dettatura (fase 2)
 
-def dictate(text: str, phrase: str, lang: Optional[str] = None, mode: str = "auto") -> dict:
+def accidental_token(text: str, end: int) -> Optional[list]:
+    """Il token che finisce a 'end' riscritto con ♭ e ♯ («bb» -> «b♭»): [inizio, fine, testo nuovo], o None se non c'e' niente da
+    cambiare (core.accidental_style, la stessa regola della scrittura sul computer)."""
+    from core.accidental_style import closed_token_replacement
+    found = closed_token_replacement(text, int(end))
+    return list(found) if found else None
+
+
+def percussion_keys() -> dict:
+    """I pezzi della batteria con la loro abbreviazione («kick» -> «bd»), per i tasti dell'editor."""
+    from core.instruments import PERCUSSION_MAP, percussion_short_name
+    return {name: percussion_short_name(name) for name in PERCUSSION_MAP}
+
+
+def style_text(text: str, symbols: bool = False, abbreviations: bool = False) -> str:
+    """Il testo con ♭ ♯ al posto di b # e con le percussioni abbreviate, se richiesto; un testo che non si legge resta com'e'."""
+    from core.accidental_style import abbreviate_percussion
+    from st_language import normalize_track_text
+    if not text:
+        return text
+    if abbreviations:
+        text = abbreviate_percussion(text)
+    if symbols:
+        try:
+            text = normalize_track_text(text, "symbols")
+        except Exception:
+            pass
+    return text
+
+
+def dictate(text: str, phrase: str, lang: Optional[str] = None, mode: str = "auto",
+            symbols: bool = False, abbreviations: bool = False) -> dict:
     """La frase riconosciuta dalla dettatura -> testo ST, pezzi e comandi
     (core.dictation.interpret), nella lingua data o in quella
     dell'interfaccia; i pattern del brano si riconoscono per nome («Tema
@@ -804,7 +835,10 @@ def dictate(text: str, phrase: str, lang: Optional[str] = None, mode: str = "aut
         patterns = list(parse_project_text(text, "Brano").patterns)
     except Exception:                                  # il file non si legge: niente pattern
         patterns = []
-    return interpret(phrase, lang or current_language(), mode, patterns)
+    result = interpret(phrase, lang or current_language(), mode, patterns)
+    if (symbols or abbreviations) and result.get("text"):
+        result = {**result, "text": style_text(result["text"], symbols, abbreviations)}
+    return result
 
 
 def dictate_track(text: str, spoken: str, lang: Optional[str] = None) -> Optional[dict]:

@@ -97,3 +97,14 @@ def test_project_without_quick_choices_writes_none():
 def json_of(text):
     import json
     return json.loads(text)
+
+
+def test_symbols_do_not_make_the_link_much_longer_and_survive_the_round_trip():
+    """♭ e ♯ sono tre byte in UTF-8: il link li comprime e li legge uguali, e resta sotto il limite dei messaggi."""
+    from core.share_link import LONG_LINK, read_fragment
+    ascii_song = "ST: 2.13\nTempo: 100 BPM\n\nPiano:\n" + "".join(f"  4: bb*4 c#*5 db*4 eb*4 f#*4 ab*4 | {i}\n" for i in range(1)) * 60
+    symbols_song = ascii_song.replace("bb", "b♭").replace("c#", "c♯").replace("db", "d♭").replace("eb", "e♭").replace("f#", "f♯").replace("ab", "a♭")
+    plain, marked = make_url("Dal PC", ascii_song), make_url("Dal PC", symbols_song)
+    assert len(marked) < len(plain) * 1.2 and len(marked) < LONG_LINK
+    name, data = read_fragment(marked.split("#", 1)[1])
+    assert name == "Dal PC" and data.decode("utf-8") == symbols_song

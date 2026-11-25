@@ -996,3 +996,26 @@ def test_generate_and_arrange_take_a_swing():
     assert e.generate(SECTIONED, "drums", {"seed": 3, "swing": 64})["text"] == e.generate(SECTIONED, "drums", {"seed": 3})["text"]
     boxes = e.arrange_song(SECTIONED, {"seed": 4, "swing": 62})["text"]
     assert "swing=62" in boxes and "swing=62" not in e.arrange_song(SECTIONED, {"seed": 4})["text"]
+
+
+def test_phone_writes_flats_and_sharps_as_symbols_and_abbreviates_percussion():
+    """Come sul computer (core.accidental_style): il token chiuso, le percussioni, lo stile del testo e la dettatura."""
+    sys.path.insert(0, MOBILE)
+    try:
+        import engine
+    finally:
+        sys.path.remove(MOBILE)
+    text = "Piano:\n  4: bb c# db r d"
+    assert engine.accidental_token(text, text.index("bb") + 2) == [text.index("bb"), text.index("bb") + 2, "b♭"]
+    assert engine.accidental_token(text, text.index("c#") + 2)[2] == "c♯"
+    assert engine.accidental_token(text, text.index(" r ") + 2) is None              # niente da cambiare
+    assert engine.accidental_token('Piano:\n  4: "bb c"', 16) is None                                  # un testo cantato resta com'e'
+    keys = engine.percussion_keys()
+    assert keys["kick"] == "bd" and keys["snare"] == "sn"
+    assert engine.style_text("Drums:\n  4: kick snare hihat", False, True) == "Drums:\n  4: bd sn hh"
+    assert engine.style_text("Piano:\n  4: bb c# db", True, False) == "Piano:\n  4: b♭ c♯ d♭"
+    assert engine.style_text("Piano:\n  4: bb", False, False) == "Piano:\n  4: bb"
+    assert engine.style_text("", True, True) == ""
+    plain = engine.dictate("Piano:\n  4: c", "do diesis semiminima", "it")
+    styled = engine.dictate("Piano:\n  4: c", "do diesis semiminima", "it", "auto", True)
+    assert "#" in plain["text"] and "♯" in styled["text"] and "#" not in styled["text"]
