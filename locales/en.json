@@ -3523,5 +3523,17 @@
  "grintosa": "gritty",
  "elegante": "elegant",
  "Accordi come simboli": "Chords as symbols",
- "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Writes chords as uppercase symbols (\"Am7\", \"G\") instead of note blocks in square brackets: the text is shorter and easier to edit, the harmony is the same."
+ "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Writes chords as uppercase symbols (\"Am7\", \"G\") instead of note blocks in square brackets: the text is shorter and easier to edit, the harmony is the same.",
+ "Apre «Scarica e installa» con i suoni consigliati già spuntati.": "Opens «Download and install» with the suggested sounds already ticked.",
+ "Da scaricare per suonare meglio: {list}": "To download for a better sound: {list}",
+ "Le tracce indicate suonano con lo strumento SFZ invece che col SoundFont (si cambia poi dal mixer, come ogni strumento plugin).": "The listed tracks play with the SFZ instrument instead of the SoundFont (you can change it later from the mixer, like any plugin instrument).",
+ "Non c'e' un SoundFont General MIDI: il brano non si sente.": "There is no General MIDI SoundFont: the song cannot be heard.",
+ "Per gli strumenti campionati serve il motore SFZ interno (Scarica e installa, Motori).": "Sampled instruments need the built-in SFZ engine (Download and install, Engines).",
+ "Strumenti campionati gia' scaricati: {list}": "Sampled instruments already downloaded: {list}",
+ "Suoni: {name}": "Sounds: {name}",
+ "TimGM6mb e' il SoundFont leggero: uno completo suona molto meglio.": "TimGM6mb is the light SoundFont: a full one sounds much better.",
+ "Usa gli strumenti campionati già scaricati": "Use the sampled instruments already downloaded",
+ "Usa il SoundFont completo": "Use the full SoundFont",
+ "Usa {name}": "Use {name}",
+ "nessun SoundFont": "no SoundFont"
 }

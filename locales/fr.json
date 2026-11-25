@@ -3523,5 +3523,17 @@
  "grintosa": "mordante",
  "elegante": "élégante",
  "Accordi come simboli": "Accords en symboles",
- "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Écrit les accords en symboles majuscules (« Am7 », « G ») au lieu de blocs de notes entre crochets : le texte est plus court et plus facile à modifier, l'harmonie est la même."
+ "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Écrit les accords en symboles majuscules (« Am7 », « G ») au lieu de blocs de notes entre crochets : le texte est plus court et plus facile à modifier, l'harmonie est la même.",
+ "Apre «Scarica e installa» con i suoni consigliati già spuntati.": "Ouvre «Télécharger et installer» avec les sons conseillés déjà cochés.",
+ "Da scaricare per suonare meglio: {list}": "À télécharger pour un meilleur son : {list}",
+ "Le tracce indicate suonano con lo strumento SFZ invece che col SoundFont (si cambia poi dal mixer, come ogni strumento plugin).": "Les pistes indiquées jouent avec l'instrument SFZ au lieu du SoundFont (modifiable ensuite depuis la table de mixage, comme tout instrument plugin).",
+ "Non c'e' un SoundFont General MIDI: il brano non si sente.": "Il n'y a pas de SoundFont General MIDI : le morceau ne s'entend pas.",
+ "Per gli strumenti campionati serve il motore SFZ interno (Scarica e installa, Motori).": "Les instruments échantillonnés nécessitent le moteur SFZ interne (Télécharger et installer, Moteurs).",
+ "Strumenti campionati gia' scaricati: {list}": "Instruments échantillonnés déjà téléchargés : {list}",
+ "Suoni: {name}": "Sons : {name}",
+ "TimGM6mb e' il SoundFont leggero: uno completo suona molto meglio.": "TimGM6mb est le SoundFont léger : un SoundFont complet sonne bien mieux.",
+ "Usa gli strumenti campionati già scaricati": "Utiliser les instruments échantillonnés déjà téléchargés",
+ "Usa il SoundFont completo": "Utiliser le SoundFont complet",
+ "Usa {name}": "Utiliser {name}",
+ "nessun SoundFont": "aucun SoundFont"
 }

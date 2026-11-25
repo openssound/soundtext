@@ -146,6 +146,17 @@ def set_last_quantization_grid(denominator: int):
     _save()
 
 
+def get_quick_song_sfz() -> bool:
+    """«Un brano in 60 secondi»: usare gli strumenti campionati (SFZ) gia' scaricati (core.sound_advice)."""
+    return bool(_load().get("quick_song_sfz", False))
+
+
+def set_quick_song_sfz(value: bool):
+    _load()
+    _cache["quick_song_sfz"] = bool(value)
+    _save()
+
+
 def get_last_quantization_ternary() -> bool:
     return _load().get("audio_import_ternary", False)
 

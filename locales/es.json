@@ -3523,5 +3523,17 @@
  "grintosa": "con garra",
  "elegante": "elegante",
  "Accordi come simboli": "Acordes como símbolos",
- "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Escribe los acordes como símbolos en mayúscula («Am7», «G») en lugar de bloques de notas entre corchetes: el texto es más corto y más fácil de editar, la armonía es la misma."
+ "Scrive gli accordi come simboli maiuscoli («Am7», «G») invece che come blocchi di note tra parentesi quadre: il testo e' piu' corto e si modifica piu' facilmente, l'armonia e' la stessa.": "Escribe los acordes como símbolos en mayúscula («Am7», «G») en lugar de bloques de notas entre corchetes: el texto es más corto y más fácil de editar, la armonía es la misma.",
+ "Apre «Scarica e installa» con i suoni consigliati già spuntati.": "Abre «Descargar e instalar» con los sonidos recomendados ya marcados.",
+ "Da scaricare per suonare meglio: {list}": "Para descargar y sonar mejor: {list}",
+ "Le tracce indicate suonano con lo strumento SFZ invece che col SoundFont (si cambia poi dal mixer, come ogni strumento plugin).": "Las pistas indicadas suenan con el instrumento SFZ en lugar del SoundFont (se cambia después desde el mezclador, como cualquier instrumento plugin).",
+ "Non c'e' un SoundFont General MIDI: il brano non si sente.": "No hay un SoundFont General MIDI: la canción no se oye.",
+ "Per gli strumenti campionati serve il motore SFZ interno (Scarica e installa, Motori).": "Los instrumentos muestreados necesitan el motor SFZ interno (Descargar e instalar, Motores).",
+ "Strumenti campionati gia' scaricati: {list}": "Instrumentos muestreados ya descargados: {list}",
+ "Suoni: {name}": "Sonidos: {name}",
+ "TimGM6mb e' il SoundFont leggero: uno completo suona molto meglio.": "TimGM6mb es el SoundFont ligero: uno completo suena mucho mejor.",
+ "Usa gli strumenti campionati già scaricati": "Usar los instrumentos muestreados ya descargados",
+ "Usa il SoundFont completo": "Usar el SoundFont completo",
+ "Usa {name}": "Usar {name}",
+ "nessun SoundFont": "ningún SoundFont"
 }

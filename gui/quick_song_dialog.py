@@ -122,6 +122,30 @@ class QuickSongDialog(QDialog):
         self.summary.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.summary)
 
+        # i suoni consigliati (core.sound_advice): si mostrano dopo aver composto, non cambiano niente da soli
+        self._advice = None
+        self.sounds_label = QLabel("")
+        self.sounds_label.setWordWrap(True)
+        self.sounds_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(self.sounds_label)
+        sounds = QHBoxLayout()
+        self.sfz_check = QCheckBox(tr("Usa gli strumenti campionati già scaricati"))
+        self.sfz_check.setToolTip(tr("Le tracce indicate suonano con lo strumento SFZ invece che col SoundFont "
+                                     "(si cambia poi dal mixer, come ogni strumento plugin)."))
+        from core.settings import get_quick_song_sfz
+        self.sfz_check.setChecked(get_quick_song_sfz())
+        self.sfz_check.toggled.connect(self._sfz_toggled)
+        self.use_soundfont_btn = QPushButton(tr("Usa il SoundFont completo"))
+        self.use_soundfont_btn.clicked.connect(self._use_soundfont)
+        self.download_btn = QPushButton(tr("Scarica e installa..."))
+        self.download_btn.setToolTip(tr("Apre «Scarica e installa» con i suoni consigliati già spuntati."))
+        self.download_btn.clicked.connect(self._download)
+        for w in (self.sfz_check, self.use_soundfont_btn, self.download_btn):
+            sounds.addWidget(w)
+        sounds.addStretch(1)
+        layout.addLayout(sounds)
+        self._update_sounds()
+
         row = QHBoxLayout()
         self.make_btn = QPushButton(tr("▶ Componi e ascolta"))
         self.make_btn.clicked.connect(lambda: self.compose(listen=True))
@@ -219,18 +243,71 @@ class QuickSongDialog(QDialog):
         text = " · ".join(str(p) for p in parts) + (f"\n{s['fallback']}" if s.get("fallback") else "")
         self.summary.setText(text + "\n" + tr("Seme: {seed}", seed=s["seed"]))
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(True)
+        self._update_sounds()
         if listen:
             self._listen()
+
+    def project(self):
+        """Il progetto del brano composto, con gli strumenti campionati se la spunta c'e' (None senza brano)."""
+        if not self.song:
+            return None
+        project = parse_project_text(self.song["text"], self.song["name"])
+        if self.sfz_check.isChecked() and self._advice is not None:
+            from core.sound_advice import apply_sfz
+            apply_sfz(project, self._advice)
+        return project
 
     def _listen(self):
         if not self.song:
             return
         try:
-            project = parse_project_text(self.song["text"], self.song["name"])
+            project = self.project()
         except Exception as e:                         # un brano che non si legge e' un errore nostro: lo si dice
             QMessageBox.critical(self, tr("Un brano in 60 secondi"), str(e))
             return
         self._playback.play(project)
+
+    # ---- i suoni consigliati
+
+    def _update_sounds(self):
+        """Ricalcola i suoni consigliati per il brano composto (core.sound_advice) e li mostra."""
+        from core.sound_advice import describe, sound_advice
+        self._advice = None
+        if self.song:
+            try:
+                self._advice = sound_advice(parse_project_text(self.song["text"], self.song["name"]))
+            except Exception:                          # i consigli non devono mai impedire di comporre
+                self._advice = None
+        advice = self._advice
+        self.sounds_label.setText("\n".join(describe(advice)) if advice else "")
+        self.sounds_label.setVisible(advice is not None)
+        self.sfz_check.setVisible(bool(advice and advice.usable))
+        self.use_soundfont_btn.setVisible(bool(advice and advice.use_soundfont))
+        if advice and advice.use_soundfont:
+            import os
+            self.use_soundfont_btn.setText(tr("Usa {name}", name=os.path.basename(advice.use_soundfont)))
+        self.download_btn.setVisible(bool(advice and advice.download_keys)
+                                     and hasattr(self.parent(), "open_download_dialog"))
+
+    def _sfz_toggled(self, on: bool):
+        from core.settings import set_quick_song_sfz
+        set_quick_song_sfz(on)
+
+    def _use_soundfont(self):
+        """Il SoundFont completo gia' scaricato diventa quello generale (come Suoni -> SoundFont)."""
+        if not self._advice or not self._advice.use_soundfont:
+            return
+        self._playback.stop()
+        from core.settings import set_soundfont_path
+        set_soundfont_path(self._advice.use_soundfont)
+        self._update_sounds()
+
+    def _download(self):
+        if not self._advice or not hasattr(self.parent(), "open_download_dialog"):
+            return
+        self._playback.stop()
+        self.parent().open_download_dialog(preselect=list(self._advice.download_keys))
+        self._update_sounds()
 
     def _another(self):
         self._seed = None

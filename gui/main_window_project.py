@@ -99,7 +99,7 @@ class ProjectMixin:
         self._quick_song_dialog = dlg   # per i test
         if dlg.exec() != QDialog.Accepted or not dlg.song:
             return
-        project = parse_project_text(dlg.song["text"], dlg.song["name"])
+        project = dlg.project()              # con gli strumenti campionati, se scelti nel dialogo
         self._replace_project(project, title=dlg.song["name"],
                               status_msg=tr("Brano «{name}» creato: {bars} battute.", name=dlg.song["name"], bars=dlg.song["bars"]))
         self._mark_dirty()                  # e' un brano nuovo, da salvare
