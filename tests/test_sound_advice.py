@@ -36,7 +36,9 @@ def instruments(tmp_path, monkeypatch):
     monkeypatch.setattr(script, "DEST", tmp_path)
     monkeypatch.setattr("core.sfz_engine.sfz_available", lambda: True)
     monkeypatch.setattr("core.playback._find_soundfont", lambda: "/x/MuseScore_General.sf3")
-    return tmp_path
+    sound_advice.forget_installed()
+    yield tmp_path
+    sound_advice.forget_installed()
 
 
 def test_nothing_downloaded_suggests_what_to_download_and_changes_nothing(instruments):
@@ -108,9 +110,65 @@ def test_a_file_that_leaves_notes_silent_is_not_proposed_and_the_next_candidate_
     assert silent_notes(project, project.get_track("Piano")) is None
 
 
-def test_jazz_guitar_is_not_mapped_and_the_drum_kit_override_counts(instruments, monkeypatch):
+def _with_track(genre, name):
+    """Un brano del genere con la traccia 'name' (il seme che la mette nella formazione)."""
+    for seed in range(1, 80):
+        _made, project = _song(genre, seed)
+        track = next((t for t in project.tracks if t.name == name), None)
+        if track is not None:
+            return project, track
+    pytest.skip(f"nessun {genre} con {name}")
+
+
+def test_the_jazz_guitar_gets_an_archtop_never_the_bridge_electric(instruments):
+    project, guitar = _with_track("jazz", "Jazz_Guitar")
+    _install(instruments, "chitarra-elettrica", "G/EGuitar clean bridge.sfz")
+    sound = sound_advice.track_sound(guitar, project=project)
+    assert not sound.installed and sound.group == "shinyguitar"                 # la archtop da scaricare
+    archtop = _install(instruments, "shinyguitar", "Shinyguitar/Programs/electric_one.sfz")
+    sound_advice.forget_installed()
+    sound = sound_advice.track_sound(guitar, project=project)
+    assert sound.installed and sound.path == str(archtop)
+
+
+def test_any_sfz_in_the_instruments_folder_is_found_by_its_name(instruments):
+    """Ogni installazione e' diversa: un file messo a mano, fuori dalle voci di "Scarica e installa", si riconosce dal
+    nome; un segnaposto (solo onde generate) no."""
+    project, guitar = _with_track("jazz", "Jazz_Guitar")
+    mine = instruments / "miei"
+    mine.mkdir()
+    (mine / "Jazz Guitar.sfz").write_text("<region> sample=*sine\n")             # segnaposto
+    assert not sound_advice.track_sound(guitar, project=project).installed
+    (mine / "Archtop Jazz Guitar.sfz").write_text("<region> sample=a.wav\n")
+    sound_advice.forget_installed()
+    sound = sound_advice.track_sound(guitar, project=project)
+    assert sound.installed and sound.path == str(mine / "Archtop Jazz Guitar.sfz")
+    assert sound.group_label == "Archtop Jazz Guitar"
+    assert sound_advice.kinds_of("Archtop Jazz Guitar") == {26}
+
+
+def test_names_are_read_with_the_group_and_the_plain_variant_comes_first(instruments):
+    _made, project = _song("rock")
+    bass = project.get_track("Bass")
+    _install(instruments, "meatbass", "Meatbass/Programs/arco_six.sfz")         # basso elettrico, ma suonato con l'arco
+    sound_advice.forget_installed()
+    assert not sound_advice.track_sound(bass, project=project).installed
+    pizz = _install(instruments, "meatbass", "Meatbass/Programs/pizz.sfz")
+    sound_advice.forget_installed()
+    assert sound_advice.track_sound(bass, project=project).path == str(pizz)
+    files = ["alto_map_saxcordion.sfz", "alto_map_forte_dynamic.sfz"]
+    assert sorted(files, key=sound_advice._rank)[0] == "alto_map_forte_dynamic.sfz"
+
+
+def test_without_a_preferred_download_the_smallest_group_naming_the_instrument_is_suggested(instruments):
+    script = load_script()
+    group = sound_advice._to_download(script, 110)                              # violino da fiddle: nessun preferito
+    assert group and 110 in sound_advice.kinds_of(script.trova(group)[1])
+    assert sound_advice._to_download(script, 35) is None                        # basso fretless: nessuna voce
+
+
+def test_the_drum_kit_override_counts(instruments, monkeypatch):
     from core import settings
-    assert 26 not in sound_advice.SFZ_PER_PROGRAMMA                             # nessun SFZ adatto a una archtop
     _install(instruments, "batteria", "Kit/Kit-GM.sfz")
     _made, project = _song("rock")
     drums = next(t for t in project.tracks if t.instrument.is_percussion)
