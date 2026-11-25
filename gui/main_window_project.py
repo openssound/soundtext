@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog
 
 from core import disk_cache
+from core.accidental_style import rewrite_project_texts, styled
 from core.model import Project
 from core.box_conversion import convert_project_to_boxes, convertible_tracks, split_track_into_boxes
 from core.instruments import list_instrument_names, set_session_instruments
@@ -100,6 +101,7 @@ class ProjectMixin:
         if dlg.exec() != QDialog.Accepted or not dlg.song:
             return
         project = dlg.project()              # con gli strumenti campionati, se scelti nel dialogo
+        rewrite_project_texts(project, styled)
         self._replace_project(project, title=dlg.song["name"],
                               status_msg=tr("Brano «{name}» creato: {bars} battute.", name=dlg.song["name"], bars=dlg.song["bars"]))
         self._mark_dirty()                  # e' un brano nuovo, da salvare
@@ -478,6 +480,9 @@ class ProjectMixin:
         o piu' box (vedi core.box_conversion.split_track_into_boxes), cosi'
         il contenuto e' subito visibile e strutturato anche nella vista
         Struttura brano invece di apparire come un canvas vuoto."""
+        # bemolli e diesis dell'importazione, nello stile scelto (♭ ♯ o b #)
+        from core.accidental_style import styled_notes
+        rewrite_project_texts(project, styled_notes)
         # le tracce importate con la curva del pitch bend la ritrovano nei box
         from core.midi_bend_curve import split_with_curves
         split_with_curves(project, split_track_into_boxes)
@@ -924,6 +929,57 @@ class ProjectMixin:
 
         self._run_reorganize(expand_patterns_for_project, on_finished,
                               tr("Espansione pattern in corso..."))
+
+    def rewrite_text_action(self, rewrite, done_message: str, nothing_message: str):
+        """Riscrive il testo con 'rewrite' (testo -> testo): la selezione
+        dell'editor, se c'e', altrimenti tutte le tracce, i box e i pattern
+        del brano. Il suono non cambia. Un Annulla riporta il testo di prima."""
+        from core.accidental_style import rewrite_project_texts
+        cursor = self.editor.textCursor()
+        if (not self.arrangement_action.isChecked() and self.current_track_name and cursor.hasSelection()):
+            old = cursor.selectedText().replace("\u2029", "\n")
+            new = rewrite(old)
+            if new == old:
+                self.statusBar().showMessage(nothing_message, 4000)
+                return
+            cursor.insertText(new)
+            self.editor.setTextCursor(cursor)
+            self.statusBar().showMessage(done_message, 4000)
+            return
+        if not self.project.tracks and not self.project.patterns:
+            QMessageBox.information(self, tr("Nessuna traccia"), tr("Il progetto non ha tracce."))
+            return
+        if not rewrite_project_texts(self.project, rewrite):
+            self.statusBar().showMessage(nothing_message, 4000)
+            return
+        self._reload_editor_from_track()
+        self._mark_dirty()
+        self.refresh_mixer()
+        self.arrangement_view.refresh()
+        self._validate_current()
+        self.statusBar().showMessage(done_message, 5000)
+
+    def accidentals_with_symbols_action(self):
+        from core.accidental_style import convert_accidentals
+        self.rewrite_text_action(lambda t: convert_accidentals(t, "symbols"),
+                                 tr("Bemolli e diesis scritti con ♭ e ♯."),
+                                 tr("Niente da cambiare: bemolli e diesis sono gia' scritti con i simboli."))
+
+    def accidentals_as_letters_action(self):
+        from core.accidental_style import convert_accidentals
+        self.rewrite_text_action(lambda t: convert_accidentals(t, "ascii"),
+                                 tr("Bemolli e diesis scritti con b e #."),
+                                 tr("Niente da cambiare: bemolli e diesis sono gia' scritti con b e #."))
+
+    def percussion_abbreviations_action(self):
+        from core.accidental_style import abbreviate_percussion
+        self.rewrite_text_action(abbreviate_percussion, tr("Percussioni scritte con le abbreviazioni."),
+                                 tr("Niente da cambiare: nessuna percussione con il nome lungo."))
+
+    def percussion_long_names_action(self):
+        from core.accidental_style import expand_percussion
+        self.rewrite_text_action(expand_percussion, tr("Percussioni scritte con i nomi lunghi."),
+                                 tr("Niente da cambiare: nessuna abbreviazione delle percussioni."))
 
     def _finish_reorganize_ui(self, status_msg):
         """Aggiorna mixer e traccia selezionata dopo una riorganizzazione

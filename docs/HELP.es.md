@@ -189,10 +189,18 @@ Cuatro compases, para ver cómo funciona:
    `.st` de texto.
 
 Para una canción ya completa, sin escribir nada: **Proyecto → Nueva canción en 60 segundos...**. Elige un género (25),
-un ambiente y una duración; **Componer y escuchar** escribe una canción entera, en secciones (cajas) con acordes, bajo, batería,
+un ambiente y una duración, y si quieres la **Formación** (mira abajo); **Componer y escuchar** escribe una canción entera, en secciones (cajas) con acordes, bajo, batería,
 acompañamiento y melodía. **Otra** cambia la semilla, **Sorpréndeme** elige al azar; con **Detalles** eliges también
 tonalidad, tempo, forma, conjunto y una secuencia de acordes tuya. **Crear la canción** la convierte en el proyecto, para editarla
 como cualquier otra (las secciones se ven en la vista Estructura). La misma canción, con la misma semilla, sale también en SoundText Mobile.
+
+**Formación...** abre la lista de todos los instrumentos disponibles (la batería, los 128 General MIDI por familia y los de
+la Gestión de instrumentos), cada uno con una casilla: marca los que deben sonar y confirma con **Confirmar formación**. Cada
+instrumento toca la parte de su papel (acordes, bajo, melodía, colchón de cuerdas o coros, metales de conjunto, batería):
+«guitarra sola» escribe los acordes para la guitarra, «guitarra, bajo y batería» tres pistas, «saxo, piano, bajo y batería»
+cuatro con la melodía al saxo, «bajo solo» la línea de bajo. Las partes que nadie toca desaparecen (sin un instrumento
+melódico no hay melodía). Hay sitio para dos instrumentos de acordes más un colchón, un bajo, una batería y dos melódicos; los
+demás se quedan fuera y la ventana lo dice. Sin ninguna marca vale el conjunto de la receta (en «Detalles»).
 
 Los detalles añaden también: **Texto compacto** (el texto se escribe en compases, con un patrón por cada compás que se repite: el sonido es idéntico), **Humano** (de 0, todas las notas en la rejilla, a 100, el micro-tempo del estilo: la caja un poco atrás en el funk, el bombo adelante en el punk; se escribe en el texto como `shift=N`) y **Energía del tema** (sube, sube y luego baja, baja: sustituye la intensidad sacada del nombre de la sección). Cada género tiene sus instrumentos, sus escalas (pentatónica en el country, blues en el blues y el rock, menor armónica en el balcánico), sus efectos de partida en el master y, en pop, balada, soul y disco, una capa de cuerdas en los estribillos; con varios estribillos, el último retoma el tema una octava arriba, mediante un patrón.
 
@@ -586,6 +594,21 @@ tempo) antes de que llegue uno del otro tipo, o antes del final de la pista
 difícil de notar solo escuchando). Un cambio de rejilla (`N:`) en medio de
 una rampa ya abierta no la cierra ni la rompe — puede aparecer libremente
 antes de la nota/el acorde que la cierra.
+
+### Bemoles y sostenidos con símbolos: `b` `♭` `#` `♯` (ST 2.13)
+
+`♯` vale `#` en todas partes (notas, acordes y bajo tras `/`, `key=`, cifrados `$Bb7`, `Tonalidad:`), igual que `♭` vale `b`. El
+texto se reescribe de una forma a la otra sin cambiar el sonido; una alteración dentro de la calidad de un acorde (`C7#9`,
+`Cm7b5`) es una extensión y se queda como está.
+
+- **Al escribir** (Opciones → «Escribir ♭ y ♯ con símbolos», activado de salida): en cuanto terminas una nota, un acorde o una
+  tonalidad (espacio, salto de línea, `|`, `]`, `)`, `}`), `eb` pasa a `e♭`, `Bb7` a `B♭7`, `F#m` a `F♯m`. Un Deshacer devuelve el
+  texto como estaba. Comentarios, texto cantado, referencias `%Nombre` y `&archivo` y la nota `b` sola no cambian. El texto que
+  escriben los generadores, la importación MIDI/ABC/MusicXML y la canción en 60 segundos sigue la misma elección.
+- **Comandos** (menú Componer): **Alteraciones con símbolos** y **Alteraciones como b y #** reescriben la selección o, sin
+  selección, toda la canción (pistas, cajas, patrones); sirven para archivos viejos o para quien quiere letras solas.
+- Un archivo que usa `♯` declara `ST: 2.13`; las versiones antiguas de la biblioteca avisan. Si tu lector de pantalla lee mal
+  los símbolos, desactiva la opción.
 
 ### Bemol: `b`, `♭` o `-` (atajo de escritura)
 
@@ -1800,6 +1823,15 @@ A.
 - Percusión latina (fila A): `bongo_hi`, `bongo_low`, `conga_mute`,
   `conga_open`, `conga_low`, `timbale_hi`, `timbale_low`, `cabasa`,
   `maracas`, `claves`, `woodblock_hi`, `woodblock_low`.
+
+**Abreviaturas** (ST 2.13). Cada nombre puede escribirse más corto, donde vale el nombre largo (pistas, patrones, bloques
+`[bd hh]`): `bd` o `kk` para `kick`, `sn` o `sd` para `snare`, `hh` para `hihat`, `oh` para `hihat_open`, `cr` para `crash`, `rd`
+para `ride`, `ht` `t1` `mt` `t2` `ft` para los toms, `cp` para `clap`, `cow` para `cowbell`, etc. (53 en total, la lista está en
+la especificación). Ninguna es una letra sola ni se lee como una nota: `cb`, `ab`, `eb`... siguen siendo bemoles. Los nombres
+largos siguen valiendo. En el menú Componer, **Percusión con abreviaturas** y **Percusión con nombres largos** reescriben la
+selección o toda la canción; en Opciones, «Abreviaturas en la percusión generada» hace que los generadores escriban
+abreviaturas (desactivado de salida). El autocompletado las propone con el nombre largo al lado (`hh — hihat`), y la lectura en
+voz alta dice siempre el nombre entero.
 
 ## 13. La especificación y la biblioteca ST-language
 

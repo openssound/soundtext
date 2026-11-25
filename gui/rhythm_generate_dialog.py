@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from core.accidental_style import styled
 from core.instruments import get_instrument
 from core.key_detect import detect_key_of_text
 from core.model import Project, copy_synth
@@ -607,7 +608,7 @@ class _GeneratedTrackDialogBase(QDialog):
         return data if isinstance(data, str) else ""
 
     def result_text(self):
-        return getattr(self, "_result_text", None)
+        return styled(getattr(self, "_result_text", None))
 
 
 class DrumGenerateDialog(_GeneratedTrackDialogBase):

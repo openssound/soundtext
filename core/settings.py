@@ -298,6 +298,32 @@ def set_midi_import_recognize_chords(value: bool):
     _save()
 
 
+def get_accidental_symbols() -> bool:
+    """Se vero (predefinito), bemolli e diesis si scrivono nel testo con i
+    simboli ♭ e ♯: mentre si scrive ('eb' diventa 'e♭' alla chiusura del
+    token) e nel testo che i comandi generano. Falso: restano 'b' e '#'."""
+    return _load().get("accidental_symbols", True)
+
+
+def set_accidental_symbols(value: bool):
+    _load()
+    _cache["accidental_symbols"] = bool(value)
+    _save()
+
+
+def get_percussion_abbreviations() -> bool:
+    """Se vero, il testo che i generatori scrivono usa le abbreviazioni
+    delle percussioni ('bd', 'hh', 'sn'). Predefinito falso: i nomi lunghi
+    si leggono meglio per chi comincia."""
+    return _load().get("percussion_abbreviations", False)
+
+
+def set_percussion_abbreviations(value: bool):
+    _load()
+    _cache["percussion_abbreviations"] = bool(value)
+    _save()
+
+
 # Soglia (in semitoni) sotto cui un pitch bend non e' un slide: 0,5 e' il
 # minimo sensato (sotto, l'arrotondamento al semitono lo scarta comunque), 1,2
 # coincide con la soglia di sempre su un canale con sensibilita' RPN di 12.

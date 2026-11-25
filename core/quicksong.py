@@ -1004,6 +1004,23 @@ def resolve(options: Optional[dict] = None) -> dict:
     for part, spec in parts_in.items():
         if spec.get("instrument") and part in instruments:
             instruments[part] = spec["instrument"]
+    formation = [str(name) for name in (options.get("formation") or [])]
+    left_out: List[str] = []
+    if formation:                                            # gli strumenti scelti uno per uno al posto dell'organico
+        from .quick_formation import assign
+        instruments, left_out = assign(formation)
+        if "drums" in instruments:
+            if drums is None:
+                drums = drum_styles[0] if drum_styles else None      # un genere senza batteria (l'orchestrale): uno stile per la metrica
+            if drums is None:
+                instruments.pop("drums")
+        else:
+            drums = None
+        styles["drums"] = drums
+        if "melody" not in instruments:
+            melody = "nessuna"
+        elif melody == "nessuna":
+            melody = recipe["melody"] if recipe["melody"] in _MELODY_STYLE else "cantabile"
     return {"genre": genre, "mood": mood, "requested_mood": options.get("mood", "allegra"), "fallback": fallback, "seed": seed, "key": key,
             "mode": mode, "bpm": bpm, "meter": meter, "form": form, "ensemble": ensemble, "melody": melody, "ending": ending,
             "modulation": bool(options["modulation"]) if "modulation" in options else
@@ -1011,7 +1028,8 @@ def resolve(options: Optional[dict] = None) -> dict:
             "density": density, "loop": bool(options.get("loop")),
             "duration": options.get("duration"), "bars": _int(options.get("bars"), 0), "variability": options.get("variability"),
             "prog": list(prog_triple), "intensities": list(intensities), "styles": styles, "instruments": instruments, "seeds": seeds,
-            "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill}
+            "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill,
+            "formation": formation, "left_out": left_out}
 
 
 # ------------------------------------------------------------ il brano
@@ -1220,7 +1238,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     asked = options.get("second_voice")
     auto_voice = (_GENRE_SECOND_VOICE.get(c["genre"]) or (_MOOD_COLOR.get(c["mood"], {}).get("voice") if c["genre"] not in _NO_TONE_GENRES else None)) \
         if asked in (None, "") else None
-    if develop and (asked in (True, 1, "1", "si") or auto_voice):
+    if develop and "melody" in c["instruments"] and (asked in (True, 1, "1", "si") or auto_voice):
         taken = {c["instruments"][p] for p in active if p in c["instruments"]}
         harm = _GENRE_HARM.get(c["genre"]) if _GENRE_HARM.get(c["genre"]) not in taken else None
         harm = harm or _HARM_FOR.get(c["instruments"]["melody"], "Flute")
@@ -1414,6 +1432,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     saved["seeds"] = c["seeds"]
     saved["styles"] = {p: s for p, s in c["styles"].items() if s}
     saved["instruments"] = c["instruments"]
+    if c["formation"]:
+        saved["formation"] = c["formation"]
     lines = [_tr("// Un brano in 60 secondi: genere {genre}, atmosfera {mood}, seme {seed}.", genre=c["genre"], mood=c["mood"], seed=c["seed"]),
              "// quick: " + json.dumps(saved, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
              "", header(key).rstrip("\n"), ""]
@@ -1442,7 +1462,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     return {"text": text, "name": f"{label} {mood_label}", "seed": c["seed"], "key": key, "bpm": bpm, "meter": meter,
             "bars": total_bars, "seconds": seconds, "genre": c["genre"], "mood": c["mood"], "form": form, "ensemble": c["ensemble"],
             "fallback": c["fallback"], "sections": out_sections, "loop": c["loop"], "seeds": c["seeds"],
-            "parts": active, "choices": saved}
+            "parts": active, "choices": saved, "formation": c["formation"], "left_out": c["left_out"]}
 
 
 def part_track(c: dict, part: str) -> str:

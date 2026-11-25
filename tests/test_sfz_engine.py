@@ -243,3 +243,30 @@ def test_render_with_random_regions_is_repeatable(tmp_path):
             assert np.array_equal(fresh.render(events, 4.5), first)
     finally:
         fresh.close()
+
+
+@needs_lib
+@pytest.mark.skipif(sys.platform == "win32", reason="il backslash e' gia' il separatore su Windows")
+def test_a_file_written_for_windows_still_loads_its_samples(tmp_path):
+    """La Shinyguitar scrive 'sample=electric\\db2.wav': su Linux e macOS non trovava nessun campione e la traccia
+    restava muta. Il file si ricarica con la barra, e la copia di lavoro non resta nella cartella."""
+    import wave
+    samples = tmp_path / "Samples" / "electric"
+    samples.mkdir(parents=True)
+    t = np.arange(RATE) / RATE
+    data = (np.sin(2 * np.pi * 440 * t) * 20000).astype("<i2")
+    with wave.open(str(samples / "a.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(data.tobytes())
+    programs = tmp_path / "Programs"
+    programs.mkdir()
+    sfz = programs / "electric.sfz"
+    sfz.write_text("<region>\nsample=..\\Samples\\electric\\a.wav\nkey=69\n")
+    inst = SfzInstance(str(sfz), RATE)
+    assert inst.regions == 1
+    y = inst.render([(0.0, bytes([0x90, 69, 100])), (0.5, bytes([0x80, 69, 0]))], 0.8)
+    assert _rms(y) > 1e-3
+    assert os.listdir(programs) == ["electric.sfz"]                     # nessuna copia lasciata
+    assert sfz.read_text().count("\\") == 3                              # e l'originale e' com'era

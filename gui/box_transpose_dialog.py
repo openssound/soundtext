@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QMessageBox,
 )
 
+from core.accidental_style import styled
 from core.notation import PitchRewriter, rewrite_tokens, validate_track_text
 from . import text_zoom
 from .highlighter import NotationHighlighter
@@ -70,4 +71,4 @@ class BoxTransposeDialog(QDialog):
         super().accept()
 
     def result_text(self) -> str:
-        return getattr(self, "_result_text", self.original_text)
+        return styled(getattr(self, "_result_text", self.original_text))

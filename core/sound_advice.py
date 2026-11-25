@@ -429,14 +429,22 @@ def sound_advice(project) -> Advice:
     return advice
 
 
+# Il volume di traccia (100 = com'e') con cui suona uno strumento campionato piu' forte della media: misurato sugli
+# accordi del brano jazz (Shinyguitar, electric_one: rms 0.044 contro 0.021 del contrabbasso, cioe' 6 dB sopra).
+SFZ_VOLUME = {"shinyguitar": 55}
+
+
 def apply_sfz(project, advice: Advice) -> List[str]:
-    """Le tracce che hanno uno strumento campionato gia' scaricato passano al motore SFZ interno; ritorna i loro nomi."""
+    """Le tracce che hanno uno strumento campionato gia' scaricato passano al motore SFZ interno; ritorna i loro nomi.
+    Se lo strumento suona sopra gli altri (SFZ_VOLUME) il volume della traccia scende di quanto serve."""
     from .plugins import home_relative
     done = []
     for sound in advice.usable:
         track = next((t for t in project.tracks if t.name == sound.track), None)
         if track is not None and not track.synth:
             track.synth = "sfz:" + home_relative(sound.path)
+            if sound.group in SFZ_VOLUME and track.volume == 100:
+                track.volume = SFZ_VOLUME[sound.group]
             done.append(track.name)
     return done
 

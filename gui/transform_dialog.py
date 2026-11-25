@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from st_language.transform import format_reference, list_transforms, parse_reference
 
+from core.accidental_style import styled
 from core.completion import arpeggio_kinds
 from core.i18n import current_language, tr
 from core.instruments import get_instrument
@@ -387,7 +388,7 @@ class ArpeggioDialog(QDialog):
         form.addRow(row)
 
     def result_text(self) -> str:
-        return self.render(self.kind.currentText(), self.grid.currentData())
+        return styled(self.render(self.kind.currentText(), self.grid.currentData()))
 
     def _listen(self):
         preview = Project(name="preview", tempo_bpm=self.project.tempo_bpm, time_sig=self.project.time_sig,
