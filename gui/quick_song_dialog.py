@@ -125,8 +125,9 @@ class QuickSongDialog(QDialog):
 
         # i suoni consigliati (core.sound_advice): si mostrano dopo aver composto, non cambiano niente da soli
         self._advice = None
-        from core.sound_advice import forget_installed
-        forget_installed()                 # gli strumenti SFZ si cercano di nuovo a ogni apertura (anche quelli messi a mano)
+        from core.sound_advice import forget_installed, prefetch
+        forget_installed()                 # gli strumenti SFZ si cercano di nuovo a ogni apertura (anche quelli messi a mano),
+        prefetch()                         # in background mentre si sceglie il genere: comporre non ferma la finestra
         self.sounds_label = QLabel("")
         self.sounds_label.setWordWrap(True)
         self.sounds_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -311,8 +312,9 @@ class QuickSongDialog(QDialog):
             return
         self._playback.stop()
         self.parent().open_download_dialog(preselect=list(self._advice.download_keys))
-        from core.sound_advice import forget_installed
+        from core.sound_advice import forget_installed, prefetch
         forget_installed()                 # quelli appena scaricati
+        prefetch()
         self._update_sounds()
 
     def _another(self):

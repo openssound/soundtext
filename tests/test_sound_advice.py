@@ -36,9 +36,20 @@ def instruments(tmp_path, monkeypatch):
     monkeypatch.setattr(script, "DEST", tmp_path)
     monkeypatch.setattr("core.sfz_engine.sfz_available", lambda: True)
     monkeypatch.setattr("core.playback._find_soundfont", lambda: "/x/MuseScore_General.sf3")
+    _join_prefetch()
     sound_advice.forget_installed()
     yield tmp_path
+    _join_prefetch()
     sound_advice.forget_installed()
+
+
+def _join_prefetch():
+    """Le ricerche in background (sound_advice.prefetch) di una finestra aperta prima: finite, non toccano la cartella
+    finta del test."""
+    import threading
+    for thread in threading.enumerate():
+        if thread.name == "sfz-prefetch":
+            thread.join(timeout=60)
 
 
 def test_nothing_downloaded_suggests_what_to_download_and_changes_nothing(instruments):
@@ -265,3 +276,48 @@ def test_dialog_switches_to_the_full_soundfont_and_opens_the_downloads(app, inst
     assert not dlg.download_btn.isHidden()                                # niente e' scaricato: si propone di scaricare
     dlg.download_btn.click()
     assert Window.opened and set(Window.opened) == set(dlg._advice.download_keys)
+
+
+def test_dynamics_and_adjectives_do_not_make_a_piano():
+    assert sound_advice.kinds_of("Violin piano") == {40, 110}
+    assert sound_advice.kinds_of("Grand Organ") == {16, 17, 18}
+    assert sound_advice.kinds_of("Piano verticale piccolo") == {0, 1, 2, 3}           # «piccolo» non e' l'ottavino
+    assert sound_advice.kinds_of("PiccoloSus") == {72}
+    assert sound_advice.kinds_of("Sax soprano, contralto, tenore e baritono MTG") == {64, 65, 66, 67}
+    assert sound_advice.kinds_of("Piano elettrico FM") == {5}
+
+
+def test_the_group_names_the_instrument_and_a_dynamic_in_the_file_name_cannot_change_it(instruments):
+    _install(instruments, "sax", "S/tenor_map_piano_dynamic.sfz")                     # voce: «Sax tenore»
+    found = {os.path.basename(f.path): f.kinds for f in sound_advice.installed_sfz(load_script())}
+    assert found == {"tenor_map_piano_dynamic.sfz": {66}}
+
+
+def test_a_placeholder_hidden_in_an_include_is_skipped(instruments):
+    mine = instruments / "miei"
+    mine.mkdir()
+    (mine / "sine.sfzh").write_text("<region> sample=*sine\n")
+    (mine / "Archtop Jazz Guitar.sfz").write_text('#include "sine.sfzh"\n')
+    assert sound_advice.installed_sfz(load_script()) == []
+
+
+def test_variants_that_are_the_instrument_come_first_and_every_file_is_tried(instruments):
+    names = ["Guitar Clean.sfz", "Guitar Muted.sfz"]
+    assert sorted(names, key=lambda p: sound_advice._rank(p, 28))[0] == "Guitar Muted.sfz"
+    assert sorted(names, key=lambda p: sound_advice._rank(p, 27))[0] == "Guitar Clean.sfz"
+    project, guitar = _with_track("jazz", "Jazz_Guitar")
+    mine = instruments / "miei"
+    mine.mkdir()
+    for i in range(20):                                                               # tante varianti che non bastano
+        (mine / f"Archtop {i:02d}.sfz").write_text("<region> sample=a.wav lokey=0 hikey=1\n")
+    (mine / "Archtop Jazz Guitar Full Range Sustain.sfz").write_text("<region> sample=a.wav\n")
+    sound = sound_advice.track_sound(guitar, project=project)
+    assert sound.installed and sound.path.endswith("Full Range Sustain.sfz")         # l'ultima, la sola che suona tutto
+
+
+def test_prefetch_scans_in_the_background_and_reads_the_regions(instruments):
+    from core import sfz_coverage
+    path = _install(instruments, "basso", "B/B.sfz")
+    sound_advice.prefetch().join(timeout=30)
+    assert [f.path for f in sound_advice.installed_sfz(load_script())] == [str(path)]
+    assert str(path) in sfz_coverage._cache                                           # gia' letto: comporre non aspetta

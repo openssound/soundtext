@@ -18,6 +18,7 @@ SoundText sceglie se usarli (apply_sfz) o se scaricarli (download_keys, voci di 
 import logging
 import os
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -60,7 +61,7 @@ DRUMS = -1                  # la "famiglia" della batteria in KINDS
 KINDS = [
     ((0, 1, 2, 3), r"piano|grand|upright", r"e ?piano|electric|elettric|rhodes|wurl|pianet|\bfm|toy|cp ?80|clav|scary|bass|sax"),
     ((4,), r"rhodes|wurl|pianet|e ?piano|electric piano|piano elettric|ep ?200|cp ?80", r"\bfm"),
-    ((5,), r"fm ?piano|\bdx ?7", ""),
+    ((5,), r"fm ?piano|piano elettrico fm|\bdx ?7", ""),
     ((16, 17, 18), r"organ", r"church|chiesa|pipe|canne"),
     ((19,), r"(church|chiesa|pipe|canne).*organ|organ.*(church|chiesa|pipe|canne)", ""),
     ((21, 23), r"accordion|fisarmonica", ""),
@@ -85,13 +86,13 @@ KINDS = [
     ((58,), r"\btuba", ""),
     ((60,), r"french horn|\bf ?horn|\bcorno\b", ""),
     ((64,), r"soprano ?sax|sax soprano", ""),
-    ((65,), r"alto ?sax|sax (contr)?alto|weresax.* alto", ""),
-    ((66,), r"tenor ?sax|sax tenore|bear sax", ""),
-    ((67,), r"bari(tone)? ?sax|sax baritono", ""),
+    ((65,), r"alto ?sax|sax (contr)?alto|weresax.* alto|\bcontralto", ""),
+    ((66,), r"tenor ?sax|sax tenore|bear sax|\btenore\b", ""),
+    ((67,), r"bari(tone)? ?sax|sax baritono|\bbaritono\b", ""),
     ((68,), r"\boboe", ""),
     ((70,), r"bassoon|fagotto", ""),
     ((71,), r"clarinet", ""),
-    ((72,), r"piccolo|ottavino", ""),
+    ((72,), r"piccolo|ottavino", r"piano|vertical|guitar|chitarra|bass"),       # «piccolo» e' anche l'aggettivo
     ((73,), r"flute|flauto", ""),
     ((11,), r"vibraphone|vibrafono", ""),
     ((12,), r"marimba", ""),
@@ -103,9 +104,11 @@ _KINDS = [(set(progs), re.compile(inc), re.compile(exc) if exc else None) for pr
 _SEP = re.compile(r"[\s_\-./(),+]+")
 # file che non sono lo strumento da suonare (solo i rumori, le code, i controlli, le prove)
 _NOT_PLAYABLE = re.compile(r"(^| )(noises?|release|releases|controls?|test|fx)$")
-# varianti meno adatte a suonare una parte normale: si provano dopo
+# varianti meno adatte a suonare una parte normale: si provano dopo (tranne dove sono proprio lo strumento: _FITTING)
 _VARIANT = re.compile(r"keyswitch|\bks\b|staccato|stacc|hammer|chords?\b|harmonic|mute|trem|twang|noise|pizz|spicc|"
-                      r"mono|no ?xfade|split|fx|saxcordion|sxnth|synth|noise")
+                      r"mono|no ?xfade|split|fx|saxcordion|sxnth|synth")
+_FITTING = {28: re.compile(r"mute"), 32: re.compile(r"pizz"), 33: re.compile(r"pizz"), 45: re.compile(r"pizz"),
+            44: re.compile(r"trem")}
 
 # i campioni generati da sfizz (onde, rumore, silenzio): un file che suona solo questi e' un segnaposto (il banco GM
 # incompleto ne ha uno per ogni strumento non campionato), non uno strumento
@@ -113,20 +116,26 @@ _SAMPLE = re.compile(r"\bsample\s*=\s*([^\r\n<]*)")
 
 LIGHT_SOUNDFONT = "TimGM6mb.sf2"
 FULL_SOUNDFONTS = ("sf-musescore", "sf-fluidr3")
-MAX_TRIED = 12              # quanti file provare al massimo per traccia (la copertura legge il .sfz)
 
 
 def _words(text: str) -> str:
     return " " + _SEP.sub(" ", text.lower()).strip() + " "
 
 
+_PIANOS = {0, 1, 2, 3}
+
+
 def kinds_of(text: str) -> Set[int]:
-    """I programmi General MIDI (e DRUMS) che il testo (nome di un file, voce di "Scarica e installa") nomina."""
+    """I programmi General MIDI (e DRUMS) che il testo (nome di un file, voce di "Scarica e installa") nomina. «piano»
+    e «grand» accanto a un altro strumento sono la dinamica o un aggettivo («Violin piano», «Grand Organ»): non il
+    pianoforte."""
     words = _words(text)
     out: Set[int] = set()
     for progs, include, exclude in _KINDS:
         if include.search(words) and not (exclude and exclude.search(words)):
             out |= progs
+    if out & _PIANOS and out - _PIANOS:
+        out -= _PIANOS
     return out
 
 
@@ -164,19 +173,36 @@ class SfzFile:
 
 
 _scan_cache: Dict[str, List[SfzFile]] = {}
+_scan_lock = threading.Lock()
 
 
 def forget_installed():
     """Dimentica i file trovati: dopo uno scarico (o se si sono aggiunti strumenti a mano) si cercano di nuovo."""
-    _scan_cache.clear()
+    with _scan_lock:
+        _scan_cache.clear()
+
+
+def prefetch(script=None) -> threading.Thread:
+    """Cerca i .sfz e ne legge le regioni in un thread (la finestra lo avvia all'apertura, mentre si sceglie il genere):
+    i consigli, dopo, non fermano la finestra. installed_sfz aspetta la ricerca se non e' finita."""
+    def run():
+        try:
+            from .sfz_coverage import sfz_regions
+            for found in installed_sfz(script or load_script()) if (script or load_script()) is not None else ():
+                sfz_regions(found.path)
+        except Exception:
+            log.warning("Ricerca degli strumenti SFZ non riuscita", exc_info=True)
+    thread = threading.Thread(target=run, name="sfz-prefetch", daemon=True)
+    thread.start()
+    return thread
 
 
 def _placeholder(path: str) -> bool:
     """Il .sfz suona solo campioni generati (sample=*sine...): non e' uno strumento campionato."""
+    from .sfz_coverage import _expand
     try:
-        with open(path, encoding="utf-8", errors="replace") as f:
-            samples = _SAMPLE.findall(f.read())
-    except OSError:
+        samples = _SAMPLE.findall(_expand(path, {}))                 # anche i campioni dei file inclusi
+    except (OSError, RecursionError):
         return True
     return bool(samples) and all(sample.strip().startswith("*") for sample in samples)
 
@@ -198,6 +224,11 @@ def _group_text(script, group: str) -> str:
 
 def installed_sfz(script) -> List[SfzFile]:
     """Tutti i .sfz della cartella degli strumenti, con lo strumento riconosciuto (ricordati: vedi forget_installed)."""
+    with _scan_lock:
+        return _scan(script)
+
+
+def _scan(script) -> List[SfzFile]:
     root = str(script.DEST)
     if root in _scan_cache:
         return _scan_cache[root]
@@ -214,12 +245,13 @@ def installed_sfz(script) -> List[SfzFile]:
                 continue
             own = os.path.join(*(parts[1:] or [""]), stem)
             kinds = kinds_of(own)
-            if not kinds:
-                # il nome non dice lo strumento: lo dice la voce del gruppo, letta insieme al nome (cosi' «arco» in un
-                # basso elettrico lo esclude comunque)
-                if group not in group_text:
-                    group_text[group] = _group_text(script, group)
-                kinds = kinds_of(group_text[group] + " " + own) if group_text[group] else set()
+            if group not in group_text:
+                group_text[group] = _group_text(script, group)
+            if group_text[group]:
+                # la voce del gruppo dice lo strumento: il nome lo puo' solo escludere (cosi' «arco» in un basso elettrico
+                # lo esclude comunque) o precisare, non cambiarlo (una dinamica nel nome di un sax non e' un pianoforte)
+                instrument = kinds_of(group_text[group])
+                kinds = (kinds & instrument) if kinds else kinds_of(group_text[group] + " " + own) & instrument
             if kinds and not _placeholder(os.path.join(folder, name)):
                 found.append(SfzFile(os.path.join(folder, name), group, kinds))
     _scan_cache[root] = found
@@ -295,23 +327,37 @@ def _to_download(script, kind: int) -> Optional[str]:
     return min(others)[1] if others else None
 
 
-def covers(project, track, path: str) -> bool:
-    """Il .sfz 'path' suona tutte le note (con la loro dinamica) che la traccia suona nel progetto."""
-    from .sfz_coverage import sfz_regions, sounds, track_notes
+def _notes(project, track) -> Optional[List[Tuple[int, int]]]:
+    """(nota, dinamica) di ogni nota della traccia, None se non si leggono."""
+    from .sfz_coverage import track_notes
+    try:
+        return track_notes(project, track)
+    except Exception:
+        log.warning("Note della traccia %s non lette per la copertura SFZ", track.name, exc_info=True)
+        return None
+
+
+def _covers_notes(path: str, notes: List[Tuple[int, int]]) -> bool:
+    from .sfz_coverage import sfz_regions, sounds
     regions = sfz_regions(path)
     if not regions:
         return False                                    # un file che non si legge non si propone
-    try:
-        notes = track_notes(project, track)
-    except Exception:
-        log.warning("Note della traccia %s non lette per la copertura SFZ", track.name, exc_info=True)
-        return False
     return all(sounds(regions, note, velocity) for note, velocity in notes)
 
 
-def _rank(path: str):
+def covers(project, track, path: str) -> bool:
+    """Il .sfz 'path' suona tutte le note (con la loro dinamica) che la traccia suona nel progetto."""
+    notes = _notes(project, track)
+    return notes is not None and _covers_notes(path, notes)
+
+
+def _rank(path: str, kind: Optional[int] = None):
+    """Prima i file normali, poi le varianti (staccato, keyswitch...; non quelle che sono proprio lo strumento della
+    traccia, come «muted» per la chitarra smorzata), dal nome piu' corto."""
     stem = _words(os.path.splitext(os.path.basename(path))[0])
-    return (bool(_VARIANT.search(stem)), len(stem), path)
+    fitting = _FITTING.get(kind)
+    variant = bool(_VARIANT.search(fitting.sub(" ", stem) if fitting else stem))
+    return (variant, not bool(fitting and fitting.search(stem)), len(stem), path)
 
 
 def track_sound(track, script=None, project=None) -> Optional[TrackSound]:
@@ -325,10 +371,14 @@ def track_sound(track, script=None, project=None) -> Optional[TrackSound]:
     if kind is None or script is None:
         return None
     preferred = _preferred_files(script, kind)
-    others = sorted((f.path for f in installed_sfz(script) if kind in f.kinds and f.path not in preferred), key=_rank)
-    groups = {f.path: f.group for f in installed_sfz(script)}
-    for path in (preferred + others)[:MAX_TRIED]:
-        if project is None or covers(project, track, path):
+    found = installed_sfz(script)
+    others = sorted((f.path for f in found if kind in f.kinds and f.path not in preferred), key=lambda p: _rank(p, kind))
+    groups = {f.path: f.group for f in found}
+    notes = _notes(project, track) if project is not None else []
+    if notes is None:
+        return None
+    for path in preferred + others:                      # tutti: le regioni sono gia' lette (prefetch) e ricordate
+        if project is None or _covers_notes(path, notes):
             group = groups.get(path, "")
             label = _group_label(script, group)
             if path not in preferred:                    # quale file del gruppo
