@@ -255,6 +255,9 @@ class Project:
     title: str = ""
     composer: str = ""
     lyricist: str = ""
+    # Le scelte di «Un brano in 60 secondi» (il JSON del commento "// quick: {...}", vedi core.quicksong.quick_read): si
+    # conservano salvando, cosi' il brano si puo' rifare in un altro genere (anche dal link, sul telefono).
+    quick: str = ""
 
     def meter(self) -> Meter:
         """Dove cominciano le battute del progetto (per le ancore bar=N) e la

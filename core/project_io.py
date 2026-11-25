@@ -49,6 +49,9 @@ from st_language.stfile import (  # noqa: F401  (formato dei file .st, vedi st_l
 )
 
 
+# le scelte di «Un brano in 60 secondi» (core.quicksong): il commento si conserva, per rifare il brano in un altro genere
+RE_QUICK = re.compile(r"^// quick: (\{.*\})\s*$")
+
 # Cartella predefinita per il salvataggio dei progetti (analoga a midi/ per la libreria)
 DEFAULT_SONGS_DIR = os.path.join(get_app_root(), "songs")
 # Progetti d'esempio distribuiti con l'app (Progetto -> Apri esempio...):
@@ -463,6 +466,7 @@ _SONG_LINES = (
     (RE_COMPOSER, lambda project, m: setattr(project, "composer", m.group(1).strip())),
     (RE_LYRICIST, lambda project, m: setattr(project, "lyricist", m.group(1).strip())),
     (RE_AMBIENTE, _set_room),
+    (RE_QUICK, lambda project, m: setattr(project, "quick", m.group(1))),
 )
 
 # Le intestazioni di blocco che non sono tracce: il modo in cui si leggono le
@@ -731,6 +735,8 @@ def project_to_text(project: Project, base_dir: Optional[str] = None) -> str:
         metrica_line = f"Metrica: {project.time_sig}"
     # la versione del linguaggio in cima (i lettori piu' vecchi la ignorano)
     lines = ["ST: %d.%d" % _file_language_version(project)]
+    if project.quick:
+        lines.append("// quick: " + project.quick)
     for label, value in (("Titolo", project.title), ("Autore", project.composer), ("Parole", project.lyricist)):
         if value:
             lines.append(f"{label}: {value}")

@@ -72,3 +72,28 @@ def test_main_window_copies_link(monkeypatch):
     assert name == "Mio brano" and "c d e f" in data.decode()
     assert shown and "Mio brano" in shown[0]
     assert any("Copia il link del brano" == a.text() for a in w.menuBar().actions()[0].menu().actions())
+
+
+def test_project_keeps_quick_song_choices_for_remix():
+    """Aprendo e risalvando un brano di «Un brano in 60 secondi» le sue scelte restano: il link dal PC permette il remix."""
+    from core.project_io import parse_project_text, project_to_text
+    from core.quicksong import quick_read, quick_song
+    made = quick_song({"genre": "pop", "mood": "allegra", "duration": 15, "seed": 7})
+    project = parse_project_text(made["text"], "Brano")
+    assert json_of(project.quick)["seed"] == 7
+    text = project_to_text(project)
+    assert quick_read(text)["genre"] == "pop" and quick_read(text)["seed"] == 7
+    assert text.splitlines()[0].startswith("ST:")
+    assert project_to_text(parse_project_text(text, "Brano")) == text          # stabile a ogni salvataggio
+    link = make_url("Brano", text)
+    assert "// quick: {" in read_fragment(link.split("#", 1)[1])[1].decode()
+
+
+def test_project_without_quick_choices_writes_none():
+    from core.project_io import parse_project_text, project_to_text
+    assert "// quick:" not in project_to_text(parse_project_text(SONG, "Brano"))
+
+
+def json_of(text):
+    import json
+    return json.loads(text)
