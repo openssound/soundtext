@@ -16,12 +16,13 @@ def _song(genre, seed=3):
     return made, parse_project_text(made["text"], made["name"])
 
 
-def _install(dest, group, relative):
-    """Un gruppo di scarica_strumenti finto, scaricato tutto (con .completo) e con il file .sfz 'relative'."""
+def _install(dest, group, relative, region="<region> sample=a.wav"):
+    """Un gruppo di scarica_strumenti finto, scaricato tutto (con .completo) e con il file .sfz 'relative' (che di
+    solito suona tutti i tasti)."""
     _name, _desc, _url, sub = load_script().trova(group)
     folder = dest / sub / group
     (folder / relative).parent.mkdir(parents=True, exist_ok=True)
-    (folder / relative).write_text("<region> sample=a.wav\n")
+    (folder / relative).write_text(region + "\n")
     (folder / ".completo").write_text("")
     return folder / relative
 
@@ -78,10 +79,45 @@ def test_preferred_downloaded_candidate_wins_and_electronic_kits_stay_on_the_sou
 def test_without_the_sfz_engine_nothing_is_usable_and_the_engine_is_suggested(instruments, monkeypatch):
     _install(instruments, "basso", "B/B.sfz")
     monkeypatch.setattr("core.sfz_engine.sfz_available", lambda: False)
+    script = load_script()
+    monkeypatch.setattr(script, "libreria_precompilata", lambda: "libsfizz.so")
     _made, project = _song("rock")
     advice = sound_advice.sound_advice(project)
     assert not advice.usable and "libreria" in advice.download_keys
     assert any("motore SFZ" in line for line in sound_advice.describe(advice))
+    # dove la libreria si dovrebbe compilare (minuti) non si spunta: lo dice solo il testo
+    monkeypatch.setattr(script, "libreria_precompilata", lambda: None)
+    advice = sound_advice.sound_advice(project)
+    assert "libreria" not in advice.download_keys and any("motore SFZ" in line for line in sound_advice.describe(advice))
+
+
+def test_a_file_that_leaves_notes_silent_is_not_proposed_and_the_next_candidate_is_tried(instruments):
+    _made, project = _song("jazz")
+    piano = project.get_track("Piano") or pytest.skip("niente pianoforte in questo jazz")
+    _install(instruments, "splendid-piano", "Splendid Grand Piano.sfz", "<region> sample=a.wav lokey=60 hikey=61")
+    assert not sound_advice.covers(project, piano, str(next(instruments.rglob("Splendid Grand Piano.sfz"))))
+    sound = sound_advice.track_sound(piano, project=project)                    # niente di scaricato che suoni tutto:
+    assert not sound.installed and sound.group == "piano"                       # si propone di scaricare il seguente
+    upright = _install(instruments, "upright", "U/U.sfz")
+    sound = sound_advice.track_sound(piano, project=project)
+    assert sound.installed and sound.path == str(upright)
+    advice = sound_advice.sound_advice(project)
+    assert [s.path for s in advice.usable if s.track == "Piano"] == [str(upright)]
+    sound_advice.apply_sfz(project, advice)
+    from core.sfz_coverage import silent_notes
+    assert silent_notes(project, project.get_track("Piano")) is None
+
+
+def test_jazz_guitar_is_not_mapped_and_the_drum_kit_override_counts(instruments, monkeypatch):
+    from core import settings
+    assert 26 not in sound_advice.SFZ_PER_PROGRAMMA                             # nessun SFZ adatto a una archtop
+    _install(instruments, "batteria", "Kit/Kit-GM.sfz")
+    _made, project = _song("rock")
+    drums = next(t for t in project.tracks if t.instrument.is_percussion)
+    assert sound_advice.track_sound(drums, project=project) is not None
+    overrides = {drums.instrument_name or drums.instrument.name: 24}             # kit elettronico in Gestione strumenti
+    monkeypatch.setattr(settings, "get_drum_kit_override", lambda name: overrides.get(name))
+    assert sound_advice.track_sound(drums, project=project) is None
 
 
 def test_light_or_missing_soundfont(instruments, monkeypatch, tmp_path):
@@ -119,17 +155,18 @@ def app():
 def test_dialog_shows_the_advice_and_uses_the_sfz_only_when_ticked(app, instruments, monkeypatch):
     from gui.quick_song_dialog import QuickSongDialog
     _install(instruments, "splendid-piano", "Splendid Grand Piano.sfz")
-    _install(instruments, "chitarra-elettrica", "G/G.sfz")                 # il jazz accompagna col piano o con la chitarra
     dlg = QuickSongDialog()
     monkeypatch.setattr(dlg._playback, "play", lambda project, *a, **k: setattr(dlg, "played", project))
     monkeypatch.setattr(dlg._playback, "stop", lambda *a, **k: None)
     assert not dlg.sounds_label.text()                                    # prima di comporre niente
     dlg.genre_list.setCurrentRow(next(i for i, g in enumerate(dlg.choices["genres"]) if g["value"] == "jazz"))
     dlg.duration_combo.setCurrentIndex(0)
+    dlg.detail_check.setChecked(True)
+    dlg.seed_spin.setValue(1)                                             # un jazz col pianoforte
     dlg.sfz_check.setChecked(False)
     dlg.compose()
     comp = dlg._advice.usable[0].track
-    assert comp in ("Piano", "Jazz_Guitar")
+    assert comp == "Piano"
     assert "Suoni: MuseScore_General.sf3" in dlg.sounds_label.text() and comp + " (" in dlg.sounds_label.text()
     assert not dlg.sfz_check.isHidden() and not dlg.played.get_track(comp).synth
     dlg.sfz_check.setChecked(True)

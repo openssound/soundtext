@@ -6,17 +6,21 @@ da solo: chi usa SoundText sceglie se usarli (apply_sfz) o se scaricarli (downlo
 - SoundFont generale: se non ce n'e' nessuno, o se c'e' solo quello leggero (TimGM6mb), propone MuseScore General (gia'
   scaricato: si usa con un clic; se no, da scaricare).
 - Tracce: per lo strumento General MIDI della traccia il file .sfz di uno strumento scaricabile (pianoforte, chitarre,
-  bassi, sax, batteria acustica...; per l'orchestra quello di core.orchestra). Gia' scaricato: si puo' usare; se no, si
-  dice quale voce scaricare. Le batterie elettroniche, a spazzole o d'orchestra restano al SoundFont: un kit acustico
-  le snaturerebbe.
+  bassi, sax, batteria acustica...; per l'orchestra quello di core.orchestra). Gia' scaricato: si puo' usare solo se
+  suona tutte le note della traccia (core.sfz_coverage: un basso o un kit con meno tasti lascerebbe note mute), se no
+  si prova il candidato seguente; non scaricato: si dice quale voce scaricare. Le batterie elettroniche, a spazzole o
+  d'orchestra (anche se scelte in Gestione strumenti) restano al SoundFont: un kit acustico le snaturerebbe.
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from .downloads import _split, load_script
 from .i18n import tr
+
+log = logging.getLogger(__name__)
 
 _PIANO = (("splendid-piano", "Splendid Grand Piano.sfz"), ("piano", "*/SalamanderGrandPiano-V3*.sfz"), ("upright", "*/*.sfz"))
 
@@ -27,7 +31,6 @@ SFZ_PER_PROGRAMMA = {
     5: (("epiano", "*/*.sfz"),),
     19: (("organo", "*/*.sfz"),),
     24: (("chitarra", "*/*.sfz"),),
-    26: (("chitarra-elettrica", "*/*.sfz"),),
     27: (("chitarra-elettrica", "*/*.sfz"),),
     29: (("chitarra-dist", "*/*.sfz"),),
     30: (("chitarra-dist", "*/*.sfz"),),
@@ -71,10 +74,17 @@ class Advice:
         return [t for t in self.tracks if t.installed] if self.sfz_engine else []
 
 
+def _kit_program(track) -> int:
+    """Il programma del kit di batteria: quello scelto in Gestione strumenti, se c'e', altrimenti quello dello strumento."""
+    from .settings import get_drum_kit_override
+    override = get_drum_kit_override(track.instrument_name or track.instrument.name)
+    return track.instrument.gm_program if override is None else int(override)
+
+
 def _candidates(track) -> Tuple[Tuple[str, str], ...]:
     profile = track.instrument
     if profile.is_percussion:
-        return SFZ_BATTERIA if profile.gm_program in KIT_ACUSTICI else ()
+        return SFZ_BATTERIA if _kit_program(track) in KIT_ACUSTICI else ()
     if profile.gm_program in SFZ_PER_PROGRAMMA:
         return SFZ_PER_PROGRAMMA[profile.gm_program]
     from .orchestra import FILE_PER_PROGRAMMA
@@ -93,18 +103,33 @@ def _resolve(script, group: str, pattern: str) -> Optional[TrackSound]:
     return TrackSound("", group, tr(_split(desc)[0]), str(files[0]) if installed else "", installed)
 
 
-def track_sound(track, script=None) -> Optional[TrackSound]:
-    """Lo strumento campionato per la traccia: il primo gia' scaricato fra i candidati, o il preferito da scaricare;
-    None se non c'e' (o la traccia ha gia' un suo strumento plugin)."""
+def covers(project, track, path: str) -> bool:
+    """Il .sfz 'path' suona tutte le note (con la loro dinamica) che la traccia suona nel progetto."""
+    from .sfz_coverage import sfz_regions, sounds, track_notes
+    regions = sfz_regions(path)
+    if not regions:
+        return False                                    # un file che non si legge non si propone
+    try:
+        notes = track_notes(project, track)
+    except Exception:
+        log.warning("Note della traccia %s non lette per la copertura SFZ", track.name, exc_info=True)
+        return False
+    return all(sounds(regions, note, velocity) for note, velocity in notes)
+
+
+def track_sound(track, script=None, project=None) -> Optional[TrackSound]:
+    """Lo strumento campionato per la traccia: il primo gia' scaricato fra i candidati che (con 'project') suona tutte
+    le note della traccia, o il primo da scaricare; None se non c'e' (o la traccia ha gia' un suo strumento plugin)."""
     if track.is_audio or track.synth or track.mute:
         return None
     script = script or load_script()
     if script is None:
         return None
     found = [s for s in (_resolve(script, g, p) for g, p in _candidates(track)) if s is not None]
-    if not found:
+    usable = (s for s in found if s.installed and (project is None or covers(project, track, s.path)))
+    best = next(usable, None) or next((s for s in found if not s.installed), None)
+    if best is None:
         return None
-    best = next((s for s in found if s.installed), found[0])
     best.track = track.name
     return best
 
@@ -136,11 +161,11 @@ def sound_advice(project) -> Advice:
     if script is None:
         return advice
     for track in project.tracks:
-        sound = track_sound(track, script)
+        sound = track_sound(track, script, project)
         if sound is not None:
             advice.tracks.append(sound)
-    if not advice.sfz_engine and advice.tracks:
-        advice.download_keys.append("libreria")
+    if not advice.sfz_engine and advice.tracks and script.libreria_precompilata() is not None:
+        advice.download_keys.append("libreria")          # da compilare (minuti) no: lo dice solo il testo
     for sound in advice.tracks:
         if not sound.installed and sound.group not in advice.download_keys:
             advice.download_keys.append(sound.group)

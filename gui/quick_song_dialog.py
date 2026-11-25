@@ -5,6 +5,7 @@ tonalita', tempo, metrica, forma, organico, melodia, finale, modulazione, densit
 il seme: con le stesse scelte e lo stesso seme esce lo stesso brano, come sul telefono (SoundText Mobile).
 """
 
+import logging
 import random
 
 from PySide6.QtCore import Qt
@@ -276,7 +277,8 @@ class QuickSongDialog(QDialog):
         if self.song:
             try:
                 self._advice = sound_advice(parse_project_text(self.song["text"], self.song["name"]))
-            except Exception:                          # i consigli non devono mai impedire di comporre
+            except Exception:                          # i consigli non devono mai impedire di comporre, ma si annota il perche'
+                logging.getLogger(__name__).warning("Suoni consigliati non calcolati", exc_info=True)
                 self._advice = None
         advice = self._advice
         self.sounds_label.setText("\n".join(describe(advice)) if advice else "")
