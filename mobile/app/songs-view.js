@@ -166,8 +166,10 @@ async function share(song) {
       if (e.name === "AbortError") return;
     }
   }
+  // Scaricato come text/plain, Chrome su Android aggiunge ".txt" al nome (l'estensione .st non corrisponde al tipo):
+  // come dati generici il nome resta quello.
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(file);
+  a.href = URL.createObjectURL(new Blob([await file.arrayBuffer()], { type: "application/octet-stream" }));
   a.download = fileName;
   document.body.append(a);
   a.click();
