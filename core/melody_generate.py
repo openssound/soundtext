@@ -59,6 +59,16 @@ _FIGURES_SIMPLE = {
     1: [(1, [1.0], 4), (1, [0.5, 0.5], 2), (2, [1.5, 0.5], 2), (2, [2.0], 1)],
     2: [(1, [0.5, 0.5], 5), (1, [1.0], 2), (2, [1.5, 0.5], 1)],
 }
+# Figure sincopate (pulsazione semplice): la nota lunga parte in levare. Il loro peso si moltiplica per la sincope dello
+# stile (0 = mai, 1 = spesso): croma-semiminima-croma e croma-semiminima puntata.
+_SYNCOPATED_SIMPLE = {
+    0: [(2, [0.5, 1.5], 2)],
+    1: [(2, [0.5, 1.0, 0.5], 4), (2, [0.5, 1.5], 2)],
+    2: [(2, [0.5, 1.0, 0.5], 4), (2, [0.5, 1.5], 1)],
+}
+DEFAULT_SYNCOPATION = 0.3
+DEFAULT_APPOGGIATURA = 0.25
+BREATH = 0.5                  # beat: la pausa per respirare alla fine di una frase (tolta alla nota lunga di cadenza)
 _FIGURES_COMPOUND = {
     0: [(1, [1.5], 3), (2, [3.0], 1)],
     1: [(1, [1.0, 0.5], 3), (1, [1.5], 2), (1, [0.5, 0.5, 0.5], 1)],
@@ -151,12 +161,15 @@ def _weighted(options, rng: random.Random, flatten: float):
 
 
 def _bar_rhythm(bar_beats: float, compound: bool, density: int, cadence: bool,
-                rng: random.Random, flatten: float) -> List[Tuple[float, float]]:
+                rng: random.Random, flatten: float, syncopation: float = 0.0) -> List[Tuple[float, float]]:
     """[(inizio, durata)] delle note di una battuta. Nella battuta di
-    cadenza, dopo la prima meta' la nota finale lunga."""
+    cadenza, dopo la prima meta' la nota finale lunga. 'syncopation' (0-1):
+    quanto spesso entrano le figure sincopate (_SYNCOPATED_SIMPLE)."""
     pulses = _pulses(bar_beats, compound)
     base = 1.5 if compound else 1.0
-    figures = (_FIGURES_COMPOUND if compound else _FIGURES_SIMPLE)[density]
+    figures = list((_FIGURES_COMPOUND if compound else _FIGURES_SIMPLE)[density])
+    if syncopation > 0 and not compound:
+        figures += [(span, durations, w * syncopation) for span, durations, w in _SYNCOPATED_SIMPLE[density]]
     stop = len(pulses)
     if cadence:
         stop = max(1, (len(pulses) + 1) // 2) if len(pulses) > 1 else 0
@@ -181,12 +194,18 @@ def _bar_rhythm(bar_beats: float, compound: bool, density: int, cadence: bool,
 
 
 def _phrase_rhythm(phrase_bars: int, bar_beats: float, compound: bool, density: int,
-                   rng: random.Random, flatten: float) -> List[Tuple[float, float]]:
-    out = []
+                   rng: random.Random, flatten: float, syncopation: float = 0.0) -> List[Tuple[float, float]]:
+    """Il ritmo di una frase. Il motivo e' la prima battuta: con piu' di due
+    battute, la terza (non di cadenza) la riprende uguale, come nelle frasi
+    vere (motivo, risposta, motivo, cadenza)."""
+    bars = []
     for b in range(phrase_bars):
-        out += [(b * bar_beats + t, d) for t, d in
-                _bar_rhythm(bar_beats, compound, density, b == phrase_bars - 1, rng, flatten)]
-    return out
+        cadence = b == phrase_bars - 1
+        if b == 2 and not cadence:
+            bars.append(bars[0])
+            continue
+        bars.append(_bar_rhythm(bar_beats, compound, density, cadence, rng, flatten, syncopation))
+    return [(b * bar_beats + t, d) for b, bar in enumerate(bars) for t, d in bar]
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +243,8 @@ def _strength(onset: float, duration: float, bar_beats: float, compound: bool) -
         return "strong"
     if abs(pos / pulse - round(pos / pulse)) < 1e-6:
         return "beat"
+    if duration >= pulse - 1e-6:
+        return "beat"          # la nota sincopata: parte in levare ma tiene sul tempo, si sente come quella del tempo
     return "weak"
 
 
@@ -232,7 +253,7 @@ def _leap_cost(prev: Optional[int], note: int) -> float:
         return 0.0
     d = abs(note - prev)
     if d == 0:
-        return 2.0
+        return 0.8            # la nota ribattuta: nel canto e' comune (tre uguali di fila restano vietate, vedi _realize)
     if d <= 2:
         return 0.0
     if d <= 4:
@@ -259,10 +280,11 @@ def _choose(candidates: List[int], cost, rng: random.Random, freedom: float) -> 
 def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound: bool,
              targets: List[float], ending: str, tonic: int, prev: Optional[int], prev2: Optional[int],
              rng: random.Random, freedom: float, contour_weight: float = 0.5,
-             fixed: Optional[Dict[int, int]] = None) -> List[int]:
+             fixed: Optional[Dict[int, int]] = None, ceiling: Optional[int] = None) -> List[int]:
     """Le altezze delle note della frase: 'targets' e' il profilo voluto
     (nota MIDI "ideale" per ogni nota), 'fixed' le note gia' decise (indice
-    -> nota: il motivo ripreso cosi' com'e')."""
+    -> nota: il motivo ripreso cosi' com'e'), 'ceiling' la nota piu' alta
+    che la frase puo' toccare (il culmine del brano resta alla frase B)."""
     out = []
     last = len(rhythm) - 1
     for i, (onset, duration) in enumerate(rhythm):
@@ -313,6 +335,8 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
                         value += 1.0      # niente trilli (mi-fa-mi-fa)
                 if is_last and ending == "open" and c % 12 in ((tonic + 7) % 12, (tonic + 2) % 12):
                     value -= 1.5          # domanda: quinta o seconda
+                if ceiling is not None and c > ceiling:
+                    value += 1.5          # sopra il culmine riservato alla B: solo se ogni altra scelta salta troppo
                 return value
             note = _choose(candidates, cost, rng, freedom)
         out.append(note)
@@ -320,13 +344,74 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
     return out
 
 
-def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str) -> List[float]:
+
+def _half_bar(pos: float, bar_beats: float, compound: bool) -> bool:
+    """Il secondo tempo forte della battuta: il terzo quarto del 4/4, la seconda pulsazione del 6/8, la terza del 12/8."""
+    if compound:
+        return abs(pos - bar_beats / 2) < 1e-6 and abs(pos / 1.5 - round(pos / 1.5)) < 1e-6
+    return bar_beats >= 4 - 1e-6 and abs(pos - bar_beats / 2) < 1e-6
+
+
+def _add_appoggiature(notes, harmony: _Harmony, bar_beats: float, compound: bool, amount: float, seed: str, phrase_beats: float):
+    """Appoggiature: una nota dell'accordo sul secondo tempo forte della battuta, lunga almeno un tempo, si divide in due: prima
+    la nota della scala un grado sopra (o sotto) (sul tempo, dove si sente), poi la nota dell'accordo che la risolve di grado. Solo
+    note che non stridono con l'accompagnamento: non a un semitono da una nota dell'accordo ne' a un tritono dal basso (la
+    nona che va sulla fondamentale, la sesta che va sulla quinta). Anche sulla nota di cadenza di una frase (la chiusa
+    "femminile"), mai sull'ultima del brano; il primo tempo resta sempre una nota dell'accordo. Il caso dipende dalla nota e dal suo posto nella frase:
+    un motivo che torna uguale ha le stesse appoggiature."""
+    if amount <= 0:
+        return notes
+    notes = sorted(notes)
+    out = []
+    for i, (t, d, pitch, b) in enumerate(notes):
+        nxt = notes[i + 1] if i + 1 < len(notes) else None
+        prev = out[-1][2] if out else None
+        span = harmony.chord_at(t)
+        chord = _chord_pcs(span)
+        ok = (nxt is not None and d >= 1.0 - 1e-6 and prev is not None
+              and _half_bar(t % bar_beats, bar_beats, compound) and pitch % 12 in chord)
+        if ok:
+            rng = random.Random(f"{seed}/appoggiatura/{pitch}/{round((t % phrase_beats) * 2)}")
+            ok = rng.random() < amount
+        if ok:
+            allowed = set(_allowed_pcs(harmony.scale_pcs, span))
+            bass = span.bass_pc if span.bass_pc is not None else span.root_pc
+
+            def fits(n):
+                return (n is not None and harmony.low <= n <= harmony.high and n % 12 not in chord
+                        and not any((n - pc) % 12 in (1, 11) for pc in chord) and (n - bass) % 12 != 6
+                        and n != prev and abs(n - prev) <= 4)          # ci si arriva vicini, e non ribattuta
+            # il grado sopra (la nona sulla fondamentale, la sesta sulla quinta) o, se non va, quello sotto (la nona sulla terza)
+            above = next((pitch + k for k in (1, 2) if (pitch + k) % 12 in allowed), None)
+            below = next((pitch - k for k in (1, 2) if (pitch - k) % 12 in allowed), None)
+            above = above if fits(above) else (below if fits(below) else None)
+            ok = above is not None
+        if ok:
+            half = round(d / 2 / 0.5) * 0.5
+            out.append((t, half, above, b))
+            out.append((t + half, d - half, pitch, b))
+        else:
+            out.append((t, d, pitch, b))
+    return out
+
+
+CONTOURS = {"arch": None, "early": 0.25, "late": 0.85}     # dove sta l'apice della frase (None: l'arco di sempre, a due terzi)
+
+
+def _arch(rhythm, phrase_beats: float, base: float, height: float, ending: str, peak: Optional[float] = None) -> List[float]:
     """Profilo ad arco: sale fino a circa due terzi della frase, poi scende
-    verso la nota di cadenza (piu' in basso se chiusa)."""
+    verso la nota di cadenza (piu' in basso se chiusa). 'peak' (0-1) sposta
+    l'apice: presto (lo slancio in su e poi la discesa per gradi) o tardi
+    (la frase che sale e ricade solo alla fine)."""
     out = []
     for onset, _d in rhythm:
         x = onset / phrase_beats
-        rise = math.sin(math.pi * min(1.0, x / 1.3))
+        if peak is None:
+            rise = math.sin(math.pi * min(1.0, x / 1.3))
+        elif x <= peak:
+            rise = math.sin(math.pi / 2 * x / peak)
+        else:
+            rise = 1.0 - 0.7 * (x - peak) / (1.0 - peak)
         out.append(base + height * rise)
     if out:
         out[-1] = base + (0 if ending == "closed" else 2)
@@ -360,13 +445,17 @@ SCALE_KINDS = {"pentatonic": ((0, 2, 4, 7, 9), (0, 3, 5, 7, 10)),
 def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, range_low: int, range_high: int,
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
-                           intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "") -> str:
+                           intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "",
+                           syncopation: float = DEFAULT_SYNCOPATION, appoggiatura: float = DEFAULT_APPOGGIATURA) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
     [range_low, range_high]. 'style' e' uno di MELODY_STYLES. 'repeats'
     (vedi section_repeats): le sezioni che tornano, dove la melodia torna
-    uguale a quella della prima volta (un ritornello riconoscibile). Solleva
+    uguale a quella della prima volta (un ritornello riconoscibile).
+    'syncopation' (0-1): quanto spesso entrano le figure sincopate;
+    'appoggiatura' (0-1): quanto spesso il secondo tempo forte e'
+    un'appoggiatura (vedi _add_appoggiature). Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -404,15 +493,23 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
 
     def bars_of(label: str) -> int:
         return long_b if label[0] == "B" else phrase_bars
+    # Le frasi devono stare nella lunghezza: l'ultima non resta tagliata a meta' (finiva su una croma qualsiasi invece che sulla
+    # cadenza). Una B che non ci sta diventa la ripresa di A; l'ultima frase dura le battute che restano.
     starts: List[float] = []
     lengths: List[int] = []
+    phrase_form: List[Tuple[str, str]] = []
     cursor = 0.0
     while not starts or cursor < total - 1e-9:
-        label = form[len(starts) % len(form)][0]
+        label, ending = form[len(starts) % len(form)]
+        remaining = max(1, math.ceil((total - cursor) / bar_beats - 1e-9))
+        if label[0] == "B" and bars_of(label) > remaining:
+            label, ending = "A", "closed"
         starts.append(cursor)
-        lengths.append(bars_of(label))
+        lengths.append(min(bars_of(label), remaining))
+        phrase_form.append((label, ending))
         cursor += lengths[-1] * bar_beats
     n_phrases = len(starts)
+    has_b = any(label[0] == "B" for label, _e in phrase_form)
 
     # Registro: intorno alla tonica dell'ottava scelta, dentro l'estensione.
     center = midi_note(tonic, octave)
@@ -425,11 +522,14 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         low, high = range_low, range_high
     harmony = _Harmony(chords, scale, low, high)
 
-    motifs: Dict[Tuple[str, int], dict] = {}
+    # il culmine del brano: nelle forme con la B, le frasi A non arrivano dove arriva la B
+    a_ceiling = center + spec["height"] + 2 if has_b else None
+
+    motifs: Dict[Tuple[str, int, int], dict] = {}
     notes: List[Tuple[float, float, int, bool]] = []   # (inizio, durata, nota, frase-B?)
     prev = prev2 = None
     for p in range(n_phrases):
-        label, ending = form[p % len(form)]
+        label, ending = phrase_form[p]
         if p == n_phrases - 1:
             ending = "closed"
         letter = label[0]
@@ -441,23 +541,30 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         density = max(0, min(2, density + {"light": -1, "normal": 0, "full": 1}[level]))
         base = center + (spec["b_lift"] if letter == "B" else 0)
         height = spec["height"] + (2 if letter == "B" else 0)
-        motif = motifs.get((letter, density))
+        ceiling = a_ceiling if letter == "A" else None
+        # il motivo: per lettera e densita'; se la densita' cambia (l'intensita' "crescendo") si riprende il ritmo che c'e'
+        motif = motifs.get((letter, density, phrase_bars_p))
+        if motif is None and intensity == "build":
+            motif = next((m for (lt, _dn, bars), m in motifs.items() if lt == letter and bars == phrase_bars_p), None)
 
         if motif is None:
-            rhythm = _phrase_rhythm(phrase_bars_p, bar_beats, compound, density, rng, amount.rhythm)
-            targets = _arch(rhythm, phrase_beats_p, base, height, ending)
+            rhythm = _phrase_rhythm(phrase_bars_p, bar_beats, compound, density, rng, amount.rhythm, syncopation)
+            contour = rng.choices(("arch", "early", "late"), weights=(3, 2, 1) if letter == "A" else (2, 0, 1))[0]
+            targets = _arch(rhythm, phrase_beats_p, base, height, ending, CONTOURS[contour])
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
-                               prev, prev2, rng, amount.notes)
-            motifs[(letter, density)] = {"rhythm": rhythm, "pitches": pitches, "start": start}
+                               prev, prev2, rng, amount.notes, ceiling=ceiling)
+            motifs[(letter, density, phrase_bars_p)] = {"rhythm": rhythm, "pitches": pitches, "start": start}
         else:
             rhythm = list(motif["rhythm"])
-            # con la variabilita' del ritmo, una battuta (non l'ultima) cambia figura
+            # con la variabilita' del ritmo cambia figura una battuta, mai la prima (e' il motivo che si riconosce): la seconda
+            # o una delle seguenti, anche quella di cadenza
             changed_bar = None
             if amount.rhythm > 0 and phrase_bars_p > 1 and rng.random() < 0.5 * amount.rhythm:
-                changed_bar = rng.randrange(phrase_bars_p - 1)
+                changed_bar = rng.randrange(1, phrase_bars_p)
                 lo, hi = changed_bar * bar_beats, (changed_bar + 1) * bar_beats
                 new_bar = [(lo + t, d) for t, d in
-                           _bar_rhythm(bar_beats, compound, density, False, rng, amount.rhythm)]
+                           _bar_rhythm(bar_beats, compound, density, changed_bar == phrase_bars_p - 1, rng, amount.rhythm,
+                                       syncopation)]
                 rhythm = [n for n in rhythm if not lo - 1e-6 <= n[0] < hi - 1e-6] + new_bar
                 rhythm.sort()
             # stesso profilo del motivo, spostato sul primo accordo della frase
@@ -476,17 +583,24 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
             if same_chords and shift == 0:
                 # stessi accordi: il motivo torna identico (tranne il finale e
                 # le note che la variabilita' sceglie di cambiare)
+                # (la prima battuta resta sempre quella del motivo)
                 keep = {onset: pitch for (onset, _d), pitch in zip(old_rhythm, old_pitches)}
                 for i, (onset, _d) in enumerate(rhythm[:-2]):
-                    if onset in keep and not (amount.notes > 0 and rng.random() < 0.3 * amount.notes):
+                    first_bar = onset < bar_beats - 1e-6
+                    if onset in keep and (first_bar or not (amount.notes > 0 and rng.random() < 0.3 * amount.notes)):
                         fixed[i] = keep[onset]
+            # ripreso su altri accordi: piu' vicino al profilo del motivo, meno liberta'
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
-                               prev, prev2, rng, amount.notes, contour_weight=1.6, fixed=fixed)
-        for (onset, duration), pitch in zip(rhythm, pitches):
+                               prev, prev2, rng, 0.5 * amount.notes, contour_weight=1.6, fixed=fixed, ceiling=ceiling)
+        last = len(rhythm) - 1
+        for i, ((onset, duration), pitch) in enumerate(zip(rhythm, pitches)):
+            if i == last and p < n_phrases - 1 and duration >= 1.0 + BREATH - 1e-6:
+                duration -= BREATH            # il respiro prima della frase dopo
             notes.append((start + onset, duration, pitch, letter == "B"))
         if pitches:
             prev2, prev = (pitches[-2] if len(pitches) > 1 else prev), pitches[-1]
 
+    notes = _add_appoggiature(notes, harmony, bar_beats, compound, appoggiatura, f"{seed if free else 0}", phrase_beats)
     if amount.rhythm > 0 and not compound:                   # prima delle ripetizioni: una sezione che torna copia anche le sue anacrusi interne
         notes = _add_pickups(notes, starts[1:], scale, 0.5 * amount.rhythm, random.Random(f"{seed}/pickup"), range_low, range_high)
     figures = [f for f in (figure or "").split(",") if f]
@@ -506,7 +620,12 @@ def _add_pickups(notes, phrase_starts, scale, probability: float, rng: random.Ra
     for start in phrase_starts:
         if rng.random() >= probability:
             continue
+        # la nota che chiude la frase prima: finisce sull'attacco, o mezzo tempo prima (il respiro, vedi BREATH); col respiro
+        # l'anacrusi le toglie un altro ottavo, perche' la pausa resti prima dell'attacco
         previous = next((i for i, n in enumerate(notes) if abs(n[0] + n[1] - start) < 1e-6 and n[1] >= 1.0 - 1e-6), None)
+        if previous is None:
+            previous = next((i for i, n in enumerate(notes)
+                             if abs(n[0] + n[1] + BREATH - start) < 1e-6 and n[1] >= 1.0 - 1e-6), None)
         first = next((n for n in notes if abs(n[0] - start) < 1e-6), None)
         if previous is None or first is None:
             continue

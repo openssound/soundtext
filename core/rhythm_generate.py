@@ -2109,7 +2109,8 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            variability=0.0, seed: Optional[int] = None,
                            bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
                            voice_leading: bool = False, key: Optional[str] = None,
-                           meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "") -> str:
+                           meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "",
+                           syncopation: Optional[float] = None, appoggiatura: Optional[float] = None) -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2141,7 +2142,9 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         return generate_phrase_melody(chords, style, octave, range_low, range_high, key=key,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
-                                      repeats=repeats, scale_kind=scale_kind, figure=figure)
+                                      repeats=repeats, scale_kind=scale_kind, figure=figure,
+                                      **{k: v for k, v in (("syncopation", syncopation), ("appoggiatura", appoggiatura))
+                                         if v is not None})
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
                or user_styles.get_user_style("riff", style))
     if pattern is None:

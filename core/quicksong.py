@@ -231,6 +231,14 @@ _GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_bel
                  "ballata": "grace_above", "ballata68": "grace_above",
                  "orchestrale": "grace_above", "marcia": "grace_above", "afro68": "grace_above", "pop": "grace_below",
                  "metal": "approach_below,blue_bend", "reggae": "grace_below", "punk": "approach_below"}
+# quanto la melodia del genere sincopa (0-1, core.melody_generate._SYNCOPATED_SIMPLE) e quanto usa le appoggiature sul terzo
+# tempo (core.melody_generate._appoggiature); i generi che mancano: i valori di sempre (DEFAULT_SYNCOPATION, DEFAULT_APPOGGIATURA)
+_GENRE_SYNCOPATION = {"funk": 0.9, "soul": 0.7, "disco": 0.7, "reggae": 0.6, "bossa": 0.7, "samba": 0.8, "chacha": 0.6,
+                      "pop": 0.5, "lofi": 0.5, "elettronica": 0.5, "rock": 0.4, "rocknroll": 0.5, "blues": 0.4, "jazz": 0.5,
+                      "swing": 0.5, "country": 0.3, "afro68": 0.4, "punk": 0.2, "metal": 0.2, "ballata": 0.15,
+                      "valzer": 0.0, "marcia": 0.0, "orchestrale": 0.1}
+_GENRE_APPOGGIATURA = {"ballata": 0.45, "ballata68": 0.4, "orchestrale": 0.45, "valzer": 0.35, "soul": 0.35, "bossa": 0.4,
+                       "jazz": 0.35, "lofi": 0.3, "pop": 0.25, "punk": 0.05, "metal": 0.1, "rock": 0.15, "marcia": 0.15}
 # gli strumenti che piegano la nota (il bend alla blues, 2b): chitarre, sax, armonica, archi, voce, synth; non il pianoforte
 BENDABLE = ("Overdriven_Guitar", "Distortion_Guitar", "Clean_Guitar", "Electric_Guitar_Jazz", "Nylon_Guitar", "Acoustic_Guitar_Steel",
             "Tenor_Sax", "Alto_Sax", "Soprano_Sax", "Baritone_Sax", "Harmonica", "Trumpet", "Trombone", "Violin", "Fiddle", "Cello",
@@ -1321,6 +1329,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                            seed_of("melody", 99 if role != "verse" else 98), "light" if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
+                                            **{k: table[c["genre"]] for k, table in (("syncopation", _GENRE_SYNCOPATION),
+                                                                                       ("appoggiatura", _GENRE_APPOGGIATURA))
+                                               if c["genre"] in table},
                                             "figure": _figures_for(c["genre"], c["instruments"]["melody"])
                                             if options.get("figures", True) not in (False, 0, "0", "no") else ""})
                 if role == "break" and _GENRE_BREAK[c["genre"]][1] == "hit":

@@ -69,3 +69,15 @@ def test_dialog_from_the_track_menu(monkeypatch):
     text = dlg.preview_edit.toPlainText()
     assert '"vo- la- re oh oh"' in text and dlg.button_box.button(QDialogButtonBox.Ok).isEnabled()
     dlg.reject()
+
+
+def test_stressed_syllables_are_longer_when_there_is_room_and_the_line_breathes():
+    line = lyric_lines("Nel blu dipinto di blu")[0]
+    rhythm, beats = phrase_rhythm(line, 4.0)
+    durations = {syl: d for (syl, _s, _e), (_o, d) in zip(line, rhythm)}
+    assert durations["pin"] == 1.0 and durations["to"] == 0.5           # di-PIN-to: l'accentata dura un quarto
+    onset, duration = rhythm[-1]
+    assert onset + duration == beats - 0.5 and duration >= 1.5           # l'ultima tiene, poi il respiro
+    long_line = lyric_lines("questa e' una riga lunghissima con tantissime parole da cantare tutte quante")[0]
+    long_rhythm, long_beats = phrase_rhythm(long_line, 4.0)
+    assert long_rhythm[-1][0] + long_rhythm[-1][1] <= long_beats

@@ -84,8 +84,8 @@ def test_melody_moves_mostly_by_step_with_an_arch(prog):
                 assert abs(a - b) <= 9, (prog, style, p, pitches)     # niente salti enormi nella frase
                 total += 1
                 steps += abs(a - b) <= 2
-            peak = pitches.index(max(pitches))
-            peaks_inside += 0 < peak < len(pitches) - 1
+            # l'apice (anche ribattuto: la nota piu' alta puo' tornare) sta dentro la frase
+            peaks_inside += any(0 < k < len(pitches) - 1 for k, m in enumerate(pitches) if m == max(pitches))
     assert steps / total >= 0.6
     assert peaks_inside >= 12                  # su 16 frasi: l'apice sta dentro la frase
 
@@ -215,3 +215,78 @@ def test_phrases_can_start_with_a_pickup_note_before_the_bar():
 
     assert all(not pickups(0, seed) for seed in range(6))
     assert sum(len(pickups(0.9, seed)) for seed in range(12)) >= 6
+
+
+@pytest.mark.parametrize("style", ["melody_aaba", "melody_ballad", "melody_period", "melody_lively"])
+@pytest.mark.parametrize("bars", [10, 14, 16, 24])
+def test_the_form_fits_the_length_and_the_melody_ends_on_the_cadence(style, bars):
+    """La B lunga che non ci stava veniva tagliata a meta': su 16 battute la melodia finiva su una croma qualsiasi."""
+    for v, seed in ((0.0, None), (0.5, 2)):
+        notes = _notes(_melody("4C 4F 4G 4C", style, bars=bars, variability=v, seed=seed))
+        start, duration, pitch = notes[-1]
+        assert start + duration == pytest.approx(bars * 4.0) and duration >= 1.0, (style, bars, notes[-1])
+        assert pitch % 12 == 0, (style, bars, v)
+
+
+def test_phrases_breathe_before_the_next_one():
+    """Fra una frase e l'altra mezzo tempo di pausa (tolto alla nota lunga di cadenza); l'ultima nota tiene fino alla fine."""
+    for prog in PROGRESSIONS:
+        notes = _notes(_melody(prog, "melody_period", bars=8))
+        for boundary in (8.0, 16.0, 24.0):
+            before = [n for n in notes if n[0] < boundary]
+            assert before[-1][0] + before[-1][1] == pytest.approx(boundary - 0.5), (prog, boundary)
+        assert notes[-1][0] + notes[-1][1] == pytest.approx(32.0)
+
+
+def test_syncopation_puts_long_notes_off_the_beat():
+    def syncopes(amount):
+        count = 0
+        for seed in range(8):
+            spans = extract_chords_from_track("4C 4G 4Am 4F", {})
+            text = generate_melodic_line(spans, "melody_period", 5, 55, 88, polyphonic=False, min_total_beats=32,
+                                         variability=0.5, seed=seed, syncopation=amount, appoggiatura=0)
+            count += sum(1 for s, d, _m in _notes(text) if abs(s - round(s)) > 1e-6 and d >= 1.0)
+        return count
+    assert syncopes(0.0) == 0
+    assert syncopes(1.0) >= 8
+
+
+def test_appoggiature_on_the_third_beat_resolve_by_step_and_never_clash():
+    spans = extract_chords_from_track("4C 4G 4Am 4F", {})
+    found = 0
+    for seed in range(10):
+        for amount in (0.0, 1.0):
+            text = generate_melodic_line(spans, "melody_ballad", 5, 55, 88, polyphonic=False, min_total_beats=32,
+                                         variability=0.4, seed=seed, appoggiatura=amount)
+            notes = _notes(text)
+            for i, (start, _d, pitch) in enumerate(notes):
+                span = [s for s in spans if s.start_beat <= start % 16 + 1e-6][-1]
+                chord = _chord_pcs(span)
+                if abs(start % 4 - 2) > 1e-6 or pitch % 12 in chord:
+                    continue
+                assert amount == 1.0, (seed, start)                    # senza appoggiature il terzo tempo e' dell'accordo
+                found += 1
+                resolution = notes[i + 1][2]
+                assert resolution % 12 in chord and 1 <= abs(resolution - pitch) <= 2
+                assert not any((pitch - pc) % 12 in (1, 11) for pc in chord)    # non stride con l'accompagnamento
+    assert found >= 5
+
+
+def test_the_first_bar_of_the_motif_comes_back_even_with_variability():
+    """Il motivo si riconosce: con la variabilita' cambia la seconda battuta o qualche nota dopo, mai la prima."""
+    for seed in range(12):
+        notes = _notes(_melody("4C 4G", "melody_period", bars=16, variability=0.6, seed=seed))
+        first_bar = lambda b: [(round(s - 4 * b, 3), d, m) for s, d, m in notes if 4 * b - 1e-6 <= s < 4 * b + 4 - 1e-6]
+        for bar in range(2, 16, 2):
+            assert first_bar(bar) == first_bar(0), (seed, bar)
+
+
+def test_in_forms_with_a_b_the_highest_note_belongs_to_the_b():
+    spans = extract_chords_from_track("4C 4Am 4F 4G", {})
+    for seed in range(10):
+        text = generate_melodic_line(spans, "melody_aaba", 5, 55, 88, polyphonic=False, min_total_beats=40,
+                                     variability=0.4, seed=seed)
+        notes = _notes(text)
+        a = [m for s, _d, m in notes if s < 16 or s >= 32]
+        b = [m for s, _d, m in notes if 16 <= s < 32]
+        assert max(b) >= max(a), seed

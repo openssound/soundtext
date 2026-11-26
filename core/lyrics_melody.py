@@ -118,24 +118,42 @@ def lyric_lines(text: str) -> List[List[Tuple[str, bool, bool]]]:
     return lines
 
 
+def _onsets(line, lengths) -> Tuple[List[float], float]:
+    """Gli attacchi delle sillabe, con le durate 'lengths', e dove finisce l'ultima: un'accentata in levare va sul tempo dopo
+    (la sillaba prima si allunga)."""
+    onsets, t = [], 0.0
+    for (_syl, stressed, _end), length in zip(line, lengths):
+        if stressed and abs(t - round(t)) > 1e-6:
+            t = round(t + SLOT, 6)
+        onsets.append(t)
+        t = round(t + length, 6)
+    return onsets, t
+
+
 def phrase_rhythm(line, bar_beats: float) -> Tuple[List[Tuple[float, float]], float]:
-    """[(attacco, durata)] di una riga e la lunghezza della frase (beat)."""
+    """[(attacco, durata)] di una riga e la lunghezza della frase (beat).
+    Le sillabe vanno a crome; dove nella frase c'e' posto le accentate
+    durano un quarto (la parola si sente come si dice: "di-PIN-to"), dalla
+    prima in poi, purche' l'ultima sillaba tenga almeno un tempo e mezzo.
+    L'ultima sillaba finisce mezzo tempo prima della frase dopo: il respiro."""
     bars = PHRASE_BARS
+    lengths = [SLOT] * len(line)
     while True:
         phrase_beats = bars * bar_beats
-        onsets, t = [], 0.0
-        for syl, stressed, _end in line:
-            on_beat = abs(t - round(t)) < 1e-6
-            if stressed and not on_beat:
-                t = round(t + SLOT, 6)                # la sillaba prima si allunga
-            onsets.append(t)
-            t = round(t + SLOT, 6)
+        onsets, t = _onsets(line, lengths)
         if t <= phrase_beats - SLOT + 1e-6 or bars >= 8:
             break
         bars *= 2
+    for k, (_syl, stressed, _end) in enumerate(line[:-1]):
+        if not stressed:
+            continue
+        longer = lengths[:k] + [2 * SLOT] + lengths[k + 1:]
+        trial, _t = _onsets(line, longer)
+        if trial[-1] <= phrase_beats - 1.5 - SLOT + 1e-6:
+            lengths, onsets = longer, trial
     rhythm = []
     for k, onset in enumerate(onsets):
-        end = onsets[k + 1] if k + 1 < len(onsets) else min(phrase_beats, max(onset + 2.0, phrase_beats - SLOT))
+        end = onsets[k + 1] if k + 1 < len(onsets) else min(phrase_beats, max(onset + 1.0, phrase_beats - SLOT))
         rhythm.append((onset, round(end - onset, 6)))
     return rhythm, phrase_beats
 
