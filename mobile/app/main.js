@@ -75,6 +75,11 @@ async function main() {
     ev.target.value = "";
     if (f) openFile(f).catch(showError);
   };
+  $("midiFile").onchange = (ev) => {
+    const f = ev.target.files[0];
+    ev.target.value = "";
+    if (f) importMidi(f).catch(showError);
+  };
   $("play").onclick = () => play();
   $("speed").oninput = (ev) => setSpeed(Number(ev.target.value));
   $("trans").onchange = (ev) => setTranspose(Number(ev.target.value)).catch(showError);

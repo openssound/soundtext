@@ -115,6 +115,19 @@ async function openFile(file) {
   await openSong(song.id);
 }
 
+// un file MIDI diventa un brano ST (engine.import_midi, come l'importazione di SoundText)
+async function importMidi(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const name = await Songs.freeName(StFormat.nameFromFile(file.name.replace(/\.midi?$/i, "")));
+  await state.booted;
+  const r = (await call("import_midi", { args: [btoa(bin), name] })).result;
+  if (r.error) throw new Error(r.error);
+  const song = await Songs.create({ name, text: r.text, source: "midi " + file.name });
+  await openSong(song.id);
+}
+
 async function renameSong(id) {
   const song = await Songs.get(id);
   const name = prompt(t("Nuovo nome del brano"), song.name);

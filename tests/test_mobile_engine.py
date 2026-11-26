@@ -1038,3 +1038,14 @@ def test_phone_quick_song_formation_lists_describes_and_plays_only_the_chosen_in
         assert made["formation"] == formation
         tracks = re.findall(r"^(\w+):\s*$", made["text"], re.M)
         assert all(name.replace("_", "") in "".join(tracks).replace("_", "") for name in formation if name != "Drums")
+
+
+def test_import_midi_makes_a_song():
+    import base64
+    from mobile import engine as eng
+    e = eng.Engine()
+    e.load("ST: 2.13\nTempo: 100 BPM\nPiano:\n  1: C | F |\n", "x.st")
+    r = eng.import_midi(base64.b64encode(e.midi_bytes()).decode("ascii"), "x")
+    assert "error" not in r and r["tracks"] >= 1
+    assert eng.Engine().load(r["text"], "x.st") is not None
+    assert "error" in eng.import_midi(base64.b64encode(b"non e' un midi").decode("ascii"))

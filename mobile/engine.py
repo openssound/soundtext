@@ -1201,6 +1201,35 @@ def quick_choices() -> dict:
     return quicksong.quick_choices()
 
 
+def import_midi(data_b64: str, name: str = "Import MIDI") -> dict:
+    """Un file MIDI (in base64) come brano ST: {text} o {error}. Stesse
+    impostazioni predefinite dell'importazione di SoundText (accordi non
+    riconosciuti, curva del bend no), con le tracce in box e i ♭ ♯."""
+    import base64
+    import os
+    import tempfile
+    from core.accidental_style import styled_notes, rewrite_project_texts
+    from core.box_conversion import split_track_into_boxes
+    from core.midi_bend_curve import split_with_curves
+    from core.midi_import import import_midi_file
+    from core.project_io import project_to_text
+    fd, path = tempfile.mkstemp(suffix=".mid")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(base64.b64decode(data_b64))
+        project = import_midi_file(path, project_name=name)
+    except Exception as e:
+        return {"error": str(e) or e.__class__.__name__}
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    rewrite_project_texts(project, styled_notes)
+    split_with_curves(project, split_track_into_boxes)
+    return {"text": project_to_text(project), "tracks": len(project.tracks)}
+
+
 def quick_formation_catalog() -> list:
     """Tutti gli strumenti da proporre nella formazione, a gruppi: [{label, instruments: [{value, label, role}]}]."""
     from core import quick_formation

@@ -3604,5 +3604,6 @@
  "rimasti fuori: {names}": "left out: {names}",
  "Nessuna (della ricetta)": "None (use the recipe)",
  "Fatto": "Done",
- "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Tick the instruments that should play in the song: “guitar only”, “guitar, bass and drums”, “bass only”."
+ "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Tick the instruments that should play in the song: “guitar only”, “guitar, bass and drums”, “bass only”.",
+ "Importa MIDI…": "Import MIDI…"
 }

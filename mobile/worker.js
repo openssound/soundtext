@@ -260,6 +260,7 @@ const CALLS = {
   track_instruments: "track_instruments", new_track: "new_track", strip_comments: "strip_comments",
   quick_choices: "quick_choices", quick_song: "quick_song", quick_surprise: "quick_surprise", quick_daily: "quick_daily", quick_read: "quick_read", chord_chart: "chord_chart", track_notes: "track_notes", speak_at: "speak_at", structure_sections: "structure_sections", install_user_styles: "install_user_styles", quick_from_melody: "quick_from_melody", arrange_song: "arrange_song", visual_notes: "visual_notes",
   pad_info: "pad_info", pad_chords_text: "pad_chords_text", pad_drums_text: "pad_drums_text", add_pattern: "add_pattern",
+  quick_formation_catalog: "quick_formation_catalog", quick_formation_describe: "quick_formation_describe", import_midi: "import_midi",
   exercise_kinds: "exercise_kinds", exercise: "exercise", exercise_check: "exercise_check",
 };
 
