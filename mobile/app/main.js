@@ -66,6 +66,9 @@ async function main() {
   const sw = await serviceWorker();
   const coldCache = !(await cached("vendor/pyodide/pyodide.asm.wasm"));
   startWorker();
+  // Senza archivio persistente il browser puo' buttare via le cache (Pyodide, istantanea del motore) quando manca
+  // spazio, e il motore si riscarica e si rifa' da zero a ogni apertura: si chiede da subito.
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* si va avanti */ }
   const files = await (await fetch("bundle/files.json")).json();
   state.examples = files.examples;
   voice.models = files.voice || [];
