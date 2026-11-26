@@ -321,7 +321,7 @@ def test_drum_dialog_offers_only_styles_for_the_project_meter():
     p.time_sig = "3/4"
     dlg = DrumGenerateDialog(None, p, "Drums", "traccia 'Drums'", default_bars=2, track_name="Drums")
     styles = [dlg.style_combo.itemData(i) for i in range(dlg.style_combo.count())]
-    assert styles == ["waltz", "jazz_waltz"]
+    assert styles == ["waltz", "jazz_waltz", "mazurka"]
     assert dlg.button_box.button(dlg.button_box.StandardButton.Ok).isEnabled()
     from core.notation import parse_track_text
     events = parse_track_text(dlg.preview_edit.toPlainText(), {})

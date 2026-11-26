@@ -233,7 +233,7 @@ MELODY_MIN_OCTAVE = 4      # la melodia parte almeno dall'ottava 4: chitarre e a
 
 
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,
-                  intensity: str, variation: dict, comfort_high: Optional[int] = None) -> str:
+                  intensity: str, variation: dict, comfort_high: Optional[int] = None, octave_min: Optional[int] = None) -> str:
     """La melodia di un brano veloce; 'comfort_high' (facoltativo): la nota piu' alta dove lo strumento suona pieno (un fiato),
     un tetto sopra il registro scelto (non sposta la melodia, vedi generate_phrase_melody)."""
     from core import rhythm_generate as rg
@@ -242,7 +242,7 @@ def _quick_melody(project, source: str, instrument_name: str, style: str, key: s
     instrument = get_instrument(instrument_name)
     bar_beats = _bar_beats(project)
     return rg.generate_melodic_line(
-        chords, style, octave=max(instrument.default_octave, MELODY_MIN_OCTAVE),
+        chords, style, octave=max(instrument.default_octave, octave_min or MELODY_MIN_OCTAVE),
         range_low=max(instrument.range_low, REAL_LOW.get(instrument_name, 0)),
         range_high=instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
         bar_beats=bar_beats, intensity=intensity, voice_leading=True, key=key, meter=project.time_sig, repeats=(),

@@ -1185,12 +1185,13 @@ def generator_choices(text: str = "") -> dict:
 # ------------------------------------------------------------ un brano in 60 secondi (fase 3)
 #
 # Genere, atmosfera, durata e, volendo, tutte le altre scelte diventano un brano completo con i generatori che
-# ci sono gia' (giro armonico, accompagnamento, basso, batteria, melodia). Le ricette (25 generi e 11 atmosfere),
+# ci sono gia' (giro armonico, accompagnamento, basso, batteria, melodia). Le ricette (36 generi e 22 atmosfere),
 # la forma, la durata e le parti sono in core/quicksong.py; qui restano gli aiuti che usano i generatori.
 
 QUICK_GENRES = ("pop", "rock", "ballata", "bossa", "jazz", "swing", "funk", "soul", "disco", "lofi", "elettronica",
                 "orchestrale", "blues", "reggae", "country", "punk", "metal", "rocknroll", "samba", "chacha", "valzer",
-                "marcia", "ballata68", "afro68", "balcanico78")
+                "marcia", "ballata68", "afro68", "balcanico78", "ska", "grunge", "hiphop", "polka", "mazurka", "tarantella",
+                "pianosolo", "chitarrasola", "minuetto", "preludio", "corale")
 QUICK_MOODS = ("allegra", "malinconica", "tesa", "epica", "calma", "sognante", "misteriosa", "romantica", "nostalgica",
                "festosa", "oscura")
 QUICK_DURATIONS = (15, 30, 45, 60, 90, 120, 180, 240)

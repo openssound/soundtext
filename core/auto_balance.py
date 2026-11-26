@@ -53,10 +53,11 @@ def quick_parts(text: str) -> Optional[Dict[str, str]]:
     if not m:
         return None
     try:
-        instruments = json.loads(m.group(1)).get("instruments") or {}
+        saved = json.loads(m.group(1))
     except ValueError:
         return None
-    out = {name: part for part, name in instruments.items() if isinstance(name, str)}
+    instruments, tracks = saved.get("instruments") or {}, saved.get("tracks") or {}
+    out = {tracks.get(part, name): part for part, name in instruments.items() if isinstance(name, str)}
     return out or None
 
 

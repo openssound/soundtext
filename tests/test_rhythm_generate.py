@@ -74,7 +74,7 @@ def test_drum_pattern_never_ends_on_a_fill():
 
 def test_drum_pattern_rejects_unknown_style():
     with pytest.raises(ValueError):
-        generate_drum_pattern("polka", bars=4)
+        generate_drum_pattern("tarantola", bars=4)
 
 
 @pytest.mark.parametrize("style", list(DRUM_STYLES))
@@ -603,8 +603,8 @@ def test_project_has_chords():
 # ------------------------------------------------------------ altre metriche
 
 def test_drum_styles_are_grouped_by_meter():
-    assert drum_styles_for_meter("3/4") == ["waltz", "jazz_waltz"]
-    assert drum_styles_for_meter("6/8") == ["ballad_68", "afro_68"]
+    assert drum_styles_for_meter("3/4") == ["waltz", "jazz_waltz", "mazurka"]
+    assert drum_styles_for_meter("6/8") == ["ballad_68", "afro_68", "tarantella"]
     assert drum_styles_for_meter("12/8") == ["blues_128", "slow_rock_128"]
     assert "rock" in drum_styles_for_meter("4/4")
     assert drum_styles_for_meter("5/4") == ["rock_54", "jazz_54"]

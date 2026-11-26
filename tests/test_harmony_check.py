@@ -57,7 +57,9 @@ def _sweep(duration=30):
         for mood in q.GENRES_DATA[genre]["moods"]:
             song = q.quick_song({"genre": genre, "mood": mood, "seed": 5, "duration": duration, "variety": 0})
             project = parse_project_text(song["text"], "Brano")
-            melody = [song["choices"]["instruments"]["melody"]]
+            # la traccia della melodia (col suo nome, nello strumento solo); il preludio non ha melodia
+            name = (song["choices"].get("tracks") or {}).get("melody") or song["choices"]["instruments"].get("melody")
+            melody = [name] if name else []
             clashes = hc.check_project(project, melody_tracks=melody)
             if genre in q.TRITONE_GENRES:
                 # nei generi del blues il tritono col basso e' il loro suono (q.TRITONE_GENRES): non e' uno scontro

@@ -413,6 +413,8 @@ const PACK_FOR_GENRE = {
   jazz: "acustico", swing: "acustico", bossa: "acustico", samba: "acustico", chacha: "acustico", country: "acustico",
   pop: "acustico", ballata: "acustico", valzer: "acustico", ballata68: "acustico", afro68: "acustico", balcanico78: "acustico",
   elettronica: "elettronico", lofi: "elettronico", orchestrale: "orchestra", marcia: "orchestra",
+  ska: "elettrico", grunge: "elettrico", hiphop: "elettronico", polka: "acustico", mazurka: "acustico", tarantella: "acustico",
+  pianosolo: "acustico", chitarrasola: "acustico", minuetto: "orchestra", preludio: "acustico", corale: "orchestra",
 };
 
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");

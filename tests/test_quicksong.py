@@ -49,10 +49,10 @@ def _valid(q, song, duration=None):
 
 
 def test_the_values_of_the_document_are_all_there(q):
-    assert len(q.GENRES) == 25 and set(q.GENRES) == set(q.GENRES_DATA)
+    assert len(q.GENRES) == 36 and set(q.GENRES) == set(q.GENRES_DATA)
     assert len(q.MOODS) == 22 and set(q.MOODS) == set(q.MOODS_DATA)
     assert q.DURATIONS == (15, 30, 45, 60, 90, 120, 180, 240)
-    assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte"} and len(q.ENSEMBLES) == 5
+    assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte", "binaria"} and len(q.ENSEMBLES) == 5
     choices = q.quick_choices()
     assert [g["value"] for g in choices["genres"]] == list(q.GENRES)
     assert all(g["moods"] and set(g["moods"]) <= set(q.MOODS) for g in choices["genres"])
@@ -225,7 +225,7 @@ def test_a_written_chord_progression_is_used_and_a_bad_one_is_an_error(q):
 
 
 def test_unknown_values_are_errors(q):
-    for bad in ({"genre": "polka"}, {"mood": "furiosa"}, {"form": "rondo"}, {"ensemble": "coro"}, {"ending": "bis"}, {"melody": "jodel"}):
+    for bad in ({"genre": "tarantola"}, {"mood": "furiosa"}, {"form": "rondo"}, {"ensemble": "coro"}, {"ending": "bis"}, {"melody": "jodel"}):
         with pytest.raises(ValueError):
             q.quick_song(bad)
 
@@ -718,7 +718,7 @@ def _color_of(q, genre, mood, **extra):
     song = q.quick_song({"genre": genre, "mood": mood, "seed": 3, "duration": 120, "variety": 0, **extra})
     text = song["text"]
     fx = text.split("Catena master:")[1].split("\n\n")[0] if "Catena master:" in text else ""
-    return (song["choices"]["instruments"]["melody"], song["choices"]["ending"], song["choices"]["modulation"], fx,
+    return (song["choices"]["instruments"].get("melody"), song["choices"]["ending"], song["choices"]["modulation"], fx,
             tuple(sorted({w for w in text.split() if w.startswith("swing")})), "Pedal" in text, "harm" in song["parts"])
 
 
@@ -1160,8 +1160,10 @@ def test_two_parts_never_share_an_instrument_and_the_genres_keep_their_bands(q):
     for genre in q.GENRES_DATA:
         for mood in q.GENRES_DATA[genre]["moods"][:4]:
             for seed in range(1, 9):
-                inst = q.resolve({"genre": genre, "mood": mood, "seed": seed})["instruments"]
-                names = [name for part, name in inst.items() if part != "drums"]
+                resolved = q.resolve({"genre": genre, "mood": mood, "seed": seed})
+                inst, tracks = resolved["instruments"], resolved.get("track_names") or {}
+                # lo strumento solo: due parti sullo stesso strumento, ma in tracce con il loro nome (mano destra e sinistra)
+                names = [tracks.get(part, name) for part, name in inst.items() if part != "drums"]
                 assert len(names) == len(set(names)), (genre, mood, seed, inst)
     pure = lambda genre: q.quick_song({"genre": genre, "seed": 1, "duration": 30, "variety": 0})["choices"]["instruments"]
     assert "comp2" not in pure("punk") and "comp2" not in pure("metal")                 # chitarre, basso e batteria

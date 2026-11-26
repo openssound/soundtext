@@ -25,7 +25,7 @@ def _dialog(app, monkeypatch):
 def test_the_dialog_lists_every_genre_and_only_the_moods_of_the_genre(app, monkeypatch):
     from core.quicksong import GENRES, GENRES_DATA
     dlg = _dialog(app, monkeypatch)
-    assert dlg.genre_list.count() == len(GENRES) == 25
+    assert dlg.genre_list.count() == len(GENRES) == 36
     for row in (0, 4, 24):
         dlg.genre_list.setCurrentRow(row)
         genre = GENRES[row]

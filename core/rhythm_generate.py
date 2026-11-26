@@ -575,6 +575,53 @@ DRUM_STYLES.update({
         }),
     },
 
+    "ska": {
+        # Ska: veloce, cassa sull'1 e sul 3, rullante (cerchio) sul 2 e sul 4, il charleston aperto in levare che spinge.
+        "main": _pattern({
+            0: [("kick", 100), ("hihat", 55)], 2: [("hihat_open", 85)], 4: [("snare", 95), ("hihat", 55)], 6: [("hihat_open", 85)],
+            8: [("kick", 95), ("hihat", 55)], 10: [("hihat_open", 85)], 12: [("snare", 95), ("hihat", 55)], 14: [("hihat_open", 85)],
+        }),
+        "fill": _pattern({
+            0: [("kick", 100)], 4: [("snare", 95)], 8: [("snare", 90)], 10: [("snare", 95)],
+            12: [("tom1", 95)], 13: [("tom1", 95)], 14: [("tom2", 100)], 15: [("snare", 105)],
+        }),
+    },
+    "polka": {
+        # Polka (liscio): «um-pa»: cassa sui tempi dispari, rullante leggero sui pari, charleston chiuso in levare.
+        "main": _pattern({
+            0: [("kick", 100)], 2: [("hihat", 55)], 4: [("snare", 80)], 6: [("hihat", 55)],
+            8: [("kick", 95)], 10: [("hihat", 55)], 12: [("snare", 80)], 14: [("hihat", 55)],
+        }),
+        "fill": _pattern({
+            0: [("kick", 100)], 4: [("snare", 85)], 8: [("kick", 95)], 10: [("snare", 80)], 11: [("snare", 85)],
+            12: [("snare", 90)], 13: [("snare", 95)], 14: [("snare", 100)], 15: [("snare", 105)],
+        }),
+    },
+    "mazurka": {
+        # Mazurka (liscio, 3/4 veloce): cassa sull'1, il colpo di rullante sul 2 (l'accento che la distingue dal valzer), charleston
+        # sul 3.
+        "meter": "3/4",
+        "main": _pattern({
+            0: [("kick", 100), ("hihat", 70)], 4: [("snare", 90), ("hihat", 75)], 8: [("hihat", 70)], 10: [("hihat", 45)],
+        }, 12),
+        "fill": _pattern({
+            0: [("kick", 100)], 4: [("snare", 90)], 6: [("snare", 80)], 8: [("tom1", 95)], 9: [("tom2", 95)],
+            10: [("snare", 100)], 11: [("snare", 105)],
+        }, 12),
+    },
+    "tarantella": {
+        # Tarantella (6/8 veloce): il tamburello su ogni ottavo con l'accento sulle due pulsazioni, cassa sulle pulsazioni.
+        "meter": "6/8", "grid": "8:", "pulse": 3,
+        "main": _pattern({
+            0: [("kick", 100), ("tambourine", 100)], 1: [("tambourine", 65)], 2: [("tambourine", 70)],
+            3: [("kick", 90), ("tambourine", 95)], 4: [("tambourine", 65)], 5: [("tambourine", 75)],
+        }, 6),
+        "fill": _pattern({
+            0: [("kick", 100), ("tambourine", 100)], 1: [("tambourine", 80)], 2: [("snare", 90)],
+            3: [("snare", 95)], 4: [("tom1", 95)], 5: [("snare", 105), ("tambourine", 100)],
+        }, 6),
+    },
+
     # ---- 5/4 (cinque quarti) ------------------------------------------------
     "rock_54": {
         # 5/4 diviso 3+2: cassa sul 1 e sul 4, rullante sul 3 e sul 5.
@@ -823,6 +870,9 @@ DRUM_VARIATION: Dict[str, Dict[str, list]] = {
     "halftime": {"extra_kick": [3, 14], "ghost": [4, 13]},
     "country": {"extra_kick": [6, 14]},
     "march": {"ghost": [2, 10]},
+    "ska": {"extra_kick": [11], "ghost": [7, 15]},
+    "polka": {"ghost": [6, 14]},
+    "mazurka": {"ghost": [6]},
     "rock_54": {"extra_kick": [3, 10, 18], "ghost": [7, 15]},
     "rock_78": {"extra_kick": [5], "ghost": [3]},
     "balkan_78": {"extra_kick": [4], "ghost": [2]},
@@ -1169,7 +1219,7 @@ def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
     return spans
 
 
-BASS_STYLES = ("root", "root_fifth", "walking", "pedal", "two_feel", "octaves", "blues",
+BASS_STYLES = ("root", "root_fifth", "walking", "pedal", "two_feel", "octaves", "blues", "polka",
                "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie", "funk16", "walk_up", "motown")
 
 
@@ -1301,6 +1351,9 @@ BASS_PATTERNS: Dict[str, dict] = {
                 "variant": [(0.5 * i, "root") for i in range(6)] + [(3.0, "fifth"), (3.5, "root")]},
     # Reggae: il primo tempo resta vuoto, fondamentale lunga dal 2, quinta sul
     # "e" del 3, fondamentale sul 4.
+    # Polka (liscio): l'«um» staccato, la fondamentale sull'1 e la quinta sul 3; il «pa» lo fa la chitarra sul 2 e sul 4.
+    "polka": {"grid": "4:", "bar": [(0.0, "root"), (1.0, "rest"), (2.0, "fifth"), (3.0, "rest")],
+              "variant": [(0.0, "root"), (1.0, "rest"), (2.0, "fifth"), (3.0, "approach")]},
     "reggae": {"grid": "8:", "bar": [(0.0, "rest"), (1.0, "root"), (2.5, "fifth"), (3.0, "root")],
                "variant": [(0.0, "rest"), (1.0, "root"), (2.5, "fifth"), (3.0, "fifth")]},
     # Bossa nova: fondamentale sul 1 e sul 3, quinta sul "e" del 2 e del 4.
@@ -1394,6 +1447,10 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool
     fifth = (root + 7) % 12 if span.has_fifth else root
     if role == "rest":
         return None
+    if role.endswith("_hi") and role[:-3] in ("third", "fifth", "sixth", "flat7", "seventh"):
+        # l'ottava sopra la nota sopra la fondamentale (l'arpeggio del preludio, l'accordo dello stride)
+        pc, offset = _resolve_role(role[:-3] + "_up" if role[:-3] != "seventh" else "seventh", span, next_root_pc, bass)
+        return pc, offset + 1
     if role.endswith("_up") and role[:-3] in ("third", "fifth", "sixth", "flat7"):
         # la nota sopra la fondamentale, non sotto (la quinta e la sesta della chitarra rock'n'roll: do sopra il fa, non sotto)
         pc, offset = _resolve_role(role[:-3], span, next_root_pc, bass)
@@ -2029,6 +2086,33 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                              (2.0, ["root", "fifth_up"]), (2.5, ["root", "fifth_up"]), (3.0, ["root", "sixth_up"]), (3.5, ["root", "sixth_up"])],
                      "variant": [(0.0, ["root", "fifth_up"]), (0.5, ["root", "fifth_up"]), (1.0, ["root", "sixth_up"]), (1.5, ["root", "sixth_up"]),
                                  (2.0, ["root", "flat7_up"]), (2.5, ["root", "flat7_up"]), (3.0, ["root", "sixth_up"]), (3.5, ["root", "sixth_up"])]},
+    # Corale (a quattro voci): un accordo su ogni tempo, le voci interne legate (con voice leading); il soprano e il basso sono
+    # le loro parti.
+    "chorale": {"grid": "4:", "polyphonic": True,
+                "bar": [(0.0, ["third", "fifth"]), (1.0, ["third", "fifth"]), (2.0, ["third", "fifth"]), (3.0, ["third", "fifth"])],
+                "variant": [(0.0, ["third", "fifth"]), (1.0, ["third", "seventh"]), (2.0, ["third", "fifth"]), (3.0, ["root_hi", "third"])]},
+    # Basso albertino (la mano sinistra del classico): a ottavi, grave-acuta-media-acuta (do sol mi sol).
+    "alberti": {"grid": "8:", "polyphonic": True,
+                "bar": [(0.5 * i, ("root", "fifth_up", "third_up", "fifth_up")[i % 4]) for i in range(8)],
+                "variant": [(0.5 * i, ("root", "fifth_up", "third_up", "fifth_up", "root", "sixth_up", "third_up", "sixth_up")[i]) for i in range(8)]},
+    # Stride (pianoforte jazz e ragtime): la fondamentale grave sull'1 e la quinta sul 3, l'accordo un'ottava sopra sul 2 e sul 4.
+    "stride": {"grid": "4:", "polyphonic": True,
+               "bar": [(0.0, "root"), (1.0, ["root_hi", "third_hi", "fifth_hi"]), (2.0, "fifth"), (3.0, ["root_hi", "third_hi", "fifth_hi"])],
+               "variant": [(0.0, "root"), (1.0, ["third_hi", "fifth_hi", "seventh_hi"]), (2.0, "fifth"),
+                           (3.0, ["root_hi", "third_hi", "fifth_hi"])]},
+    # Fingerpicking (chitarra sola, alla Travis): il pollice alterna fondamentale e quinta sui tempi, le dita prendono le note
+    # alte dell'accordo in levare.
+    "travis": {"grid": "8:", "polyphonic": True,
+               "bar": [(0.0, "root"), (0.5, "third_hi"), (1.0, "fifth"), (1.5, "root_hi"),
+                       (2.0, "root"), (2.5, "fifth_hi"), (3.0, "fifth"), (3.5, "third_hi")],
+               "variant": [(0.0, "root"), (0.5, "root_hi"), (1.0, "fifth"), (1.5, "third_hi"),
+                           (2.0, "root"), (2.5, ["third_hi", "fifth_hi"]), (3.0, "fifth"), (3.5, "root_hi")]},
+    # L'arpeggio del preludio (alla Bach): a sedicesimi, ogni mezza battuta la fondamentale grave e l'accordo che sale e ripete.
+    "prelude_arpeggio": {"grid": "16:", "polyphonic": True,
+                         "bar": [(0.25 * i, ("root", "third_up", "fifth_up", "root_hi", "third_hi", "fifth_up", "root_hi", "third_hi")[i % 8])
+                                 for i in range(16)],
+                         "variant": [(0.25 * i, ("root", "fifth_up", "root_hi", "third_hi", "fifth_hi", "root_hi", "third_hi", "fifth_hi")[i % 8])
+                                     for i in range(16)]},
     # Power chord (fondamentale e quinta) a ottavi: rock e punk.
     "power_chords": {"grid": "8:", "polyphonic": True,
                      "bar": [(0.5 * i, ["root", "fifth"]) for i in range(8)],
@@ -2148,6 +2232,9 @@ def _resolve_roles(role, span: ChordSpan, next_root_pc: Optional[int]) -> List[T
     return out
 
 
+_STRICT_STYLES = ("prelude_arpeggio", "alberti", "travis", "chorale")
+
+
 def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            range_low: int, range_high: int, polyphonic: bool,
                            variation_every: int = 4, min_total_beats: float = 0.0,
@@ -2221,7 +2308,9 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         events = _pattern_events(pattern, span, variant, bar_beats,
                                  _bar_picker(style, pattern, variant, amount.rhythm, rng))
         events = _apply_line_intensity(events, level, fuller_chords=polyphonic, octave_lift=False)
-        starts = _quantize_starts(events, unit, total_units, amount, rng, octave_jumps=False)
+        # i disegni regolari (l'arpeggio del preludio, l'albertino, il fingerpicking) non perdono ne' uniscono note
+        starts = _quantize_starts(events, unit, total_units,
+                                  amount._replace(rhythm=0.0, notes=0.0) if style in _STRICT_STYLES else amount, rng, octave_jumps=False)
         if amount.notes > 0 and not polyphonic and level != "light":
             starts = _add_passing_note(starts, total_units, next_root, amount.notes, rng)
         return starts
@@ -2259,7 +2348,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         return tokens[0] if len(tokens) == 1 else "[" + " ".join(tokens) + "]"
 
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
-                               anticipate=unit <= 0.5 and intensity != "light")
+                               anticipate=unit <= 0.5 and intensity != "light" and style not in _STRICT_STYLES)
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
     velocity_at = _with_level_velocity(velocity_at, intensity)
     return " ".join([grid] + _emit_line(line, end_u, render, velocity_at))
