@@ -125,7 +125,19 @@ async function saveSnapshot(key, snap) {
 }
 
 async function bootFromSnapshot(f, snap) {
-  const pyodide = await loadPyodide({ indexURL: INDEX_URL, _loadSnapshot: snap });
+  // Pyodide 314: la memoria di WebAssembly parte da 30 MB e l'opzione INITIAL_MEMORY che dovrebbe farla partire
+  // grande come l'istantanea non conta piu'; l'istantanea (qui 36 MB) non ci stava ("offset is out of bounds"),
+  // l'avvio ripiegava ogni volta sull'avvio da zero (8-30 s). Si allarga la memoria subito dopo averla creata,
+  // prima che Pyodide copi l'istantanea.
+  const create = (await import(INDEX_URL + "pyodide.asm.mjs")).default;
+  const pyodide = await loadPyodide({
+    indexURL: INDEX_URL, _loadSnapshot: snap,
+    createPyodideModule: async (settings) => {
+      const module = await create(settings);
+      module.growMemory(snap.byteLength);
+      return module;
+    },
+  });
   installFiles(pyodide, f);
   pyodide.runPython(SETUP + "import engine");
   return pyodide;
