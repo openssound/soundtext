@@ -3618,5 +3618,8 @@
  "mancavano i passi {steps}": "faltaban los pasos {steps}",
  "i passi {steps} erano di troppo": "los pasos {steps} sobraban",
  "Colpi giusti: {right} su {total}": "Golpes correctos: {right} de {total}",
- "Ci sono {n} colpi.": "Hay {n} golpes."
+ "Ci sono {n} colpi.": "Hay {n} golpes.",
+ "Riff a botta e risposta": "Riff de pregunta y respuesta",
+ "Shuffle di chitarra (quinta e sesta a ottavi)": "Shuffle de guitarra (quinta y sexta en corcheas)",
+ "Melodia blues (A A B, con le risposte)": "Melodía blues (A A B, con las respuestas)"
 }

@@ -194,12 +194,19 @@ def _bar_rhythm(bar_beats: float, compound: bool, density: int, cadence: bool,
 
 
 def _phrase_rhythm(phrase_bars: int, bar_beats: float, compound: bool, density: int,
-                   rng: random.Random, flatten: float, syncopation: float = 0.0) -> List[Tuple[float, float]]:
+                   rng: random.Random, flatten: float, syncopation: float = 0.0, space: int = 0) -> List[Tuple[float, float]]:
     """Il ritmo di una frase. Il motivo e' la prima battuta: con piu' di due
     battute, la terza (non di cadenza) la riprende uguale, come nelle frasi
-    vere (motivo, risposta, motivo, cadenza)."""
+    vere (motivo, risposta, motivo, cadenza). Con 'space' (il riff e il
+    blues, a botta e risposta) le ultime 'space' battute sono della band:
+    la prima ha solo la nota d'arrivo sul primo tempo (un tempo nel riff,
+    due nel blues), poi silenzio."""
     bars = []
+    base = 1.5 if compound else 1.0
     for b in range(phrase_bars):
+        if space and b >= phrase_bars - space:
+            bars.append([(0.0, min(bar_beats, base * (1 if space == 1 else 2)))] if b == phrase_bars - space else [])
+            continue
         cadence = b == phrase_bars - 1
         if b == 2 and not cadence:
             bars.append(bars[0])
@@ -497,7 +504,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     dyn_rng = random.Random(seed)
 
     compound = bool(meter) and meter.replace(" ", "").endswith("/8") and int(meter.split("/")[0]) % 3 == 0
-    phrase_bars = 4 if bar_beats <= 3 + 1e-6 else 2
+    phrase_bars = int(spec.get("phrase_bars", 4 if bar_beats <= 3 + 1e-6 else 2))
     phrase_beats = phrase_bars * bar_beats
     # frasi di lunghezza diversa (8.4): una frase B puo' durare piu' battute delle A ("b_bars" dello stile)
     form = spec["form"]
@@ -539,6 +546,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
 
     # il culmine del brano: nelle forme con la B, le frasi A non arrivano dove arriva la B
     a_ceiling = center + spec["height"] + 2 if has_b else None
+    space = int(spec.get("space", 0))       # il riff e il blues a botta e risposta: le ultime battute di ogni frase sono della band
 
     motifs: Dict[Tuple[str, int, int], dict] = {}
     notes: List[Tuple[float, float, int, bool]] = []   # (inizio, durata, nota, frase-B?)
@@ -557,13 +565,14 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         base = center + (spec["b_lift"] if letter == "B" else 0)
         height = spec["height"] + (2 if letter == "B" else 0)
         ceiling = a_ceiling if letter == "A" else None
+        space_p = min(space, phrase_bars_p - 1)      # una frase accorciata (l'ultima) tiene almeno una battuta cantata
         # il motivo: per lettera e densita'; se la densita' cambia (l'intensita' "crescendo") si riprende il ritmo che c'e'
         motif = motifs.get((letter, density, phrase_bars_p))
         if motif is None and intensity == "build":
             motif = next((m for (lt, _dn, bars), m in motifs.items() if lt == letter and bars == phrase_bars_p), None)
 
         if motif is None:
-            rhythm = _phrase_rhythm(phrase_bars_p, bar_beats, compound, density, rng, amount.rhythm, syncopation)
+            rhythm = _phrase_rhythm(phrase_bars_p, bar_beats, compound, density, rng, amount.rhythm, syncopation, space_p)
             contour = rng.choices(("arch", "early", "late"), weights=(3, 2, 1) if letter == "A" else (2, 0, 1))[0]
             targets = _arch(rhythm, phrase_beats_p, base, height, ending, CONTOURS[contour])
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
@@ -574,8 +583,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
             # con la variabilita' del ritmo cambia figura una battuta, mai la prima (e' il motivo che si riconosce): la seconda
             # o una delle seguenti, anche quella di cadenza
             changed_bar = None
-            if amount.rhythm > 0 and phrase_bars_p > 1 and rng.random() < 0.5 * amount.rhythm:
-                changed_bar = rng.randrange(1, phrase_bars_p)
+            sung = phrase_bars_p - space_p                   # le battute di risposta (il riff, il blues) non cambiano
+            if amount.rhythm > 0 and sung > 1 and rng.random() < 0.5 * amount.rhythm:
+                changed_bar = rng.randrange(1, sung)
                 lo, hi = changed_bar * bar_beats, (changed_bar + 1) * bar_beats
                 new_bar = [(lo + t, d) for t, d in
                            _bar_rhythm(bar_beats, compound, density, changed_bar == phrase_bars_p - 1, rng, amount.rhythm,
@@ -600,7 +610,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
                 # le note che la variabilita' sceglie di cambiare)
                 # (la prima battuta resta sempre quella del motivo)
                 keep = {onset: pitch for (onset, _d), pitch in zip(old_rhythm, old_pitches)}
-                for i, (onset, _d) in enumerate(rhythm[:-2]):
+                for i, (onset, _d) in enumerate(rhythm[:-1] if space_p else rhythm[:-2]):   # il riff: cambia solo la nota d'arrivo
                     first_bar = onset < bar_beats - 1e-6
                     if onset in keep and (first_bar or not (amount.notes > 0 and rng.random() < 0.3 * amount.notes)):
                         fixed[i] = keep[onset]
@@ -608,6 +618,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
                                prev, prev2, rng, 0.5 * amount.notes, contour_weight=1.6, fixed=fixed, ceiling=ceiling)
         last = len(rhythm) - 1
+        if space_p and p == n_phrases - 1 and rhythm:
+            # l'ultima frase del brano non lascia il silenzio: la nota d'arrivo tiene fino alla fine
+            rhythm = rhythm[:-1] + [(rhythm[-1][0], phrase_beats_p - rhythm[-1][0])]
         for i, ((onset, duration), pitch) in enumerate(zip(rhythm, pitches)):
             if i == last and p < n_phrases - 1 and duration >= 1.0 + BREATH - 1e-6:
                 duration -= BREATH            # il respiro prima della frase dopo

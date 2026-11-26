@@ -184,7 +184,7 @@ GENRES_DATA = {
     "metal": dict(meter="4/4", bpm=150, drums="metal", bass="eighths", comp="metal_gallop", comp2="block_chords", melody="vivace",
                   ens="elettrica", form="canzone", dist=True, moods=("tesa", "epica", "oscura", "misteriosa", "drammatica", "energica", "avventurosa"),
                   prog={"major": ("mixolydian", "rock", "mixolydian"), "minor": ("phrygian", "minor_epic", "minor_three")}),
-    "rocknroll": dict(meter="4/4", bpm=150, drums="rocknroll", bass="boogie", comp="boogie_piano", comp2="quarter_chords", melody="vivace",
+    "rocknroll": dict(meter="4/4", bpm=150, drums="rocknroll", bass="boogie", comp="boogie_piano", comp2="chuck_guitar", melody="vivace",
                       ens="elettrica", form="canzone", moods=("allegra", "festosa", "nostalgica", "tesa", "giocosa", "energica"),
                       prog={"major": ("doo_wop", "rock", "three_chord"), "minor": ("minor_rock", "minor_three", "minor_rock")}),
     "samba": dict(meter="4/4", bpm=100, drums="samba", bass="bossa", comp="bossa_comp", comp2="montuno", melody="vivace",
@@ -535,7 +535,9 @@ _GENRE_ENTER = {
     "punk": {"drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},                 # il conto e l'attacco
     "lofi": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},                          # il Rhodes da solo, poi il pad
     "bossa": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},                         # la chitarra apre, il pianoforte elettrico entra dopo
-    "rocknroll": {"drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},            # il conto e il boogie insieme
+    "blues": {"melody": ("verse", "chorus", "solo", "end", "loop")},                                  # l'armonica canta gia' il primo giro
+    "rocknroll": {"drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"),             # il conto e il boogie insieme:
+                  "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},             # pianoforte, basso e batteria
     "samba": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),                 # l'intro e' la batucada, le percussioni sole
               "drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
     "chacha": {"drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},               # il cowbell e le percussioni aprono col montuno
@@ -645,6 +647,15 @@ _GENRE_SECOND_VOICE = {"marcia": "thirds", "afro68": "thirds", "pop": "thirds", 
 # la melodia della strofa (3a): piu' rada del ritornello, che resta il culmine; non nei brani brevissimi
 _VERSE_MELODY_STYLE = {"melody_lively": "melody_period", "melody_period": "melody_ballad", "melody_aaba": "melody_period",
                        "melody_ballad": "melody_ballad"}
+# ...ma nei generi del sax che risponde la strofa e' un riff a botta e risposta, non una melodia lenta
+_GENRE_VERSE_MELODY = {"rocknroll": "melody_riff", "blues": "melody_riff", "swing": "melody_riff"}
+# il blues: nei giri del tema (non nell'assolo) la melodia e' il verso A A B di dodici battute (vedi melody_blues)
+_BLUES_HEAD_ROLES = ("verse", "chorus", "end", "loop")
+# l'intro del genere con la sua intensita' (di solito leggera): il rock'n'roll attacca col boogie pieno, pianoforte e basso
+_GENRE_INTRO_INTENSITY = {"rocknroll": "normal"}
+# dove il fiato suona pieno: sopra si va solo nel ritornello piu' intenso, come grido voluto (MIDI, suoni reali)
+_COMFORT_HIGH = {"Tenor_Sax": 75, "Alto_Sax": 80, "Baritone_Sax": 68, "Soprano_Sax": 87}
+_SCREAM = 3
 
 
 def _enters(genre: str, part: str, verse_melody: bool = False) -> Tuple[str, ...]:
@@ -1032,6 +1043,11 @@ def resolve(options: Optional[dict] = None) -> dict:
             melody = "nessuna"
         elif melody == "nessuna":
             melody = recipe["melody"] if recipe["melody"] in _MELODY_STYLE else "cantabile"
+    for part in ("comp", "comp2"):
+        # la chitarra distorta del blues suona lo shuffle a due note (quinta e sesta): gli accordi di settima pieni, distorti, impastano
+        if genre == "blues" and instruments.get(part) in ("Overdriven_Guitar", "Distortion_Guitar") \
+                and styles.get(part) in ("quarter_chords", "block_chords") and not (parts_in.get(part) or {}).get("style"):
+            styles[part] = "chuck_guitar"
     return {"genre": genre, "mood": mood, "requested_mood": options.get("mood", "allegra"), "fallback": fallback, "seed": seed, "key": key,
             "mode": mode, "bpm": bpm, "meter": meter, "form": form, "ensemble": ensemble, "melody": melody, "ending": ending,
             "modulation": bool(options["modulation"]) if "modulation" in options else
@@ -1173,7 +1189,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
     def level(name):
         return _LEVELS[max(0, min(2, _LEVELS.index(name) + shift))]
     verse_i, chorus_i = (level(c["intensities"][0]), level(c["intensities"][1]))
-    intensity = {"intro": "light", "verse": verse_i, "chorus": chorus_i, "bridge": verse_i if verse_i != "light" else "normal",
+    intensity = {"intro": _GENRE_INTRO_INTENSITY.get(c["genre"], "light"), "verse": verse_i, "chorus": chorus_i, "bridge": verse_i if verse_i != "light" else "normal",
                  "solo": chorus_i, "end": chorus_i, "loop": chorus_i}
     variability = c["variability"] if c["variability"] is not None else 0.2 + 0.4 * c["density"]
     variability = float(variability)
@@ -1325,10 +1341,18 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
                     mstyle = _MELODY_STYLE[c["melody"]]
-                    if role == "verse" and "verse" not in _ENTER["melody"]:     # la strofa: piu' rada e piu' leggera del ritornello
-                        mstyle = _VERSE_MELODY_STYLE.get(mstyle, mstyle)
+                    if c["genre"] == "blues" and bars % 12 == 0 and role in _BLUES_HEAD_ROLES:
+                        mstyle = "melody_blues"
+                    elif role == "verse" and "verse" not in _ENTER["melody"]:     # la strofa: piu' rada e piu' leggera del ritornello
+                        mstyle = _GENRE_VERSE_MELODY.get(c["genre"]) or _VERSE_MELODY_STYLE.get(mstyle, mstyle)
+                    riff = mstyle in ("melody_riff", "melody_blues")
+                    comfort = _COMFORT_HIGH.get(c["instruments"]["melody"])
+                    if comfort and lvl == "full" and role != "verse":
+                        comfort += _SCREAM                                     # il ritornello piu' intenso: il grido del sax
                     body = E._quick_melody(project_color, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
-                                           seed_of("melody", 99 if role != "verse" else 98), "light" if role == "verse" else lvl,
+                                           seed_of("melody", 99 if role != "verse" else 98),
+                                           # il riff della strofa resta a ottavi: la strofa e' gia' piu' rada per le battute di risposta
+                                           ("normal" if riff else "light") if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
                                             # nei generi del blues il tritono col basso e' il loro suono (la settima sulla terza
@@ -1339,7 +1363,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                                                        ("appoggiatura", _GENRE_APPOGGIATURA))
                                                if c["genre"] in table},
                                             "figure": _figures_for(c["genre"], c["instruments"]["melody"])
-                                            if options.get("figures", True) not in (False, 0, "0", "no") else ""})
+                                            if options.get("figures", True) not in (False, 0, "0", "no") else ""},
+                                           range_high=comfort)
                 if role == "break" and _GENRE_BREAK[c["genre"]][1] == "hit":
                     from .arrange import _first_hit_only
                     body = _first_hit_only(body)

@@ -1391,6 +1391,10 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool
     fifth = (root + 7) % 12 if span.has_fifth else root
     if role == "rest":
         return None
+    if role.endswith("_up") and role[:-3] in ("third", "fifth", "sixth", "flat7"):
+        # la nota sopra la fondamentale, non sotto (la quinta e la sesta della chitarra rock'n'roll: do sopra il fa, non sotto)
+        pc, offset = _resolve_role(role[:-3], span, next_root_pc, bass)
+        return pc, offset + (1 if pc < root else 0)
     if role == "root":
         return (span.bass_pc if bass and span.bass_pc is not None else root, 0)
     if role == "root_hi":
@@ -1819,7 +1823,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
                                variation_every: int = 4, min_total_beats: float = 0.0,
                                variability=0.0, seed: Optional[int] = None,
                                bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
-                               kick_beats: Optional[List[float]] = None) -> str:
+                               kick_beats: Optional[List[float]] = None, ending: bool = False) -> str:
     """Genera una linea di basso che segue 'chords' (vedi
     extract_chords_from_track), nello stile scelto (vedi BASS_STYLES),
     all'ottava indicata. Ogni 'variation_every' accordi (0 disabilita le
@@ -1845,7 +1849,10 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
 
     'kick_beats' (vedi kick_beats_of_track): il basso agganciato alla cassa,
     gli attacchi cadono sui colpi di cassa (con le note dello stile); il
-    ritmo non si varia piu' e la griglia si stringe se la cassa lo chiede."""
+    ritmo non si varia piu' e la griglia si stringe se la cassa lo chiede.
+
+    'ending': il brano finisce qui; l'ultima battuta e' la fondamentale dell'ultimo accordo sul primo tempo, tenuta (col colpo
+    finale della batteria), invece del disegno che continua a camminare."""
     if not chords:
         raise ValueError(tr("Nessun accordo da seguire: la traccia sorgente non ne contiene."))
     user = user_styles.get_user_style("bass", style)
@@ -1889,6 +1896,11 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
 
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
                                anticipate=unit <= 0.5 and intensity != "light" and not kick_beats)
+    bar_u = int(round(bar_beats / unit))
+    if ending and abs(bar_beats / unit - bar_u) < 1e-6 and end_u >= 2 * bar_u:
+        last_u = end_u - bar_u
+        last_span = next((c for c in reversed(chords) if c.start_beat <= last_u * unit + 1e-6), chords[-1])
+        line = [ev for ev in line if ev[0] < last_u] + [(last_u, "root", last_span, None)]
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
     velocity_at = _with_level_velocity(velocity_at, intensity)
     return " ".join([grid] + _emit_line(line, end_u, render, velocity_at))
@@ -1992,6 +2004,13 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                              (2.0, "root"), (2.5, "flat7"), (3.0, _CHORD), (3.5, "sixth")],
                      "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, ["root", "third", "seventh"]), (1.5, "sixth"),
                                  (2.0, "root"), (2.5, "flat7"), (3.0, ["root", "third", "seventh"]), (3.5, "sixth")]},
+    # La chitarra del rock'n'roll: a ottavi, fondamentale con la quinta e poi con la sesta (due ottavi ciascuna), il boogie
+    # della chitarra ritmica; la variante porta la settima minore sul terzo tempo.
+    "chuck_guitar": {"grid": "8:", "polyphonic": True,
+                     "bar": [(0.0, ["root", "fifth_up"]), (0.5, ["root", "fifth_up"]), (1.0, ["root", "sixth_up"]), (1.5, ["root", "sixth_up"]),
+                             (2.0, ["root", "fifth_up"]), (2.5, ["root", "fifth_up"]), (3.0, ["root", "sixth_up"]), (3.5, ["root", "sixth_up"])],
+                     "variant": [(0.0, ["root", "fifth_up"]), (0.5, ["root", "fifth_up"]), (1.0, ["root", "sixth_up"]), (1.5, ["root", "sixth_up"]),
+                                 (2.0, ["root", "flat7_up"]), (2.5, ["root", "flat7_up"]), (3.0, ["root", "sixth_up"]), (3.5, ["root", "sixth_up"])]},
     # Power chord (fondamentale e quinta) a ottavi: rock e punk.
     "power_chords": {"grid": "8:", "polyphonic": True,
                      "bar": [(0.5 * i, ["root", "fifth"]) for i in range(8)],
@@ -2075,6 +2094,14 @@ MELODY_STYLES: Dict[str, dict] = {
                       "density": 0, "b_density": 1, "height": 4, "b_lift": 4, "b_bars": 4},
     "melody_lively": {"form": [("A", "open"), ("A'", "closed"), ("B", "open"), ("A", "closed")],
                       "density": 2, "b_density": 1, "height": 6, "b_lift": 3},
+    # riff a botta e risposta (la strofa del sax nel rock'n'roll, nel blues e nello swing): una battuta di riff e la nota d'arrivo,
+    # poi la band risponde; il riff torna uguale, cambia solo l'arrivo
+    "melody_riff": {"form": [("A", "open"), ("A'", "open"), ("A", "open"), ("A'", "closed")],
+                    "density": 2, "b_density": 2, "height": 4, "b_lift": 0, "space": 1},
+    # la melodia del blues: il verso di quattro battute (due cantate, la nota d'arrivo e la risposta della band), ripetuto sul
+    # IV, poi la risposta (A A B: dodici battute)
+    "melody_blues": {"form": [("A", "open"), ("A", "open"), ("B", "closed")],
+                     "density": 1, "b_density": 2, "height": 5, "b_lift": 2, "phrase_bars": 4, "space": 2},
 }
 
 COMPING_STYLES = tuple(name for name, p in MELODIC_PATTERNS.items() if p["polyphonic"])
@@ -2195,7 +2222,12 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
         resolved = _resolve_roles(role, span, next_root)
         if not resolved:
             return None
-        notes = [octave_in_range(pc, off) for pc, off in resolved]
+        # una nota sola volta: l'ottava sopra aggiunta dall'intensita' piena, se non sta nel registro, ricadeva sulla fondamentale
+        notes = list(dict.fromkeys(octave_in_range(pc, off) for pc, off in resolved))
+        if isinstance(role, list) and any(isinstance(r, str) and r.endswith("_up") for r in role) and role[0] == "root":
+            # le note "_up" stanno sopra la fondamentale: se il registro le ha riportate sotto, scende la fondamentale
+            while any(n < notes[0] for n in notes[1:]) and notes[0] - 12 >= range_low:
+                notes[0] -= 12
         if voice_leading and len({n % 12 for n in notes}) >= 3:
             if voicing["prev"] is None:
                 voicing["anchor"] = sum(notes) / len(notes)   # il primo accordo resta com'e'
@@ -2258,7 +2290,7 @@ PROGRESSION_STYLES: Dict[str, dict] = {
     "rock": {"mode": "major", "chords": [(0, "", 1), (5, "", 1), (0, "", 1), (7, "", 1)]},       # I-IV-I-V
     "canon": {"mode": "major", "chords": [(0, "", 1), (7, "", 1), (9, "m", 1), (4, "m", 1),     # Pachelbel
                                           (5, "", 1), (0, "", 1), (5, "", 1), (7, "", 1)]},
-    "blues_12": {"mode": "major", "chords": [(0, "7", 4), (5, "7", 2), (0, "7", 2),
+    "blues_12": {"mode": "major", "blues": True, "chords": [(0, "7", 4), (5, "7", 2), (0, "7", 2),
                                              (7, "7", 1), (5, "7", 1), (0, "7", 1), (7, "7", 1)]},
     "jazz_251": {"mode": "major", "chords": [(2, "m7", 1), (7, "7", 1), (0, "maj7", 2)]},
     "turnaround": {"mode": "major", "chords": [(0, "maj7", 1), (9, "m7", 1), (2, "m7", 1), (7, "7", 1)]},
@@ -2267,7 +2299,7 @@ PROGRESSION_STYLES: Dict[str, dict] = {
     "minor_rock": {"mode": "minor", "chords": [(0, "m", 1), (10, "", 1), (8, "", 1), (10, "", 1)]},  # i-VII-VI-VII
     "minor_cadence": {"mode": "minor", "chords": [(0, "m", 1), (5, "m", 1), (0, "m", 1), (7, "7", 1)]},  # i-iv-i-V7
     "minor_251": {"mode": "minor", "chords": [(2, "m7b5", 1), (7, "7", 1), (0, "m7", 2)]},
-    "minor_blues_12": {"mode": "minor", "chords": [(0, "m7", 4), (5, "m7", 2), (0, "m7", 2),
+    "minor_blues_12": {"mode": "minor", "blues": True, "chords": [(0, "m7", 4), (5, "m7", 2), (0, "m7", 2),
                                                    (8, "7", 1), (7, "7", 1), (0, "m7", 1), (7, "7", 1)]},
     # --- aggiunte: maggiore ---
     "three_chord": {"mode": "major", "chords": [(0, "", 1), (5, "", 1), (7, "", 1), (0, "", 1)]},      # I-IV-V-I
@@ -2442,6 +2474,31 @@ def _enrich_harmony(seq: list, mode: str, bar: Fraction, variability: float, rng
     return out
 
 
+_QUICK_CHANGE_P = 0.5      # (x variabilita') il IV gia' alla seconda battuta
+_PASSING_DIM_P = 0.35      # (x variabilita') la sesta battuta: la diminuita di passaggio sul IV diesis (Mi°7 fra Mi b7 e Si b7)
+
+
+def _blues_enrich(seq: list, mode: str, bar: Fraction, variability: float, rng: random.Random) -> list:
+    """Le sostituzioni del 12 battute, che ne tengono lo schema: il "quick change" (le prime quattro battute di tonica
+    diventano I-IV-I-I) e, in maggiore, la diminuita di passaggio sulla sesta battuta (IV, #IV°7, poi I). I colori degli
+    accordi (none, tredicesime) restano."""
+    cycle = 12 * bar
+    iv_quality = next((q for off, q, _d, _c in seq if off == 5), "7")
+    out, cursor = [], Fraction(0)
+    for off, quality, dur, chromatic in seq:
+        at = cursor % cycle
+        cursor += dur
+        if at == 0 and off == 0 and dur == 4 * bar and rng.random() < _QUICK_CHANGE_P * variability:
+            out += [[0, quality, bar, chromatic], [5, iv_quality, bar, False], [0, quality, 2 * bar, chromatic]]
+            continue
+        if (mode == "major" and at == 4 * bar and off == 5 and dur == 2 * bar
+                and rng.random() < _PASSING_DIM_P * variability):
+            out += [[5, quality, bar, chromatic], [6, "dim7", bar, True]]
+            continue
+        out.append([off, quality, dur, chromatic])
+    return out
+
+
 def _final_cadence(seq: list, mode: str, tonic_quality: str, bar: Fraction, total: Fraction,
                    variability: float, rng: random.Random, authentic: bool = False) -> list:
     """Chiude il giro sulla tonica: l'ultima battuta diventa il I (o i), e
@@ -2516,13 +2573,18 @@ def generate_chord_progression(key: str, style: str, bars: int = 0, chord_bars: 
         dur = min(dur, total - cursor)
         if variability > 0 and rng.random() < _COLOR_P * variability:
             options = _DOMINANT_COLORS if (quality == "" and offset == 7) else _CHORD_COLORS.get(quality)
+            if options and spec.get("blues"):
+                options = [o for o in options if "sus" not in o]        # nel blues niente sus: la terza blues della melodia ci stride
             if options:
                 quality = rng.choice(options)
         seq.append([offset, quality, dur, False])
         cursor += dur
         i += 1
     if variability > 0:
-        seq = _enrich_harmony(seq, mode, bar, variability, rng)
+        # il 12 battute del blues ha le sue sostituzioni: le altre (la dominante secondaria al posto del IV della sesta battuta)
+        # ne romperebbero lo schema
+        seq = (_blues_enrich(seq, mode, bar, variability, rng) if spec.get("blues")
+               else _enrich_harmony(seq, mode, bar, variability, rng))
     if ending:
         tonic_quality = next((q for off, q, _l in spec["chords"] if off == 0), "" if mode == "major" else "m")
         seq = _final_cadence(seq, mode, tonic_quality, bar, total, variability, rng,

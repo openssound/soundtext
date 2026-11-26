@@ -310,3 +310,29 @@ def test_where_the_note_weighs_the_melody_avoids_the_tritone_with_the_bass_that_
             if abs(start - round(start)) < 1e-6 or duration >= 1.0:
                 sounding = [n for a, b, n in bass if a <= start < b]
                 assert all((pitch - n) % 12 != 6 for n in sounding), (seed, start, pitch, sounding)
+
+
+def test_the_riff_leaves_the_last_bar_of_each_phrase_to_the_band():
+    spans = extract_chords_from_track("4C 4F 4C 4G", {})
+    for seed in range(6):
+        text = generate_melodic_line(spans, "melody_riff", 5, 55, 80, polyphonic=False, min_total_beats=32, variability=0.5,
+                                     seed=seed, key="C")
+        notes = _notes(text)
+        for phrase in range(3):                                          # le frasi prima dell'ultima: riff, arrivo, silenzio
+            inside = [n for n in notes if 8 * phrase <= n[0] < 8 * phrase + 8]
+            assert inside[-1][0] == 8 * phrase + 4 and inside[-1][1] <= 1.0
+        assert notes[-1][0] + notes[-1][1] == pytest.approx(32.0)        # l'ultima tiene fino alla fine
+        first_bar = lambda p: [(round(s - 8 * p, 3), m) for s, _d, m in notes if 8 * p <= s < 8 * p + 4]
+        assert first_bar(0) == first_bar(2)                              # il riff torna uguale
+
+
+def test_the_blues_melody_sings_two_bars_and_leaves_two_to_the_band():
+    spans = extract_chords_from_track("16C7 8F7 8C7 4G7 4F7 4C7 4G7", {})
+    for seed in range(6):
+        text = generate_melodic_line(spans, "melody_blues", 5, 55, 84, polyphonic=False, min_total_beats=48, variability=0.4,
+                                     seed=seed, key="C")
+        notes = _notes(text)
+        for line in range(2):                                            # i due versi A: due battute cantate, l'arrivo, la risposta
+            inside = [n for n in notes if 16 * line <= n[0] < 16 * line + 16]
+            assert inside[-1][0] == 16 * line + 8 and all(n[0] < 16 * line + 8 + 1e-6 for n in inside)
+        assert notes[-1][0] + notes[-1][1] == pytest.approx(48.0)

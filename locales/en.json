@@ -3618,5 +3618,8 @@
  "mancavano i passi {steps}": "steps {steps} were missing",
  "i passi {steps} erano di troppo": "steps {steps} were extra",
  "Colpi giusti: {right} su {total}": "Correct hits: {right} of {total}",
- "Ci sono {n} colpi.": "There are {n} hits."
+ "Ci sono {n} colpi.": "There are {n} hits.",
+ "Riff a botta e risposta": "Call-and-response riff",
+ "Shuffle di chitarra (quinta e sesta a ottavi)": "Guitar shuffle (fifth and sixth in eighths)",
+ "Melodia blues (A A B, con le risposte)": "Blues melody (A A B, with answers)"
 }

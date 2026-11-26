@@ -81,6 +81,7 @@ def generator_labels() -> dict:
         ("organ_bubble", tr("Organo bubble (reggae)")),
         ("horn_stabs", tr("Colpi dei fiati sugli accenti")),
         ("boogie_piano", tr("Pianoforte boogie-woogie")),
+        ("chuck_guitar", tr("Shuffle di chitarra (quinta e sesta a ottavi)")),
         ("scratch", tr("Scratch (chitarra funk)")),
         ("soul_comp", tr("Comping soul (accordi rilegati)")),
         ("banjo_roll", tr("Rullo di banjo (country)")),
@@ -148,6 +149,8 @@ def generator_labels() -> dict:
         ("melody_period", tr("Melodia domanda e risposta (A A')")),
         ("melody_ballad", tr("Melodia lenta (ballad, A A' B A)")),
         ("melody_lively", tr("Melodia mossa (A A' B A)")),
+        ("melody_riff", tr("Riff a botta e risposta")),
+        ("melody_blues", tr("Melodia blues (A A B, con le risposte)")),
     ]
     return {"drums": drum_style_labels, "bass": bass_style_labels, "comping": comping_style_labels,
             "riff": riff_style_labels, "progression": progression_style_labels, "intensity": intensity_labels,

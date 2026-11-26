@@ -147,7 +147,7 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
             chords, options.get("style") or rg.BASS_STYLES[0], octave=int(options.get("octave", 2)),
             variation_every=int(options.get("variation_every", 4)),
             min_total_beats=int(options.get("bars", 4)) * bar_beats, bar_beats=bar_beats,
-            intensity=intensity, kick_beats=kick, **variation)
+            intensity=intensity, kick_beats=kick, ending=bool(options.get("ending", False)), **variation)
         out = _performed(out, instrument, options, seed, project)
     elif kind == "comping":
         chords, _source = _chords_of(project, options.get("source"), track_name)
@@ -228,7 +228,9 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None,
 
 
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,
-                  intensity: str, variation: dict) -> str:
+                  intensity: str, variation: dict, range_high: Optional[int] = None) -> str:
+    """La melodia di un brano veloce; 'range_high' (facoltativo) abbassa la nota piu' alta dello strumento (il registro pieno
+    di un fiato)."""
     from core import rhythm_generate as rg
     from core.instruments import get_instrument
     chords, _track = _chords_of(project, source, None)
@@ -236,6 +238,6 @@ def _quick_melody(project, source: str, instrument_name: str, style: str, key: s
     bar_beats = _bar_beats(project)
     return rg.generate_melodic_line(
         chords, style, octave=instrument.default_octave, range_low=instrument.range_low,
-        range_high=instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
+        range_high=min(instrument.range_high, range_high) if range_high else instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
         bar_beats=bar_beats, intensity=intensity, voice_leading=True, key=key, meter=project.time_sig, repeats=(),
         **variation)

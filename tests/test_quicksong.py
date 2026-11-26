@@ -1236,3 +1236,56 @@ def test_loud_chord_instruments_are_trimmed(monkeypatch):
     trimmed = q.quick_song(options)["text"]
     monkeypatch.setattr(q, "_INSTRUMENT_VELOCITY", {})
     assert trimmed != q.quick_song(options)["text"]
+
+
+def test_rocknroll_verse_riff_boogie_intro_guitar_in_eighths_and_the_sax_in_its_register(q):
+    """Il rock'n'roll: la strofa del sax e' un riff a botta e risposta (non note lunghe), l'intro e' il boogie col basso (non
+    il pianoforte a note lunghe), la chitarra suona quinta e sesta a ottavi e il sax tenore resta dove suona pieno."""
+    from core.project_io import parse_project_text
+    from core.instruments import make_instrument_available
+    song = q.quick_song({"genre": "rocknroll", "mood": "allegra", "duration": 60, "seed": 1571260660, "variety": 0})
+    assert song["choices"]["instruments"]["melody"] == "Tenor_Sax"
+    assert {"Piano", "Bass", "Drums"} <= set(_boxes(song, "Intro"))
+    assert song["choices"]["styles"]["comp2"] == "chuck_guitar"
+    project = parse_project_text(song["text"], "Brano")
+    make_instrument_available("Tenor_Sax")
+    sax = next(t for t in project.tracks if t.name == "Tenor_Sax")
+    notes = [(e.start, e.duration, n) for e, n in _rnr_sounding(project, sax)]
+    verse = [clip for clip in sax.clips if clip.name == "Strofa"]
+    assert verse
+    start = verse[0].start_beat
+    in_verse = sorted(n for n in notes if start <= n[0] < start + 32)
+    gaps = [b[0] - (a[0] + a[1]) for a, b in zip(in_verse, in_verse[1:])]
+    assert sum(1 for g in gaps if g >= 2.5) >= 3                           # la band risponde: battute di silenzio fra i riff
+    assert max(n for _s, _d, n in in_verse) <= q._COMFORT_HIGH["Tenor_Sax"]
+    assert max(n for _s, _d, n in notes) <= q._COMFORT_HIGH["Tenor_Sax"] + q._SCREAM
+
+
+def _rnr_sounding(project, track):
+    from st_language.midi import resolve_event_notes, sounding_events
+    out = []
+    for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
+        if getattr(ev, "kind", "") != "note":
+            continue
+        notes, _v = resolve_event_notes(ev, track.instrument)
+        out += [(ev, n) for n in notes]
+    return out
+
+
+def test_blues_keeps_the_twelve_bar_form_and_its_band(q):
+    """Il blues: la sesta battuta resta il IV (o la diminuita di passaggio), mai la dominante; l'armonica canta gia' il primo
+    giro a botta e risposta (A A B), la chitarra distorta suona lo shuffle e il basso chiude sulla tonica."""
+    from core.rhythm_generate import generate_chord_progression, extract_chords_from_track
+    for seed in range(30):
+        spans = extract_chords_from_track("4: " + generate_chord_progression("Bb", "blues_12", bars=24, variability=1.0, seed=seed)
+                                          .split(":", 1)[1], {})
+        for chorus in (0, 48):
+            sixth = [s for s in spans if s.start_beat <= chorus + 20 + 1e-6][-1]
+            assert sixth.root_pc in (3, 4), (seed, chorus, sixth)          # mi b7 o mi diminuita, non fa7
+    song = q.quick_song({"genre": "blues", "mood": "allegra", "duration": 60, "seed": 1621789363, "variety": 0})
+    assert song["choices"]["instruments"]["melody"] == "Harmonica" and "Harmonica" in _boxes(song, "Giro 1")
+    if song["choices"]["instruments"].get("comp") == "Overdriven_Guitar":
+        assert song["choices"]["styles"]["comp"] == "chuck_guitar"
+    import re as _re
+    bass = _re.findall(r'Box Bass "Giro \d+" \|\d+:\n((?:  .*\n)+)', song["text"])[-1]
+    assert bass.strip().rstrip("|").split("|")[-1].split() == ["4a#*2"]   # l'ultima battuta: il si b tenuto
