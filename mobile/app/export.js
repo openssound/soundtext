@@ -49,7 +49,8 @@ async function exportMidi() {
 }
 
 // L'audio fuori tempo: {left, right, marks, block, rate} (vedi export-worker.js).
-async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress) {
+// 'rate' e 'speed' (facoltativi): la frequenza (quella dell'esportazione) e la velocita' del lettore (1 = come scritto).
+async function renderOffline(midi, { fromBeat, toBeat, seconds, tail, rate = EXPORT_RATE, speed = 1 }, progress) {
   const sf = await (await fetch(SOUNDFONT_URL)).arrayBuffer();
   // i SoundFont dell'utente: il predefinito e quelli delle tracce, ognuno col suo banco (come nel lettore)
   const extra = [];
@@ -64,16 +65,16 @@ async function renderOffline(midi, { fromBeat, toBeat, seconds, tail }, progress
     const worker = new Worker("export-worker.js");
     worker.onmessage = (ev) => {
       const msg = ev.data;
-      if (msg.type === "progress") progress(msg.frames / EXPORT_RATE);
+      if (msg.type === "progress") { if (progress) progress(msg.frames / rate); }
       else if (msg.type === "done") { worker.terminate(); resolve(msg); }
       else if (msg.type === "error") { worker.terminate(); reject(new Error(msg.message)); }
     };
     worker.onerror = (ev) => { worker.terminate(); reject(new Error(ev.message || "worker")); };
-    const maxFrames = seconds ? Math.round(seconds * EXPORT_RATE) : 20 * 60 * EXPORT_RATE;
+    const maxFrames = seconds ? Math.round(seconds * rate) : 20 * 60 * rate;
     worker.postMessage({
-      sf, fonts: extra.filter((f) => f.bytes), reverb: reverbSettings(), midi: midi.slice().buffer, rate: EXPORT_RATE,
+      sf, fonts: extra.filter((f) => f.bytes), reverb: reverbSettings(), midi: midi.slice().buffer, rate, speed,
       fromTick: Math.round(fromBeat * TICKS_PER_BEAT), toTick: toBeat == null ? null : Math.round(toBeat * TICKS_PER_BEAT),
-      maxFrames, tailFrames: Math.round((tail === undefined ? 2.5 : tail) * EXPORT_RATE),
+      maxFrames, tailFrames: Math.round((tail === undefined ? 2.5 : tail) * rate),
     }, [sf, ...extra.filter((f) => f.bytes).map((f) => f.bytes)]);
   });
 }

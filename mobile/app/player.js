@@ -88,11 +88,13 @@ async function initAudio() {
 
 // Il punto del brano che suona, in tick (il file del lettore puo' cominciare piu' avanti: tickBase)
 async function playerTick() {
+  if (bgPlay.source) return bgTick();           // in background suona l'audio gia' calcolato (vedi piu' sotto)
   return (state.tickBase || 0) + (await state.synth.retrievePlayerCurrentTick());
 }
 
 async function startPlayer(fromTick) {
   const synth = state.synth;
+  leaveBuffer();
   const token = ++state.playToken;
   await syncFonts(synth);                       // i SoundFont dell'utente, predefinito e per traccia
   await synth.resetPlayer();
@@ -106,6 +108,10 @@ async function startPlayer(fromTick) {
   state.playing = true;
   setPlayButton();
   watchTransport(token);
+  if (!state.previewing) {
+    prepareBackground();
+    if (document.hidden) toBuffer();
+  }
   synth.waitForPlayerStopped().then(() => {
     if (token !== state.playToken) return;
     if (state.previewing) { stopPreview(); return; }
@@ -166,6 +172,7 @@ async function pause() {
   if (!state.synth) return;
   state.playToken++;
   state.pausedTick = await playerTick();
+  leaveBuffer();
   state.synth.stopPlayer();
   state.synth.midiAllSoundsOff();
   state.playing = false;
@@ -175,6 +182,7 @@ async function pause() {
 
 function stop(reset) {
   if (state.previewing) stopPreview();
+  leaveBuffer();
   if (state.synth && state.playing) {
     state.playToken++;
     state.synth.stopPlayer();
@@ -485,6 +493,136 @@ async function watchTransport(token) {
     await new Promise((r) => setTimeout(r, 40));
   }
 }
+
+// ------------------------------------------------------------ in background
+//
+// Il lettore calcola i campioni in tempo reale (FluidSynth nell'AudioWorklet). Con un'altra app davanti Android
+// abbassa la priorita' del browser: il calcolo resta indietro e il brano suona a scatti; e il controllo del tratto
+// A-B (un timer) nella pagina nascosta scatta una volta al secondo. Quindi, mentre suona, lo stesso brano si
+// calcola fuori tempo (renderOffline: come l'esportazione, con trasposizione, mute, velocita' ed effetti) e,
+// quando la pagina si nasconde, il lettore passa a quell'audio dal punto dove era arrivato: suonarlo costa poco
+// e il tratto A-B lo ripete l'audio stesso. Tornando nell'app riprende il lettore, dallo stesso punto.
+
+const BG_MAX_SECONDS = 600;     // un brano piu' lungo non si calcola: troppa memoria
+const bgPlay = { midi: null, key: "", rendering: null, ready: null, playing: null, source: null, at: 0, offset: 0, loop: null };
+
+function bgKey() {
+  return JSON.stringify([state.ctx ? state.ctx.sampleRate : 0, state.speed || 1, reverbKey(), effectsOn(), state.fx ? state.fx.master : [], docFonts()]);
+}
+
+function prepareBackground() {
+  if (!state.midi || !state.ctx || state.previewing) return;
+  const key = bgKey();
+  if (bgPlay.midi === state.midi && bgPlay.key === key) return;          // gia' pronto, o si sta calcolando
+  bgPlay.midi = state.midi;
+  bgPlay.key = key;
+  bgPlay.ready = null;
+  bgPlay.rendering = null;
+  const seconds = (state.timeline.length || 0) * 60 / ((state.bpm || 120) * (state.speed || 1));
+  if (seconds > BG_MAX_SECONDS) return;
+  const midi = state.midi, ctx = state.ctx, t0 = performance.now();
+  const job = (async () => {
+    const out = await renderOffline(midi, { fromBeat: 0, toBeat: null, tail: 2.5, rate: ctx.sampleRate, speed: state.speed || 1 });
+    await applyMasterOffline(out);
+    const buffer = ctx.createBuffer(2, out.left.length, out.rate);
+    buffer.copyToChannel(out.left, 0);
+    buffer.copyToChannel(out.right, 1);
+    return { buffer, marks: out.marks, block: out.block, rate: out.rate };
+  })();
+  bgPlay.rendering = job;
+  job.then((ready) => {
+    if (bgPlay.rendering !== job) return;
+    bgPlay.ready = ready;
+    Metrics.record("sfondo", { event: "pronto", render_ms: ms(t0), seconds: Math.round(ready.buffer.duration) });
+    if (document.hidden) toBuffer();
+  }).catch((e) => {
+    if (bgPlay.rendering !== job) return;
+    bgPlay.rendering = null;
+    Metrics.record("sfondo", { event: "errore", message: String((e && e.message) || e) });
+  });
+}
+
+// tick <-> secondi dell'audio calcolato: 'marks' e' il tick a ogni blocco
+function bgSecondsAt(ready, tick) {
+  const marks = ready.marks;
+  let lo = 0, hi = marks.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (marks[mid] < tick) lo = mid + 1; else hi = mid;
+  }
+  return (lo * ready.block) / ready.rate;
+}
+
+function bgTickAt(ready, seconds) {
+  const i = Math.max(0, Math.min(ready.marks.length - 1, Math.floor((seconds * ready.rate) / ready.block)));
+  return ready.marks[i];
+}
+
+function bgTick() {
+  let seconds = bgPlay.offset + (state.ctx.currentTime - bgPlay.at);
+  const loop = bgPlay.loop;
+  if (loop && seconds >= loop[1]) seconds = loop[0] + ((seconds - loop[0]) % (loop[1] - loop[0]));
+  return bgTickAt(bgPlay.playing, seconds);
+}
+
+async function toBuffer() {
+  const ready = bgPlay.ready;
+  if (!ready || bgPlay.source || !state.playing || state.previewing || state.stopAtBeat != null) return;
+  if (bgPlay.midi !== state.midi || bgPlay.key !== bgKey()) return;
+  const token = state.playToken;
+  const tick = await playerTick();
+  if (token !== state.playToken || !state.playing || bgPlay.source || !document.hidden) return;
+  const ctx = state.ctx;
+  const source = ctx.createBufferSource();
+  source.buffer = ready.buffer;
+  const loop = state.loop;
+  bgPlay.loop = null;
+  if (loop.on && loop.a != null && loop.b != null) {
+    source.loop = true;
+    source.loopStart = bgSecondsAt(ready, Math.round(loop.a * TICKS_PER_BEAT));
+    source.loopEnd = bgSecondsAt(ready, Math.round(loop.b * TICKS_PER_BEAT));
+    bgPlay.loop = [source.loopStart, source.loopEnd];
+  }
+  source.connect(ctx.destination);                // gli effetti master sono gia' nell'audio calcolato
+  const mine = ++state.playToken;                 // il lettore dal vivo si ferma: il suo controllo e la sua fine non valgono piu'
+  state.synth.stopPlayer();
+  state.synth.midiAllSoundsOff();
+  const offset = bgSecondsAt(ready, tick);
+  source.start(0, offset);
+  Object.assign(bgPlay, { source, playing: ready, at: ctx.currentTime, offset });
+  source.onended = () => {
+    if (bgPlay.source !== source) return;
+    bgPlay.source = null;
+    if (mine !== state.playToken) return;
+    state.playing = false;
+    state.pausedTick = 0;
+    setPlayButton();
+    clearHighlight();
+    showPosition(0);
+    setStatus(t("Fine del brano"));
+  };
+  Metrics.record("sfondo", { event: "audio calcolato", tick, offset_s: Math.round(offset * 10) / 10, loop: !!bgPlay.loop });
+}
+
+function leaveBuffer() {
+  const source = bgPlay.source;
+  if (!source) return;
+  bgPlay.source = null;
+  try { source.onended = null; source.stop(); source.disconnect(); } catch (e) {}
+}
+
+// Di nuovo davanti: il lettore dal vivo riprende dal punto dell'audio calcolato (con evidenziazione e controlli).
+function backgroundVisibility() {
+  if (document.hidden) {
+    if (state.playing) toBuffer();
+    return;
+  }
+  if (!bgPlay.source || !state.playing) return;
+  const tick = bgTick();
+  Metrics.record("sfondo", { event: "lettore", tick });
+  startPlayer(tick).then(() => requestAnimationFrame(frame)).catch((e) => console.error(e));
+}
+document.addEventListener("visibilitychange", backgroundVisibility);
 
 function setSpeed(percent) {
   state.speed = percent / 100;

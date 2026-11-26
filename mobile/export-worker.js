@@ -10,7 +10,7 @@ importScripts("vendor/js-synthesizer/libfluidsynth-2.4.6-with-libsndfile.js", "v
 const BLOCK = 1024;
 
 self.onmessage = async (ev) => {
-  const { sf, fonts, reverb, midi, rate, fromTick, toTick, maxFrames, tailFrames } = ev.data;
+  const { sf, fonts, reverb, midi, rate, fromTick, toTick, maxFrames, tailFrames, speed } = ev.data;
   let synth = null;
   try {
     await JSSynth.waitForReady();
@@ -23,6 +23,7 @@ self.onmessage = async (ev) => {
       if (font.bank) synth.setSFontBankOffset(id, font.bank);
     }
     await synth.addSMFDataToPlayer(midi);
+    if (speed && speed !== 1) synth.setPlayerTempo(0, speed);   // la velocita' del lettore (moltiplicatore del tempo del file)
     await synth.playPlayer();
 
     const lefts = [], rights = [], marks = [];
