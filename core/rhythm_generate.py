@@ -315,12 +315,12 @@ DRUM_STYLES: Dict[str, Dict[str, list]] = {
         }),
     },
     "soul": {
-        # Groove alla Motown: rullante sul 2 e sul 4 con tamburello sugli ottavi.
+        # Groove alla Motown: rullante e battito di mani sul 2 e sul 4, charleston chiuso e tamburello sugli ottavi.
         "main": _pattern({
-            0: [("kick", 90), ("tambourine", 90)], 2: [("tambourine", 60)],
-            4: [("snare", 100), ("tambourine", 100)], 6: [("kick", 80), ("tambourine", 80)],
-            8: [("kick", 90), ("tambourine", 90)], 10: [("tambourine", 60)],
-            12: [("snare", 100), ("tambourine", 100)], 14: [("tambourine", 60)],
+            0: [("kick", 92), ("hihat", 80), ("tambourine", 90)], 2: [("hihat", 55), ("tambourine", 60)],
+            4: [("snare", 102), ("clap", 70), ("hihat", 80), ("tambourine", 100)], 6: [("kick", 80), ("hihat", 55), ("tambourine", 80)],
+            8: [("kick", 92), ("hihat", 80), ("tambourine", 90)], 10: [("hihat", 55), ("tambourine", 60), ("kick", 70)],
+            12: [("snare", 102), ("clap", 70), ("hihat", 80), ("tambourine", 100)], 14: [("hihat", 55), ("tambourine", 60)],
         }),
         "fill": _pattern({
             0: [("kick", 100)], 4: [("snare", 100)], 8: [("kick", 95)],
@@ -662,10 +662,10 @@ DRUM_ALTS: Dict[str, List[list]] = {
                   12: [("kick", 100), ("hihat", 100)], 14: [("snare", 100), ("hihat", 85)]}),
     ],
     "soul": [
-        _pattern({0: [("kick", 90), ("tambourine", 90)], 2: [("tambourine", 60)],
-                  4: [("snare", 100), ("tambourine", 100)], 6: [("tambourine", 70)], 7: [("kick", 80)],
-                  8: [("kick", 90), ("tambourine", 90)], 10: [("tambourine", 60)],
-                  12: [("snare", 100), ("tambourine", 100)], 14: [("tambourine", 60)], 15: [("kick", 75)]}),
+        _pattern({0: [("kick", 92), ("hihat", 80), ("tambourine", 90)], 2: [("hihat", 55), ("tambourine", 60)],
+                  4: [("snare", 102), ("clap", 70), ("hihat", 80), ("tambourine", 100)], 6: [("hihat", 55), ("tambourine", 70)], 7: [("kick", 80)],
+                  8: [("kick", 92), ("hihat", 80), ("tambourine", 90)], 10: [("hihat", 55), ("tambourine", 60)], 11: [("snare", 45)],
+                  12: [("snare", 102), ("clap", 70), ("hihat", 80), ("tambourine", 100)], 14: [("hihat", 55), ("tambourine", 60)], 15: [("kick", 75)]}),
     ],
     "rocknroll": [
         _pattern({0: [("kick", 90), ("ride", 90)], 2: [("ride", 65)], 3: [("kick", 75)],

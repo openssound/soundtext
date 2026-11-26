@@ -305,14 +305,14 @@ _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jaz
                  "funk": "funk", "soul": "soul", "disco": "groove", "reggae": "folk", "country": "folk",
                  "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
 _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("walk_up", "root_fifth", "root"),
-              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "root_fifth", "root"),
+              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "motown", "root_fifth"),
               "disco": ("octaves", "eighths", "root"), "funk": ("funk16", "octaves", "eighths"), "samba": ("bossa", "two_feel", "root_fifth"), "bossa": ("bossa", "root", "two_feel"), "marcia": ("two_feel", "root"), "metal": ("eighths", "root"), "reggae": ("reggae", "root", "root_fifth"),
               "punk": ("eighths", "root_fifth"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root")}
 _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
               "soul": ("soul", "halftime")}
 # i generi i cui due accompagnamenti sono stili generici (si possono scambiare); gli altri (power chord, boom-chick, skank...) no
-_SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "soul", "ballata68", "afro68", "balcanico78", "marcia", "orchestrale")
+_SWAP_COMP = ("pop", "ballata", "jazz", "swing", "lofi", "elettronica", "ballata68", "afro68", "balcanico78", "marcia", "orchestrale")
 # gli strumenti alternativi di ogni parte: il primo e' quello della ricetta; il seme puo' sceglierne un altro (stessa famiglia e,
 # dove si puo', gli stessi pacchetti di suoni del genere). Per genere se il genere ha il suo suono, se no per organico.
 _INSTRUMENT_ALTS_GENRE = {
@@ -362,7 +362,7 @@ _INSTRUMENT_ALTS = {
 # gli accompagnamenti alternativi dei generi che non hanno uno stile caratteristico (4/4)
 _COMP_ALTS = {"pop": ("arpeggio_up", "broken_chord", "block_chords", "quarter_chords"), "ballata": ("arpeggio_up", "broken_chord", "sustained"),
               "lofi": ("broken_chord", "sustained", "arpeggio_up"), "elettronica": ("sustained", "arpeggio_up", "broken_chord"),
-              "soul": ("soul_comp", "broken_chord", "block_chords"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
+              "soul": ("soul_comp", "soul_comp", "broken_chord"), "jazz": ("quarter_chords", "block_chords", "broken_chord"),
               "swing": ("quarter_chords", "block_chords", "broken_chord", "boogie_piano"),
               "blues": ("quarter_chords", "boogie_piano"), "rocknroll": ("boogie_piano", "quarter_chords"),
               "samba": ("bossa_comp", "quarter_chords"), "bossa": ("bossa_comp", "broken_chord", "arpeggio_up"), "marcia": ("quarter_chords", "boom_chick"),
@@ -511,6 +511,7 @@ _GENRE_ENTER = {
               "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
     "reggae": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},           # l'organo bubble anche nella strofa
     "funk": {"horn": ("verse", "chorus", "solo", "end")},
+    "soul": {"horn": ("verse", "chorus", "bridge", "solo", "end")},        # i fiati rispondono gia' dalla strofa
     # orchestrale: l'intro e' l'arpa sola, poi entrano gli archi, nel ritornello i corni
     "orchestrale": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
                     "comp2": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"),
