@@ -184,3 +184,25 @@ def test_engine_exposes_the_exercises(ex):
     assert [k["kind"] for k in engine.exercise_kinds()] == list(ex.KINDS)
     q = engine.exercise("intervals", 1, 3)
     assert engine.exercise_check("intervals", 1, 3, _full(ex, "intervals", 1, 3)["answer"])["correct"] and q["kind"] == "intervals"
+
+
+def test_correction_explains_and_names_the_given_answer(ex):
+    for kind in ex.KINDS:
+        for level in (1, 2, 3):
+            q = ex.exercise(kind, level, 3)
+            assert "explain" not in q                                  # la spiegazione non e' nella domanda
+            wrong = [] if q["input"] == "grid" else 0
+            r = ex.exercise_check(kind, level, 3, wrong)
+            assert r["explain"]
+    r = ex.exercise_check("intervals", 1, 3, 3)
+    assert r["given_label"] == ex._interval_labels()[3]
+
+
+def test_hint_removes_only_wrong_answers(ex):
+    for kind in ("intervals", "chords", "progression", "bar", "error"):
+        for seed in range(12):
+            full = _full(ex, kind, 2, seed)
+            hint = ex.exercise_hint(kind, 2, seed)
+            assert hint["remove"] and full["answer"] not in hint["remove"]
+            assert hint == ex.exercise_hint(kind, 2, seed)
+    assert ex.exercise_hint("rhythm", 1, 4)["text"]

@@ -3605,5 +3605,18 @@
  "Nessuna (della ricetta)": "Ninguno (el de la receta)",
  "Fatto": "Hecho",
  "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Marca los instrumentos que deben tocar en la canción: «solo guitarra», «guitarra, bajo y batería», «solo bajo».",
- "Importa MIDI…": "Importar MIDI…"
+ "Importa MIDI…": "Importar MIDI…",
+ "Spesso confondi «{expected}» con «{given}»": "A menudo confundes «{expected}» con «{given}»",
+ "Tolte {n} risposte sbagliate": "Quitadas {n} respuestas incorrectas",
+ "Più piano": "Más despacio",
+ "Un aiuto": "Una ayuda",
+ "{a} e {b}: {n} semitoni, {label}.": "{a} y {b}: {n} semitonos, {label}.",
+ "{root} {label}: {notes} ({steps} semitoni sopra la fondamentale).": "{root} {label}: {notes} ({steps} semitonos sobre la fundamental).",
+ "{pattern}, in {tonic}{minor}: {chords}.": "{pattern}, en {tonic}{minor}: {chords}.",
+ "{meter}: in sedicesimi {parts} = {units}, quindi manca {name} (valore {n}).": "{meter}: en semicorcheas {parts} = {units}, así que falta {name} (valor {n}).",
+ "{bad} non è nella scala di {key} maggiore ({scale}): la nota giusta era {good}.": "{bad} no está en la escala de {key} mayor ({scale}): la nota correcta era {good}.",
+ "mancavano i passi {steps}": "faltaban los pasos {steps}",
+ "i passi {steps} erano di troppo": "los pasos {steps} sobraban",
+ "Colpi giusti: {right} su {total}": "Golpes correctos: {right} de {total}",
+ "Ci sono {n} colpi.": "Hay {n} golpes."
 }

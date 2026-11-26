@@ -67,6 +67,8 @@ h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacin
 .ex-step[aria-pressed=true] { background: var(--accent); border-color: var(--accent); }
 .ex-step.expected { outline: 3px solid #43b36b; }
 .ex-feedback { min-height: 1.6em; font-size: 16px; font-weight: 600; }
+.ex-choices button.out, .ex-picks button.out { opacity: .35; text-decoration: line-through; }
+.ex-explain { min-height: 1.4em; }
 .ex-feedback.right { color: #43b36b; }
 .ex-feedback.wrong { color: var(--danger); }
 .ex-choices button.right, .ex-picks button.right { background: #2f7d4b; color: #fff; border-color: #2f7d4b; }

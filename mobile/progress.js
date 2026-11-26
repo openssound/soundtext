@@ -40,6 +40,18 @@ const Progress = (() => {
     return current;
   }
 
+  // L'errore che si ripete di piu' (almeno 2 volte): {expected, given, count} oppure null
+  function topConfusion(confusions) {
+    let best = null;
+    for (const [key, count] of Object.entries(confusions || {})) {
+      if (count >= 2 && (!best || count > best.count)) {
+        const [expected, given] = key.split("\u0000");
+        best = { expected, given, count };
+      }
+    }
+    return best;
+  }
+
   // Un riassunto dei risultati: la serie, quanto fatto oggi, e per tipo quante risposte e quante giuste.
   function summary(results, today) {
     const days = [...new Set(results.map((r) => r.day))];
@@ -48,8 +60,14 @@ const Progress = (() => {
       const k = perKind[r.kind] || (perKind[r.kind] = { total: 0, correct: 0, history: {} });
       k.total++;
       if (r.correct) k.correct++;
-      (k.history[r.level] || (k.history[r.level] = [])).push(!!r.correct);
+      // un aiuto usato conta come errore per il livello consigliato
+      (k.history[r.level] || (k.history[r.level] = [])).push(!!r.correct && !r.hinted);
+      if (!r.correct && r.expected && r.given) {
+        const key = r.expected + "\u0000" + r.given;
+        (k.confusions || (k.confusions = {}))[key] = (k.confusions[key] || 0) + 1;
+      }
     }
+    for (const k of Object.values(perKind)) k.topConfusion = topConfusion(k.confusions);
     const doneToday = results.filter((r) => r.day === today);
     return { streak: streak(days, today), today: { done: doneToday.length, correct: doneToday.filter((r) => r.correct).length }, perKind };
   }

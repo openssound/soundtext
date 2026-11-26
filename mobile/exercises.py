@@ -65,8 +65,12 @@ def _intervals(level: int, rng: random.Random) -> dict:
     if level == 3 and rng.random() < 0.34:                     # insieme
         notes = [_note(0, 3, root), _note(0, 3, other)]
     labels = _interval_labels()
+    first, second = sorted(notes, key=lambda n: n["t"])[:2] if len(notes) == 2 and notes[0]["t"] != notes[1]["t"] else notes[:2]
+    explain = tr("{a} e {b}: {n} semitoni, {label}.", a=_LETTERS_SHARP[first["n"] % 12], b=_LETTERS_SHARP[second["n"] % 12],
+                 n=semitones, label=labels[semitones])
     return {"prompt": tr("Che intervallo senti?"), "input": "choice", "notes": notes, "bpm": 80,
-            "choices": _choices((s, labels[s]) for s in pool), "answer": semitones, "answer_label": labels[semitones]}
+            "choices": _choices((s, labels[s]) for s in pool), "answer": semitones, "answer_label": labels[semitones],
+            "explain": explain}
 
 
 # ------------------------------------------------------------ accordi
@@ -91,8 +95,12 @@ def _chords(level: int, rng: random.Random) -> dict:
     if level >= 2 and rng.random() < 0.5:                      # arpeggiato: le note entrano una dopo l'altra e restano
         notes = [_note(i * 0.5, 3.0 - i * 0.5, n) for i, n in enumerate(pitches)]
     labels = _chord_labels()
+    explain = tr("{root} {label}: {notes} ({steps} semitoni sopra la fondamentale).", root=_LETTERS_SHARP[root % 12],
+                 label=labels[quality], notes=" ".join(_LETTERS_SHARP[n % 12] for n in pitches),
+                 steps=" – ".join(str(i) for i in _CHORD_SHAPES[quality][1:]))
     return {"prompt": tr("Che accordo senti?"), "input": "choice", "notes": notes, "bpm": 80,
-            "choices": _choices((q, labels[q]) for q in pool), "answer": quality, "answer_label": labels[quality]}
+            "choices": _choices((q, labels[q]) for q in pool), "answer": quality, "answer_label": labels[quality],
+            "explain": explain}
 
 
 # ------------------------------------------------------------ giri armonici
@@ -131,13 +139,17 @@ def _progression(level: int, rng: random.Random) -> dict:
     options = [answer] + rng.sample([n for n in names if n != answer], 3)
     rng.shuffle(options)
     notes = []
+    chord_names = []
     for i, (offset, quality) in enumerate(loops[answer]):
+        chord_names.append(_LETTERS_SHARP[(tonic + offset) % 12] + ("m" if quality == "m" else ""))
         root = tonic + offset
         shape = (0, 3, 7) if quality == "m" else (0, 4, 7)
         notes += [_note(i * 2, 2, root - 12, v=80)] + [_note(i * 2, 2, root + s, v=85) for s in shape]
     return {"prompt": tr("Quale giro armonico senti?"), "input": "choice", "notes": notes, "bpm": 84,
             "choices": _choices((n, n) for n in options), "answer": answer, "answer_label": answer,
-            "context": tr("in tonalità minore") if minor else tr("in tonalità maggiore")}
+            "context": tr("in tonalità minore") if minor else tr("in tonalità maggiore"),
+            "explain": tr("{pattern}, in {tonic}{minor}: {chords}.", pattern=answer, tonic=_LETTERS_SHARP[tonic % 12],
+                          minor="m" if minor else "", chords=" – ".join(chord_names))}
 
 
 # ------------------------------------------------------------ completa la battuta
@@ -185,7 +197,10 @@ def _bar(level: int, rng: random.Random) -> dict:
     return {"prompt": prompt, "input": "choice", "meter": meter, "items": items,
             "notes": notes, "bpm": 80, "context": tr("Metrica {meter}", meter=meter),
             "choices": _choices((v, names[v]) for v in pool), "answer": values[missing], "answer_label": names[values[missing]],
-            "st": {"meter": meter, "text": "16: " + " ".join(tokens) + " |"}}
+            "st": {"meter": meter, "text": "16: " + " ".join(tokens) + " |"},
+            "explain": tr("{meter}: in sedicesimi {parts} = {units}, quindi manca {name} (valore {n}).", meter=meter,
+                          parts=" + ".join(str(v) for v in values), units=units, name=names[values[missing]],
+                          n=values[missing])}
 
 
 # ------------------------------------------------------------ trova l'errore
@@ -213,6 +228,9 @@ def _error(level: int, rng: random.Random) -> dict:
     return {"prompt": tr("Una nota non è della tonalità: quale?"), "input": "pick", "notes": notes, "bpm": 90,
             "items": [spelling[p % 12] for p in played], "answer": wrong, "answer_label": spelling[shifted % 12],
             "context": tr("Tonalità: {key} maggiore", key=spelling[tonic]),
+            "explain": tr("{bad} non è nella scala di {key} maggiore ({scale}): la nota giusta era {good}.",
+                          bad=spelling[shifted % 12], key=spelling[tonic],
+                          scale=" ".join(spelling[(tonic + s) % 12] for s in _MAJOR), good=spelling[pitches[wrong] % 12]),
             "info": {"tonic": tonic, "wrong": wrong, "original": pitches[wrong], "scale": sorted(scale_pcs)}}
 
 
@@ -269,7 +287,7 @@ def exercise(kind: str, level: int, seed: int) -> dict:
     grid, e a seconda del tipo context, items (la battuta), meter}. Senza la risposta."""
     maker = _checked(kind, level)
     full = maker(int(level), _rng(kind, int(level), seed))
-    hidden = ("answer", "answer_label", "info", "st")
+    hidden = ("answer", "answer_label", "info", "st", "explain")
     out = {k: v for k, v in full.items() if k not in hidden}
     if kind == "bar":
         out["notes"] = []                       # sentire la battuta (o il vuoto) direbbe la durata che manca
@@ -292,6 +310,25 @@ def exercise_check(kind: str, level: int, seed: int, answer) -> dict:
     else:
         correct = answer == expected or str(answer) == str(expected)
     out = {"correct": bool(correct), "answer_label": full["answer_label"], "answer": expected}
+    out["explain"] = full.get("explain", "")
+    if full["input"] == "choice":
+        out["given_label"] = next((c["label"] for c in full["choices"] if c["value"] == answer or str(c["value"]) == str(answer)), "")
+    elif full["input"] == "pick":
+        out["given_label"] = ""
+    if full["input"] == "grid":
+        try:
+            given = {int(x) for x in answer}
+        except (TypeError, ValueError):
+            given = set()
+        missing = sorted(set(expected) - given)
+        extra = sorted(given - set(expected))
+        parts = []
+        if missing:
+            parts.append(tr("mancavano i passi {steps}", steps=", ".join(str(x + 1) for x in missing)))
+        if extra:
+            parts.append(tr("i passi {steps} erano di troppo", steps=", ".join(str(x + 1) for x in extra)))
+        out["explain"] = (tr("Colpi giusti: {right} su {total}", right=len(given & set(expected)), total=len(expected))
+                          + ("; " + "; ".join(parts) if parts else "") + ".")
     if kind == "bar":
         out["notes"] = full["notes"]            # la battuta completa, da ascoltare dopo la risposta
     if kind == "error":
@@ -301,3 +338,18 @@ def exercise_check(kind: str, level: int, seed: int, answer) -> dict:
         fixed[wrong] = dict(fixed[wrong], n=info["original"])          # la nota giusta, da riascoltare
         out["notes"] = fixed
     return out
+
+
+def exercise_hint(kind: str, level: int, seed: int) -> dict:
+    """Un aiuto che non da' la risposta: {remove: [...]} sono risposte sbagliate da togliere (meta' di quelle
+    sbagliate, al piu' due), o {text} per la griglia ritmica (quanti colpi)."""
+    maker = _checked(kind, level)
+    full = maker(int(level), _rng(kind, int(level), seed))
+    if full["input"] == "grid":
+        return {"text": tr("Ci sono {n} colpi.", n=len(full["answer"]))}
+    if full["input"] == "choice":
+        wrong = [c["value"] for c in full["choices"] if c["value"] != full["answer"]]
+    else:
+        wrong = [i for i in range(len(full["items"])) if i != full["answer"]]
+    random.Random(f"hint/{kind}/{level}/{int(seed)}").shuffle(wrong)
+    return {"remove": wrong[:max(1, min(2, len(wrong) // 2))]}

@@ -112,7 +112,7 @@ engine.quick_from_melody(melody, "Flute", {"genre": "pop", "mood": "calma", "dur
 engine.install_user_styles("")
 engine.structure_sections(source); engine.arrange_song(engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "seed": 1, "variety": 0})["text"], {"replace": True, "seed": 1})
 for kind in ("intervals", "chords", "progression", "bar", "error", "rhythm"):
-    engine.exercise(kind, 1, 1); engine.exercise_check(kind, 1, 1, 0)
+    engine.exercise(kind, 1, 1); engine.exercise_check(kind, 1, 1, 0); engine.exercise_hint(kind, 1, 1)
 print(json.dumps(sorted(m for m in sys.modules if m == "core" or m.startswith("core."))))
 """
 

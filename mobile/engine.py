@@ -1530,6 +1530,11 @@ def exercise(kind: str, level: int, seed: int) -> dict:
     return exercises.exercise(kind, level, seed)
 
 
+def exercise_hint(kind: str, level: int, seed: int) -> dict:
+    import exercises
+    return exercises.exercise_hint(kind, level, seed)
+
+
 def exercise_check(kind: str, level: int, seed: int, answer) -> dict:
     import exercises
     return exercises.exercise_check(kind, level, seed, answer)

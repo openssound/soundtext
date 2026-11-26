@@ -68,7 +68,8 @@ async function exRefreshHome() {
     const title = document.createElement("strong");
     title.textContent = kind.label;
     const hint = document.createElement("small");
-    hint.textContent = kind.hint + (stats ? " · " + t("{correct} giuste su {total}", { correct: stats.correct, total: stats.total }) : "");
+    hint.textContent = kind.hint + (stats ? " · " + t("{correct} giuste su {total}", { correct: stats.correct, total: stats.total }) : "")
+      + (stats && stats.topConfusion ? " · " + t("Spesso confondi «{expected}» con «{given}»", stats.topConfusion) : "");
     text.append(title, hint);
     const level = document.createElement("select");
     level.setAttribute("aria-label", t("Livello di {name}", { name: kind.label }));
@@ -115,6 +116,8 @@ async function exAsk() {
   const item = ex.queue[ex.index];
   ex.question = (await call("exercise", { args: [item.kind, item.level, item.seed] })).result;
   ex.answered = false;
+  ex.hinted = false;
+  ex.reveal = null;
   ex.grid = new Set();
   const kind = ex.kinds.find((k) => k.kind === item.kind);
   const total = ex.mode === "daily" ? ex.queue.length : 0;
@@ -125,6 +128,10 @@ async function exAsk() {
   $("exContext").textContent = ex.question.context || "";
   $("exFeedback").textContent = "";
   $("exFeedback").className = "ex-feedback";
+  $("exExplain").textContent = "";
+  $("exHint").hidden = false;
+  $("exHint").disabled = false;
+  $("exSlow").hidden = !ex.question.notes.length;
   $("exNext").hidden = true;
   $("exCheck").hidden = ex.question.input !== "grid";
   $("exListen").hidden = !ex.question.notes.length;
@@ -204,7 +211,11 @@ async function exAnswer(value, button) {
   const item = ex.queue[ex.index], q = ex.question;
   const r = (await call("exercise_check", { args: [item.kind, item.level, item.seed, value] })).result;
   ex.results.push(r.correct);
-  await Progress.record({ kind: item.kind, level: item.level, seed: item.seed, correct: r.correct }).catch(() => {});
+  const confusable = !r.correct && r.given_label;
+  await Progress.record({ kind: item.kind, level: item.level, seed: item.seed, correct: r.correct, hinted: ex.hinted,
+                          expected: confusable ? r.answer_label : "", given: confusable ? r.given_label : "" }).catch(() => {});
+  $("exHint").hidden = true;
+  $("exExplain").textContent = r.explain || "";
   const fb = $("exFeedback");
   fb.className = "ex-feedback " + (r.correct ? "right" : "wrong");
   const so = ex.results.filter(Boolean).length;
@@ -227,7 +238,29 @@ async function exAnswer(value, button) {
   $("exListenAgain").textContent = item.kind === "bar" ? t("Ascolta la battuta completa") : item.kind === "error" ? t("Ascolta la melodia giusta") : t("Riascolta");
   $("exCheck").hidden = true;
   $("exNext").hidden = false;
+  if (ex.mode === "free") {                          // allenandosi su un tipo il livello si adegua subito
+    const notes = await exAdjustLevels([item.kind]);
+    if (notes.length) $("exExplain").textContent = [r.explain, ...notes].filter(Boolean).join(" ");
+  }
   $("exNext").textContent = ex.mode === "daily" && ex.index + 1 >= ex.queue.length ? t("Vedi il risultato") : t("Avanti");
+}
+
+// Un aiuto che non da' la risposta: toglie delle risposte sbagliate (o dice quanti sono i colpi); l'esercizio
+// non conta per salire di livello
+async function exHelp() {
+  if (ex.answered || ex.hinted) return;
+  const item = ex.queue[ex.index];
+  const r = (await call("exercise_hint", { args: [item.kind, item.level, item.seed] })).result;
+  ex.hinted = true;
+  $("exHint").disabled = true;
+  if (r.text) { $("exExplain").textContent = r.text; return; }
+  const out = new Set(r.remove.map(String));
+  const buttons = document.querySelectorAll("#exInput .ex-choices button, #exInput .ex-picks button");
+  buttons.forEach((b, i) => {
+    const key = ex.question.input === "pick" ? String(i) : b.dataset.value;
+    if (out.has(key)) { b.disabled = true; b.classList.add("out"); }
+  });
+  announce(t("Tolte {n} risposte sbagliate", { n: r.remove.length }));
 }
 
 async function exNext() {
@@ -293,6 +326,8 @@ function setupExercises() {
   $("exDialog").addEventListener("cancel", exStopSound);
   $("exDaily").onclick = () => exStart("daily", ex.kinds.map((k) => k.kind)).catch(showError);
   $("exListen").onclick = () => exPlay(ex.question.notes, ex.question.bpm).catch(showError);
+  $("exSlow").onclick = () => exPlay(ex.answered && ex.reveal ? ex.reveal : ex.question.notes, (ex.question.bpm || 80) * 0.6).catch(showError);
+  $("exHint").onclick = () => exHelp().catch(showError);
   $("exListenAgain").onclick = () => exPlay(ex.reveal, ex.question.bpm).catch(showError);
   $("exCheck").onclick = () => exAnswer([...ex.grid], null).catch(showError);
   $("exNext").onclick = () => exNext().catch(showError);

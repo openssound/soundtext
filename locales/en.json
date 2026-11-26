@@ -3605,5 +3605,18 @@
  "Nessuna (della ricetta)": "None (use the recipe)",
  "Fatto": "Done",
  "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Tick the instruments that should play in the song: “guitar only”, “guitar, bass and drums”, “bass only”.",
- "Importa MIDI…": "Import MIDI…"
+ "Importa MIDI…": "Import MIDI…",
+ "Spesso confondi «{expected}» con «{given}»": "You often mix up “{expected}” with “{given}”",
+ "Tolte {n} risposte sbagliate": "{n} wrong answers removed",
+ "Più piano": "Slower",
+ "Un aiuto": "A hint",
+ "{a} e {b}: {n} semitoni, {label}.": "{a} and {b}: {n} semitones, {label}.",
+ "{root} {label}: {notes} ({steps} semitoni sopra la fondamentale).": "{root} {label}: {notes} ({steps} semitones above the root).",
+ "{pattern}, in {tonic}{minor}: {chords}.": "{pattern}, in {tonic}{minor}: {chords}.",
+ "{meter}: in sedicesimi {parts} = {units}, quindi manca {name} (valore {n}).": "{meter}: in sixteenths {parts} = {units}, so the missing value is {name} ({n}).",
+ "{bad} non è nella scala di {key} maggiore ({scale}): la nota giusta era {good}.": "{bad} is not in the {key} major scale ({scale}): the right note was {good}.",
+ "mancavano i passi {steps}": "steps {steps} were missing",
+ "i passi {steps} erano di troppo": "steps {steps} were extra",
+ "Colpi giusti: {right} su {total}": "Correct hits: {right} of {total}",
+ "Ci sono {n} colpi.": "There are {n} hits."
 }

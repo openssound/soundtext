@@ -48,3 +48,13 @@ test("gli esercizi del giorno sono gli stessi per lo stesso giorno e cambiano da
   const seeds = new Set(Array.from({ length: 60 }, (_, i) => Progress.dailySeed(`2026-12-${String(i % 28 + 1).padStart(2, "0")}`, "k" + i)));
   assert.ok(seeds.size > 50 && [...seeds].every((s) => s >= 0 && s < 1000000));
 });
+
+test("un aiuto usato conta come errore, e l'errore che si ripete viene fuori", () => {
+  const r = (correct, extra = {}) => ({ day: "2026-11-18", kind: "intervals", level: 1, correct, ...extra });
+  const s = Progress.summary([r(true, { hinted: true }), r(true)], "2026-11-18");
+  assert.deepStrictEqual(s.perKind.intervals.history[1], [false, true]);
+  const wrong = (expected, given) => r(false, { expected, given });
+  const c = Progress.summary([wrong("terza maggiore", "terza minore"), wrong("terza maggiore", "terza minore"), wrong("quinta", "quarta")], "2026-11-18");
+  assert.deepStrictEqual(c.perKind.intervals.topConfusion, { expected: "terza maggiore", given: "terza minore", count: 2 });
+  assert.strictEqual(Progress.summary([wrong("a", "b")], "2026-11-18").perKind.intervals.topConfusion, null);   // una volta sola non basta
+});

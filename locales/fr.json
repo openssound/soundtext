@@ -3605,5 +3605,18 @@
  "Nessuna (della ricetta)": "Aucun (celui de la recette)",
  "Fatto": "Terminé",
  "Spunta gli strumenti che devono suonare nel brano: «solo chitarra», «chitarra, basso e batteria», «solo basso».": "Coche les instruments qui doivent jouer dans le morceau : « guitare seule », « guitare, basse et batterie », « basse seule ».",
- "Importa MIDI…": "Importer un MIDI…"
+ "Importa MIDI…": "Importer un MIDI…",
+ "Spesso confondi «{expected}» con «{given}»": "Vous confondez souvent « {expected} » avec « {given} »",
+ "Tolte {n} risposte sbagliate": "{n} mauvaises réponses retirées",
+ "Più piano": "Plus lentement",
+ "Un aiuto": "Un indice",
+ "{a} e {b}: {n} semitoni, {label}.": "{a} et {b} : {n} demi-tons, {label}.",
+ "{root} {label}: {notes} ({steps} semitoni sopra la fondamentale).": "{root} {label} : {notes} ({steps} demi-tons au-dessus de la fondamentale).",
+ "{pattern}, in {tonic}{minor}: {chords}.": "{pattern}, en {tonic}{minor} : {chords}.",
+ "{meter}: in sedicesimi {parts} = {units}, quindi manca {name} (valore {n}).": "{meter} : en doubles-croches {parts} = {units}, il manque donc {name} (valeur {n}).",
+ "{bad} non è nella scala di {key} maggiore ({scale}): la nota giusta era {good}.": "{bad} n'est pas dans la gamme de {key} majeur ({scale}) : la bonne note était {good}.",
+ "mancavano i passi {steps}": "il manquait les pas {steps}",
+ "i passi {steps} erano di troppo": "les pas {steps} étaient en trop",
+ "Colpi giusti: {right} su {total}": "Frappes justes : {right} sur {total}",
+ "Ci sono {n} colpi.": "Il y a {n} frappes."
 }

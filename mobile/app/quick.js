@@ -425,8 +425,9 @@ function quickFillIdeaTracks() {
 // Le opzioni per il motore: le scelte a mano, la durata e i semi (le parti bloccate tengono il loro)
 function quickEngineOptions(seedFor) {
   const o = { ...quick.opts };
-  if (quick.simple) {                              // nella modalita' semplificata i dettagli (nascosti) non contano: vale la ricetta
-    for (const k of Object.keys(o)) if (!["genre", "mood", "duration", "seed"].includes(k)) delete o[k];
+  if (quick.simple) {                              // nella modalita' semplificata i dettagli (nascosti) non contano: vale la ricetta;
+    // la formazione no: il suo bottone sta fuori dai dettagli e si vede anche in modalita' semplificata
+    for (const k of Object.keys(o)) if (!["genre", "mood", "duration", "seed", "formation"].includes(k)) delete o[k];
   }
   const duration = o.seconds || o.duration;
   delete o.seconds;
