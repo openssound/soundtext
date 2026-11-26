@@ -217,6 +217,10 @@ class _Harmony:
         self.chords = chords
         self.scale_pcs = scale_pcs
         self.low, self.high = low, high
+        self.bass: List[Tuple[float, float, int]] = []     # le note del basso gia' scritto, se si conoscono
+
+    def bass_at(self, t: float) -> List[int]:
+        return [n % 12 for a, b, n in self.bass if a <= t + 1e-6 < b]
 
     def chord_at(self, t: float) -> ChordSpan:
         current = self.chords[0]
@@ -311,13 +315,20 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
                 candidates = harmony.notes(strong)
             else:
                 candidates = harmony.notes(_allowed_pcs(harmony.scale_pcs, span))
-                if strength == "beat":
+                # nelle metriche composte (6/8) e con la battuta non intera (7/8) il levare puo' cadere su un quarto intero del
+                # brano, dove l'accompagnamento batte: li' vale la regola dei tempi
+                on_quarter = abs((start + onset) - round(start + onset)) < 1e-6
+                if strength == "beat" or (on_quarter and (compound or abs(bar_beats - round(bar_beats)) > 1e-6)):
                     # sui tempi non forti niente tritono dal basso ne' seconda minore (sopra o sotto) una nota dell'accordo (la7b sopra si7b
                     # col basso re): restano al levare, dove passano
                     bass = span.bass_pc if span.bass_pc is not None else span.root_pc
                     avoid = {(bass + 6) % 12} | {(pc + d) % 12 for pc in chord for d in (1, -1)}
                     candidates = [m for m in candidates if m % 12 not in avoid or m % 12 in chord] or candidates
             candidates = candidates or harmony.notes(chord) or [harmony.low]
+            if harmony.bass and (abs(onset - round(onset)) < 1e-6 or duration >= 1.0 - 1e-6):
+                # dove la nota pesa (sul tempo, o lunga): niente tritono con la nota che il basso suona davvero
+                clash = {(b + 6) % 12 for b in harmony.bass_at(start + onset)}
+                candidates = [m for m in candidates if m % 12 not in clash] or candidates
             target = targets[i]
 
             def cost(c, strength=strength, chord=chord, target=target, is_last=(i == last)):
@@ -446,7 +457,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
                            key: Optional[str] = None, min_total_beats: float = 0.0, variability=0.0,
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
                            intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "",
-                           syncopation: float = DEFAULT_SYNCOPATION, appoggiatura: float = DEFAULT_APPOGGIATURA) -> str:
+                           syncopation: float = DEFAULT_SYNCOPATION, appoggiatura: float = DEFAULT_APPOGGIATURA,
+                           bass_notes=()) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
@@ -455,7 +467,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     uguale a quella della prima volta (un ritornello riconoscibile).
     'syncopation' (0-1): quanto spesso entrano le figure sincopate;
     'appoggiatura' (0-1): quanto spesso il secondo tempo forte e'
-    un'appoggiatura (vedi _add_appoggiature). Solleva
+    un'appoggiatura (vedi _add_appoggiature). 'bass_notes': le note del
+    basso gia' scritto, [(inizio, fine, nota MIDI)] in beat: dove la nota
+    pesa la melodia non fa il tritono con quella che il basso suona. Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -521,6 +535,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     if high - low < 12:
         low, high = range_low, range_high
     harmony = _Harmony(chords, scale, low, high)
+    harmony.bass = sorted(bass_notes or ())
 
     # il culmine del brano: nelle forme con la B, le frasi A non arrivano dove arriva la B
     a_ceiling = center + spec["height"] + 2 if has_b else None

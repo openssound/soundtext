@@ -290,3 +290,23 @@ def test_in_forms_with_a_b_the_highest_note_belongs_to_the_b():
         a = [m for s, _d, m in notes if s < 16 or s >= 32]
         b = [m for s, _d, m in notes if 16 <= s < 32]
         assert max(b) >= max(a), seed
+
+
+def test_where_the_note_weighs_the_melody_avoids_the_tritone_with_the_bass_that_is_playing():
+    """Il basso boogie passa sulla sesta (sol# sotto si minore): il re della melodia sul tempo faceva il tritono. Con le note del
+    basso gia' scritto la melodia lo evita."""
+    from core.melody_generate import generate_phrase_melody
+    spans = extract_chords_from_track("4Bm 4Bm 4Em 4F#7", {})
+    boogie = {11: (11, 2, 6, 8), 4: (4, 7, 11, 1), 6: (6, 10, 1, 3)}       # fondamentale, terza, quinta, sesta
+    bass = []
+    for bar in range(8):
+        root = (11, 11, 4, 6)[bar % 4]
+        for beat, pc in enumerate(boogie[root]):
+            bass.append((bar * 4.0 + beat, bar * 4.0 + beat + 1, 36 + pc))
+    for seed in range(8):
+        text = generate_phrase_melody(spans, "melody_lively", 5, 60, 84, key="Bm", min_total_beats=32, variability=0.5,
+                                      seed=seed, appoggiatura=0, bass_notes=bass)
+        for start, duration, pitch in _notes(text):
+            if abs(start - round(start)) < 1e-6 or duration >= 1.0:
+                sounding = [n for a, b, n in bass if a <= start < b]
+                assert all((pitch - n) % 12 != 6 for n in sounding), (seed, start, pitch, sounding)

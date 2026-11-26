@@ -76,9 +76,11 @@ def _strong_beat_hits(genre, seed):
             continue
         index = int(start // bar)
         pitch_classes = {n % 12 for s, _d, ns in harmony if index * bar - 1e-6 <= s < (index + 1) * bar - 1e-6 for n in ns}
-        if len(pitch_classes) < 2:
-            continue                  # nella battuta suona solo la fondamentale del basso: l'accordo non si sente, non c'e' da misurare
         chord = {n % 12 for s, _d, ns in comping if index * bar - 1e-6 <= s < (index + 1) * bar - 1e-6 for n in ns}
+        if len(pitch_classes) < 2 or len(chord) < 2:
+            # nella battuta l'accordo non si sente: solo la fondamentale del basso, o l'accompagnamento a note singole sopra un basso
+            # che cammina (il rock'n'roll nostalgico: la e sol nella battuta di la minore, dove il do della melodia e' giusto)
+            continue
         if len(chord) == 2 and any((root + 7) % 12 in chord for root in chord):
             # l'accompagnamento suona solo power chord (fondamentale e quinta): la terza la mette la melodia
             root = next(r for r in chord if (r + 7) % 12 in chord)

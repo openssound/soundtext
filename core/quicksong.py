@@ -231,6 +231,8 @@ _GENRE_FIGURE = {"jazz": "approach", "swing": "approach", "blues": "approach_bel
                  "ballata": "grace_above", "ballata68": "grace_above",
                  "orchestrale": "grace_above", "marcia": "grace_above", "afro68": "grace_above", "pop": "grace_below",
                  "metal": "approach_below,blue_bend", "reggae": "grace_below", "punk": "approach_below"}
+# i generi dove il tritono fra melodia e basso e' di casa (accordi di settima di dominante, blue note, boogie)
+TRITONE_GENRES = ("blues", "rocknroll", "jazz", "swing", "soul", "funk")
 # quanto la melodia del genere sincopa (0-1, core.melody_generate._SYNCOPATED_SIMPLE) e quanto usa le appoggiature sul terzo
 # tempo (core.melody_generate._appoggiature); i generi che mancano: i valori di sempre (DEFAULT_SYNCOPATION, DEFAULT_APPOGGIATURA)
 _GENRE_SYNCOPATION = {"funk": 0.9, "soul": 0.7, "disco": 0.7, "reggae": 0.6, "bossa": 0.7, "samba": 0.8, "chacha": 0.6,
@@ -1329,6 +1331,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                            seed_of("melody", 99 if role != "verse" else 98), "light" if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
+                                            # nei generi del blues il tritono col basso e' il loro suono (la settima sulla terza
+                                            # del basso, la terza minore sulla sesta del boogie): li' la melodia non lo evita
+                                            "bass_notes": (_bass_notes(bodies.get("bass"))
+                                                           if c["genre"] not in TRITONE_GENRES else []),
                                             **{k: table[c["genre"]] for k, table in (("syncopation", _GENRE_SYNCOPATION),
                                                                                        ("appoggiatura", _GENRE_APPOGGIATURA))
                                                if c["genre"] in table},
@@ -1486,6 +1492,21 @@ def quick_song(options: Optional[dict] = None) -> dict:
             "bars": total_bars, "seconds": seconds, "genre": c["genre"], "mood": c["mood"], "form": form, "ensemble": c["ensemble"],
             "fallback": c["fallback"], "sections": out_sections, "loop": c["loop"], "seeds": c["seeds"],
             "parts": active, "choices": saved, "formation": c["formation"], "left_out": c["left_out"]}
+
+
+def _bass_notes(body: Optional[str]) -> List[Tuple[float, float, int]]:
+    """(inizio, fine, nota MIDI) delle note del basso gia' generato della sezione: la melodia evita il tritono con quella che
+    suona davvero (il basso che cammina passa su note che l'accordo non dice, la sesta del boogie)."""
+    if not body:
+        return []
+    from core.chords import pitch_to_midi
+    from core.notation import parse_track_text
+    try:
+        events = parse_track_text(body, {})
+    except Exception:
+        return []
+    return [(float(e.start), float(e.start + e.duration), pitch_to_midi(e.letter, e.octave))
+            for e in events if e.kind == "note" and e.letter]
 
 
 def part_track(c: dict, part: str) -> str:

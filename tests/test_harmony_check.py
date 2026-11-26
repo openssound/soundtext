@@ -59,6 +59,9 @@ def _sweep(duration=30):
             project = parse_project_text(song["text"], "Brano")
             melody = [song["choices"]["instruments"]["melody"]]
             clashes = hc.check_project(project, melody_tracks=melody)
+            if genre in q.TRITONE_GENRES:
+                # nei generi del blues il tritono col basso e' il loro suono (q.TRITONE_GENRES): non e' uno scontro
+                clashes = [c for c in clashes if c.kind != "tritone"]
             rows.append((genre, mood, clashes, hc.weighty_notes(project, melody) or 1))
     return rows
 

@@ -2110,7 +2110,8 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            bar_beats: float = BEATS_PER_BAR, intensity: str = "normal",
                            voice_leading: bool = False, key: Optional[str] = None,
                            meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "",
-                           syncopation: Optional[float] = None, appoggiatura: Optional[float] = None) -> str:
+                           syncopation: Optional[float] = None, appoggiatura: Optional[float] = None,
+                           bass_notes=()) -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2143,6 +2144,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
                                       repeats=repeats, scale_kind=scale_kind, figure=figure,
+                                      bass_notes=bass_notes,
                                       **{k: v for k, v in (("syncopation", syncopation), ("appoggiatura", appoggiatura))
                                          if v is not None})
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
@@ -2157,7 +2159,13 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
     amount = _variability(variability)
     rng = random.Random(seed)
 
-    unit = _GRID_UNIT_BEATS[pattern["grid"]]
+    grid = pattern["grid"]
+    unit = _GRID_UNIT_BEATS[grid]
+    # la battuta di 7/8 (tre quarti e mezzo) o un accordo che cambia a meta' quarto non stanno sulla griglia di quarti: gli
+    # accordi duravano mezzo tempo di troppo o di meno e cambiavano dopo la battuta (la melodia gia' sul nuovo). In ottavi.
+    if grid == "4:" and any(abs(x / unit - round(x / unit)) > 1e-6
+                            for x in [bar_beats] + [c.start_beat for c in chords] + [c.duration_beats for c in chords]):
+        grid, unit = "8:", _GRID_UNIT_BEATS["8:"]
     _line_level(intensity, 0, 1)   # intensita' valida?
 
     def span_starts(idx, span, next_root, total_units):
@@ -2202,7 +2210,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                                anticipate=unit <= 0.5 and intensity != "light")
     velocity_at = _line_velocity(unit, bar_beats, amount.dynamics, rng) if amount.dynamics > 0 else None
     velocity_at = _with_level_velocity(velocity_at, intensity)
-    return " ".join([pattern["grid"]] + _emit_line(line, end_u, render, velocity_at))
+    return " ".join([grid] + _emit_line(line, end_u, render, velocity_at))
 
 
 def _voice_lead(pcs: List[int], prev: List[int], low: int, high: int, anchor: float) -> Optional[List[int]]:
