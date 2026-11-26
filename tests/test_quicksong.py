@@ -1367,3 +1367,27 @@ def test_groove_intros_registers_and_genre_chord_colours(q):
         for seed in range(4):
             text = q.quick_song({"genre": genre, "seed": seed, "duration": 60})["text"]
             assert not _re.search(r"[A-G][#b]?maj[79]", text), (genre, seed)
+
+
+def test_disco_keeps_its_horns_octave_bass_and_scratch_guitar(q):
+    """Il disco: i fiati nel ritornello ci sono (una melodia a ottavi non li cancella), il basso non e' la sola fondamentale,
+    la chitarra pulita suona lo scratch; un box di fiati fatto solo di pause non si scrive."""
+    import re as _re
+    song = q.quick_song({"genre": "disco", "mood": "elegante", "seed": 1361863612, "duration": 60, "ending": "sfumato"})
+    styles, inst = song["choices"]["styles"], song["choices"]["instruments"]
+    assert styles["bass"] in ("octaves", "eighths")
+    if "Guitar" in inst.get("comp2", ""):
+        assert styles["comp2"] == "scratch"
+    if "horn" in inst:
+        chorus = _re.search(r'Box ' + inst["horn"] + r' "Ritornello" \|\d+:\n((?:  .*\n)+)', song["text"])
+        assert chorus and q._hits(chorus.group(1)) >= 6
+        for body in _re.findall(r'Box ' + inst["horn"] + r' "[^"]+" \|\d+:\n((?:  .*\n)+)', song["text"]):
+            assert q._plays(body) or "%" in body
+
+
+def test_a_bass_step_approach_that_rubs_against_the_chord_becomes_chromatic():
+    from core.rhythm_generate import ChordSpan, _resolve_role
+    amaj7 = ChordSpan(0.0, 4.0, 9, True, 4, 11)                             # la maj7: la do# mi sol#
+    assert _resolve_role("approach_step", amaj7, 2) == (1, 0)                # verso il re: do# (non do, che sfrega col do#)
+    a = ChordSpan(0.0, 4.0, 9, True, 4, None)
+    assert _resolve_role("approach_step", a, 11) == (9, 0)                   # verso il si: la, nota dell'accordo, resta un tono sotto

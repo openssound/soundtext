@@ -1416,7 +1416,14 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool
         return (((root + span.seventh) % 12) if span.seventh is not None else root, 0 if span.seventh is not None else 1)
     if role in _APPROACH_STEPS:
         target = next_root_pc if next_root_pc is not None else root
-        return ((target + _APPROACH_STEPS[role]) % 12, 0)
+        pc = (target + _APPROACH_STEPS[role]) % 12
+        if role == "approach_step":
+            # un tono sotto: se sfrega con l'accordo che suona ancora (do sotto la maj7, che ha il do#) si arriva per semitono
+            chord = {root, fifth} | ({(root + span.third) % 12} if span.third is not None else set()) \
+                | ({(root + span.seventh) % 12} if span.seventh is not None else set())
+            if pc not in chord and any((pc - c) % 12 in (1, 11) for c in chord):
+                pc = (target - 1) % 12
+        return (pc, 0)
     raise ValueError(tr("Ruolo di basso sconosciuto: '{role}'", role=role))
 
 

@@ -316,7 +316,7 @@ _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jaz
                  "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
 _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("walk_up", "root_fifth", "root"),
               "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "walking"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "motown", "root_fifth"),
-              "disco": ("octaves", "eighths", "root"), "funk": ("funk16", "octaves", "eighths"), "samba": ("bossa", "two_feel", "root_fifth"), "bossa": ("bossa", "root", "two_feel"), "marcia": ("two_feel", "root"), "metal": ("eighths", "root"), "reggae": ("reggae", "root", "root_fifth"),
+              "disco": ("octaves", "octaves", "eighths"), "funk": ("funk16", "octaves", "eighths"), "samba": ("bossa", "two_feel", "root_fifth"), "bossa": ("bossa", "root", "two_feel"), "marcia": ("two_feel", "root"), "metal": ("eighths", "root"), "reggae": ("reggae", "root", "root_fifth"),
               "punk": ("eighths", "root_fifth"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root")}
 _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
@@ -516,6 +516,7 @@ _ENTER_FADE = ("comp",)
 # lo sfumato: tutta la band ripete il groove del ritornello mentre il volume scende (prima restava solo l'accompagnamento,
 # a volume fisso: sembrava la band che se ne va); la melodia tace
 _FADE_PARTS = ("comp", "comp2", "bass", "drums")
+_HORN_ANSWER_GENRES = ("soul",)            # i fiati che rispondono alla melodia in ogni sezione, non solo nella strofa
 _FADE_FROM, _FADE_TO = 0.85, 0.25          # il volume all'inizio e alla fine dello sfumato
 # le eccezioni per genere (terza revisione, 3b): {genere: {parte: ruoli in cui suona}}, al posto di quelli di _ENTER
 _GENRE_ENTER = {
@@ -1056,6 +1057,11 @@ def resolve(options: Optional[dict] = None) -> dict:
         elif melody == "nessuna":
             melody = recipe["melody"] if recipe["melody"] in _MELODY_STYLE else "cantabile"
     for part in ("comp", "comp2"):
+        # la chitarra pulita del disco: lo scratch a sedicesimi stoppati (il «chicken scratch»), non gli accordi a quarti
+        if genre == "disco" and "Guitar" in str(instruments.get(part, "")) and styles.get(part) == "quarter_chords" \
+                and not (parts_in.get(part) or {}).get("style"):
+            styles[part] = "scratch"
+    for part in ("comp", "comp2"):
         # la chitarra distorta del blues suona lo shuffle a due note (quinta e sesta): gli accordi di settima pieni, distorti, impastano
         if genre == "blues" and instruments.get(part) in ("Overdriven_Guitar", "Distortion_Guitar") \
                 and styles.get(part) in ("quarter_chords", "block_chords") and not (parts_in.get(part) or {}).get("style"):
@@ -1218,17 +1224,36 @@ def _fade_velocity(text: str, total_beats: float) -> str:
     return " ".join(out)
 
 
-def _horns_in_gaps(body: str, melody: str) -> str:
-    """I colpi dei fiati dove la melodia tace: dove canta, i fiati le lasciano lo spazio (la risposta del soul e del funk). Le note
-    dei fiati che cadono per almeno un quarto della loro durata sopra una nota della melodia diventano pause."""
+def _horns_in_gaps(body: str, melody: str, answer: bool = True) -> str:
+    """I colpi dei fiati e la melodia. Con 'answer' (la strofa) i fiati rispondono: suonano solo dove la melodia tace, e i colpi
+    che cadono per almeno un quarto della loro durata sopra una sua nota diventano pause. Senza (il ritornello, dove la melodia
+    suona quasi sempre) si tolgono solo i colpi che attaccano insieme a una sua nota: sotto le note lunghe i fiati restano."""
     from core.melody_generate import rest_where
     from core.notation import parse_track_text
     try:
-        regions = [(float(e.start), float(e.start + e.duration)) for e in parse_track_text(melody, {})
-                   if e.kind in ("note", "block", "slide")]
+        notes = [(float(e.start), float(e.start + e.duration)) for e in parse_track_text(melody, {})
+                 if e.kind in ("note", "block", "slide")]
     except Exception:
         return body
-    return _merge_rests(rest_where(body, regions)) if regions else body
+    if not notes:
+        return body
+    if answer:
+        return _merge_rests(rest_where(body, notes))
+    # solo gli attacchi in comune; se cosi' sparisce piu' di meta' dei colpi (una melodia a ottavi attacca quasi sempre), i
+    # fiati suonano come scritti: nel ritornello la sezione spinge insieme alla melodia
+    kept = _merge_rests(rest_where(body, [(start - 0.125, start + 0.25) for start, _end in notes]))
+    return kept if _hits(kept) >= 0.5 * _hits(body) else body
+
+
+def _hits(body: str) -> int:
+    """Quanti colpi (note, accordi) ha il testo di una parte."""
+    after = body.split(":", 1)[1] if ":" in body else body
+    return len(re.findall(r"(?:^|\s)\d*(?:\[|[a-g][#b]?\*|[A-G])", after))
+
+
+def _plays(body: str) -> bool:
+    """Il testo di una parte suona almeno una nota (non e' fatto solo di pause)."""
+    return _hits(body) > 0
 
 
 def _merge_rests(text: str) -> str:
@@ -1518,7 +1543,10 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                         "symbols": options.get("symbols", True) not in (False, 0, "0", "no")
                                                         and not (part == "horn" and "melody" in bodies)})["text"]
                     if part == "horn" and "melody" in bodies and c["styles"].get("horn") == "horn_stabs":
-                        body = _horns_in_gaps(body, bodies["melody"])
+                        # nel soul i fiati rispondono alla voce dappertutto; negli altri generi nella strofa, e nel ritornello spingono
+                        body = _horns_in_gaps(body, bodies["melody"], answer=role == "verse" or c["genre"] in _HORN_ANSWER_GENRES)
+                        if not _plays(body):
+                            continue                           # tutte pause: il box non si scrive
                 elif part == "bass":
                     body = E.generate(temp_bass, "bass", {**common, "source": chords_track, "style": bass_style,
                                                      "instrument": c["instruments"]["bass"],
