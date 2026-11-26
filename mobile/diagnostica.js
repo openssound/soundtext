@@ -17,6 +17,7 @@ const COLUMNS = {
   batteria: ["when", "minute", "level", "charging", "drop_percent"],
   visibilita: ["when", "event", "state", "playing", "ctx_state", "tick"],
   sfondo: ["when", "event", "render_ms", "seconds", "tick", "offset_s", "loop", "message"],
+  bilancia: ["when", "automatic", "tracks", "changed", "ms"],
   brano_veloce: ["when", "genre", "mood", "mode", "bars", "seconds", "composed_ms", "to_sound_ms"],
   esporta: ["when", "ms"],
   studio: ["when", "notes", "intonation", "timing", "review"],

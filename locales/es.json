@@ -3621,5 +3621,17 @@
  "Ci sono {n} colpi.": "Hay {n} golpes.",
  "Riff a botta e risposta": "Riff de pregunta y respuesta",
  "Shuffle di chitarra (quinta e sesta a ottavi)": "Shuffle de guitarra (quinta y sexta en corcheas)",
- "Melodia blues (A A B, con le risposte)": "Melodía blues (A A B, con las respuestas)"
+ "Melodia blues (A A B, con le risposte)": "Melodía blues (A A B, con las respuestas)",
+ "Bilancia i volumi": "Equilibrar los volúmenes",
+ "Bilancia i volumi: ogni traccia suonata da sola, col suo suono e i suoi effetti, si porta al livello del suo ruolo rispetto alla melodia (basso e batteria appena sotto, accompagnamenti piu' sotto, il tappeto in fondo). Si annulla con Annulla.": "Equilibrar los volúmenes: cada pista, tocada sola con su sonido y sus efectos, se lleva al nivel de su papel respecto a la melodía (bajo y batería justo debajo, acompañamientos más abajo, el fondo al final). Deshacer lo revierte.",
+ "Ogni traccia al livello del suo ruolo rispetto alla melodia, misurato col suono vero del brano.": "Cada pista al nivel de su papel respecto a la melodía, medido con el sonido real de la canción.",
+ "Bilancio i volumi...": "Equilibrando los volúmenes...",
+ "Volumi bilanciati: {tracks}.": "Volúmenes equilibrados: {tracks}.",
+ "I volumi erano gia' bilanciati.": "Los volúmenes ya estaban equilibrados.",
+ "I volumi erano già bilanciati.": "Los volúmenes ya estaban equilibrados.",
+ "Bilancio i volumi… {n} di {total}": "Equilibrando los volúmenes… {n} de {total}",
+ "Non riesco a bilanciare i volumi ({message}).": "No puedo equilibrar los volúmenes ({message}).",
+ "Volumi come prima.": "Volúmenes como antes.",
+ "Annulla il bilanciamento": "Deshacer el equilibrado",
+ "Ogni traccia suonata da sola, col suo suono, si porta al livello del suo ruolo rispetto alla melodia: basso e batteria appena sotto, gli accompagnamenti più sotto, il tappeto in fondo. Nei brani in 60 secondi succede da solo.": "Cada pista, tocada sola con su sonido, se lleva al nivel de su papel respecto a la melodía: bajo y batería justo debajo, acompañamientos más abajo, el fondo al final. En las canciones en 60 segundos ocurre solo."
 }

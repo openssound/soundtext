@@ -3621,5 +3621,17 @@
  "Ci sono {n} colpi.": "There are {n} hits.",
  "Riff a botta e risposta": "Call-and-response riff",
  "Shuffle di chitarra (quinta e sesta a ottavi)": "Guitar shuffle (fifth and sixth in eighths)",
- "Melodia blues (A A B, con le risposte)": "Blues melody (A A B, with answers)"
+ "Melodia blues (A A B, con le risposte)": "Blues melody (A A B, with answers)",
+ "Bilancia i volumi": "Balance the volumes",
+ "Bilancia i volumi: ogni traccia suonata da sola, col suo suono e i suoi effetti, si porta al livello del suo ruolo rispetto alla melodia (basso e batteria appena sotto, accompagnamenti piu' sotto, il tappeto in fondo). Si annulla con Annulla.": "Balance the volumes: each track, played on its own with its sound and effects, is brought to the level of its role relative to the melody (bass and drums just below, accompaniments lower, the pad at the back). Undo reverts it.",
+ "Ogni traccia al livello del suo ruolo rispetto alla melodia, misurato col suono vero del brano.": "Each track at the level of its role relative to the melody, measured with the song's real sound.",
+ "Bilancio i volumi...": "Balancing the volumes...",
+ "Volumi bilanciati: {tracks}.": "Volumes balanced: {tracks}.",
+ "I volumi erano gia' bilanciati.": "The volumes were already balanced.",
+ "I volumi erano già bilanciati.": "The volumes were already balanced.",
+ "Bilancio i volumi… {n} di {total}": "Balancing the volumes… {n} of {total}",
+ "Non riesco a bilanciare i volumi ({message}).": "I can't balance the volumes ({message}).",
+ "Volumi come prima.": "Volumes as before.",
+ "Annulla il bilanciamento": "Undo the balancing",
+ "Ogni traccia suonata da sola, col suo suono, si porta al livello del suo ruolo rispetto alla melodia: basso e batteria appena sotto, gli accompagnamenti più sotto, il tappeto in fondo. Nei brani in 60 secondi succede da solo.": "Each track, played on its own with its sound, is brought to the level of its role relative to the melody: bass and drums just below, accompaniments lower, the pad at the back. In 60-second songs it happens by itself."
 }

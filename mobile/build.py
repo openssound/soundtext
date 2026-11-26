@@ -98,6 +98,9 @@ engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "r
 engine.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "ending": "sfumato", "chords": "Am F C G", "seed": 1})
 engine.quick_song({"genre": "lofi", "mood": "calma", "loop": True, "seed": 1})
 engine.quick_choices(); engine.quick_read("// quick: {}")
+# bilancia i volumi: i ruoli delle tracce e i volumi nel testo
+_bal = engine.quick_song({"genre": "pop", "mood": "calma", "duration": 15, "seed": 1})["text"]
+engine.balance_apply(_bal, {name: -30.0 for name in engine.balance_roles(_bal)["roles"]})
 # la formazione: gli strumenti scelti uno per uno
 import base64
 _e = engine.Engine(); _e.load(source, "x.st")

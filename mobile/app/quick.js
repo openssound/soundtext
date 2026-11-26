@@ -488,6 +488,7 @@ async function quickRegenerate(mode, part) {
     await quickSaveSong(made);
     quickShowResult(made);
     await play();
+    balanceVolumes({ automatic: true });          // i volumi col suono vero, mentre suona (si annulla dal Lettore)
     Metrics.record("brano_veloce", { genre: made.genre, mood: made.mood, mode, seed: made.seed, bars: made.bars, seconds: made.seconds,
                                      composed_ms: Math.round(composed - tap), to_sound_ms: Math.round(performance.now() - tap) });
   } catch (e) {

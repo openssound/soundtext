@@ -23,7 +23,7 @@ MASTER_STRIP_HEIGHT = 56     # contiene il misuratore a due barre (sinistra e de
 
 
 class MasterStrip(QFrame):
-    def __init__(self, width: int, volume: int, on_volume, on_fx, parent=None):
+    def __init__(self, width: int, volume: int, on_volume, on_fx, parent=None, on_balance=None):
         super().__init__(parent)
         self.setObjectName("masterStrip")
         self.setFixedSize(width, MASTER_STRIP_HEIGHT)
@@ -42,6 +42,19 @@ class MasterStrip(QFrame):
         self.fx_btn.setAccessibleName(tr("Effetti sul master"))
         self.fx_btn.clicked.connect(on_fx)
         row.addWidget(self.fx_btn)
+        self.balance_btn = None
+        if on_balance is not None:
+            # Bilancia i volumi (core.auto_balance): ogni traccia al livello del suo ruolo rispetto alla melodia
+            self.balance_btn = QPushButton("⚖")
+            self.balance_btn.setObjectName("masterBalance")
+            self.balance_btn.setFixedHeight(20)
+            self.balance_btn.setMinimumWidth(28)
+            self.balance_btn.setAccessibleName(tr("Bilancia i volumi"))
+            self.balance_btn.setToolTip(tr("Bilancia i volumi: ogni traccia suonata da sola, col suo suono e i suoi effetti, "
+                                           "si porta al livello del suo ruolo rispetto alla melodia (basso e batteria appena "
+                                           "sotto, accompagnamenti piu' sotto, il tappeto in fondo). Si annulla con Annulla."))
+            self.balance_btn.clicked.connect(on_balance)
+            row.addWidget(self.balance_btn)
         self.vol_slider = QSlider(Qt.Horizontal)
         self.vol_slider.setRange(0, 200)
         self.vol_slider.setValue(volume)

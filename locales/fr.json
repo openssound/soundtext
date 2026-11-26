@@ -3621,5 +3621,17 @@
  "Ci sono {n} colpi.": "Il y a {n} frappes.",
  "Riff a botta e risposta": "Riff question-réponse",
  "Shuffle di chitarra (quinta e sesta a ottavi)": "Shuffle de guitare (quinte et sixte en croches)",
- "Melodia blues (A A B, con le risposte)": "Mélodie blues (A A B, avec les réponses)"
+ "Melodia blues (A A B, con le risposte)": "Mélodie blues (A A B, avec les réponses)",
+ "Bilancia i volumi": "Équilibrer les volumes",
+ "Bilancia i volumi: ogni traccia suonata da sola, col suo suono e i suoi effetti, si porta al livello del suo ruolo rispetto alla melodia (basso e batteria appena sotto, accompagnamenti piu' sotto, il tappeto in fondo). Si annulla con Annulla.": "Équilibrer les volumes : chaque piste, jouée seule avec son son et ses effets, est amenée au niveau de son rôle par rapport à la mélodie (basse et batterie juste en dessous, accompagnements plus bas, la nappe au fond). Annuler revient en arrière.",
+ "Ogni traccia al livello del suo ruolo rispetto alla melodia, misurato col suono vero del brano.": "Chaque piste au niveau de son rôle par rapport à la mélodie, mesuré avec le vrai son du morceau.",
+ "Bilancio i volumi...": "Équilibrage des volumes...",
+ "Volumi bilanciati: {tracks}.": "Volumes équilibrés : {tracks}.",
+ "I volumi erano gia' bilanciati.": "Les volumes étaient déjà équilibrés.",
+ "I volumi erano già bilanciati.": "Les volumes étaient déjà équilibrés.",
+ "Bilancio i volumi… {n} di {total}": "Équilibrage des volumes… {n} sur {total}",
+ "Non riesco a bilanciare i volumi ({message}).": "Impossible d'équilibrer les volumes ({message}).",
+ "Volumi come prima.": "Volumes comme avant.",
+ "Annulla il bilanciamento": "Annuler l'équilibrage",
+ "Ogni traccia suonata da sola, col suo suono, si porta al livello del suo ruolo rispetto alla melodia: basso e batteria appena sotto, gli accompagnamenti più sotto, il tappeto in fondo. Nei brani in 60 secondi succede da solo.": "Chaque piste, jouée seule avec son son, est amenée au niveau de son rôle par rapport à la mélodie : basse et batterie juste en dessous, accompagnements plus bas, la nappe au fond. Dans les morceaux en 60 secondes, cela se fait tout seul."
 }

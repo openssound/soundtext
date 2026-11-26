@@ -50,6 +50,7 @@ async function main() {
   setupAccess();
   setupBackup();
   setupExport();
+  setupBalance();
   setupPads();
   setupExercises();
   setupEffects();

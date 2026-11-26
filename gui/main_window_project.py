@@ -105,6 +105,29 @@ class ProjectMixin:
         self._replace_project(project, title=dlg.song["name"],
                               status_msg=tr("Brano «{name}» creato: {bars} battute.", name=dlg.song["name"], bars=dlg.song["bars"]))
         self._mark_dirty()                  # e' un brano nuovo, da salvare
+        self.balance_volumes(text=dlg.song["text"], automatic=True)      # i volumi col suono vero (un passo di Annulla)
+
+    def balance_volumes(self, text: str = "", automatic: bool = False) -> dict:
+        """Bilancia i volumi delle tracce (core.auto_balance): ognuna suonata da sola col suono vero del brano e portata al
+        livello del suo ruolo rispetto alla melodia. 'text': il testo del brano generato (i ruoli delle sue parti). Un passo di
+        Annulla. Ritorna {traccia: (volume di prima, volume nuovo)}; con 'automatic' un errore (niente SoundFont) non si mostra."""
+        from core.auto_balance import balance_project
+        from .worker import run_with_wait
+        if not any(not t.is_audio or t.clips for t in self.project.tracks):
+            return {}
+        try:
+            changes = run_with_wait(self, tr("Bilancio i volumi..."), balance_project, self.project, text)
+        except Exception as e:
+            if not automatic:
+                QMessageBox.warning(self, tr("Bilancia i volumi"), str(e))
+            return {}
+        if changes:
+            self.refresh_mixer()
+            self._mark_dirty()
+        message = (tr("Volumi bilanciati: {tracks}.", tracks=", ".join(f"{n} {a}→{b}" for n, (a, b) in changes.items()))
+                   if changes else tr("I volumi erano gia' bilanciati."))
+        self.statusBar().showMessage(message, 8000)
+        return changes
 
     def _confirm_discard_unsaved(self) -> bool:
         """Se il progetto ha modifiche non salvate (vedi _mark_dirty), chiede

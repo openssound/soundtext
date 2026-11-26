@@ -731,6 +731,9 @@ class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QM
         soundfont_menu.addAction(self._action(tr("Usa rilevamento automatico del SoundFont"), self.soundfont.reset))
         soundfont_menu.addAction(self._action(tr("Mostra SoundFont in uso"), self.soundfont.show_info))
         sounds_menu.addAction(self._action(
+            tr("Bilancia i volumi"), lambda: self.balance_volumes(),
+            tooltip=tr("Ogni traccia al livello del suo ruolo rispetto alla melodia, misurato col suono vero del brano.")))
+        sounds_menu.addAction(self._action(
             tr("Volume di sintesi (gain)..."), self.show_playback_gain_settings,
             tooltip=tr("Regola il guadagno del sintetizzatore: troppo alto puo' causare "
                     "crepitii/distorsione nei passaggi piu' densi.")
@@ -1063,7 +1066,8 @@ class MainWindow(AccessibilityMixin, MixerMixin, ProjectMixin, PlaybackMixin, QM
         from .master_strip import MASTER_STRIP_HEIGHT, MasterStrip
         from .time_display import PlaybackProgress
         strip = MasterStrip(self._tracks_column_width + 1, self.project.master_volume,
-                            self._on_master_volume_changed, lambda: self.effects_panel.open_master())
+                            self._on_master_volume_changed, lambda: self.effects_panel.open_master(),
+                            on_balance=lambda: self.balance_volumes())
         self.master_strip = strip
         self.master_fx_btn = strip.fx_btn
         self.master_vol_slider = strip.vol_slider

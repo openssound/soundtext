@@ -274,6 +274,7 @@ const CALLS = {
   pad_info: "pad_info", pad_chords_text: "pad_chords_text", pad_drums_text: "pad_drums_text", add_pattern: "add_pattern",
   quick_formation_catalog: "quick_formation_catalog", quick_formation_describe: "quick_formation_describe", import_midi: "import_midi",
   exercise_kinds: "exercise_kinds", exercise: "exercise", exercise_check: "exercise_check", exercise_hint: "exercise_hint",
+  balance_roles: "balance_roles", balance_apply: "balance_apply",
 };
 
 self.onmessage = async (ev) => {

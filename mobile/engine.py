@@ -1230,6 +1230,27 @@ def import_midi(data_b64: str, name: str = "Import MIDI") -> dict:
     return {"text": project_to_text(project), "tracks": len(project.tracks)}
 
 
+def balance_roles(text: str) -> dict:
+    """Bilancia i volumi, primo passo (core.auto_balance): il ruolo di ogni traccia da misurare, {roles: {traccia: ruolo}}.
+    L'app suona ogni traccia da sola e ne misura il volume; poi chiede balance_apply."""
+    from core.auto_balance import track_roles
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    return {"roles": track_roles(project, text)}
+
+
+def balance_apply(text: str, levels: dict) -> dict:
+    """Bilancia i volumi, secondo passo: dai volumi misurati ({traccia: dB o None}) il testo con i volumi nuovi delle tracce
+    (blocchi «Mixer»): {text, changes: {traccia: [prima, dopo]}}."""
+    from core.auto_balance import set_volumes_in_text, target_volumes, track_roles
+    from core.project_io import parse_project_text
+    project = parse_project_text(text, "Brano")
+    volumes = target_volumes(project, {n: (None if v is None else float(v)) for n, v in (levels or {}).items()},
+                             track_roles(project, text))
+    changes = {n: [project.find_track(n).volume, v] for n, v in volumes.items() if v != project.find_track(n).volume}
+    return {"text": set_volumes_in_text(text, {n: v for n, (_a, v) in changes.items()}), "changes": changes}
+
+
 def quick_formation_catalog() -> list:
     """Tutti gli strumenti da proporre nella formazione, a gruppi: [{label, instruments: [{value, label, role}]}]."""
     from core import quick_formation

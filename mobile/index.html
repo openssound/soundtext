@@ -249,6 +249,11 @@
     </details>
     <h2 id="mixerTitle" data-i18n>Tracce</h2>
     <ul id="mixer" class="mixer" aria-labelledby="mixerTitle"></ul>
+    <p class="row balance-row">
+      <button id="balance" type="button"><span aria-hidden="true">⚖ </span><span data-i18n>Bilancia i volumi</span></button>
+      <button id="balanceUndo" type="button" hidden data-i18n>Annulla il bilanciamento</button>
+    </p>
+    <p class="hint" data-i18n>Ogni traccia suonata da sola, col suo suono, si porta al livello del suo ruolo rispetto alla melodia: basso e batteria appena sotto, gli accompagnamenti più sotto, il tappeto in fondo. Nei brani in 60 secondi succede da solo.</p>
     <details class="opts">
       <summary data-i18n>Avanzate</summary>
       <label><input id="unlockAudio" type="checkbox" checked> <span data-i18n>elemento &lt;audio&gt; silenzioso al primo tocco (rimedio per l'interruttore silenzioso)</span></label>
@@ -689,6 +694,7 @@
 <script src="app/create.js"></script>
 <script src="app/structure.js"></script>
 <script src="app/player.js"></script>
+<script src="app/balance.js"></script>
 <script src="app/score.js"></script>
 <script src="app/main.js"></script>
 </body>
