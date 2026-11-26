@@ -1587,7 +1587,7 @@ PATTERN_ALTS: Dict[str, List[list]] = {
                    [(0.0, _CHORD), (1.0, _CHORD), (2.5, _CHORD), (3.0, _CHORD)]],
     "funk_stab": [[(0.0, _CHORD), (0.5, "rest"), (1.5, _CHORD), (2.0, "rest"), (3.5, _CHORD)],
                   [(0.5, _CHORD), (1.0, "rest"), (2.5, _CHORD), (3.0, "rest")]],
-    "skank_chords": [[(0.5, _CHORD), (1.5, _CHORD), (2.5, _CHORD), (3.0, "rest"), (3.5, _CHORD)]],
+    "skank_chords": [[(0.5, _CHORD), (1.0, "rest"), (1.5, _CHORD), (2.0, "rest"), (2.5, _CHORD), (3.0, "rest"), (3.5, _CHORD)]],
     "montuno": [[(0.0, ["root", "fifth"]), (0.5, ["third", "fifth"]), (1.5, ["root_hi", "third"]),
                  (2.0, ["root", "fifth"]), (3.0, ["third", "fifth"]), (3.5, ["root_hi", "third"])]],
     # riff/melodia
@@ -1755,9 +1755,13 @@ def _apply_line_intensity(events: list, level: str, fuller_chords: bool, octave_
     prendono anche l'ottava sopra ('fuller_chords') e il basso sale d'ottava
     sull'ultimo attacco dell'accordo ('octave_lift')."""
     if level == "light":
+        # restano i colpi nella stessa posizione del primo, ogni due battiti: il primo e il terzo tempo per un disegno che parte
+        # sul tempo, il levare del due e del quattro per uno in levare (lo skank, il basso reggae: prima diventavano una nota
+        # tenuta per tutta la battuta)
         first_sound = next((i for i, (_t, role) in enumerate(events) if role != "rest"), 0)
+        phase = events[first_sound][0] % 2.0 if events else 0.0
         kept = [(t, role) for i, (t, role) in enumerate(events)
-                if i <= first_sound or role == "rest" or abs(t % 2.0) < 1e-6]
+                if i <= first_sound or role == "rest" or abs((t - phase) % 2.0) < 1e-6 or abs((t - phase) % 2.0 - 2.0) < 1e-6]
         # niente pause di fila: la seconda allungherebbe solo il silenzio
         out = []
         for t, role in kept:
@@ -1959,11 +1963,12 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                             (2.5, ["root", "fifth"]), (3.0, ["third", "seventh"]), (3.5, ["root_hi", "third"])]},
     # Skank reggae/ska: accordo solo in levare (il "e" di ogni beat), come
     # chitarra/tastiera offbeat - vedi reggae_skank fra i RIFF_STYLES.
+    # (lo skank e' un colpo corto: dopo ogni accordo una pausa, prima gli accordi si toccavano)
     "skank_chords": {"grid": "8:", "polyphonic": True,
-                     "bar": [(0.5, _CHORD), (1.5, _CHORD),
-                             (2.5, _CHORD), (3.5, _CHORD)],
-                     "variant": [(0.5, _CHORD), (1.5, ["root", "third", "seventh"]),
-                                 (2.5, _CHORD), (3.5, ["root", "third", "seventh"])]},
+                     "bar": [(0.5, _CHORD), (1.0, "rest"), (1.5, _CHORD), (2.0, "rest"),
+                             (2.5, _CHORD), (3.0, "rest"), (3.5, _CHORD)],
+                     "variant": [(0.5, _CHORD), (1.0, "rest"), (1.5, ["root", "third", "seventh"]), (2.0, "rest"),
+                                 (2.5, _CHORD), (3.0, "rest"), (3.5, ["root", "third", "seventh"])]},
     # Accordo su ogni quarto (comping semplice e regolare: pop/rock).
     "quarter_chords": {"grid": "4:", "polyphonic": True,
                        "bar": [(0.0, _CHORD), (1.0, _CHORD),

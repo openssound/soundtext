@@ -1037,3 +1037,17 @@ def test_chord_comping_plays_the_seventh_when_the_chord_has_one_and_stays_a_tria
         assert "f*" in colored, style                                                      # e il fa, la settima di Sol 7
     one = generate_melodic_line(extract_chords_from_track("4: 4C", {}), "block_chords", 4, 40, 88, True, min_total_beats=4, bar_beats=4.0, seed=1)
     assert "[c*4 e*4 g*4]" in one and "b*" not in one                                      # senza settima: la triade di sempre
+
+
+def test_light_intensity_keeps_an_offbeat_pattern_on_the_offbeat_and_the_skank_is_short():
+    """L'intensita' leggera dirada i colpi tenendone la posizione: lo skank e il basso reggae restano in levare (prima
+    diventavano una nota tenuta per tutta la battuta). Lo skank e' un colpo corto, seguito da una pausa."""
+    from core.rhythm_generate import generate_bass_from_chords, generate_melodic_line
+    chords = extract_chords_from_track("4: 4Dm 4C", {})
+    light = generate_melodic_line(chords, "skank_chords", 4, 48, 84, polyphonic=True, intensity="light")
+    normal = generate_melodic_line(chords, "skank_chords", 4, 48, 84, polyphonic=True)
+    chops = lambda text: [tok for tok in text.split()[1:] if "[" in tok]
+    assert len(chops(light)) == 4 and len(chops(normal)) == 8                 # due e quattro colpi per battuta
+    assert all(tok.startswith("[") for tok in chops(light) + chops(normal))    # tutti corti: un ottavo
+    bass = generate_bass_from_chords(chords, "reggae", 2, intensity="light")
+    assert bass.split()[1] == "2r" and len([t for t in bass.split() if "*" in t]) == 4     # due note per battuta, dopo il primo tempo
