@@ -291,7 +291,7 @@ def _choose(candidates: List[int], cost, rng: random.Random, freedom: float) -> 
 def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound: bool,
              targets: List[float], ending: str, tonic: int, prev: Optional[int], prev2: Optional[int],
              rng: random.Random, freedom: float, contour_weight: float = 0.5,
-             fixed: Optional[Dict[int, int]] = None, ceiling: Optional[int] = None) -> List[int]:
+             fixed: Optional[Dict[int, int]] = None, ceiling: Optional[int] = None, soft_tonic: bool = False) -> List[int]:
     """Le altezze delle note della frase: 'targets' e' il profilo voluto
     (nota MIDI "ideale" per ogni nota), 'fixed' le note gia' decise (indice
     -> nota: il motivo ripreso cosi' com'e'), 'ceiling' la nota piu' alta
@@ -311,6 +311,10 @@ def _realize(rhythm, start: float, harmony: _Harmony, bar_beats: float, compound
                     # sul V), una nota della triade di tonica (terza o quinta)
                     triad = [pc for pc in chord if (pc - tonic) % 12 in (3, 4, 7)]
                     pcs = [tonic] if tonic in chord else (triad or chord)
+                    if soft_tonic and span.seventh == 11 and triad:
+                        # una frase che non e' l'ultima, sopra un accordo con la settima maggiore (Fmaj7): la tonica starebbe un
+                        # semitono sopra la settima dell'accompagnamento; chiude sulla terza o sulla quinta
+                        pcs = triad
                 else:
                     others = [pc for pc in chord if pc != tonic]
                     pcs = others or chord
@@ -465,7 +469,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
                            intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "",
                            syncopation: float = DEFAULT_SYNCOPATION, appoggiatura: float = DEFAULT_APPOGGIATURA,
-                           bass_notes=()) -> str:
+                           bass_notes=(), comfort_high: Optional[int] = None) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
@@ -476,7 +480,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     'appoggiatura' (0-1): quanto spesso il secondo tempo forte e'
     un'appoggiatura (vedi _add_appoggiature). 'bass_notes': le note del
     basso gia' scritto, [(inizio, fine, nota MIDI)] in beat: dove la nota
-    pesa la melodia non fa il tritono con quella che il basso suona. Solleva
+    pesa la melodia non fa il tritono con quella che il basso suona;
+    'comfort_high': la nota piu' alta dove lo strumento suona pieno. Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -541,6 +546,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     low, high = max(range_low, center - 7), min(range_high, center + 17)
     if high - low < 12:
         low, high = range_low, range_high
+    if comfort_high:
+        # dove il fiato suona pieno: un tetto sopra il registro (non lo sposta), almeno un'ottava sopra la nota piu' bassa
+        high = max(low + 12, min(high, comfort_high))
     harmony = _Harmony(chords, scale, low, high)
     harmony.bass = sorted(bass_notes or ())
 
@@ -576,7 +584,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
             contour = rng.choices(("arch", "early", "late"), weights=(3, 2, 1) if letter == "A" else (2, 0, 1))[0]
             targets = _arch(rhythm, phrase_beats_p, base, height, ending, CONTOURS[contour])
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
-                               prev, prev2, rng, amount.notes, ceiling=ceiling)
+                               prev, prev2, rng, amount.notes, ceiling=ceiling, soft_tonic=p < n_phrases - 1)
             motifs[(letter, density, phrase_bars_p)] = {"rhythm": rhythm, "pitches": pitches, "start": start}
         else:
             rhythm = list(motif["rhythm"])
@@ -616,7 +624,8 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
                         fixed[i] = keep[onset]
             # ripreso su altri accordi: piu' vicino al profilo del motivo, meno liberta'
             pitches = _realize(rhythm, start, harmony, bar_beats, compound, targets, ending, tonic,
-                               prev, prev2, rng, 0.5 * amount.notes, contour_weight=1.6, fixed=fixed, ceiling=ceiling)
+                               prev, prev2, rng, 0.5 * amount.notes, contour_weight=1.6, fixed=fixed, ceiling=ceiling,
+                               soft_tonic=p < n_phrases - 1)
         last = len(rhythm) - 1
         if space_p and p == n_phrases - 1 and rhythm:
             # l'ultima frase del brano non lascia il silenzio: la nota d'arrivo tiene fino alla fine
@@ -852,12 +861,17 @@ def rest_where(text: str, regions, patterns=None, min_overlap: float = 0.25) -> 
     che cade per almeno 'min_overlap' della sua durata dentro 'regions'
     (beat, vedi voice_regions): la melodia suona nei silenzi della voce.
     Se il testo non ha una griglia sola, lo lascia com'e'."""
+    import re
     from .notation import parse_track_text
-    unit = _grid_unit(text)
-    if unit is None or not regions:
+    words = text.split()
+    # le opzioni prima della griglia (swing16=54, shift=...) restano davanti: la griglia e' la prima parola "N:" o "NT:"
+    grid_at = next((i for i, w in enumerate(words) if re.fullmatch(r"\d+T?:", w)), None)
+    if grid_at is None or not regions or any("=" not in w for w in words[:grid_at]):
         return text
-    header = text.split()[0]
-    tokens = [header]
+    unit = _grid_unit(words[grid_at])
+    if unit is None:
+        return text
+    tokens = words[:grid_at + 1]
     velocity = None
     for ev in parse_track_text(text, patterns or {}):
         mult = ev.duration / unit

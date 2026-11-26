@@ -336,3 +336,17 @@ def test_the_blues_melody_sings_two_bars_and_leaves_two_to_the_band():
             inside = [n for n in notes if 16 * line <= n[0] < 16 * line + 16]
             assert inside[-1][0] == 16 * line + 8 and all(n[0] < 16 * line + 8 + 1e-6 for n in inside)
         assert notes[-1][0] + notes[-1][1] == pytest.approx(48.0)
+
+
+def test_inner_phrases_over_a_major_seventh_chord_close_on_the_third_or_fifth():
+    """Sopra Fmaj7 la tonica sta un semitono sopra la settima dell'accompagnamento: le frasi intermedie chiudono sulla terza o
+    sulla quinta, l'ultima sempre sulla tonica."""
+    from core.melody_generate import generate_phrase_melody
+    spans = extract_chords_from_track("4Gm7 4C7 8Fmaj7", {})
+    for seed in range(6):
+        notes = _notes(generate_phrase_melody(spans, "melody_period", 5, 55, 84, key="F", min_total_beats=32, seed=seed,
+                                              variability=0.4))
+        for end in (16.0,):                                               # la fine della prima frase A' (chiusa) sopra Fmaj7
+            last = [n for n in notes if n[0] < end][-1]
+            assert last[2] % 12 in (9, 0), (seed, last)                    # la o do, non fa
+        assert notes[-1][2] % 12 == 5                                      # l'ultima: la tonica

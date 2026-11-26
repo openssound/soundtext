@@ -322,7 +322,8 @@ def test_energy_curve_changes_the_intensity_of_the_sections(q):
 
     def drum_sizes(curve):
         song = q.quick_song({"genre": "pop", "mood": "allegra", "duration": 120, "seed": 1, "energy": curve})
-        return [len(m) for m in _re.findall(r'Box Drums "[^"]*" \|\d+:\n((?:  .*\n)+)', song["text"])]
+        # l'intro (il groove del pop: batteria a intensita' fissa) non segue la curva: si guardano le sezioni dopo
+        return [len(m) for name, m in _re.findall(r'Box Drums "([^"]*)" \|\d+:\n((?:  .*\n)+)', song["text"]) if name != "Intro"]
 
     base, rises, falls = drum_sizes(None), drum_sizes("sale"), drum_sizes("cala")
     assert rises[0] < rises[-2] and falls[0] > falls[-2]                       # sale: la prima sezione e' piu' leggera dell'ultima; cala: il contrario
@@ -931,18 +932,18 @@ def test_quick_songs_write_chords_as_symbols_where_the_harmony_is_the_whole_chor
 
 
 def test_the_organ_plays_softer_than_its_written_velocity(monkeypatch):
-    """L'organo tiene note lunghe: a pari velocity copre le altre parti, quindi suona piu' piano."""
+    """L'organo tiene note lunghe: a pari velocity copre le altre parti, quindi negli accordi suona piu' piano."""
     from core import quicksong as q
     options = {"genre": "soul", "seed": 3}
-    assert q._ORGAN_VELOCITY < 1
+    assert q._ORGAN_VELOCITY < 1 and q._part_velocity("comp2", "Drawbar_Organ") < 1 and q._part_velocity("comp", "Rock_Organ") < 1
     softer = q.quick_song(options)["text"]
+    monkeypatch.setattr(q, "_PART_INSTRUMENT_VELOCITY", {})
+    monkeypatch.setattr(q, "_PART_VELOCITY", {})
     monkeypatch.setattr(q, "_ORGAN_VELOCITY", 1.0)
     plain = q.quick_song(options)["text"]
     top = lambda text: max(int(v) for v in re.findall(r"(\d+)@", text))
     assert softer != plain and top(softer) <= top(plain)
 
-
-# ------------------------------------------------- melodia e accompagnamento: la stessa armonia (terza revisione, correzioni)
 
 def _scale_of(q, tonic, kind, mode):
     from core.melody_generate import SCALE_KINDS
@@ -1226,15 +1227,18 @@ def test_daily_song_depends_only_on_the_day(q):
         q.quick_daily("ieri")
 
 
-def test_loud_chord_instruments_are_trimmed(monkeypatch):
-    """La chitarra jazz con accordi a 4-6 note copriva basso e melodia: la sua velocity scritta e' ridotta."""
+def test_loud_chord_instruments_are_trimmed_but_not_the_melody(monkeypatch):
+    """La chitarra jazz con accordi a 4-6 note copriva basso e melodia: negli accordi la sua velocity e' ridotta. Il fattore e'
+    per parte: la chitarra distorta o l'organo che suonano la melodia non scendono come negli accordi, e il tappeto sta sotto."""
     from core import quicksong as q
-    assert q._instrument_velocity("Jazz_Guitar") < 1 and q._instrument_velocity("Rock_Organ") < 1
-    assert q._instrument_velocity("Acoustic_Bass") == 1.0
+    assert q._part_velocity("comp", "Jazz_Guitar") < 1 and q._part_velocity("comp", "Drawbar_Organ") < 1
+    assert q._part_velocity("bass", "Acoustic_Bass") > 0.85
+    assert q._part_velocity("melody", "Overdriven_Guitar") >= 1 and q._part_velocity("melody", "Rock_Organ") >= 1
+    assert q._part_velocity("pad", "Strings") < 0.6 < q._part_velocity("comp", "Piano")
     options = {"genre": "jazz", "seed": 5}
     assert q.quick_song(options)["choices"]["instruments"]["comp"] == "Jazz_Guitar"
     trimmed = q.quick_song(options)["text"]
-    monkeypatch.setattr(q, "_INSTRUMENT_VELOCITY", {})
+    monkeypatch.setattr(q, "_PART_INSTRUMENT_VELOCITY", {})
     assert trimmed != q.quick_song(options)["text"]
 
 
@@ -1289,3 +1293,77 @@ def test_blues_keeps_the_twelve_bar_form_and_its_band(q):
     import re as _re
     bass = _re.findall(r'Box Bass "Giro \d+" \|\d+:\n((?:  .*\n)+)', song["text"])[-1]
     assert bass.strip().rstrip("|").split("|")[-1].split() == ["4a#*2"]   # l'ultima battuta: il si b tenuto
+
+
+def test_aaba_bridge_has_the_melody_and_every_a_is_the_same_theme(q):
+    """L'AABA: il ponte e' meta' del tema (la melodia c'e'), e l'ultima A riprende la prima (stessi accordi e stessa melodia,
+    salvo la chiusa); il tema delle A non e' la strofa leggera a minime."""
+    import re as _re
+    song = q.quick_song({"genre": "jazz", "mood": "allegra", "duration": 60, "seed": 87171273, "form": "aaba", "variety": 0})
+    melody = song["choices"]["instruments"]["melody"]
+    assert melody in _boxes(song, "B")
+    boxes = _re.findall(r'Box ' + melody + r' "A" \|(\d+):\n((?:  .*\n)+)', song["text"])
+    assert len(boxes) >= 3
+    first, last = boxes[0][1].split(), boxes[-1][1].split()
+    same = sum(a == b for a, b in zip(first, last))
+    assert same >= 0.8 * len(first)                                         # la ripresa: quasi tutto uguale
+    notes = [t for t in first if _re.fullmatch(r"\d*[a-g]#?\*\d", t)]
+    assert sum(1 for t in notes if not _re.match(r"\d", t)) >= 8           # ottavi, non solo minime
+
+
+def test_the_walking_bass_plays_four_quarters_with_a_chord_tone_on_one():
+    from core.rhythm_generate import generate_bass_from_chords, extract_chords_from_track
+    chords = extract_chords_from_track("4: 4Bm7 4E7 8Amaj7 4Bm7 4E7 8Amaj7", {})
+    for seed in range(8):
+        text = generate_bass_from_chords(chords, "walking", 2, variability=0.8, seed=seed)
+        tokens = [t for t in text.split()[1:] if not t.endswith("@")]
+        assert all(t[0] not in "0123456789r" for t in tokens), text          # un quarto per battito, niente pause ne' note lunghe
+        assert len(tokens) == 32
+        tones = {0: "b d f# a", 1: "e g# b d", 2: "a c# e g#", 3: "a c# e g#"}
+        for bar in range(8):
+            assert tokens[4 * bar].split("*")[0] in tones[bar % 4].split(), (seed, bar, tokens[4 * bar])
+
+
+def test_soul_intro_has_the_bass_the_fade_is_the_whole_band_getting_quieter_and_horns_answer(q):
+    import re as _re
+    song = q.quick_song({"genre": "soul", "mood": "allegra", "duration": 60, "seed": 1547318177, "variety": 0, "ending": "sfumato"})
+    instruments = song["choices"]["instruments"]
+    assert instruments["bass"] in _boxes(song, "Intro")
+    fade = _boxes(song, "Sfumato")
+    assert {instruments["bass"], instruments["comp"], "Drums"} <= set(fade) and instruments["melody"] not in fade
+    body = _re.search(r'Box Drums "Sfumato" \|\d+:\n((?:  .*\n)+)', song["text"]).group(1)
+    velocities = [int(v) for v in _re.findall(r"(\d+)@", body)]
+    assert sum(velocities[-8:]) / 8 < 0.6 * sum(velocities[:8]) / 8         # il volume scende
+    if song["choices"]["styles"].get("comp2") == "sustained" and song["choices"]["styles"].get("pad") == "sustained" \
+            and "pad" in instruments and instruments["pad"] in _boxes(song, "Ritornello"):
+        assert instruments["comp2"] not in _boxes(song, "Ritornello")         # un tappeto solo
+    if "horn" in instruments and "Strofa" in song["text"]:
+        horn = _re.search(r'Box ' + instruments["horn"] + r' "Strofa" \|\d+:\n((?:  .*\n)+)', song["text"])
+        if horn:
+            assert "r" in horn.group(1)                                        # i fiati lasciano spazio alla melodia
+
+
+def test_groove_intros_registers_and_genre_chord_colours(q):
+    """I generi di groove attaccano con basso e batteria; la melodia sta sopra l'accompagnamento (chitarre e violino partivano
+    dall'ottava 3) e il violino non scende sotto il sol3; marcia, valzer e balcanico non hanno la settima maggiore."""
+    import re as _re
+    from core.project_io import parse_project_text
+    from core import harmony_check as hc
+    for genre in ("funk", "disco", "reggae", "country"):
+        song = q.quick_song({"genre": genre, "seed": 11, "duration": 60})
+        intro = set(_boxes(song, "Intro"))
+        assert {song["choices"]["instruments"]["bass"], "Drums"} <= intro, (genre, intro)
+    for genre in ("funk", "disco", "punk", "metal", "balcanico78", "afro68"):
+        song = q.quick_song({"genre": genre, "seed": 11, "duration": 60})
+        inst = song["choices"]["instruments"]
+        project = parse_project_text(song["text"], "Brano")
+        tracks = {t.name: t for t in project.tracks}
+        mean = lambda name: sum(n for _s, _d, n in hc._sounding(project, tracks[name])) / max(1, len(hc._sounding(project, tracks[name])))
+        # prima la melodia stava 12-15 semitoni sotto l'accompagnamento; i colpi d'accordo del disco le stanno intorno
+        assert mean(inst["melody"]) > mean(inst["comp"]) - 4, (genre, mean(inst["melody"]), mean(inst["comp"]))
+        if inst["melody"] in ("Violin", "Fiddle"):
+            assert min(n for _s, _d, n in hc._sounding(project, tracks[inst["melody"]])) >= 55, genre
+    for genre in ("marcia", "valzer", "balcanico78"):
+        for seed in range(4):
+            text = q.quick_song({"genre": genre, "seed": seed, "duration": 60})["text"]
+            assert not _re.search(r"[A-G][#b]?maj[79]", text), (genre, seed)

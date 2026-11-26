@@ -81,6 +81,7 @@ def test_speak_at_a_comment_or_header_has_nothing_to_read():
 def test_speak_at_reads_chords_of_a_chord_track():
     e = _engine()
     made = e.quick_song({"genre": "pop", "mood": "calma", "duration": 30, "seed": 3, "variety": 0, "ensemble": "piano", "chords": "Am F C G"})
-    pos = made["text"].index("4a*4") + 1
+    # la prima nota dell'intro (il pop attacca col suo accompagnamento, a ottavi)
+    pos = made["text"].index("a*4", made["text"].index('Box Piano "Intro"')) + 1
     r = e.speak_at(made["text"], pos, "it")
-    assert r["bar"] == 1 and r["track"] == "Piano" and r["text"].startswith("Battuta 1, Piano. la minima, pausa minima.")
+    assert r["bar"] == 1 and r["track"] == "Piano" and r["text"].startswith("Battuta 1, Piano. la croma, pausa croma,")

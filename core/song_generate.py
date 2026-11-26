@@ -227,17 +227,23 @@ def add_track(text: str, instrument: str, body: str, name: Optional[str] = None,
     return {"text": new, "name": candidate, "start": len(head_blocks)}
 
 
+# la nota piu' grave vera degli archi acuti (la libreria da' a tutta la famiglia degli archi l'estensione del violoncello)
+REAL_LOW = {"Violin": 55, "Fiddle": 55, "Viola": 48}
+MELODY_MIN_OCTAVE = 4      # la melodia parte almeno dall'ottava 4: chitarre e archi partivano dalla 3, sotto l'accompagnamento
+
+
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,
-                  intensity: str, variation: dict, range_high: Optional[int] = None) -> str:
-    """La melodia di un brano veloce; 'range_high' (facoltativo) abbassa la nota piu' alta dello strumento (il registro pieno
-    di un fiato)."""
+                  intensity: str, variation: dict, comfort_high: Optional[int] = None) -> str:
+    """La melodia di un brano veloce; 'comfort_high' (facoltativo): la nota piu' alta dove lo strumento suona pieno (un fiato),
+    un tetto sopra il registro scelto (non sposta la melodia, vedi generate_phrase_melody)."""
     from core import rhythm_generate as rg
     from core.instruments import get_instrument
     chords, _track = _chords_of(project, source, None)
     instrument = get_instrument(instrument_name)
     bar_beats = _bar_beats(project)
     return rg.generate_melodic_line(
-        chords, style, octave=instrument.default_octave, range_low=instrument.range_low,
-        range_high=min(instrument.range_high, range_high) if range_high else instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
+        chords, style, octave=max(instrument.default_octave, MELODY_MIN_OCTAVE),
+        range_low=max(instrument.range_low, REAL_LOW.get(instrument_name, 0)),
+        range_high=instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
         bar_beats=bar_beats, intensity=intensity, voice_leading=True, key=key, meter=project.time_sig, repeats=(),
-        **variation)
+        **({"comfort_high": comfort_high} if comfort_high else {}), **variation)

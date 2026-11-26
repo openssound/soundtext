@@ -1214,23 +1214,26 @@ def _bass_notes_for_span(span: ChordSpan, style: str, octave: int, variant: bool
         return [base[i % 4] for i in range(n_beats)]
 
     if style == "walking":
-        notes = [(root, 0)]
-        if n_beats >= 2:
-            # variante: la terza VERA dell'accordo (minore su un minore) al posto della quinta;
-            # senza terza (sus, quinta vuota) si resta sulla quinta
-            third = (span.root_pc + span.third) % 12 if span.third is not None else fifth
-            notes.append((fifth, 0) if not variant else (third, 0))
-        if n_beats >= 3:
-            if variant and span.seventh is not None:
-                notes.append(((span.root_pc + span.seventh) % 12, 0))  # variante: la settima dell'accordo
-            else:
-                notes.append((root, 1 if variant else 0))
-        if n_beats >= 4:
-            target = next_root_pc if next_root_pc is not None else root
-            # nota di avvicinamento cromatico (un semitono sotto l'accordo successivo)
-            notes.append(((target - 1) % 12, 0))
-        while len(notes) < n_beats:
-            notes.append((root, 0))
+        # Un quarto per battito, una battuta alla volta: sul primo tempo una nota dell'accordo (la fondamentale; nella
+        # battuta dopo, sullo stesso accordo, la terza), poi le note dell'accordo che salgono, e sull'ultimo tempo la nota
+        # di avvicinamento cromatico a quella che viene (un semitono sotto, nella variante sopra). Prima, su un accordo di
+        # due battute, la seconda era la fondamentale ripetuta quattro volte.
+        third = (span.root_pc + span.third) % 12 if span.third is not None else fifth
+        seventh = (span.root_pc + span.seventh) % 12 if span.seventh is not None else (span.root_pc + 9) % 12
+        tones = [root, third, fifth, seventh]
+        notes = []
+        n_bars = max(1, (n_beats + 3) // 4)
+        for k in range(n_bars):
+            beats = min(4, n_beats - 4 * k)
+            last = k == n_bars - 1
+            start = tones[0] if k % 2 == 0 else tones[1]
+            target_pc = (next_root_pc if next_root_pc is not None else root) if last else (tones[1] if k % 2 == 0 else root)
+            approach = (target_pc + (1 if variant else -1)) % 12
+            # la variante sale per terza e settima (a, c, g su Am7), quella di sempre per terza e quinta
+            line = ([start, tones[1], tones[3]] if variant and start == root
+                    else [start] + [tones[(tones.index(start) + i) % 4] for i in range(1, 3)])
+            bar = line[:max(1, beats - 1)] + ([approach] if beats >= 2 else [])
+            notes += [(pc, 0) for pc in bar[:beats]]
         return notes[:n_beats]
 
     raise ValueError(tr("Stile di basso sconosciuto: '{style}' (validi: {0})", ', '.join(BASS_STYLES), style=style))
@@ -1869,6 +1872,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         amount = amount._replace(rhythm=0.0)
     unit = _GRID_UNIT_BEATS[grid]
     _line_level(intensity, 0, 1)   # intensita' valida?
+    walking = style == "walking"
 
     def span_starts(idx, span, next_root, total_units):
         level = _line_level(intensity, idx, len(chords))
@@ -1885,8 +1889,10 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
             begin = span.start_beat           # la linea parte dal beat 0 degli accordi
             events = _events_on_kicks(events, [b - begin for b in kick_beats
                                                if begin - 1e-9 <= b < begin + span.duration_beats - 1e-9])
-        starts = _quantize_starts(events, unit, total_units, amount, rng, octave_jumps=True)
-        if amount.notes > 0 and level != "light" and not kick_beats:
+        # il walking resta un quarto per battito: niente note tolte, allungate o aggiunte (ha gia' la sua nota di passaggio)
+        starts = _quantize_starts(events, unit, total_units, amount._replace(rhythm=0.0, notes=0.0) if walking else amount,
+                                  rng, octave_jumps=True)
+        if amount.notes > 0 and level != "light" and not kick_beats and not walking:
             starts = _add_passing_note(starts, total_units, next_root, amount.notes, rng)
         return starts
 
@@ -1895,7 +1901,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         return None if resolved is None else _note_token(resolved[0], octave + resolved[1])
 
     line, end_u = _line_events(chords, unit, span_starts, amount.rhythm, rng,
-                               anticipate=unit <= 0.5 and intensity != "light" and not kick_beats)
+                               anticipate=unit <= 0.5 and intensity != "light" and not kick_beats and not walking)
     bar_u = int(round(bar_beats / unit))
     if ending and abs(bar_beats / unit - bar_u) < 1e-6 and end_u >= 2 * bar_u:
         last_u = end_u - bar_u
@@ -2138,7 +2144,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            voice_leading: bool = False, key: Optional[str] = None,
                            meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "",
                            syncopation: Optional[float] = None, appoggiatura: Optional[float] = None,
-                           bass_notes=()) -> str:
+                           bass_notes=(), comfort_high: Optional[int] = None) -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2171,7 +2177,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
                                       repeats=repeats, scale_kind=scale_kind, figure=figure,
-                                      bass_notes=bass_notes,
+                                      bass_notes=bass_notes, comfort_high=comfort_high,
                                       **{k: v for k, v in (("syncopation", syncopation), ("appoggiatura", appoggiatura))
                                          if v is not None})
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)
@@ -2228,6 +2234,8 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
             # le note "_up" stanno sopra la fondamentale: se il registro le ha riportate sotto, scende la fondamentale
             while any(n < notes[0] for n in notes[1:]) and notes[0] - 12 >= range_low:
                 notes[0] -= 12
+            # la fondamentale non puo' scendere (sotto c'e' il basso): salgono le altre, se c'e' posto
+            notes = [n + 12 if i and n < notes[0] and n + 12 <= range_high else n for i, n in enumerate(notes)]
         if voice_leading and len({n % 12 for n in notes}) >= 3:
             if voicing["prev"] is None:
                 voicing["anchor"] = sum(notes) / len(notes)   # il primo accordo resta com'e'

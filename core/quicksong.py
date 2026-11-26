@@ -315,7 +315,7 @@ _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jaz
                  "funk": "funk", "soul": "soul", "disco": "groove", "reggae": "folk", "country": "folk",
                  "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None}
 _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("walk_up", "root_fifth", "root"),
-              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "root_fifth"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "motown", "root_fifth"),
+              "rock": ("eighths", "root_fifth", "octaves"), "rocknroll": ("boogie", "walking"), "chacha": ("tumbao", "bossa"), "blues": ("blues", "boogie", "walking"), "soul": ("motown", "motown", "root_fifth"),
               "disco": ("octaves", "eighths", "root"), "funk": ("funk16", "octaves", "eighths"), "samba": ("bossa", "two_feel", "root_fifth"), "bossa": ("bossa", "root", "two_feel"), "marcia": ("two_feel", "root"), "metal": ("eighths", "root"), "reggae": ("reggae", "root", "root_fifth"),
               "punk": ("eighths", "root_fifth"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root")}
@@ -513,6 +513,10 @@ _ENTER = {
     "melody": ("chorus", "solo", "end", "loop"),
 }
 _ENTER_FADE = ("comp",)
+# lo sfumato: tutta la band ripete il groove del ritornello mentre il volume scende (prima restava solo l'accompagnamento,
+# a volume fisso: sembrava la band che se ne va); la melodia tace
+_FADE_PARTS = ("comp", "comp2", "bass", "drums")
+_FADE_FROM, _FADE_TO = 0.85, 0.25          # il volume all'inizio e alla fine dello sfumato
 # le eccezioni per genere (terza revisione, 3b): {genere: {parte: ruoli in cui suona}}, al posto di quelli di _ENTER
 _GENRE_ENTER = {
     "jazz": {"comp": ("intro", "verse", "chorus", "bridge", "end", "loop", "fade"),       # nell'assolo del fiato: solo basso e batteria
@@ -521,7 +525,8 @@ _GENRE_ENTER = {
               "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
     "reggae": {"comp2": ("verse", "chorus", "bridge", "solo", "end", "loop")},           # l'organo bubble anche nella strofa
     "funk": {"horn": ("verse", "chorus", "solo", "end")},
-    "soul": {"horn": ("verse", "chorus", "bridge", "solo", "end")},        # i fiati rispondono gia' dalla strofa
+    "soul": {"horn": ("verse", "chorus", "bridge", "solo", "end"),         # i fiati rispondono gia' dalla strofa
+             "bass": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},   # l'intro col basso: la chitarra suona le triadi sopra
     # orchestrale: l'intro e' l'arpa sola, poi entrano gli archi, nel ritornello i corni
     "orchestrale": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),
                     "comp2": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"),
@@ -548,6 +553,13 @@ _GENRE_ENTER = {
     "elettronica": {"comp": ("verse", "chorus", "bridge", "solo", "end", "loop", "fade"),   # l'intro e' solo batteria: poi entrano gli strati
                     "drums": ("intro", "verse", "chorus", "bridge", "solo", "end", "loop")},
 }
+# l'intro di groove: nei generi da ballo e da band la sezione ritmica attacca subito, a intensita' normale (l'accompagnamento da
+# solo e leggero lasciava un accordo per battuta e il silenzio); il valzer ha bisogno del basso sul primo tempo («um-pa-pa»)
+_GROOVE_INTRO = ("pop", "rock", "funk", "disco", "reggae", "country")
+for _genre in _GROOVE_INTRO:
+    for _part in ("bass", "drums"):
+        _GENRE_ENTER.setdefault(_genre, {}).setdefault(_part, ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"))
+_GENRE_ENTER.setdefault("valzer", {}).setdefault("bass", ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"))
 # lo stacco per genere (3c): (dove, come, battute). "hit": colpo d'insieme sul primo tempo e silenzio; "drop": restano gli
 # accordi in levare, basso e batteria tacciono; "fill": suona solo la batteria, un fill
 _GENRE_BREAK = {
@@ -652,7 +664,7 @@ _GENRE_VERSE_MELODY = {"rocknroll": "melody_riff", "blues": "melody_riff", "swin
 # il blues: nei giri del tema (non nell'assolo) la melodia e' il verso A A B di dodici battute (vedi melody_blues)
 _BLUES_HEAD_ROLES = ("verse", "chorus", "end", "loop")
 # l'intro del genere con la sua intensita' (di solito leggera): il rock'n'roll attacca col boogie pieno, pianoforte e basso
-_GENRE_INTRO_INTENSITY = {"rocknroll": "normal"}
+_GENRE_INTRO_INTENSITY = {"rocknroll": "normal", **{g: "normal" for g in ("pop", "rock", "funk", "disco", "reggae", "country")}}
 # dove il fiato suona pieno: sopra si va solo nel ritornello piu' intenso, come grido voluto (MIDI, suoni reali)
 _COMFORT_HIGH = {"Tenor_Sax": 75, "Alto_Sax": 80, "Baritone_Sax": 68, "Soprano_Sax": 87}
 _SCREAM = 3
@@ -1077,6 +1089,162 @@ def _instrument_velocity(name) -> float:
     return _INSTRUMENT_VELOCITY.get(name, 1.0)
 
 
+# L'equilibrio fra le parti. Misurato con FluidSynth, il SoundFont incluso nel telefono (TimGM6mb) e il pacchetto acustico, un
+# brano per genere, ogni parte da sola (RMS dove suona): la velocity scritta si moltiplica per un fattore che porta ogni parte al
+# suo livello rispetto alla melodia, che sta davanti. Gli obiettivi (dB, a velocity 1:1 si va dove la parte suona naturalmente):
+# melodia -30, batteria -31, basso -32, accompagnamento -34, secondo accompagnamento -36, fiati e seconda voce -35, tappeto -40.
+# Prima il fattore era solo per strumento e valeva anche per la melodia: la chitarra distorta o l'organo che suonano la melodia
+# scendevano come negli accordi, 11-17 dB sotto la band; gli archi del tappeto stavano 9-14 dB sopra la melodia.
+_PART_VELOCITY = {"melody": 1.05, "bass": 0.97, "drums": 0.94, "comp": 0.76, "comp2": 0.7, "horn": 0.61, "pad": 0.51, "harm": 0.95}
+_PART_INSTRUMENT_VELOCITY = {
+    ("bass", "Acoustic_Bass"): 0.91,
+    ("bass", "Bass"): 0.99,
+    ("bass", "Cello"): 0.86,
+    ("bass", "Fretless_Bass"): 1.2,
+    ("bass", "Slap_Bass_1"): 1.0,
+    ("bass", "Synth_Bass_1"): 0.95,
+    ("bass", "Tuba"): 0.97,
+    ("comp2", "Accordion"): 0.53,
+    ("comp2", "Acoustic_Guitar_Steel"): 0.83,
+    ("comp2", "Banjo"): 0.71,
+    ("comp2", "Clean_Guitar"): 0.66,
+    ("comp2", "Drawbar_Organ"): 0.69,
+    ("comp2", "Electric_Guitar_Muted"): 0.66,
+    ("comp2", "Electric_Piano_1"): 0.58,
+    ("comp2", "Harp"): 0.83,
+    ("comp2", "Nylon_Guitar"): 0.54,
+    ("comp2", "Pad_2_warm"): 0.91,
+    ("comp2", "Piano"): 0.77,
+    ("comp2", "Pizzicato_Strings"): 0.76,
+    ("comp", "Accordion"): 0.59,
+    ("comp", "Brass_Section"): 0.9,
+    ("comp", "Clavinet"): 0.71,
+    ("comp", "Clean_Guitar"): 0.81,
+    ("comp", "Distortion_Guitar"): 0.65,
+    ("comp", "Drawbar_Organ"): 0.67,
+    ("comp", "Electric_Piano_1"): 0.68,
+    ("comp", "Jazz_Guitar"): 0.6,
+    ("comp", "Kalimba"): 0.84,
+    ("comp", "Nylon_Guitar"): 0.66,
+    ("comp", "Overdriven_Guitar"): 0.85,
+    ("comp", "Pad_3_polysynth"): 0.86,
+    ("comp", "Piano"): 0.86,
+    ("comp", "Strings"): 0.83,
+    ("drums", "Drums"): 0.94,
+    ("harm", "Clarinet"): 0.97,
+    ("harm", "Flute"): 0.92,
+    ("horn", "Brass_Section"): 0.69,
+    ("horn", "French_Horn"): 0.53,
+    ("melody", "Alto_Sax"): 1.0,
+    ("melody", "Clarinet"): 0.99,
+    ("melody", "Clean_Guitar"): 1.3,
+    ("melody", "Electric_Piano_1"): 1.03,
+    ("melody", "Electric_Piano_2"): 1.3,
+    ("melody", "Flute"): 1.15,
+    ("melody", "Harmonica"): 1.07,
+    ("melody", "Lead_1_square"): 1.04,
+    ("melody", "Oboe"): 1.09,
+    ("melody", "Overdriven_Guitar"): 1.2,
+    ("melody", "Rock_Organ"): 1.21,
+    ("melody", "Tenor_Sax"): 1.02,
+    ("melody", "Trumpet"): 1.19,
+    ("melody", "Violin"): 0.96,
+    ("pad", "Strings"): 0.51,
+}
+
+
+def _part_velocity(part: str, name) -> float:
+    """Il fattore della velocity di una parte suonata da uno strumento (vedi _PART_VELOCITY): quello misurato per la coppia,
+    altrimenti quello del ruolo; negli accordi l'organo e gli strumenti caldi (_instrument_velocity) restano sotto."""
+    name = str(name)
+    if (part, name) in _PART_INSTRUMENT_VELOCITY:
+        return _PART_INSTRUMENT_VELOCITY[(part, name)]
+    factor = _PART_VELOCITY.get(part, 1.0)
+    if part in ("comp", "comp2", "horn", "pad"):
+        factor = min(factor, _instrument_velocity(name))
+    return factor
+
+
+# i colori degli accordi che il genere non usa e cosa diventano: la variabilita' e l'atmosfera colorano allo stesso modo ogni
+# genere, ma una marcia o un valzer non hanno la settima maggiore, il balcanico nemmeno, il rock'n'roll usa la sesta
+_CLASSICAL = {"maj9": "", "maj7": "", "add9": "", "sus2": "", "m9": "m", "m7": "m", "13": "7", "9": "7", "7sus4": "7", "6": "", "m6": "m"}
+_GENRE_CHORD_STYLE = {"marcia": _CLASSICAL, "valzer": _CLASSICAL,
+                      "balcanico78": {"maj9": "", "maj7": "", "add9": "", "sus2": "", "6": "", "m9": "m7"},
+                      "rocknroll": {"maj9": "6", "maj7": "6"}}
+
+
+def _genre_chords(progression: str, genre: str) -> str:
+    """Il giro con i colori del genere (_GENRE_CHORD_STYLE): «Bbmaj7» diventa «Bb» in una marcia, «Bb6» nel rock'n'roll."""
+    table = _GENRE_CHORD_STYLE[genre]
+    qualities = "|".join(sorted(table, key=len, reverse=True))
+    pattern = re.compile(r"(?<![A-Za-z#*])([A-G][#b]?)(" + qualities + r")(?=$|[\s|/])")
+    return pattern.sub(lambda m: m.group(1) + table[m.group(2)], progression)
+
+
+def _fade_velocity(text: str, total_beats: float) -> str:
+    """Lo sfumato: la velocity scende da _FADE_FROM a _FADE_TO lungo la sezione ('total_beats'). La posizione di ogni attacco
+    si conta dalle durate (griglia «N:», moltiplicatori, accordi fra parentesi quadre); davanti a ogni attacco si scrive la
+    velocity che vale in quel punto, cosi' la discesa non dipende da dove il testo la scriveva."""
+    out, at, unit, raw, written, depth = [], 0.0, 1.0, None, None, 0
+    for token in text.split():
+        grid = re.fullmatch(r"(\d+)(T?):", token)
+        if grid:
+            unit = 4.0 / int(grid.group(1)) * (2.0 / 3.0 if grid.group(2) else 1.0)
+            out.append(token)
+            continue
+        velocity = re.fullmatch(r"(\d+)@", token)
+        if velocity:
+            raw = int(velocity.group(1))
+            continue
+        if depth > 0:                                   # dentro un accordo [..]: la durata e' quella del primo
+            out.append(token)
+            depth += token.count("[") - token.count("]")
+            continue
+        if "=" in token or token == "|" or token.startswith("%") or token.startswith('"'):
+            out.append(token)
+            continue
+        m = re.match(r"(\d*)(.*)", token)
+        mult = int(m.group(1)) if m.group(1) else 1
+        body = m.group(2)
+        if not body.startswith("r") and raw is not None:
+            factor = _FADE_FROM + (_FADE_TO - _FADE_FROM) * min(1.0, at / max(total_beats, 1e-6))
+            v = max(1, min(127, int(raw * factor)))
+            if v != written:
+                out.append(f"{v}@")
+                written = v
+        out.append(token)
+        depth += body.count("[") - body.count("]")
+        at += mult * unit
+    return " ".join(out)
+
+
+def _horns_in_gaps(body: str, melody: str) -> str:
+    """I colpi dei fiati dove la melodia tace: dove canta, i fiati le lasciano lo spazio (la risposta del soul e del funk). Le note
+    dei fiati che cadono per almeno un quarto della loro durata sopra una nota della melodia diventano pause."""
+    from core.melody_generate import rest_where
+    from core.notation import parse_track_text
+    try:
+        regions = [(float(e.start), float(e.start + e.duration)) for e in parse_track_text(melody, {})
+                   if e.kind in ("note", "block", "slide")]
+    except Exception:
+        return body
+    return _merge_rests(rest_where(body, regions)) if regions else body
+
+
+def _merge_rests(text: str) -> str:
+    """Le pause di fila diventano una («r 2r r» -> «4r»)."""
+    out = []
+    for token in text.split():
+        m = re.fullmatch(r"(\d*)r", token)
+        if m and out:
+            prev = re.fullmatch(r"(\d*)r", out[-1])
+            if prev:
+                out[-1] = f"{int(prev.group(1) or 1) + int(m.group(1) or 1)}r"
+                continue
+        out.append(token)
+    return " ".join(out)
+
+
 def _scale_velocity(text: str, factor: float) -> str:
     return re.sub(r"(\d+)@", lambda m: f"{max(1, min(127, int(int(m.group(1)) * factor)))}@", text)
 
@@ -1216,8 +1384,11 @@ def quick_song(options: Optional[dict] = None) -> dict:
             sections[-1] = (name, role, bars - 4)
         sections.append((tr("Sfumato"), "fade", 4))
         total_bars = sum(b for _n, _r, b in sections)
-    intensity["fade"] = "light"
+    intensity["fade"] = "normal"
     styles["fade"] = c["prog"][1]
+    if form == "aaba":
+        # le A sono tutte la stessa sezione: lo stesso giro (l'ultima con la cadenza finale), non quello del ritornello
+        styles["chorus"] = styles["end"] = styles["verse"]
     # lo stacco del genere (3c): una o due battute prima dell'ultimo ritornello (o dell'assolo), solo con almeno due ritornelli
     brk = _GENRE_BREAK.get(c["genre"]) if options.get("breaks", True) not in (False, 0, "0", "no") else None
     if brk and not short:
@@ -1290,6 +1461,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
         closing = idx == last and not fading or (fading and role == "end")
         base = header(skey)
         sidx = 0 if form == "loop" else idx                  # in un loop l'armonia e' sempre la stessa
+        if form == "aaba":                                   # l'AABA: ogni A e' la prima (stessi accordi, stesso tema)
+            sidx = next(i for i, (n, _r, _b) in enumerate(sections) if n == sname)
         seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
         lvl = section_level.get(idx, intensity[role])
         # il ponte di un'atmosfera quieta, sul pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano
@@ -1313,6 +1486,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 from .rhythm_generate import parse_key
                 tonic_pc, mode_now = parse_key(skey)[:2]
                 colored = _color_chords(progression, tonic_pc, how, _melody_scale(c["genre"], tonic_pc, mode_now))   # solo settime della scala
+            if not written and c["genre"] in _GENRE_CHORD_STYLE:                  # i colori che il genere non usa (maj7 in una marcia)
+                progression = _genre_chords(progression, c["genre"])
+                colored = _genre_chords(colored, c["genre"])
             if closing and not written and c["ending"] != "sfumato" and c["genre"] in _FINAL_CHORD:
                 progression = _color_last_chord(progression, _FINAL_CHORD[c["genre"]])
                 colored = _color_last_chord(colored, _FINAL_CHORD[c["genre"]])
@@ -1327,32 +1503,41 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 if role == "break":
                     if part == "drums" or part not in _BREAK_PARTS[_GENRE_BREAK[c["genre"]][1]]:
                         continue
-                elif role not in _enters(c["genre"], part, verse_melody) or part == "drums" or (role == "fade" and part != "comp"):
+                elif part == "drums" or (role == "fade" and part not in _FADE_PARTS) or (
+                        role != "fade" and role not in _enters(c["genre"], part, verse_melody)
+                        and not (part == "melody" and form == "aaba" and role == "bridge")):    # l'AABA: il ponte e' meta' del tema
                     continue
+                if (part == "comp2" and role != "fade" and "pad" in active and c["styles"].get("comp2") == "sustained"
+                        and c["styles"].get("pad") == "sustained" and role in _enters(c["genre"], "pad")):
+                    continue            # due tappeti di accordi tenuti: nelle sezioni del tappeto resta lui (gli archi), l'organo tace
                 common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": lvl, "variability": variability}
                 if part in ("comp", "comp2", "horn", "pad"):
                     body = E.generate(reg_text, "comping", {**common, "source": chords_track, "style": c["styles"][part],
                                                         "instrument": c["instruments"][part],
                                                         "voice_leading": options.get("voice_leading", True) not in (False, 0, "0", "no"),
-                                                        "symbols": options.get("symbols", True) not in (False, 0, "0", "no")})["text"]
+                                                        "symbols": options.get("symbols", True) not in (False, 0, "0", "no")
+                                                        and not (part == "horn" and "melody" in bodies)})["text"]
+                    if part == "horn" and "melody" in bodies and c["styles"].get("horn") == "horn_stabs":
+                        body = _horns_in_gaps(body, bodies["melody"])
                 elif part == "bass":
                     body = E.generate(temp_bass, "bass", {**common, "source": chords_track, "style": bass_style,
                                                      "instrument": c["instruments"]["bass"],
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
                     mstyle = _MELODY_STYLE[c["melody"]]
+                    a_section = form == "aaba" and role in ("verse", "chorus", "end")      # le A dell'AABA: il tema, ogni volta uguale
                     if c["genre"] == "blues" and bars % 12 == 0 and role in _BLUES_HEAD_ROLES:
                         mstyle = "melody_blues"
-                    elif role == "verse" and "verse" not in _ENTER["melody"]:     # la strofa: piu' rada e piu' leggera del ritornello
+                    elif role == "verse" and "verse" not in _ENTER["melody"] and not a_section:   # la strofa: piu' rada del ritornello
                         mstyle = _GENRE_VERSE_MELODY.get(c["genre"]) or _VERSE_MELODY_STYLE.get(mstyle, mstyle)
-                    riff = mstyle in ("melody_riff", "melody_blues")
+                    riff = mstyle in ("melody_riff", "melody_blues") or a_section
                     comfort = _COMFORT_HIGH.get(c["instruments"]["melody"])
-                    if comfort and lvl == "full" and role != "verse":
+                    if comfort and lvl == "full" and role != "verse" and not a_section:
                         comfort += _SCREAM                                     # il ritornello piu' intenso: il grido del sax
                     body = E._quick_melody(project_color, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
-                                           seed_of("melody", 99 if role != "verse" else 98),
+                                           seed_of("melody", 98 if role == "verse" or a_section else 99),
                                            # il riff della strofa resta a ottavi: la strofa e' gia' piu' rada per le battute di risposta
-                                           ("normal" if riff else "light") if role == "verse" else lvl,
+                                           "normal" if a_section else ("normal" if riff else "light") if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
                                             "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
                                             # nei generi del blues il tritono col basso e' il loro suono (la settima sulla terza
@@ -1364,7 +1549,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                                if c["genre"] in table},
                                             "figure": _figures_for(c["genre"], c["instruments"]["melody"])
                                             if options.get("figures", True) not in (False, 0, "0", "no") else ""},
-                                           range_high=comfort)
+                                           comfort_high=comfort)
                 if role == "break" and _GENRE_BREAK[c["genre"]][1] == "hit":
                     from .arrange import _first_hit_only
                     body = _first_hit_only(body)
@@ -1378,7 +1563,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     tonic_pc, mode_now = parse_key_now(skey)
                     voice = _second_voice(body, E._chords_of(project_color, chords_track, None)[0],
                                           _melody_scale(c["genre"], tonic_pc, mode_now), voice_kind,
-                                          harm_instrument.range_low, harm_instrument.range_high, bars * bar_beats)
+                                          max(harm_instrument.range_low, E.REAL_LOW.get(c["instruments"]["harm"], 0)),
+                                          harm_instrument.range_high, bars * bar_beats)
                     if voice:
                         bodies["_voice"] = voice
                 if part in ("bass", "melody") and role != "break":
@@ -1394,7 +1580,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
         if "drums" in active and brk_kind == "hit":
             from .arrange import _break_drums
             bodies["drums"] = _break_drums(bars * beats_per_bar)
-        elif "drums" in active and (role in _enters(c["genre"], "drums") or brk_kind == "fill"):
+        elif "drums" in active and (role in _enters(c["genre"], "drums") or brk_kind == "fill" or role == "fade"):
             variant = idx if form == "loop" else 0
             # i fill legati alla forma: il fill sull'ultima battuta quando cambia sezione (non prima di un break, che e' gia' un fill, ne' in
             # un loop) e il crash sul primo tempo della sezione che arriva dopo un fill, e sempre su quello del ritornello
@@ -1421,18 +1607,17 @@ def quick_song(options: Optional[dict] = None) -> dict:
             vfactor = _MOOD_COLOR.get(c["mood"], {}).get("velocity")
             if vfactor and vfactor != 1:                       # l'atmosfera suona piu' piano o piu' forte
                 body = _scale_velocity(body, vfactor)
-            hot = _instrument_velocity(c["instruments"].get(part, ""))
+            hot = _part_velocity(part, c["instruments"].get(part, ""))
             if hot != 1:                                       # gli strumenti che a pari velocity coprono le altre parti suonano piu' piano
                 body = _scale_velocity(body, hot)
             if fading and role == "end":
                 body = _scale_velocity(body, 0.85)
-            elif role == "fade":
-                body = _scale_velocity(body, 0.55)
+            # lo sfumato: il decrescendo si scrive per ultimo (dopo l'umanizzazione, che rifa' le velocity), senza pattern
             if closing and part == "comp" and c["ending"] != "sfumato" and c["genre"] in _FINAL_CHORD:
                 body = _color_last_voicing(body, skey, _FINAL_CHORD[c["genre"]])
             if closing and c["ending"] == "rallentando" and part == "comp":
                 body = _rallentando(body, bars * beats_per_bar, bpm)
-            if compact_on:                                    # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
+            if compact_on and role != "fade":                 # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
                 from .compact_text import compact
                 label = {"melody": "Melodia"}.get(part) or (bass_style if part == "bass" else c["styles"].get(part)) or part
                 made_text = compact(body, bar_beats, label, existing=raw_patterns)
@@ -1444,6 +1629,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 body = humanize_drums(body, c["styles"]["drums"], human)
             elif part in ("bass", "comp"):
                 body = humanize_part(body, part, c["genre"], human)
+            if role == "fade":
+                body = _fade_velocity(body, bars * beats_per_bar)
             if develop and part == "melody" and role == "chorus":
                 from .compact_text import _camel
                 dev_pattern = dev_pattern or "Melodia" + _camel(sname)
