@@ -1947,7 +1947,9 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         amount = amount._replace(rhythm=0.0)
     unit = _GRID_UNIT_BEATS[grid]
     _line_level(intensity, 0, 1)   # intensita' valida?
-    walking = style == "walking"
+    # il walking e il boogie sono linee continue: niente note tolte, allungate, aggiunte o anticipate (nel boogie la variabilita'
+    # del ritmo apriva buchi di mezza battuta e l'anticipo spezzava la figura)
+    walking = style in ("walking", "boogie")
 
     def span_starts(idx, span, next_root, total_units):
         level = _line_level(intensity, idx, len(chords))
@@ -1959,7 +1961,9 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
                                      _bar_picker(style, pattern, variant, amount.rhythm, rng))
         else:
             events = _legacy_events(span, style, octave, variant, next_root)
-        events = _apply_line_intensity(events, level, fuller_chords=False, octave_lift=True)
+        # il boogie leggero resta la figura intera (diradato perdeva la sesta e la settima, cioe' il boogie): e' solo piu' piano
+        events = _apply_line_intensity(events, "normal" if style == "boogie" and level == "light" else level,
+                                       fuller_chords=False, octave_lift=True)
         if kick_beats:
             begin = span.start_beat           # la linea parte dal beat 0 degli accordi
             events = _events_on_kicks(events, [b - begin for b in kick_beats
@@ -2078,8 +2082,8 @@ MELODIC_PATTERNS: Dict[str, dict] = {
     "rootless": {"grid": "16:", "polyphonic": True,
                  "bar": [(0.0, ["third", "seventh", "ninth"]), (0.75, ["third", "seventh", "ninth"]), (1.25, "rest"),
                          (2.0, ["third", "seventh", "ninth"]), (2.75, ["third", "seventh", "ninth"]), (3.25, "rest")],
-                 "variant": [(0.0, ["seventh", "ninth", "third_hi"]), (1.0, "rest"), (1.75, ["third", "seventh", "ninth"]),
-                             (2.5, ["third", "seventh", "ninth"]), (3.0, "rest"), (3.5, ["seventh", "ninth", "third_hi"])]},
+                 "variant": [(0.0, ["seventh", "ninth", "third_up"]), (1.0, "rest"), (1.75, ["third", "seventh", "ninth"]),
+                             (2.5, ["third", "seventh", "ninth"]), (3.0, "rest"), (3.5, ["seventh", "ninth", "third_up"])]},
     # Rullo di banjo (country): otto note per battuta in gruppi di tre, tre e due (fondamentale, terza, quinta).
     "banjo_roll": {"grid": "8:", "polyphonic": True,
                    "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "root"), (2.0, "third"), (2.5, "fifth"),
@@ -2241,7 +2245,8 @@ def _resolve_roles(role, span: ChordSpan, next_root_pc: Optional[int]) -> List[T
     if span.third == 3:
         # la nona sugli accordi minori sta un semitono sotto la terza minore, la nota su cui la melodia si posa piu' spesso:
         # al suo posto la quinta (gli accordi senza fondamentale tengono la nona sui maggiori e sulle dominanti)
-        names = ["fifth" if name == "ninth" else name for name in names]
+        # (sull'accordo minore senza settima la fondamentale: terza e quinta da sole erano due note sole)
+        names = [("fifth" if span.seventh is not None else "root") if name == "ninth" else name for name in names]
     out: List[Tuple[int, int]] = []
     for name in names:
         resolved = _resolve_role(name, span, next_root_pc)
@@ -2325,7 +2330,8 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
             variant = True
         events = _pattern_events(pattern, span, variant, bar_beats,
                                  _bar_picker(style, pattern, variant, amount.rhythm, rng))
-        events = _apply_line_intensity(events, level, fuller_chords=polyphonic, octave_lift=False)
+        # gli accordi senza fondamentale restano senza: l'intensita' piena non aggiunge l'ottava della fondamentale
+        events = _apply_line_intensity(events, level, fuller_chords=polyphonic and style != "rootless", octave_lift=False)
         # i disegni regolari (l'arpeggio del preludio, l'albertino, il fingerpicking) non perdono ne' uniscono note
         starts = _quantize_starts(events, unit, total_units,
                                   amount._replace(rhythm=0.0, notes=0.0) if style in _STRICT_STYLES else amount, rng, octave_jumps=False)

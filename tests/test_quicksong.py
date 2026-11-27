@@ -1436,3 +1436,77 @@ def test_grunge_clean_guitar_arpeggiates_the_verse_and_the_chorus_sings_higher(q
                     mean.setdefault(m.group(1), statistics.mean(notes))
             higher += mean["Ritornello"] > mean["Strofa"] + 1
     assert higher == 6
+
+
+def test_ska_organ_bubbles_and_rocknroll_organ_does_not_play_the_guitar_figure(q):
+    ska = q.quick_song({"genre": "ska", "mood": "energica", "seed": 2137612870, "duration": 60})
+    assert ska["choices"]["instruments"]["comp2"] == "Rock_Organ" and ska["choices"]["styles"]["comp2"] == "organ_bubble"
+    rnr = q.quick_song({"genre": "rocknroll", "mood": "energica", "seed": 700730936, "duration": 60})
+    assert rnr["choices"]["instruments"]["comp2"] == "Rock_Organ" and rnr["choices"]["styles"]["comp2"] != "chuck_guitar"
+
+
+def test_the_boogie_bass_is_a_continuous_line_of_eighths(q):
+    """Il boogie non si dirada e non perde note per la variabilita': otto ottavi per battuta, nessuna pausa."""
+    import re
+    song = q.quick_song({"genre": "rocknroll", "mood": "energica", "seed": 700730936, "duration": 60})
+    verse = re.search(r'Box Bass "Strofa" \|\d+:\n(.*?)\n\n', song["text"], re.S).group(1)
+    assert not re.search(r"(?<![\w#*])\d*r\b", verse)
+    for bar in verse.replace("swing=60", "").replace("8:", "").split("|"):
+        notes = re.findall(r"(\d*)[a-g]#?\*\d", bar)
+        if notes:
+            assert sum(int(n or 1) for n in notes) == 8, bar
+
+
+def test_the_last_chorus_goes_up_an_octave_only_where_the_instrument_still_sounds_well(q):
+    song = q.quick_song({"genre": "rocknroll", "mood": "energica", "seed": 700730936, "duration": 60})
+    assert song["choices"]["instruments"]["melody"] == "Harmonica" and ".octave(1)" not in song["text"]
+
+
+def test_the_chorus_melody_sits_above_the_verse(q):
+    """Il ritornello sopra la strofa: se e' venuto piu' basso si riscrive piu' in alto (la tromba dello ska cantava il
+    ritornello fra re4 e sol4 dopo una strofa fra sol4 e re5)."""
+    import re
+    lower = 0
+    for genre in ("ska", "rock", "pop", "hiphop", "rocknroll", "country", "soul", "reggae"):
+        for seed in (1, 2, 3):
+            song = q.quick_song({"genre": genre, "seed": seed, "duration": 60})
+            text, inst = song["text"], song["choices"]["instruments"]["melody"]
+            pats = dict(re.findall(r"Pattern %(\S+):\n(.*?)\n\n", text, re.S))
+            means = {}
+            for m in re.finditer(r'Box %s "(\S+)[^"]*" \|\d+:\n(.*?)(?=\nBox |\Z)' % re.escape(inst), text, re.S):
+                body = re.sub(r"%(\w+)\S*", lambda x: pats.get(x.group(1), ""), m.group(2))
+                value = q._mean_pitch(body, inst, song["choices"]["meter"])
+                if value is not None:
+                    means.setdefault(m.group(1), value)
+            if "Strofa" in means and "Ritornello" in means and means["Ritornello"] < means["Strofa"]:
+                lower += 1
+                # la versione piu' alta si tiene solo se sui tempi forti resta sulle note dell'accordo: qualche volta non c'e'
+                assert genre != "ska", (genre, seed)
+    assert lower <= 2
+
+
+def test_drum_fills_are_at_least_four_seconds_apart(q):
+    assert q._fill_every(2, 4, 181) == 4 and q._fill_every(2, 4, 120) == 2 and q._fill_every(4, 4, 240) == 4
+    assert q._fill_every(0, 4, 200) == 0
+
+
+def test_a_formation_without_a_soloist_gives_the_tune_to_the_second_chord_instrument(q):
+    """Piano elettrico, chitarra jazz, contrabbasso e batteria: la chitarra suona il tema (prima il brano era il giro di
+    accompagnamento dall'inizio alla fine), il contrabbasso non fa lo slap della fusion."""
+    song = q.quick_song({"genre": "fusion", "mood": "allegra", "seed": 28616533, "duration": 60,
+                         "formation": ["Drums", "Electric_Piano_1", "Electric_Guitar_jazz", "Contrabass"]})
+    inst, styles = song["choices"]["instruments"], song["choices"]["styles"]
+    assert inst["melody"] == "Electric_Guitar_jazz" and inst["comp"] == "Electric_Piano_1" and song["choices"]["melody"] != "nessuna"
+    assert styles["bass"] == "motown"
+
+
+def test_rootless_voicings_stay_without_the_root_and_the_fade_has_bar_lines(q):
+    import re
+    song = q.quick_song({"genre": "fusion", "mood": "allegra", "seed": 28616533, "duration": 60,
+                         "formation": ["Drums", "Electric_Piano_1", "Electric_Guitar_jazz", "Contrabass"]})
+    text = song["text"]
+    chorus = re.search(r'Box Electric_Piano_1 "Ritornello" \|\d+:\n(.*?)\n\n', text, re.S).group(1)
+    first = re.search(r"\[([^\]]+)\]", chorus).group(1).split()
+    assert not any(n.startswith("f*") for n in first), first               # Fa: la, do, sol (terza, quinta, nona), niente fa
+    fade = re.search(r'Box Electric_Piano_1 "Sfumato" \|\d+:\n(.*?)(?:\n\n|\Z)', text, re.S).group(1)
+    assert fade.count("|") >= 4

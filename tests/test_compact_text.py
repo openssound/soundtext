@@ -90,12 +90,14 @@ def test_velocity_is_written_only_when_it_changes_and_at_the_start_of_each_patte
     assert both["text"].count("@") <= 2
 
 
-def test_a_long_rest_is_split_at_the_barline_but_a_note_that_crosses_it_is_left_whole():
+def test_a_long_rest_or_note_is_split_at_the_barline_the_note_with_a_tie():
     split = ct.compact("4: c*4 r 3r", 4.0, "x")                                  # la pausa da 3 attraversa la battuta
     assert split["text"].count("|") == 2
     long_note = ct.compact("4: c*4 4c*5 3c*4", 4.0, "x")                          # una nota che attraversa la stanghetta
-    assert long_note["text"].count("|") == 1                                      # solo quella finale
-    for raw in ("4: c*4 r 3r", "4: c*4 4c*5 3c*4"):
+    assert long_note["text"].count("|") == 2 and "3c*5~ | c*5" in long_note["text"]   # si lega: la stanghetta resta
+    slide = ct.compact("4: r 2r c*4 e*4>2f*4 c*4", 4.0, "x")                      # uno slide a cavallo: non si divide
+    assert "~" not in slide["text"]
+    for raw in ("4: c*4 r 3r", "4: c*4 4c*5 3c*4", "4: r 3[c*4 e*4 g*4] 2A# 2r", "4: r 2r c*4 e*4>2f*4 c*4"):
         _same_sound(raw, "Piano", 4.0, "x")
 
 

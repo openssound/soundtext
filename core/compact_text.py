@@ -35,6 +35,12 @@ def _camel(name: str) -> str:
     return out if out and out[0].isalpha() else "Parte"
 
 
+def _tieable(body: str) -> bool:
+    """Una nota, un accordo o un blocco che si puo' dividere alla stanghetta con la legatura: non le pause, gli slide (portano
+    le loro durate), gli abbellimenti, le legature di portamento o le note gia' legate o allungate."""
+    return body != "r" and not any(ch in body for ch in ">'()~_%") and not body.endswith("!")
+
+
 def _bars(grid_text: str, items: list, bar_beats: float):
     """[(token, velocita')...] per battuta e il numero di battute; None se la metrica non cade sulla griglia.
     Ritorna (lista di battute, [True se la stanghetta dopo la battuta si puo' scrivere])."""
@@ -56,6 +62,12 @@ def _bars(grid_text: str, items: list, bar_beats: float):
                 bars.append([])
                 closed.append(True)
             room = (index + 1) * bar_units - k
+            if length > room and _tieable(body):
+                # una nota che attraversa la stanghetta: si divide con la legatura (c~ | c), la stanghetta resta
+                bars[index].append((room, body + "~", vel))
+                length -= room
+                k += room
+                continue
             if length <= room or body != "r":
                 bars[index].append((length, body, vel))
                 if length > room:                    # una nota che attraversa la stanghetta: li' non si scrive
@@ -86,7 +98,7 @@ def _write(tokens: List[Tuple[int, str, Optional[int]]], current: Optional[int])
 
 
 def compact(text: str, bar_beats: float, name: str = "", existing: Optional[Dict[str, str]] = None,
-            per_line: int = BARS_PER_LINE) -> dict:
+            per_line: int = BARS_PER_LINE, make_patterns: bool = True) -> dict:
     """{"text": il testo compatto, "patterns": {nome: corpo}} per un testo scritto dai generatori. Un testo che non e' di
     quella forma (modificato a mano) o una metrica che non cade sulla griglia resta com'e', senza pattern.
 
@@ -110,8 +122,13 @@ def compact(text: str, bar_beats: float, name: str = "", existing: Optional[Dict
         tokens = bars[index]
         first = next((v for _l, b, v in tokens if b != "r" and v is not None), None)
         return (first, tuple(tokens))
-    counts = Counter(key(i) for i in range(len(bars)) if bars[i])
-    repeated = [k for k, n in counts.most_common() if n >= 2 and len(k[1]) >= 1]
+    # una battuta legata alla successiva (o che continua la precedente) resta scritta: la legatura non passa dentro un pattern
+    def tied(index):
+        ends = bool(bars[index]) and bars[index][-1][1].endswith("~")
+        return ends or (index > 0 and bool(bars[index - 1]) and bars[index - 1][-1][1].endswith("~"))
+    counts = Counter(key(i) for i in range(len(bars)) if bars[i] and not tied(i))
+    # senza pattern ('make_patterns' falso: lo sfumato, dove ogni battuta ha la sua velocity) restano solo barre e righe
+    repeated = [k for k, n in counts.most_common() if n >= 2 and len(k[1]) >= 1] if make_patterns else []
     base = _camel(name)
     patterns: Dict[str, str] = {}
     names: Dict[tuple, str] = {}
@@ -133,7 +150,7 @@ def compact(text: str, bar_beats: float, name: str = "", existing: Optional[Dict
             pieces.append("")
             continue
         k = key(i)
-        if k in names:
+        if k in names and not tied(i):
             pieces.append("%" + names[k])
             unknown = True
         else:

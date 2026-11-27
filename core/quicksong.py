@@ -267,6 +267,8 @@ _SOLO_GENRES = ("pianosolo", "chitarrasola", "preludio", "corale", "minuetto")
 # la melodia di un genere in ogni sezione: l'hip hop ha il «campione», un riff breve che si ripete e lascia spazio
 _GENRE_MAIN_MELODY = {"hiphop": "melody_riff"}
 _GENRE_CHORD_COLOR = {"fusion": "extended", "bigband": "seventh"}     # gli accordi del genere: none e tredicesime, le settime
+_SLAP_BASS_STYLES = ("funk16",)
+_ACOUSTIC_BASSES = ("Contrabass", "Acoustic_Bass")
 _ALWAYS_NORMAL = ("pianosolo", "chitarrasola", "preludio", "corale", "minuetto")
 # le parti che non si diradano nelle sezioni leggere: l'arpeggio pulito della strofa del grunge (leggero diventava note lunghe,
 # e la strofa e' proprio la chitarra pulita che arpeggia)
@@ -277,7 +279,9 @@ _SECTION_LIFT = {"grunge": {"chorus": 4, "end": 4}}
 # la chitarra pulita del grunge e' l'accompagnamento della strofa (la distorta tace): misurata 11 dB sotto il suo posto
 _GENRE_PART_VELOCITY = {("grunge", "comp2"): 1.25}
 # l'ottava di partenza della melodia (la mano destra del pianoforte sta sopra la sinistra) e dell'accompagnamento
-_GENRE_MELODY_OCTAVE = {"pianosolo": 5, "chitarrasola": 5, "hiphop": 5}      # l'hip hop: il «campione» sopra il pianoforte
+# l'hip hop: il «campione» sopra il pianoforte; lo ska: il fiato sopra lo skank della chitarra e dell'organo (all'ottava 4
+# il sax tenore cantava dentro gli accordi)
+_GENRE_MELODY_OCTAVE = {"pianosolo": 5, "chitarrasola": 5, "hiphop": 5, "ska": 5}
 # il basso che segue la cassa, con le note tenute fino al colpo dopo (l'808 dell'hip hop)
 _BASS_ON_KICK = ("hiphop",)
 # per la mappa dei registri (rhythm_generate.part_registers) la melodia e il basso si segnano con uno strumento della loro
@@ -699,7 +703,9 @@ _ENTER_FADE = ("comp",)
 # lo sfumato: tutta la band ripete il groove del ritornello mentre il volume scende (prima restava solo l'accompagnamento,
 # a volume fisso: sembrava la band che se ne va); la melodia tace
 _FADE_PARTS = ("comp", "comp2", "bass", "drums")
-_HORN_ANSWER_GENRES = ("soul",)            # i fiati che rispondono alla melodia in ogni sezione, non solo nella strofa
+# i fiati che rispondono alla melodia in ogni sezione, non solo nella strofa: il soul; lo ska, dove gli accordi pieni dei
+# fiati sui tempi forti coprivano il fiato solista che canta nello stesso registro
+_HORN_ANSWER_GENRES = ("soul", "ska")
 _FADE_FROM, _FADE_TO = 0.85, 0.25          # il volume all'inizio e alla fine dello sfumato
 # le eccezioni per genere (terza revisione, 3b): {genere: {parte: ruoli in cui suona}}, al posto di quelli di _ENTER
 _GENRE_ENTER = {
@@ -864,6 +870,9 @@ _GENRE_INTRO_INTENSITY = {"rocknroll": "normal", **{g: "normal" for g in ("pop",
                                                                               "hiphop", "polka", "mazurka", "fusion", "newwave")}}
 # dove il fiato suona pieno: sopra si va solo nel ritornello piu' intenso, come grido voluto (MIDI, suoni reali)
 _COMFORT_HIGH = {"Tenor_Sax": 75, "Alto_Sax": 80, "Baritone_Sax": 68, "Soprano_Sax": 87}
+# fin dove sale l'ultimo ritornello spostato all'ottava sopra (MIDI), per gli strumenti che sopra diventano stridenti
+_OCTAVE_LIFT_HIGH = {"Harmonica": 86, "Trumpet": 86, "Clarinet": 89, "Oboe": 89, "Accordion": 88, "Trombone": 74,
+                     "Lead_1_square": 91, "Lead_2_sawtooth": 91}
 _SCREAM = 3
 
 
@@ -1270,6 +1279,10 @@ def resolve(options: Optional[dict] = None) -> dict:
         else:
             drums = None
         styles["drums"] = drums
+        if "melody" not in instruments and "comp2" in instruments and "comp" in instruments and "pad" not in instruments:
+            # due strumenti di accordi e nessun solista: il secondo suona il tema (la chitarra jazz sopra il piano elettrico),
+            # se no il brano e' un giro di accompagnamento ripetuto dall'inizio alla fine
+            instruments["melody"] = instruments.pop("comp2")
         if "melody" not in instruments:
             melody = "nessuna"
         elif melody == "nessuna":
@@ -1279,6 +1292,25 @@ def resolve(options: Optional[dict] = None) -> dict:
         if genre == "disco" and "Guitar" in str(instruments.get(part, "")) and styles.get(part) == "quarter_chords" \
                 and not (parts_in.get(part) or {}).get("style"):
             styles[part] = "scratch"
+    for part in ("comp", "comp2"):
+        # l'organo dello ska: il «bubble» (i due sedicesimi in levare), non lo stesso skank della chitarra raddoppiato
+        if genre == "ska" and "Organ" in str(instruments.get(part, "")) and styles.get(part) == "skank_chords" \
+                and not (parts_in.get(part) or {}).get("style"):
+            styles[part] = "organ_bubble"
+    if styles.get("bass") in _SLAP_BASS_STYLES and instruments.get("bass") in _ACOUSTIC_BASSES \
+            and not (parts_in.get("bass") or {}).get("style"):
+        styles["bass"] = "motown"                             # il contrabbasso non fa lo slap: la linea sincopata suonata con le dita
+    for part in ("comp", "comp2"):
+        # una chitarra non tiene un accordo per tutta la battuta (la nota si spegne): lo arpeggia
+        if styles.get(part) == "sustained" and "Guitar" in str(instruments.get(part, "")) \
+                and not (parts_in.get(part) or {}).get("style"):
+            styles[part] = "broken_chord"
+    for part in ("comp", "comp2"):
+        # la figura di chitarra alla Chuck Berry (quinta e sesta alternate) e' della chitarra: sull'organo (lo strumento
+        # alternativo del rock'n'roll) diventa un tappeto di accordi tenuti
+        if styles.get(part) == "chuck_guitar" and "Guitar" not in str(instruments.get(part, "")) \
+                and not (parts_in.get(part) or {}).get("style"):
+            styles[part] = "sustained"
     for part in ("comp", "comp2"):
         # la chitarra distorta del blues suona lo shuffle a due note (quinta e sesta): gli accordi di settima pieni, distorti, impastano
         if genre == "blues" and instruments.get(part) in ("Overdriven_Guitar", "Distortion_Guitar") \
@@ -1413,6 +1445,7 @@ def _fade_velocity(text: str, total_beats: float) -> str:
     si conta dalle durate (griglia «N:», moltiplicatori, accordi fra parentesi quadre); davanti a ogni attacco si scrive la
     velocity che vale in quel punto, cosi' la discesa non dipende da dove il testo la scriveva."""
     out, at, unit, raw, written, depth = [], 0.0, 1.0, None, None, 0
+    tied = False                                        # la nota prima e' legata a questa: niente velocity in mezzo
     for token in text.split():
         grid = re.fullmatch(r"(\d+)(T?):", token)
         if grid:
@@ -1433,7 +1466,7 @@ def _fade_velocity(text: str, total_beats: float) -> str:
         m = re.match(r"(\d*)(.*)", token)
         mult = int(m.group(1)) if m.group(1) else 1
         body = m.group(2)
-        if not body.startswith("r") and raw is not None:
+        if not body.startswith("r") and raw is not None and not tied:
             factor = _FADE_FROM + (_FADE_TO - _FADE_FROM) * min(1.0, at / max(total_beats, 1e-6))
             v = max(1, min(127, int(raw * factor)))
             if v != written:
@@ -1441,6 +1474,7 @@ def _fade_velocity(text: str, total_beats: float) -> str:
                 written = v
         out.append(token)
         depth += body.count("[") - body.count("]")
+        tied = body.endswith("~")
         at += mult * unit
     return " ".join(out)
 
@@ -1708,6 +1742,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
         active.append("harm")
         from core.instruments import make_instrument_available as _available
         _available(c["instruments"]["harm"])
+    verse_mean = None                                       # l'altezza media della melodia della strofa
     for idx, (sname, role, bars) in enumerate(sections):
         skey = _shift_key(key, 2) if 0 <= mod_from <= idx else key
         closing = idx == last and not fading or (fading and role == "end")
@@ -1796,7 +1831,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     comfort = _COMFORT_HIGH.get(c["instruments"]["melody"])
                     if comfort and lvl == "full" and role != "verse" and not a_section:
                         comfort += _SCREAM                                     # il ritornello piu' intenso: il grido del sax
-                    body = E._quick_melody(project_color, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
+                    melody_call = lambda lift: E._quick_melody(project_color, chords_track, c["instruments"]["melody"], mstyle, skey, bars,
                                            seed_of("melody", 98 if role == "verse" or a_section else 99),
                                            # il riff della strofa resta a ottavi: la strofa e' gia' piu' rada per le battute di risposta
                                            "normal" if a_section else ("normal" if riff else "light") if role == "verse" else lvl,
@@ -1812,7 +1847,28 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                             "figure": _figures_for(c["genre"], c["instruments"]["melody"])
                                             if options.get("figures", True) not in (False, 0, "0", "no") else ""},
                                            comfort_high=comfort, octave_min=_melody_octave(c["genre"], skey),
-                                           lift=0 if a_section else _SECTION_LIFT.get(c["genre"], {}).get(role, 0))
+                                           lift=lift)
+                    base_lift = 0 if a_section else _SECTION_LIFT.get(c["genre"], {}).get(role, 0)
+                    body = melody_call(base_lift)
+                    if role == "verse" and not a_section:
+                        verse_mean = _mean_pitch(body, c["instruments"]["melody"], c["meter"])
+                    elif role == "chorus" and not a_section and verse_mean is not None:
+                        # il ritornello sta sopra la strofa: se e' venuto piu' basso (le frasi del ritornello hanno un altro
+                        # profilo e un altro ritmo) si riscrive con il centro spostato in su, fino a una quinta
+                        mean = _mean_pitch(body, c["instruments"]["melody"], c["meter"])
+                        if mean is not None and mean < verse_mean:
+                            # si tiene il primo spostamento che sale davvero e che sui tempi forti resta sulle note
+                            # dell'accordo quanto la prima versione (tre tentativi intorno a quello che serve)
+                            spans = E._chords_of(project_color, chords_track, None)[0]
+                            inst_m = c["instruments"]["melody"]
+                            fit = _downbeat_fit(body, inst_m, c["meter"], spans, beats_per_bar)
+                            need = min(7, int(round(verse_mean + 3 - mean)))
+                            for extra in dict.fromkeys(max(2, min(7, need + d)) for d in (0, 1, -1, 2)):
+                                higher = melody_call(base_lift + extra)
+                                if ((_mean_pitch(higher, inst_m, c["meter"]) or mean) > mean + 1
+                                        and _downbeat_fit(higher, inst_m, c["meter"], spans, beats_per_bar) >= fit):
+                                    body = higher
+                                    break
                 if role == "break" and _GENRE_BREAK[c["genre"]][1] == "hit":
                     from .arrange import _first_hit_only
                     body = _first_hit_only(body)
@@ -1858,7 +1914,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 drum_texts[dkey] = E.generate(base, "drums", {
                     "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
                     "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato",
-                    "fill_every": 1 if brk_kind == "fill" else c.get("drum_fill", 4),
+                    "fill_every": 1 if brk_kind == "fill" else _fill_every(c.get("drum_fill", 4), beats_per_bar, c["bpm"]),
                     "fill_last": fill_last, "crash_first": crash_first})["text"]
             bodies["drums"] = drum_texts[dkey]
             if closing and c["ending"] != "sfumato" and c["genre"] in _FINAL_HITS:
@@ -1883,6 +1939,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 body = _color_last_voicing(body, skey, _FINAL_CHORD[c["genre"]])
             if closing and c["ending"] == "rallentando" and part == "comp":
                 body = _rallentando(body, bars * beats_per_bar, bpm)
+            if compact_on and role == "fade":                 # lo sfumato: le barre e le righe, senza pattern
+                from .compact_text import compact
+                body = compact(body, bar_beats, part, make_patterns=False)["text"]
             if compact_on and role != "fade":                 # barre e pattern: il testo si legge e si modifica, il suono e' lo stesso
                 from .compact_text import compact
                 label = {"melody": "Melodia"}.get(part) or (bass_style if part == "bass" else c["styles"].get(part)) or part
@@ -1905,7 +1964,12 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 if idx == chorus_ids[-1]:
                     from core.instruments import get_instrument
                     top = _top_pitch(patterns[dev_pattern], c["instruments"]["melody"], c["meter"])
-                    if top is not None and top + 12 <= get_instrument(c["instruments"]["melody"]).range_high:
+                    # l'ultimo ritornello all'ottava sopra, se ci sta: dentro l'estensione e dentro il registro dove lo
+                    # strumento suona bene (l'armonica arrivava al sol6, stridula)
+                    ceiling = min(get_instrument(c["instruments"]["melody"]).range_high,
+                                  _OCTAVE_LIFT_HIGH.get(c["instruments"]["melody"], 127),
+                                  (_COMFORT_HIGH.get(c["instruments"]["melody"]) or 127) + _SCREAM)
+                    if top is not None and top + 12 <= ceiling:
                         body += ".octave(1)"
                     harm_body = "%" + dev_pattern + ".thirds"
                 if auto_voice:
@@ -2070,6 +2134,62 @@ def _second_voice(body: str, chords, scale: set, kind: str, low: int, high: int,
         if gap > 0:
             tokens.append(f"{gap if gap > 1 else ''}r")
     return "16: " + " ".join(tokens)
+
+
+def _fill_every(bars: int, beats_per_bar: float, bpm: float) -> int:
+    """Ogni quante battute un fill: quelle della ricetta e dell'atmosfera, raddoppiate finche' fra un fill e l'altro passano
+    almeno _FILL_SECONDS secondi (l'atmosfera energica a 180 BPM ne metteva uno ogni 2,7 secondi)."""
+    if bars <= 0:
+        return bars
+    bar_seconds = beats_per_bar * 60.0 / max(1.0, float(bpm))
+    while bars < 8 and bars * bar_seconds < _FILL_SECONDS - 1e-9:
+        bars *= 2
+    return bars
+
+
+_FILL_SECONDS = 4.0
+
+
+def _downbeat_fit(body: str, instrument: str, meter: str, spans, bar_beats: float) -> int:
+    """Quante note della melodia sul primo tempo delle battute sono note della triade dell'accordo."""
+    try:
+        from core.model import Project
+        from st_language.midi import resolve_event_notes, sounding_events
+        project = Project(name="t", time_sig=meter)
+        track = project.add_track("M", instrument, body)
+        fit = 0
+        for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
+            if ev.kind in ("control", "sustain", "tempo_marker", "rest") or getattr(ev, "grace", None) or ev.duration <= 0:
+                continue
+            start = float(ev.start)
+            if abs(start / bar_beats - round(start / bar_beats)) > 1e-6:
+                continue
+            notes, _v = resolve_event_notes(ev, track.instrument)
+            span = next((sp for sp in spans if sp.start_beat - 1e-6 <= start < sp.start_beat + sp.duration_beats - 1e-6), None)
+            if not notes or span is None:
+                continue
+            # la triade: la settima dell'accordo spesso l'accompagnamento non la suona
+            tones = {span.root_pc, (span.root_pc + (span.third or 4)) % 12, (span.root_pc + 7) % 12}
+            fit += max(notes) % 12 in tones
+        return fit
+    except Exception:
+        return 0
+
+
+def _mean_pitch(body: str, instrument: str, meter: str) -> Optional[float]:
+    """L'altezza media (MIDI) delle note di un testo di melodia, o None se non ce ne sono o non si legge."""
+    try:
+        from core.model import Project
+        from st_language.midi import resolve_event_notes, sounding_events
+        project = Project(name="t", time_sig=meter)
+        track = project.add_track("M", instrument, body)
+        values = []
+        for ev in sounding_events(track.parsed_events(project.patterns, meter=project.meter())):
+            notes, _v = resolve_event_notes(ev, track.instrument)
+            values.extend(notes)
+        return sum(values) / len(values) if values else None
+    except Exception:
+        return None
 
 
 def _top_pitch(body: str, instrument: str, meter: str, lowest: bool = False) -> Optional[int]:
