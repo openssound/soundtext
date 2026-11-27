@@ -35,7 +35,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>A song in the structure view, with the mixer</caption>
-      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.22.0/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/openssound/soundtext/v1.23.0/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <categories>
@@ -58,6 +58,18 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.23.0" date="2026-11-27">
+      <description>
+        <p>Fifteen new genres for songs in 60 seconds, automatic volume balance and a clearer chord view on the phone.</p>
+        <ul>
+          <li>New genres: ska, grunge, hip hop, polka, mazurka, tarantella, piano solo, guitar solo, minuet, prelude, chorale, big band, fusion, new wave and psychedelic rock</li>
+          <li>Balance volumes: every track brought to the level of its role, with a button on computer and phone and automatically after a song in 60 seconds</li>
+          <li>More credible genres: soul, jazz, disco, reggae, rock'n'roll, blues and ska arrangements, the chorus sung above the verse, fills spaced in time</li>
+          <li>Notes crossing the bar line are written with a tie, so every bar keeps its bar line</li>
+          <li>SoundText Mobile: background playback from pre-rendered audio, instant engine start and a chord view with one chord per bar</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.22.0" date="2026-11-25">
       <description>
         <p>Songs in 60 seconds sound more coherent, with an automatic harmony check and a phone app with instrument packs.</p>
