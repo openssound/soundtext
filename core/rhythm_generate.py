@@ -2488,6 +2488,12 @@ PROGRESSION_STYLES: Dict[str, dict] = {
     "borrowed_flat6": {"mode": "major", "flats": True, "chords": [(0, "", 1), (8, "", 1), (10, "", 1), (0, "", 1)]},  # I-bVI-bVII-I
     "minor_deceptive": {"mode": "minor", "chords": [(0, "m", 1), (5, "m", 1), (7, "", 1), (8, "", 1)]},  # i-iv-V-VI
     "minor_plagal": {"mode": "minor", "chords": [(0, "m", 1), (8, "", 1), (5, "m", 1), (0, "m", 1)]},   # i-VI-iv-i
+    # i power chord che scivolano del grunge («Smells Like Teen Spirit»): I-IV-bIII-bVI
+    "grunge_chromatic": {"mode": "major", "flats": True, "chords": [(0, "", 1), (5, "", 1), (3, "", 1), (8, "", 1)]},
+    # lo stesso giro in minore (i-iv-III-VI): i power chord del grunge nelle atmosfere scure
+    "minor_grunge": {"mode": "minor", "chords": [(0, "m", 1), (5, "m", 1), (3, "", 1), (8, "", 1)]},
+    # gli accordi sospesi degli Who («Pinball Wizard», «Won't Get Fooled Again»): Isus4-I-IV-Vsus4
+    "sus_rock": {"mode": "major", "chords": [(0, "sus4", 1), (0, "", 1), (5, "", 1), (7, "sus4", 1)]},
 }
 
 # Con la variabilita', un accordo puo' "colorarsi" (settima, nona, sus...)

@@ -479,7 +479,7 @@ def test_swing_is_recorded_on_the_events_of_the_melodic_parts(q):
 
 
 def test_only_electronic_genres_keep_a_synth_lead_and_the_acoustic_genres_have_their_own_bands(q):
-    leads = {"elettronica", "lofi", "fusion", "newwave"}     # il synth solista della fusion e della new wave
+    leads = {"elettronica", "lofi", "fusion", "newwave", "hiphop"}     # il synth solista di fusion, new wave e hip hop della old school
     for genre in q.GENRES_DATA:
         for variety in (0, 1):
             for seed in (1, 2, 3):
@@ -745,7 +745,8 @@ def test_mood_color_details(q):
     assert _color_of(q, "pop", "tesa")[5] is True and _color_of(q, "pop", "allegra")[5] is False           # la tesa tiene la tonica
     warm, bright = _color_of(q, "jazz", "sensuale")[0], _color_of(q, "jazz", "giocosa")[0]
     assert warm in ("Tenor_Sax", "Alto_Sax", "Clarinet") and bright in ("Trumpet", "Flute") and warm != bright
-    assert _color_of(q, "rock", "tesa")[0] == _color_of(q, "rock", "allegra")[0]                           # i generi distorti non cambiano timbro
+    # i generi distorti non cambiano timbro con l'atmosfera (dentro lo stesso sapore: il rock alla Led Zeppelin)
+    assert _color_of(q, "rock", "tesa")[0] == _color_of(q, "rock", "epica")[0]
     assert "swing16=56" in _color_of(q, "funk", "giocosa")[4][0] and "swing16=52" in _color_of(q, "funk", "energica")[4][0]
     assert _color_of(q, "soul", "sensuale")[4][0].endswith("=57")
     rows = q._mood_fx("pop", "sognante")
@@ -1580,3 +1581,25 @@ def test_psychedelic_rock_is_doors_in_the_dark_moods_and_hendrix_in_the_bright_o
     assert len(re.findall(r"[a-g]#?\*\d", organ.split("|")[0])) >= 6           # l'arpeggio a ottavi, non note lunghe
     bright = q.quick_song({"genre": "psichedelico", "mood": "epica", "seed": 2, "duration": 60})
     assert bright["choices"]["instruments"]["melody"] == "Distortion_Guitar" and bright["choices"]["styles"]["comp"] == "block_chords"
+
+
+def test_old_school_hip_hop_grunge_progression_and_the_three_rock_flavors(q):
+    """L'hip hop di Public Enemy e Run-DMC (dritto, chitarra distorta a colpi, fiati, 808), con il boom bap jazzato nelle
+    atmosfere morbide; il grunge sul giro i-iv-III-VI col basso a ottavi; il rock alla Led Zeppelin, agli Who, a Lou Reed."""
+    import re
+    old = q.quick_song({"genre": "hiphop", "mood": "energica", "seed": 1, "duration": 60})
+    assert old["choices"]["instruments"]["comp"] == "Distortion_Guitar" and old["choices"]["styles"]["comp2"] == "horn_stabs"
+    assert "swing" not in old["text"].split("Box ", 1)[1]
+    soft = q.quick_song({"genre": "hiphop", "mood": "calma", "seed": 1, "duration": 60})
+    assert "swing16=" in soft["text"] and soft["choices"]["instruments"]["comp"] != "Distortion_Guitar"
+    grunge = q.quick_song({"genre": "grunge", "mood": "malinconica", "seed": 1, "duration": 60})
+    chorus = re.search(r'Box Distortion_Guitar "Ritornello" \|\d+:\n(.*?)\n', grunge["text"]).group(1)
+    assert re.findall(r"\[([a-g]#?)\*", chorus)[::8][:4] == ["e", "a", "g", "c"]
+    bass = re.search(r'Box Bass "Strofa" \|\d+:\n(.*?)\n', grunge["text"]).group(1)
+    assert not re.search(r"\b[2-8][a-g]", bass)                                   # solo ottavi
+    zep = q.quick_song({"genre": "rock", "mood": "tesa", "seed": 1, "duration": 60})["choices"]
+    who = q.quick_song({"genre": "rock", "mood": "allegra", "seed": 2, "duration": 60})["choices"]
+    lou = q.quick_song({"genre": "rock", "mood": "malinconica", "seed": 3, "duration": 60})["choices"]
+    assert zep["styles"]["bass"] == "riff8" and zep["styles"]["comp"] == "power_chords"
+    assert who["instruments"]["comp2"] == "Rock_Organ" and who["styles"]["comp"] == "block_chords"
+    assert lou["instruments"]["comp"] == "Clean_Guitar" and lou["styles"]["comp"] == "quarter_chords"

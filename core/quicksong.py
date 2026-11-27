@@ -210,9 +210,11 @@ GENRES_DATA = {
                 ens="elettrica", form="canzone", moods=("allegra", "festosa", "giocosa", "energica", "tesa", "grintosa"),
                 prog={"major": ("three_chord", "pop", "doo_wop"), "minor": ("minor_three", "minor_pop", "minor_cadence")}),
     # grunge: la strofa pulita e piano (la chitarra pulita in arpeggio), il ritornello distorto e forte
-    "grunge": dict(meter="4/4", bpm=98, drums="rock", bass="eighths", comp="power_chords", comp2="arpeggio_up", melody="vivace",
+    # il grunge di Nirvana, Pixies e Pearl Jam: i power chord che scivolano (I-IV-bIII-bVI), la strofa pulita e il ritornello
+    # distorto, il basso che martella a ottavi
+    "grunge": dict(meter="4/4", bpm=112, drums="rock", bass="eighths", comp="power_chords", comp2="arpeggio_up", melody="vivace",
                    ens="elettrica", form="canzone", dist=True, moods=("tesa", "malinconica", "oscura", "drammatica", "epica", "grintosa"),
-                   prog={"major": ("borrowed_flat6", "mixolydian", "rock"), "minor": ("minor_rock", "minor_three", "phrygian")}),
+                   prog={"major": ("grunge_chromatic", "grunge_chromatic", "borrowed_flat6"), "minor": ("minor_grunge", "minor_grunge", "minor_rock")}),
     "hiphop": dict(meter="4/4", bpm=90, drums="hiphop", bass="root", comp="broken_chord", comp2="sustained", melody="vivace",
                    ens="elettronica", form="canzone", moods=("tesa", "oscura", "malinconica", "calma", "misteriosa", "energica", "allegra", "sensuale", "grintosa"),
                    prog={"major": ("jazz_251", "gospel", "pop"), "minor": ("dorian_vamp", "minor_pop", "minor_three")}),
@@ -271,7 +273,7 @@ _SLAP_BASS_STYLES = ("funk16",)
 _LOW_COMP_STYLES = ("power_chords", "metal_gallop")
 _GENRE_HORN_OCTAVE = {"bigband": 3}
 # il basso che martella la fondamentale a ottavi, senza pause, rivolti o note di passaggio: il punk
-_STEADY_BASS_GENRES = ("punk",)
+_STEADY_BASS_GENRES = ("punk", "grunge")
 _ACOUSTIC_BASSES = ("Contrabass", "Acoustic_Bass")
 _ALWAYS_NORMAL = ("pianosolo", "chitarrasola", "preludio", "corale", "minuetto")
 # le parti che non si diradano nelle sezioni leggere: l'arpeggio pulito della strofa del grunge (leggero diventava note lunghe,
@@ -447,7 +449,7 @@ _PROG_POOLS = {
 }
 _PROG_POOL_OF = {"jazz": "jazz", "swing": "jazz", "bossa": "jazz", "samba": "jazz", "chacha": "jazz", "lofi": "jazz",
                  "funk": "funk", "soul": "soul", "disco": "groove", "reggae": "folk", "country": "folk",
-                 "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None, "ska": "folk", "grunge": "rock",
+                 "rock": "rock", "punk": "rock", "metal": "rock", "rocknroll": "rock", "blues": None, "ska": "folk", "grunge": None,
                  "hiphop": "groove", "polka": "folk", "mazurka": "folk", "tarantella": "folk", "corale": None, "minuetto": None,
                  "preludio": None, "bigband": "jazz", "fusion": "funk", "newwave": "rock", "psichedelico": "rock"}
 _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "root_fifth"), "country": ("walk_up", "root_fifth", "root"),
@@ -455,7 +457,7 @@ _BASS_ALTS = {"pop": ("root_fifth", "root", "eighths"), "ballata": ("root", "roo
               "disco": ("octaves", "octaves", "eighths"), "funk": ("funk16", "octaves", "eighths"), "samba": ("bossa", "two_feel", "root_fifth"), "bossa": ("bossa", "root", "two_feel"), "marcia": ("two_feel", "root"), "metal": ("eighths", "root"), "reggae": ("reggae", "root", "root_fifth"),
               "punk": ("eighths", "root_fifth"), "lofi": ("root", "root_fifth"),
               "elettronica": ("octaves", "eighths", "root"), "ska": ("walking",), "hiphop": ("root", "octaves"),
-              "grunge": ("eighths", "root"), "polka": ("polka",), "mazurka": ("waltz",), "tarantella": ("two_feel",),
+              "grunge": ("eighths",), "polka": ("polka",), "mazurka": ("waltz",), "tarantella": ("two_feel",),
               "bigband": ("walking",), "fusion": ("funk16", "octaves"), "newwave": ("eighths",), "psichedelico": ("root_fifth", "eighths", "octaves")}
 _DRUM_ALTS = {"pop": ("rock", "halftime"), "ballata": ("halftime", "slow_rock_128"), "lofi": ("hiphop", "halftime"),
               "soul": ("soul", "halftime")}
@@ -1077,6 +1079,44 @@ _GENRE_FLAVORS["psichedelico"] = (
 )
 
 
+_GENRE_FLAVORS["hiphop"] = (
+    # Public Enemy e Run-DMC: il beat dritto della drum machine, la chitarra distorta a colpi, i fiati campionati, l'808 sulla
+    # cassa, un accordo solo che gira, il riff ripetuto (le atmosfere morbide restano al boom bap jazzato)
+    {"moods": ("tesa", "oscura", "energica", "allegra", "misteriosa", "grintosa"),
+     "recipe": {"bpm": 102, "drums": "hiphop", "bass": "root", "comp": "funk_stab", "comp2": "horn_stabs", "melody": "vivace",
+                "prog": {"major": ("funk_vamp", "mixolydian", "funk_vamp"), "minor": ("phrygian", "funk_minor", "dorian_vamp")},
+                "keep_hat": True, "straight": True, "scale": "blues"},
+     "instruments": {"comp": "Distortion_Guitar", "comp2": "Brass_Section", "bass": "Synth_Bass_1", "melody": "Lead_2_sawtooth"},
+     "alts": {"melody": ("Lead_2_sawtooth", "Lead_1_square"), "comp": ("Distortion_Guitar", "Overdriven_Guitar"),
+              "comp2": ("Brass_Section",), "bass": ("Synth_Bass_1", "Synth_Bass_2")},
+     "bass_alts": ("root",)},
+)
+_GENRE_FLAVORS["rock"] = (
+    # i Led Zeppelin: il riff in minore col basso che lo raddoppia, la chitarra che canta con le note blue
+    {"moods": ("tesa", "epica", "oscura", "drammatica"),
+     "recipe": {"bpm": 112, "bass": "riff8", "comp": "power_chords", "comp2": "block_chords", "melody": "vivace",
+                "prog": {"major": ("mixolydian", "rock", "borrowed_flat6"), "minor": ("minor_rock", "andalusian", "minor_three")},
+                "scale": "blues"},
+     "bass_alts": ("riff8",)},
+    # gli Who: gli accordi pieni con la quarta sospesa, l'organo che arpeggia («Baba O'Riley»), il basso a ottave
+    {"moods": ("allegra", "energica", "festosa", "avventurosa"),
+     "recipe": {"bpm": 130, "bass": "octaves", "comp": "block_chords", "comp2": "arpeggio_up", "melody": "vivace", "dist": False,
+                "prog": {"major": ("sus_rock", "rock", "mixolydian"), "minor": ("minor_rock", "minor_pop", "minor_epic")}},
+     "instruments": {"comp": "Overdriven_Guitar", "comp2": "Rock_Organ", "melody": "Distortion_Guitar"},
+     "alts": {"melody": ("Distortion_Guitar",), "comp": ("Overdriven_Guitar",), "comp2": ("Rock_Organ",)},
+     "bass_alts": ("octaves", "eighths")},
+    # Lou Reed: la chitarra pulita a quarti, tre accordi, il basso a ottavi
+    {"moods": ("malinconica",),
+     "recipe": {"bpm": 100, "bass": "eighths", "comp": "quarter_chords", "comp2": "sustained", "melody": "cantabile", "dist": False,
+                "steady_parts": ("bass", "comp"),
+                "prog": {"major": ("three_chord", "mixolydian", "rock"), "minor": ("minor_three", "minor_rock", "minor_pop")},
+                "keep_hat": True},
+     "instruments": {"comp": "Clean_Guitar", "comp2": "Rock_Organ", "melody": "Overdriven_Guitar"},
+     "alts": {"melody": ("Overdriven_Guitar", "Tenor_Sax"), "comp": ("Clean_Guitar",), "comp2": ("Rock_Organ",)},
+     "bass_alts": ("eighths",)},
+)
+
+
 def _genre_flavor(genre: str, mood: str) -> Optional[dict]:
     """Il sapore del genere per l'atmosfera (_GENRE_FLAVORS), o None."""
     return next((f for f in _GENRE_FLAVORS.get(genre, ()) if mood in f["moods"]), None)
@@ -1239,7 +1279,8 @@ def resolve(options: Optional[dict] = None) -> dict:
 
     drum_styles = rg.drum_styles_for_meter(meter)
     drums = options.get("drums") or recipe["drums"]
-    if not options.get("drums") and variety > 0 and genre in _DRUM_ALTS and part_rng["drums"].random() < 0.6 * variety:
+    if not options.get("drums") and variety > 0 and genre in _DRUM_ALTS and not (flavor and "drums" in flavor["recipe"]) \
+            and part_rng["drums"].random() < 0.6 * variety:
         drums = part_rng["drums"].choice(_DRUM_ALTS[genre])
     if drums is not None and drums not in drum_styles:
         drums = drum_styles[0] if drum_styles else None      # lo stile non esiste per questa metrica
@@ -1295,9 +1336,9 @@ def resolve(options: Optional[dict] = None) -> dict:
         bass_alts = (flavor or {}).get("bass_alts") or _BASS_ALTS.get(genre)
         if bass_alts and part_rng["bass"].random() < 0.5 * variety:
             bass_style = part_rng["bass"].choice(bass_alts)
-        if genre in _SWAP_COMP and part_rng["comp"].random() < 0.35 * variety:
+        if genre in _SWAP_COMP and not flavor and part_rng["comp"].random() < 0.35 * variety:
             comp_style, comp2_style = comp2_style, comp_style           # i due accompagnamenti si scambiano
-        elif genre in _COMP_ALTS:
+        elif genre in _COMP_ALTS and not flavor:                   # il sapore del genere ha i suoi accompagnamenti
             crng = random.Random(f"{seeds['comp']}/stile")
             if crng.random() < 0.5 * variety:
                 comp_style = crng.choice([x for x in _COMP_ALTS[genre] if x != comp2_style] or _COMP_ALTS[genre])
@@ -1413,7 +1454,8 @@ def resolve(options: Optional[dict] = None) -> dict:
             "duration": options.get("duration"), "bars": _int(options.get("bars"), 0), "variability": options.get("variability"),
             "prog": list(prog_triple), "intensities": list(intensities), "styles": styles, "instruments": instruments, "seeds": seeds,
             "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill,
-            "keep_hat": bool(recipe.get("keep_hat")), "scale": recipe.get("scale", ""),
+            "keep_hat": bool(recipe.get("keep_hat")), "scale": recipe.get("scale", ""), "straight": bool(recipe.get("straight")),
+            "steady_parts": tuple(recipe.get("steady_parts", ())),
             "formation": formation, "left_out": left_out,
             "track_names": {p: _track_label(n) for p, n in (recipe.get("tracks") or {}).items() if p in instruments}}
 
@@ -1802,6 +1844,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     compact_on = options.get("compact", True) not in (False, 0, "0", "no")
     out_sections: List[dict] = []
     swing = swing_word(c["genre"], bpm, options.get("swing"))
+    if c.get("straight") and options.get("swing") in (None, ""):
+        swing = ""                                          # l'hip hop della old school: la drum machine dritta
     delta = _MOOD_COLOR.get(c["mood"], {}).get("swing", 0)
     if swing and delta and options.get("swing") in (None, ""):
         word, _eq, value = swing.partition("=")
@@ -1847,7 +1891,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
         # il ponte di un'atmosfera quieta, sul pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano
         pedal_bridge = role == "bridge" and MOODS_DATA[c["mood"]][4] <= 2
         pedal_verse = role in ("verse", "intro") and _MOOD_COLOR.get(c["mood"], {}).get("pedal_verse")      # la tesa: la tonica tenuta sotto la strofa
-        pedal_ok = not (c["parts"].get("bass") or {}).get("style") and c["styles"]["bass"] not in ("walking", "blues", "shuffle")
+        pedal_ok = not (c["parts"].get("bass") or {}).get("style") and c["styles"]["bass"] not in ("walking", "blues", "shuffle", "boogie",
+                                                                                                    "riff8")
         # il pedale (8.5): il basso tiene la tonica sotto gli accordi che cambiano. Una nota lunga per battuta; solo il basso a
         # ottavi del rock tiene il suo disegno, ma sempre sulla tonica
         bass_style = "pedal" if (pedal_bridge or (pedal_verse and c["styles"]["bass"] != "eighths")) and pedal_ok else c["styles"]["bass"]
@@ -1902,7 +1947,9 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 if (part == "comp2" and role != "fade" and "pad" in active and c["styles"].get("comp2") == "sustained"
                         and c["styles"].get("pad") == "sustained" and role in _enters(c["genre"], "pad")):
                     continue            # due tappeti di accordi tenuti: nelle sezioni del tappeto resta lui (gli archi), l'organo tace
-                part_lvl = "normal" if lvl == "light" and (c["genre"], part) in _PART_ALWAYS_NORMAL else lvl
+                part_lvl = "normal" if lvl == "light" and ((c["genre"], part) in _PART_ALWAYS_NORMAL
+                                                           or part in c.get("steady_parts", ())
+                                                           or (part == "bass" and c["genre"] in _STEADY_BASS_GENRES)) else lvl
                 common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": part_lvl, "variability": variability}
                 if part in ("comp", "comp2", "horn", "pad"):
                     octave_opt = ({"octave": _GENRE_COMP_OCTAVE[c["genre"]]} if part == "comp" and c["genre"] in _GENRE_COMP_OCTAVE else {})

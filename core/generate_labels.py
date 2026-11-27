@@ -140,6 +140,9 @@ def generator_labels() -> dict:
         ("borrowed_flat6", tr("Accordi in prestito (I-bVI-bVII-I)")),
         ("minor_deceptive", tr("Minore d'inganno (i-iv-V-VI)")),
         ("minor_plagal", tr("Minore plagale (i-VI-iv-i)")),
+        ("grunge_chromatic", tr("Grunge cromatico (I-IV-bIII-bVI)")),
+        ("minor_grunge", tr("Grunge in minore (i-iv-III-VI)")),
+        ("sus_rock", tr("Rock sospeso (Isus4-I-IV-Vsus4)")),
     ]
     intensity_labels = [
         ("light", tr("Leggera (strofa, intro)")),
