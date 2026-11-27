@@ -1510,3 +1510,73 @@ def test_rootless_voicings_stay_without_the_root_and_the_fade_has_bar_lines(q):
     assert not any(n.startswith("f*") for n in first), first               # Fa: la, do, sol (terza, quinta, nona), niente fa
     fade = re.search(r'Box Electric_Piano_1 "Sfumato" \|\d+:\n(.*?)(?:\n\n|\Z)', text, re.S).group(1)
     assert fade.count("|") >= 4
+
+
+def test_power_chords_have_the_fifth_above_a_low_root_and_the_punk_bass_hammers_eighths(q):
+    """Il punk: power chord con la quinta sopra la fondamentale (sotto era una quarta) e la fondamentale all'ottava 3, sotto
+    la melodia; il basso a ottavi senza pause."""
+    import re
+    song = q.quick_song({"genre": "punk", "mood": "allegra", "seed": 76993116, "duration": 60})
+    text = song["text"]
+    pcs = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+    guitar = "".join(m.group(1) for m in re.finditer(r'Box Distortion_Guitar "(?:Strofa|Ritornello)[^"]*" \|\d+:\n(.*?)\n\n', text, re.S))
+    chords = re.findall(r"\[([^\]]+)\]", guitar)
+    assert chords
+    for chord in chords:
+        notes = [pcs[n[0]] + n.count("#") + 12 * int(o) for n, o in re.findall(r"([a-g]#?)\*(\d)", chord)]
+        assert notes[1] - notes[0] == 7 and notes[0] < 60, chord
+    bass = "".join(m.group(1) for m in re.finditer(r'Box Bass "Strofa[^"]*" \|\d+:\n(.*?)\n\n', text, re.S))
+    assert not re.search(r"(?<![\w#*])\d*r\b", bass)
+
+
+def test_a_big_band_chart_has_an_intro_a_solo_chorus_backgrounds_and_ends_with_a_hit(q):
+    """La big band: intro degli ottoni, il tema AABA con la seconda voce in ogni A, l'assolo sugli stessi accordi (ogni giro
+    nuovo), i background degli ottoni sotto la melodia, il colpo finale (non lo sfumato)."""
+    import re
+    song = q.quick_song({"genre": "bigband", "mood": "allegra", "seed": 1415902730, "duration": 120})
+    text, horn = song["text"], song["choices"]["instruments"]["horn"]
+    names = re.findall(r'^Box \S+ "([^"]+)" \|', text, re.M)
+    assert names[0] == "Intro" and any(n.startswith("Assolo") for n in names) and "Sfumato" not in names
+    assert song["choices"]["ending"] == "cadenza"
+    assert re.search(r'Box %s "Intro"' % horn, text)
+    solos = [m.group(1) for m in re.finditer(r'Box %s "Assolo A" \|\d+:\n(.*?)\n' % song["choices"]["instruments"]["melody"], text)]
+    assert len(solos) >= 2 and len(set(solos)) == len(solos)
+    guitar = dict(re.findall(r'Box Jazz_Guitar "(A|Assolo A)" \|\d+:\n  swing=\d+ 4: (\S+ \S+)', text))
+    assert guitar["A"].split()[-1] == guitar["Assolo A"].split()[-1]         # l'assolo sugli accordi del tema
+    harm = song["choices"]["instruments"].get("harm")
+    assert harm and len(re.findall(r'Box %s "A" \|' % harm, text)) >= 3
+    pcs = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+    background = re.findall(r'Box %s "A" \|\d+:\n(.*?)\n' % horn, text)[0]
+    top = max(pcs[n[0]] + n.count("#") + 12 * int(o) for n, o in re.findall(r"([a-g]#?)\*(\d)", background))
+    assert top <= 69                                                             # sotto il tema (la4 al massimo)
+    assert "8r\n" not in "".join(re.findall(r"Pattern %\S+:\n(.*?\n)", text))
+
+
+def test_new_wave_is_cure_in_the_dark_moods_and_talking_heads_in_the_bright_ones(q):
+    """La new wave cupa alla Cure (il basso che porta il riff, la chitarra pulita che arpeggia, il charleston anche nel
+    ritornello) e quella ballabile alla Talking Heads (la chitarra stoppata a sedicesimi, il groove funk, giri di uno o due
+    accordi)."""
+    import re
+    dark = q.quick_song({"genre": "newwave", "mood": "malinconica", "seed": 1, "duration": 60})
+    assert dark["choices"]["styles"]["bass"] == "riff8" and dark["choices"]["styles"]["comp"] == "arpeggio_up"
+    bright = q.quick_song({"genre": "newwave", "mood": "allegra", "seed": 407972299, "duration": 60})
+    assert bright["choices"]["styles"]["comp"] == "scratch" and bright["choices"]["styles"]["drums"] == "funk"
+    for song in (dark, bright):
+        drums = "".join(re.findall(r'Box Drums "Ritornello" \|\d+:\n(.*?)\n', song["text"]))
+        assert drums and "ride" not in drums and "hihat" in drums
+    chords = set(re.findall(r"\b([A-G][#b]?(?:m|7|m7)?)\b", "".join(
+        re.findall(r'Box Clean_Guitar "Strofa" \|\d+:\n(.*?)\n\n', bright["text"], re.S))))
+    assert 1 <= len(chords) <= 3, chords
+
+
+def test_psychedelic_rock_is_doors_in_the_dark_moods_and_hendrix_in_the_bright_ones(q):
+    """Il rock psichedelico: nelle atmosfere scure l'organo che ripete l'arpeggio a ottavi e il basso sul riff (anche nella
+    strofa leggera), sui giri modali; in quelle accese il trio di Hendrix, le chitarre distorte e la scala blues."""
+    import re
+    dark = q.quick_song({"genre": "psichedelico", "mood": "ipnotica", "seed": 1708353645, "duration": 60})
+    assert dark["choices"]["instruments"]["comp"] == "Rock_Organ" and dark["choices"]["styles"]["bass"] == "riff8"
+    assert dark["choices"]["styles"]["comp"] == "organ_ostinato"
+    organ = re.search(r'Box Rock_Organ "Strofa" \|\d+:\n(.*?)\n', dark["text"]).group(1)
+    assert len(re.findall(r"[a-g]#?\*\d", organ.split("|")[0])) >= 6           # l'arpeggio a ottavi, non note lunghe
+    bright = q.quick_song({"genre": "psichedelico", "mood": "epica", "seed": 2, "duration": 60})
+    assert bright["choices"]["instruments"]["melody"] == "Distortion_Guitar" and bright["choices"]["styles"]["comp"] == "block_chords"

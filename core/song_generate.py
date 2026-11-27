@@ -136,7 +136,8 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
                                        intensity=intensity, phrase_fills=bool(options.get("phrase_fills", True)),
                                        ending=bool(options.get("ending", False)), kick_accents=None,
                                        section_fill_bars=section_bars,
-                                       crash_first=bool(options.get("crash_first")), **variation)
+                                       crash_first=bool(options.get("crash_first")),
+                                       keep_hat=bool(options.get("keep_hat")), **variation)
     elif kind == "bass":
         chords, _source = _chords_of(project, options.get("source"), track_name)
         instrument = _instrument(project, options.get("instrument", "Bass"))

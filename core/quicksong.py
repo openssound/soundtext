@@ -268,11 +268,16 @@ _SOLO_GENRES = ("pianosolo", "chitarrasola", "preludio", "corale", "minuetto")
 _GENRE_MAIN_MELODY = {"hiphop": "melody_riff"}
 _GENRE_CHORD_COLOR = {"fusion": "extended", "bigband": "seventh"}     # gli accordi del genere: none e tredicesime, le settime
 _SLAP_BASS_STYLES = ("funk16",)
+_LOW_COMP_STYLES = ("power_chords", "metal_gallop")
+_GENRE_HORN_OCTAVE = {"bigband": 3}
+# il basso che martella la fondamentale a ottavi, senza pause, rivolti o note di passaggio: il punk
+_STEADY_BASS_GENRES = ("punk",)
 _ACOUSTIC_BASSES = ("Contrabass", "Acoustic_Bass")
 _ALWAYS_NORMAL = ("pianosolo", "chitarrasola", "preludio", "corale", "minuetto")
 # le parti che non si diradano nelle sezioni leggere: l'arpeggio pulito della strofa del grunge (leggero diventava note lunghe,
 # e la strofa e' proprio la chitarra pulita che arpeggia)
-_PART_ALWAYS_NORMAL = {("grunge", "comp2")}
+# (e l'ostinato dell'organo dei Doors, l'arpeggio della chitarra dei Cure: l'arpeggio leggero diventava note lunghe)
+_PART_ALWAYS_NORMAL = {("grunge", "comp2"), ("psichedelico", "comp"), ("newwave", "comp")}
 # lo spostamento del centro delle frasi per sezione, in semitoni: nel grunge il ritornello sale sopra la chitarra distorta
 # (la strofa resta dov'e': piu' in basso finirebbe dentro l'arpeggio della chitarra pulita)
 _SECTION_LIFT = {"grunge": {"chorus": 4, "end": 4}}
@@ -409,7 +414,7 @@ _GENRE_INSTRUMENTS = {
     "psichedelico": {"comp": "Rock_Organ", "comp2": "Clean_Guitar", "bass": "Bass", "melody": "Overdriven_Guitar"},
 }
 _HORN_STYLE = {"swing": "horn_stabs", "soul": "horn_stabs", "funk": "horn_stabs", "disco": "horn_stabs", "chacha": "horn_stabs",
-               "ska": "horn_stabs", "bigband": "horn_stabs"}
+               "ska": "horn_stabs", "bigband": "sustained"}      # la big band: i «background», accordi tenuti dietro il tema
 
 # lo strumento della seconda voce (il tema in terze dell'ultimo ritornello), nella famiglia della melodia: la formazione di un
 # genere non cambia da sola, la seconda voce c'e' solo se la si chiede (opzione second_voice)
@@ -741,7 +746,7 @@ _GENRE_ENTER = {
                 "bass": ("chorus", "bridge", "solo", "end", "loop")},
     "ballata68": {"drums": ("chorus", "bridge", "solo", "end", "loop"), "bass": ("chorus", "bridge", "solo", "end", "loop")},
     # big band: la sezione dei fiati suona gia' nelle prime A (risponde alla melodia, poi spinge)
-    "bigband": {"horn": ("verse", "chorus", "bridge", "solo", "end")},
+    "bigband": {"horn": ("intro", "verse", "chorus", "bridge", "solo", "end")},            # l'intro e' degli ottoni
     # grunge: la strofa con la chitarra pulita, il ritornello con quella distorta
     "grunge": {"comp": ("chorus", "bridge", "solo", "end", "loop"), "comp2": ("intro", "verse", "bridge", "fade")},
     # tarantella: l'intro e' il tamburello da solo
@@ -752,7 +757,7 @@ _GENRE_ENTER = {
 }
 # l'intro di groove: nei generi da ballo e da band la sezione ritmica attacca subito, a intensita' normale (l'accompagnamento da
 # solo e leggero lasciava un accordo per battuta e il silenzio); il valzer ha bisogno del basso sul primo tempo («um-pa-pa»)
-_GROOVE_INTRO = ("pop", "rock", "funk", "disco", "reggae", "country", "ska", "hiphop", "polka", "mazurka", "fusion", "newwave")
+_GROOVE_INTRO = ("pop", "rock", "funk", "disco", "reggae", "country", "ska", "hiphop", "polka", "mazurka", "fusion", "newwave", "bigband")
 for _genre in _GROOVE_INTRO:
     for _part in ("bass", "drums"):
         _GENRE_ENTER.setdefault(_genre, {}).setdefault(_part, ("intro", "verse", "chorus", "bridge", "solo", "end", "loop"))
@@ -777,7 +782,8 @@ _GENRE_BREAK = {
 _BREAK_PARTS = {"hit": ("comp", "comp2", "horn", "bass", "drums"), "drop": ("comp", "comp2"), "fill": ("drums",)}
 
 # i finali per genere (3d): quello di partenza (se non lo si sceglie), il colore dell'ultimo accordo e i colpi finali
-_GENRE_ENDING = {"funk": "sfumato", "disco": "sfumato", "reggae": "sfumato", "samba": "sfumato", "country": "rallentando",
+_GENRE_ENDING = {"bigband": "cadenza",                    # la big band chiude col colpo d'insieme, non sfuma
+                 "funk": "sfumato", "disco": "sfumato", "reggae": "sfumato", "samba": "sfumato", "country": "rallentando",
                  "rock": "rallentando", "metal": "rallentando", "jazz": "rallentando", "orchestrale": "rallentando",
                  "afro68": "sfumato", "soul": "sfumato", "valzer": "rallentando", "ballata": "rallentando", "ballata68": "rallentando",
                  "bossa": "sfumato", "lofi": "sfumato", "elettronica": "sfumato", "hiphop": "sfumato", "pianosolo": "rallentando",
@@ -1023,6 +1029,81 @@ def _phrases(bars: float, minimum: int = 4) -> int:
     return max(minimum, int(round(bars / 4.0)) * 4)
 
 
+# i «sapori» di un genere, scelti dall'atmosfera: la new wave cupa alla Cure (minore, il basso che porta il riff, la chitarra
+# pulita che arpeggia col chorus, il tappeto di archi sintetici, il charleston a ottavi anche nel ritornello) e quella
+# nervosa e ballabile alla Talking Heads (giri di uno o due accordi, la chitarra stoppata a sedicesimi, il basso sincopato)
+_GENRE_FLAVORS = {
+    "newwave": (
+        {"moods": ("malinconica", "oscura", "sognante", "tesa", "misteriosa", "nostalgica"),
+         "recipe": {"bpm": 140, "drums": "rock", "bass": "riff8", "comp": "arpeggio_up", "comp2": "sustained", "melody": "cantabile",
+                    "prog": {"major": ("pop", "borrowed_flat6", "royal_road"), "minor": ("minor_pop", "minor_epic", "minor_three")},
+                    "keep_hat": True},
+         "instruments": {"comp": "Clean_Guitar", "comp2": "Synth_Strings_1", "bass": "Bass", "melody": "Lead_2_sawtooth"},
+         "alts": {"melody": ("Lead_2_sawtooth", "Polysynth", "Clean_Guitar"), "comp": ("Clean_Guitar",), "comp2": ("Synth_Strings_1",
+                                                                                                                  "Pad_3_polysynth"),
+                  "bass": ("Bass",)},
+         "bass_alts": ("riff8",)},
+        {"moods": ("allegra", "energica"),
+         "recipe": {"bpm": 116, "drums": "funk", "bass": "funk16", "comp": "scratch", "comp2": "sustained", "melody": "vivace",
+                    "prog": {"major": ("funk_vamp", "mixolydian", "funk_vamp"), "minor": ("funk_minor", "dorian_vamp", "funk_minor")},
+                    "keep_hat": True},
+         "instruments": {"comp": "Clean_Guitar", "comp2": "Polysynth", "bass": "Bass", "melody": "Lead_1_square"},
+         "alts": {"melody": ("Lead_1_square", "Polysynth", "Marimba"), "comp": ("Clean_Guitar",), "comp2": ("Polysynth", "Rock_Organ"),
+                  "bass": ("Bass", "Synth_Bass_1")},
+         "bass_alts": ("funk16", "octaves")},
+    ),
+}
+
+
+_GENRE_FLAVORS["psichedelico"] = (
+    # i Doors e i primi Pink Floyd: l'organo che ripete il suo arpeggio, il basso che gira sul riff, i giri modali (dorico,
+    # frigio, andaluso: «Light My Fire», «White Rabbit», «Spanish Caravan»), la chitarra pulita arpeggiata, il charleston fisso
+    {"moods": ("sognante", "misteriosa", "ipnotica", "oscura", "tesa"),
+     "recipe": {"bpm": 112, "drums": "rock", "bass": "riff8", "comp": "organ_ostinato", "comp2": "broken_chord", "melody": "cantabile",
+                "prog": {"major": ("mixolydian", "borrowed_flat6", "mixolydian"), "minor": ("dorian_vamp", "phrygian", "andalusian")},
+                "keep_hat": True},
+     "instruments": {"comp": "Rock_Organ", "comp2": "Clean_Guitar", "bass": "Bass", "melody": "Overdriven_Guitar"},
+     "alts": {"melody": ("Overdriven_Guitar", "Rock_Organ", "Sitar"), "comp": ("Rock_Organ",), "comp2": ("Clean_Guitar", "Sitar"),
+              "bass": ("Bass",)},
+     "bass_alts": ("riff8",)},
+    # Jimi Hendrix: il trio, la chitarra distorta che accompagna e quella che canta con le note blue, il basso sul riff
+    {"moods": ("epica", "allegra", "avventurosa"),
+     "recipe": {"bpm": 108, "drums": "rock", "bass": "riff8", "comp": "block_chords", "comp2": "sustained", "melody": "vivace",
+                "prog": {"major": ("mixolydian", "rock", "borrowed_flat6"), "minor": ("minor_rock", "minor_blues_12", "andalusian")},
+                "scale": "blues"},
+     "instruments": {"comp": "Overdriven_Guitar", "comp2": "Rock_Organ", "bass": "Bass", "melody": "Distortion_Guitar"},
+     "alts": {"melody": ("Distortion_Guitar",), "comp": ("Overdriven_Guitar",), "comp2": ("Rock_Organ",), "bass": ("Bass",)},
+     "bass_alts": ("riff8", "octaves")},
+)
+
+
+def _genre_flavor(genre: str, mood: str) -> Optional[dict]:
+    """Il sapore del genere per l'atmosfera (_GENRE_FLAVORS), o None."""
+    return next((f for f in _GENRE_FLAVORS.get(genre, ()) if mood in f["moods"]), None)
+
+
+# l'arrangiamento della big band: intro degli ottoni, il tema (AABA) suonato dalla sezione, un giro di assolo con i fiati
+# dietro, il tema di nuovo con l'ultimo A all'ottava sopra (lo «shout») e il colpo finale
+_CHART_GENRES = ("bigband",)
+
+
+def _chart_sections(target: int) -> List[Tuple[str, str, int]]:
+    """Le sezioni di un arrangiamento da big band per circa 'target' battute: intro, tema, (assolo), tema finale."""
+    head = [(tr("A"), "chorus", 8), (tr("A"), "chorus", 8), (tr("B"), "bridge", 8), (tr("A"), "chorus", 8)]
+    out = [(tr("Intro"), "intro", 4)]
+    if target < 28:                                      # un brano breve: A e B del tema
+        return out + [(tr("A"), "chorus", 8), (tr("A"), "end", 8)][: 1 if target < 14 else 2]
+    cycles = max(1, int(round((target - 4) / 32.0)))
+    out += head
+    for _ in range(cycles - 2):                          # i giri in mezzo: l'assolo sugli stessi accordi
+        out += [(tr("Assolo A"), "solo", 8), (tr("Assolo A"), "solo", 8), (tr("Assolo B"), "solo", 8), (tr("Assolo A"), "solo", 8)]
+    if cycles >= 2:
+        out += head[:3] + [(tr("A"), "end", 8)]
+    else:
+        out[-1] = (tr("A"), "end", 8)
+    return out
+
+
 def _form_sections(form: str, target: int, loops: Optional[int] = None, short: bool = False) -> List[Tuple[str, str, int]]:
     """Le sezioni (nome, ruolo, battute) di una forma per un brano di circa 'target' battute. Con 'short' (fino a 20 secondi)
     la forma a strofa e ritornello e' una frase sola, senza intro."""
@@ -1113,6 +1194,9 @@ def resolve(options: Optional[dict] = None) -> dict:
         labels, moods = _genre_labels(), _mood_labels()
         fallback = tr("«{genre} {mood}» non c'è: ho scelto «{genre} {other}».", genre=labels[genre], mood=moods[mood], other=moods[near])
         mood = near
+    flavor = _genre_flavor(genre, mood)
+    if flavor:
+        recipe = {**recipe, **flavor.get("recipe", {})}
     seed = options.get("seed")
     seed = _random.randrange(2 ** 31) if seed is None or seed == "" else _int(seed, 0)
     rng = _random.Random(seed)
@@ -1146,6 +1230,8 @@ def resolve(options: Optional[dict] = None) -> dict:
     part_rng = {part: _random.Random(f"{seeds[part]}/variety") for part in PARTS}
     if variety > 0 and not options.get("chords") and _PROG_POOL_OF.get(genre, "default") is not None:
         pool = _PROG_POOLS[_PROG_POOL_OF.get(genre, "default")][mode]
+        if flavor and flavor["recipe"].get("prog"):
+            pool = list(flavor["recipe"]["prog"][mode])         # i giri del sapore (il vamp dei Talking Heads), non quelli del rock
         prog_triple = tuple(vrng.choice(pool) if vrng.random() < 0.75 * variety else base for base in prog_triple)
     meter = options.get("meter") or recipe["meter"]
     bpm = _int(options.get("bpm"), 0) or int(round(recipe["bpm"] * tempo_factor * (1 + variety * vrng.uniform(-0.08, 0.08))))
@@ -1206,8 +1292,9 @@ def resolve(options: Optional[dict] = None) -> dict:
     density = 0.5 if density is None else max(0.0, min(1.0, float(density)))
     bass_style, comp_style, comp2_style = recipe["bass"], recipe["comp"], recipe["comp2"]
     if variety > 0 and meter == "4/4":
-        if genre in _BASS_ALTS and part_rng["bass"].random() < 0.5 * variety:
-            bass_style = part_rng["bass"].choice(_BASS_ALTS[genre])
+        bass_alts = (flavor or {}).get("bass_alts") or _BASS_ALTS.get(genre)
+        if bass_alts and part_rng["bass"].random() < 0.5 * variety:
+            bass_style = part_rng["bass"].choice(bass_alts)
         if genre in _SWAP_COMP and part_rng["comp"].random() < 0.35 * variety:
             comp_style, comp2_style = comp2_style, comp_style           # i due accompagnamenti si scambiano
         elif genre in _COMP_ALTS:
@@ -1228,10 +1315,12 @@ def resolve(options: Optional[dict] = None) -> dict:
                 instruments.pop(part, None)
             elif not (part == "comp" and name == "Overdriven_Guitar" and instruments.get("comp") == "Distortion_Guitar"):
                 instruments[part] = name
+    if flavor and ensemble == recipe["ens"]:
+        instruments.update(flavor.get("instruments", {}))   # gli strumenti del sapore del genere (la new wave alla Cure)
     if styles["comp"] == "boogie_piano" and instruments.get("comp") not in (None, "Piano"):
         instruments["comp"] = "Piano"                        # il boogie-woogie si suona al pianoforte
     if variety > 0:                                          # strumenti alternativi (sceglie il seme di ogni parte)
-        genre_alts = _INSTRUMENT_ALTS_GENRE.get(genre, {}) if ensemble == recipe["ens"] else {}
+        genre_alts = ((flavor or {}).get("alts") or _INSTRUMENT_ALTS_GENRE.get(genre, {})) if ensemble == recipe["ens"] else {}
         for part in ("comp", "comp2", "melody", "bass"):
             pool = genre_alts.get(part) or _INSTRUMENT_ALTS.get(ensemble, {}).get(part)
             if part == "melody" and recipe.get("dist") and ensemble == "elettrica" and not genre_alts.get("melody"):
@@ -1324,6 +1413,7 @@ def resolve(options: Optional[dict] = None) -> dict:
             "duration": options.get("duration"), "bars": _int(options.get("bars"), 0), "variability": options.get("variability"),
             "prog": list(prog_triple), "intensities": list(intensities), "styles": styles, "instruments": instruments, "seeds": seeds,
             "chords": str(options.get("chords") or "").strip(), "parts": parts_in, "drum_fill": drum_fill,
+            "keep_hat": bool(recipe.get("keep_hat")), "scale": recipe.get("scale", ""),
             "formation": formation, "left_out": left_out,
             "track_names": {p: _track_label(n) for p, n in (recipe.get("tracks") or {}).items() if p in instruments}}
 
@@ -1630,6 +1720,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
     loops = 4 if c["loop"] else None
     short = bool(c["duration"]) and float(c["duration"]) <= 20 and not c["bars"]
     sections = _form_sections(form, target, loops, short)
+    if c["genre"] in _CHART_GENRES and form == "aaba" and not short:
+        sections = _chart_sections(target)
     total_bars = sum(b for _n, _r, b in sections)
 
     # l'intensita' di ogni ruolo, spostata dalla densita'
@@ -1760,11 +1852,23 @@ def quick_song(options: Optional[dict] = None) -> dict:
         # ottavi del rock tiene il suo disegno, ma sempre sulla tonica
         bass_style = "pedal" if (pedal_bridge or (pedal_verse and c["styles"]["bass"] != "eighths")) and pedal_ok else c["styles"]["bass"]
         tonic_bass = bool((pedal_bridge or pedal_verse) and pedal_ok)
-        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style, tonic_bass)
+        # l'assolo della big band gira sugli accordi del tema: quelli dell'A e del B
+        # (ogni giro dell'assolo e' nuovo: le altre parti e la melodia hanno i semi della sezione, non quelli del tema)
+        h_role, h_sidx = role, sidx
+        solo_turn = None
+        if c["genre"] in _CHART_GENRES and role == "solo":
+            h_name = sname.split()[-1]
+            h_role = "bridge" if h_name == tr("B") else "chorus"
+            h_sidx = next((i for i, (n, _r, _b) in enumerate(sections) if n == h_name), sidx)
+            solo_turn = idx
+            sidx = idx
+            seed_of = lambda part, offset=0: (c["seeds"][part] * 1000 + sidx * 17 + offset) % (2 ** 31)
+        cache = ("loop" if form == "loop" else sname, role, bars, skey, closing, lvl, bass_style, tonic_bass, solo_turn)
         if cache not in harmony:
             written = _chord_loop(c["chords"], bars, bar_beats, (rg_parse_key(skey)[0] - rg_parse_key(key)[0]) % 12) if c["chords"] else None
             progression = written or E.generate(base, "progression", {
-                "key": skey, "style": styles[role], "bars": bars, "chord_bars": 1.0, "seed": seed_of("progression"),
+                "key": skey, "style": styles[h_role], "bars": bars, "chord_bars": 1.0,
+                "seed": (c["seeds"]["progression"] * 1000 + h_sidx * 17) % (2 ** 31),
                 "ending": closing and c["ending"] != "sfumato", "variability": variability,
                 "inversions": _float(options.get("inversions"), 0.35)})["text"]
             colored = progression
@@ -1802,6 +1906,13 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 common = {"seed": seed_of(part, p + 1), "bars": bars, "intensity": part_lvl, "variability": variability}
                 if part in ("comp", "comp2", "horn", "pad"):
                     octave_opt = ({"octave": _GENRE_COMP_OCTAVE[c["genre"]]} if part == "comp" and c["genre"] in _GENRE_COMP_OCTAVE else {})
+                    if part == "horn" and c["genre"] in _GENRE_HORN_OCTAVE:
+                        # i background della big band sotto il tema: all'ottava 4, con l'ottava piena, arrivavano al la5
+                        octave_opt = {"octave": _GENRE_HORN_OCTAVE[c["genre"]]}
+                    if c["styles"][part] in _LOW_COMP_STYLES:
+                        # i power chord in basso (sol3-re4): all'ottava 4 stavano sulla melodia; restano li' anche dove il
+                        # registro libero sopra il basso li spingeva in su
+                        octave_opt = {"octave": 3, "leave_space": False}
                     body = E.generate(reg_text, "comping", {**common, **octave_opt, "source": chords_track, "style": c["styles"][part],
                                                         "instrument": c["instruments"][part],
                                                         "voice_leading": options.get("voice_leading", True) not in (False, 0, "0", "no"),
@@ -1815,7 +1926,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
                 elif part == "bass":
                     kicks = ({"kick_beats": _style_kicks(c["styles"]["drums"], bars, beats_per_bar)}
                              if c["genre"] in _BASS_ON_KICK and c["styles"].get("drums") else {})
-                    body = E.generate(temp_bass, "bass", {**common, **kicks, "source": chords_track, "style": bass_style,
+                    steady = {"variability": 0} if c["genre"] in _STEADY_BASS_GENRES else {}
+                    body = E.generate(temp_bass, "bass", {**common, **kicks, **steady, "source": chords_track, "style": bass_style,
                                                      "instrument": c["instruments"]["bass"],
                                                      "ending": closing and c["ending"] != "sfumato"})["text"]
                 else:
@@ -1836,7 +1948,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                                            # il riff della strofa resta a ottavi: la strofa e' gia' piu' rada per le battute di risposta
                                            "normal" if a_section else ("normal" if riff else "light") if role == "verse" else lvl,
                                            {**E._variation({"seed": seed_of("melody", 99)}),
-                                            "scale_kind": _GENRE_SCALE.get(c["genre"], ""),
+                                            "scale_kind": c.get("scale") or _GENRE_SCALE.get(c["genre"], ""),
                                             # nei generi del blues il tritono col basso e' il loro suono (la settima sulla terza
                                             # del basso, la terza minore sulla sesta del boogie): li' la melodia non lo evita
                                             "bass_notes": (_bass_notes(bodies.get("bass"))
@@ -1915,7 +2027,7 @@ def quick_song(options: Optional[dict] = None) -> dict:
                     "seed": (c["seeds"]["drums"] * 1000 + idx * 17 + 5 + variant) % (2 ** 31), "bars": bars, "intensity": lvl, "variability": variability,
                     "style": c["styles"]["drums"], "ending": closing and c["ending"] != "sfumato",
                     "fill_every": 1 if brk_kind == "fill" else _fill_every(c.get("drum_fill", 4), beats_per_bar, c["bpm"]),
-                    "fill_last": fill_last, "crash_first": crash_first})["text"]
+                    "fill_last": fill_last, "crash_first": crash_first, "keep_hat": c.get("keep_hat", False)})["text"]
             bodies["drums"] = drum_texts[dkey]
             if closing and c["ending"] != "sfumato" and c["genre"] in _FINAL_HITS:
                 bodies["drums"] = _final_hits(bodies["drums"])
@@ -1988,7 +2100,8 @@ def quick_song(options: Optional[dict] = None) -> dict:
             if swing and part in _SWING_PARTS:
                 body = swing + " " + body.lstrip()
             boxes.append(E._box_header(part_track(c, part), sname, sec_start) + "\n" + E._indent(body))
-        if harm_body and "harm" in active and (idx == chorus_ids[-1] or (auto_voice and role == "chorus")):
+        if harm_body and "harm" in active and (idx == chorus_ids[-1] or (auto_voice and role == "chorus")
+                                               or (c["genre"] in _CHART_GENRES and role == "end")):
             boxes.append(E._box_header(part_track(c, "harm"), sname, sec_start) + "\n" + E._indent((swing + " " if swing else "") + harm_body))
         out_sections.append({"name": sname, "role": role, "bars": bars, "start_bar": start_bar, "key": skey})
         start_bar += bars

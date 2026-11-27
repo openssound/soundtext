@@ -67,6 +67,7 @@ def generator_labels() -> dict:
         ("funk16", tr("Funk a sedicesimi (slap)")),
         ("walk_up", tr("Country con avvicinamento")),
         ("motown", tr("Motown (soul)")),
+        ("riff8", tr("Riff melodico a ottavi (new wave)")),
     ]
     comping_style_labels = [
         ("block_chords", tr("Accordi battuti (comping)")),
@@ -89,6 +90,7 @@ def generator_labels() -> dict:
         ("chuck_guitar", tr("Shuffle di chitarra (quinta e sesta a ottavi)")),
         ("chorale", tr("Corale (voci interne)")),
         ("rootless", tr("Accordi senza fondamentale (3ª, 7ª, 9ª)")),
+        ("organ_ostinato", tr("Ostinato d'organo con la settima (psichedelico)")),
         ("alberti", tr("Basso albertino (classico)")),
         ("stride", tr("Stride (pianoforte)")),
         ("travis", tr("Fingerpicking (chitarra)")),

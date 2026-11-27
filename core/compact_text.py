@@ -126,7 +126,10 @@ def compact(text: str, bar_beats: float, name: str = "", existing: Optional[Dict
     def tied(index):
         ends = bool(bars[index]) and bars[index][-1][1].endswith("~")
         return ends or (index > 0 and bool(bars[index - 1]) and bars[index - 1][-1][1].endswith("~"))
-    counts = Counter(key(i) for i in range(len(bars)) if bars[i] and not tied(i))
+    # una battuta di sole pause resta scritta («8r»): un pattern che non suona niente non serve a chi legge
+    def silent(index):
+        return all(b == "r" for _l, b, _v in bars[index])
+    counts = Counter(key(i) for i in range(len(bars)) if bars[i] and not tied(i) and not silent(i))
     # senza pattern ('make_patterns' falso: lo sfumato, dove ogni battuta ha la sua velocity) restano solo barre e righe
     repeated = [k for k, n in counts.most_common() if n >= 2 and len(k[1]) >= 1] if make_patterns else []
     base = _camel(name)

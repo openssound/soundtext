@@ -947,7 +947,8 @@ def _intensity_at(intensity: str, bar_idx: int, bars: int) -> str:
 _KEEP_HAT_STYLES = ("hiphop",)
 
 
-def _apply_drum_intensity(bar: List[Optional[list]], style: str, grid: str, level: str) -> List[Optional[list]]:
+def _apply_drum_intensity(bar: List[Optional[list]], style: str, grid: str, level: str,
+                          keep_hat: bool = False) -> List[Optional[list]]:
     """'light': via i colpi di tempo in levare e le note fantasma, tutto un po'
     piu' piano; 'full': charleston chiuso -> ride, tutto un po' piu' forte."""
     if level == "normal":
@@ -968,7 +969,8 @@ def _apply_drum_intensity(bar: List[Optional[list]], style: str, grid: str, leve
                 new.append((name, max(1, vel - 18)))
             else:
                 # (l'hip hop tiene il charleston: il ride nel boom bap non si usa, la spinta la danno cassa e rullante)
-                new.append(("ride" if name == "hihat" and style not in _KEEP_HAT_STYLES else name, min(127, vel + 10)))
+                new.append(("ride" if name == "hihat" and style not in _KEEP_HAT_STYLES and not keep_hat else name,
+                            min(127, vel + 10)))
         # niente doppioni (es. charleston diventato ride accanto a un ride)
         seen, unique = set(), []
         for name, vel in new:
@@ -1026,7 +1028,7 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
                           variability=0.0, seed: Optional[int] = None,
                           intensity: str = "normal", phrase_fills: bool = False,
                           ending: bool = False, kick_accents: Optional[List[float]] = None,
-                          section_fill_bars=(), crash_first: bool = False) -> str:
+                          section_fill_bars=(), crash_first: bool = False, keep_hat: bool = False) -> str:
     """Genera 'bars' battute di batteria nello stile scelto (vedi
     DRUM_STYLES), ripetendo il giro base e sostituendolo ogni 'fill_every'
     battute con un fill (0 o un numero <=0 disabilita i fill: solo il giro
@@ -1109,7 +1111,7 @@ def generate_drum_pattern(style: str, bars: int, fill_every: int = 4,
             bar = list(groove)
         if amount.any():
             bar = _vary_drum_bar(bar, style, grid, amount, rng, allow_additions=not is_fill_bar)
-        bar = _apply_drum_intensity(bar, style, grid, level)
+        bar = _apply_drum_intensity(bar, style, grid, level, keep_hat)     # keep_hat: il charleston resta anche pieno
         if kick_accents and not is_fill_bar and not (ending and is_last):
             bar = _kick_on_accents(bar, grid, kick_accents)
         if bar_idx == 0 and crash_first:
@@ -1224,7 +1226,8 @@ def extract_chords_from_track(text: str, patterns: Dict[str, Pattern],
 
 
 BASS_STYLES = ("root", "root_fifth", "walking", "pedal", "two_feel", "octaves", "blues", "polka",
-               "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie", "funk16", "walk_up", "motown")
+               "eighths", "reggae", "bossa", "shuffle", "waltz", "tumbao", "boogie", "funk16", "walk_up", "motown",
+               "riff8")
 
 
 def _note_token(pc: int, octave: int) -> str:
@@ -1351,6 +1354,11 @@ BASS_PATTERNS: Dict[str, dict] = {
     "blues": {"grid": "4:", "bar": [(0.0, "root"), (1.0, "third"), (2.0, "fifth"), (3.0, "sixth")],
               "variant": [(0.0, "root"), (1.0, "third"), (2.0, "fifth"), (3.0, "flat7")]},
     # Ottavi sulla fondamentale (rock, pop, punk).
+    # Il riff melodico della new wave (il basso che porta il tema, alla Cure): ottavi su fondamentale, quinta, ottava e terza
+    "riff8": {"grid": "8:", "bar": [(0.0, "root"), (0.5, "root"), (1.0, "fifth_up"), (1.5, "root_hi"), (2.0, "third_hi"),
+                                    (2.5, "root_hi"), (3.0, "fifth_up"), (3.5, "root")],
+              "variant": [(0.0, "root"), (0.5, "root_hi"), (1.0, "fifth_up"), (1.5, "root_hi"), (2.0, "root"),
+                          (2.5, "fifth_up"), (3.0, "third_up"), (3.5, "approach")]},
     "eighths": {"grid": "8:", "bar": [(0.5 * i, "root") for i in range(8)],
                 "variant": [(0.5 * i, "root") for i in range(6)] + [(3.0, "fifth"), (3.5, "root")]},
     # Reggae: il primo tempo resta vuoto, fondamentale lunga dal 2, quinta sul
@@ -1949,7 +1957,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
     _line_level(intensity, 0, 1)   # intensita' valida?
     # il walking e il boogie sono linee continue: niente note tolte, allungate, aggiunte o anticipate (nel boogie la variabilita'
     # del ritmo apriva buchi di mezza battuta e l'anticipo spezzava la figura)
-    walking = style in ("walking", "boogie")
+    walking = style in ("walking", "boogie", "riff8")
 
     def span_starts(idx, span, next_root, total_units):
         level = _line_level(intensity, idx, len(chords))
@@ -1962,7 +1970,7 @@ def generate_bass_from_chords(chords: List[ChordSpan], style: str, octave: int =
         else:
             events = _legacy_events(span, style, octave, variant, next_root)
         # il boogie leggero resta la figura intera (diradato perdeva la sesta e la settima, cioe' il boogie): e' solo piu' piano
-        events = _apply_line_intensity(events, "normal" if style == "boogie" and level == "light" else level,
+        events = _apply_line_intensity(events, "normal" if style in ("boogie", "riff8") and level == "light" else level,
                                        fuller_chords=False, octave_lift=True)
         if kick_beats:
             begin = span.start_beat           # la linea parte dal beat 0 degli accordi
@@ -2009,6 +2017,12 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                       "bar": [(0.0, _CHORD), (2.0, _CHORD)],
                       "variant": [(0.0, _CHORD), (2.0, ["root", "third", "seventh"])]},
     # Note dell'accordo in sequenza ascendente, in ottavi (arpeggio classico).
+    # L'ostinato dell'organo psichedelico (i Doors): l'arpeggio a ottavi con la settima dell'accordo, su e giu'
+    "organ_ostinato": {"grid": "8:", "polyphonic": True,
+                       "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "seventh"),
+                               (2.0, "root_hi"), (2.5, "seventh"), (3.0, "fifth"), (3.5, "third")],
+                       "variant": [(0.0, "root"), (0.5, "fifth"), (1.0, "seventh"), (1.5, "root_hi"),
+                                   (2.0, "third_hi"), (2.5, "root_hi"), (3.0, "seventh"), (3.5, "fifth")]},
     "arpeggio_up": {"grid": "8:",
                      "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "root_hi"),
                              (2.0, "root"), (2.5, "third"), (3.0, "fifth"), (3.5, "root_hi")],
@@ -2132,14 +2146,15 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                          "variant": [(0.25 * i, ("root", "fifth_up", "root_hi", "third_hi", "fifth_hi", "root_hi", "third_hi", "fifth_hi")[i % 8])
                                      for i in range(16)]},
     # Power chord (fondamentale e quinta) a ottavi: rock e punk.
+    # (la quinta sempre sopra la fondamentale: sotto era una quarta, un power chord rovesciato)
     "power_chords": {"grid": "8:", "polyphonic": True,
-                     "bar": [(0.5 * i, ["root", "fifth"]) for i in range(8)],
-                     "variant": [(0.5 * i, ["root", "fifth"]) for i in range(7)] + [(3.5, ["fifth", "root_hi"])]},
+                     "bar": [(0.5 * i, ["root", "fifth_up"]) for i in range(8)],
+                     "variant": [(0.5 * i, ["root", "fifth_up"]) for i in range(7)] + [(3.5, ["root", "fifth_up", "root_hi"])]},
     # Galoppo del metal: un ottavo e due sedicesimi su ogni quarto, sempre su fondamentale e quinta.
     "metal_gallop": {"grid": "16:", "polyphonic": True,
-                     "bar": [(b + o, ["root", "fifth"]) for b in range(4) for o in (0.0, 0.5, 0.75)],
-                     "variant": [(b + o, ["root", "fifth"]) for b in range(3) for o in (0.0, 0.5, 0.75)]
-                     + [(3.0, ["root", "fifth"]), (3.5, ["root", "fifth"])]},
+                     "bar": [(b + o, ["root", "fifth_up"]) for b in range(4) for o in (0.0, 0.5, 0.75)],
+                     "variant": [(b + o, ["root", "fifth_up"]) for b in range(3) for o in (0.0, 0.5, 0.75)]
+                     + [(3.0, ["root", "fifth_up"]), (3.5, ["root", "fifth_up"])]},
     # Boom-chick (country, marcia): il basso dell'accordo sul tempo, l'accordo in levare.
     "boom_chick": {"grid": "4:", "polyphonic": True,
                    "bar": [(0.0, "root"), (1.0, ["third", "fifth"]), (2.0, "fifth"), (3.0, ["third", "fifth"])],
