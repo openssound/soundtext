@@ -1191,7 +1191,8 @@ def generator_choices(text: str = "") -> dict:
 QUICK_GENRES = ("pop", "rock", "ballata", "bossa", "jazz", "swing", "funk", "soul", "disco", "lofi", "elettronica",
                 "orchestrale", "blues", "reggae", "country", "punk", "metal", "rocknroll", "samba", "chacha", "valzer",
                 "marcia", "ballata68", "afro68", "balcanico78", "ska", "grunge", "hiphop", "polka", "mazurka", "tarantella",
-                "pianosolo", "chitarrasola", "minuetto", "preludio", "corale")
+                "pianosolo", "chitarrasola", "minuetto", "preludio", "corale", "bigband", "fusion", "newwave",
+                "psichedelico")
 QUICK_MOODS = ("allegra", "malinconica", "tesa", "epica", "calma", "sognante", "misteriosa", "romantica", "nostalgica",
                "festosa", "oscura")
 QUICK_DURATIONS = (15, 30, 45, 60, 90, 120, 180, 240)

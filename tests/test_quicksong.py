@@ -49,7 +49,7 @@ def _valid(q, song, duration=None):
 
 
 def test_the_values_of_the_document_are_all_there(q):
-    assert len(q.GENRES) == 36 and set(q.GENRES) == set(q.GENRES_DATA)
+    assert len(q.GENRES) == 40 and set(q.GENRES) == set(q.GENRES_DATA)
     assert len(q.MOODS) == 22 and set(q.MOODS) == set(q.MOODS_DATA)
     assert q.DURATIONS == (15, 30, 45, 60, 90, 120, 180, 240)
     assert set(q.FORMS) == {"loop", "canzone", "aaba", "blues", "ponte", "binaria"} and len(q.ENSEMBLES) == 5
@@ -479,7 +479,7 @@ def test_swing_is_recorded_on_the_events_of_the_melodic_parts(q):
 
 
 def test_only_electronic_genres_keep_a_synth_lead_and_the_acoustic_genres_have_their_own_bands(q):
-    leads = {"elettronica", "lofi"}
+    leads = {"elettronica", "lofi", "fusion", "newwave"}     # il synth solista della fusion e della new wave
     for genre in q.GENRES_DATA:
         for variety in (0, 1):
             for seed in (1, 2, 3):
@@ -1393,3 +1393,46 @@ def test_a_bass_step_approach_that_rubs_against_the_chord_becomes_chromatic():
     assert _resolve_role("approach_step", amaj7, 2) == (1, 0)                # verso il re: do# (non do, che sfrega col do#)
     a = ChordSpan(0.0, 4.0, 9, True, 4, None)
     assert _resolve_role("approach_step", a, 11) == (9, 0)                   # verso il si: la, nota dell'accordo, resta un tono sotto
+
+
+def test_hiphop_hook_on_top_hat_in_the_chorus_and_the_808_on_the_kicks(q):
+    """L'hip hop: il riff (il «campione») sta sopra il pianoforte, nel ritornello resta il charleston (non il ride) e il basso
+    suona sui colpi di cassa, con le note tenute fino al colpo dopo."""
+    import re as _re
+    from core.project_io import parse_project_text
+    from core import harmony_check as hc
+    song = q.quick_song({"genre": "hiphop", "mood": "allegra", "seed": 1262233174, "duration": 60})
+    inst = song["choices"]["instruments"]
+    project = parse_project_text(song["text"], "Brano")
+    tracks = {t.name: t for t in project.tracks}
+    mean = lambda name: sum(n for _s, _d, n in hc._sounding(project, tracks[name])) / len(hc._sounding(project, tracks[name]))
+    assert mean(inst["melody"]) > mean(inst["comp"]) + 5
+    chorus = _re.search(r'Box Drums "Ritornello" \|\d+:\n((?:  .*\n)+)', song["text"]).group(1)
+    assert "ride" not in chorus and "hihat" in chorus
+    kicks = set(q._style_kicks("hiphop", 1, 4.0))
+    starts = [s % 4.0 for s, _d, _n in hc._sounding(project, tracks[inst["bass"]])]
+    assert sum(1 for s in starts if round(s, 2) in {round(k, 2) for k in kicks}) >= 0.9 * len(starts)
+
+
+def test_grunge_clean_guitar_arpeggiates_the_verse_and_the_chorus_sings_higher(q):
+    """Il grunge: la strofa e' la chitarra pulita che arpeggia (a ottavi anche se la strofa e' leggera, mai un piano al suo
+    posto), il ritornello sale sopra la strofa (il centro delle frasi piu' alto di una terza maggiore)."""
+    import re
+    import statistics
+    pcs = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+    higher = 0
+    for seed in (1, 2, 3):
+        for variety in (0, 1):
+            song = q.quick_song({"genre": "grunge", "mood": "epica", "seed": seed, "duration": 90, "variety": variety})
+            assert song["choices"]["instruments"]["comp2"] == "Clean_Guitar"
+            text = song["text"]
+            verse_arp = re.search(r'Box Clean_Guitar "Strofa[^"]*" \|\d+:\n  (.*)', text).group(1)
+            assert verse_arp.startswith("8:") and len(re.findall(r"[a-g]#?\*\d", verse_arp.split("|")[0])) >= 5
+            mel = re.escape(song["choices"]["instruments"]["melody"])
+            mean = {}
+            for m in re.finditer(r'Box %s "(\S+)[^"]*" \|\d+:\n(.*?)(?=\nBox |\Z)' % mel, text, re.S):
+                notes = [pcs[n[0]] + n.count("#") + 12 * int(o) for n, o in re.findall(r"([a-g]#?)\*(\d)", m.group(2))]
+                if notes:
+                    mean.setdefault(m.group(1), statistics.mean(notes))
+            higher += mean["Ritornello"] > mean["Strofa"] + 1
+    assert higher == 6

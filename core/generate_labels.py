@@ -88,6 +88,7 @@ def generator_labels() -> dict:
         ("boogie_piano", tr("Pianoforte boogie-woogie")),
         ("chuck_guitar", tr("Shuffle di chitarra (quinta e sesta a ottavi)")),
         ("chorale", tr("Corale (voci interne)")),
+        ("rootless", tr("Accordi senza fondamentale (3ª, 7ª, 9ª)")),
         ("alberti", tr("Basso albertino (classico)")),
         ("stride", tr("Stride (pianoforte)")),
         ("travis", tr("Fingerpicking (chitarra)")),

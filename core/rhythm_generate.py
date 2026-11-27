@@ -944,6 +944,9 @@ def _intensity_at(intensity: str, bar_idx: int, bars: int) -> str:
     return ("light", "normal", "full")[min(2, third)]
 
 
+_KEEP_HAT_STYLES = ("hiphop",)
+
+
 def _apply_drum_intensity(bar: List[Optional[list]], style: str, grid: str, level: str) -> List[Optional[list]]:
     """'light': via i colpi di tempo in levare e le note fantasma, tutto un po'
     piu' piano; 'full': charleston chiuso -> ride, tutto un po' piu' forte."""
@@ -964,7 +967,8 @@ def _apply_drum_intensity(bar: List[Optional[list]], style: str, grid: str, leve
                     continue
                 new.append((name, max(1, vel - 18)))
             else:
-                new.append(("ride" if name == "hihat" else name, min(127, vel + 10)))
+                # (l'hip hop tiene il charleston: il ride nel boom bap non si usa, la spinta la danno cassa e rullante)
+                new.append(("ride" if name == "hihat" and style not in _KEEP_HAT_STYLES else name, min(127, vel + 10)))
         # niente doppioni (es. charleston diventato ride accanto a un ride)
         seen, unique = set(), []
         for name, vel in new:
@@ -1465,6 +1469,9 @@ def _resolve_role(role, span: ChordSpan, next_root_pc: Optional[int], bass: bool
         return (((root + span.third) % 12) if span.third is not None else fifth, 0)
     if role == "sixth":
         return ((root + 9) % 12, 0)
+    if role == "ninth":
+        # la nona maggiore (sopra la fondamentale): gli accordi senza fondamentale del jazz e della fusion (terza, settima, nona)
+        return ((root + 2) % 12, 1 if (root + 2) % 12 < root else 0)
     if role == "flat7":
         # la settima dell'accordo se ce l'ha (la maggiore sotto un maj7, niente si b sotto Cmaj7); su una triade la settima minore,
         # che e' il suono del boogie, del blues e del funk
@@ -2066,6 +2073,13 @@ MELODIC_PATTERNS: Dict[str, dict] = {
                           (2.0, ["third", "fifth", "seventh"]), (2.75, ["third", "fifth", "seventh"]), (3.25, ["third", "fifth", "seventh"])],
                   "variant": [(0.0, ["third", "fifth", "seventh"]), (1.0, ["third", "fifth", "seventh"]), (1.75, ["third", "fifth", "seventh"]),
                               (2.5, ["third", "fifth", "seventh"]), (3.0, "rest"), (3.5, ["third", "fifth", "seventh"])]},
+    # Accordi senza fondamentale (jazz, fusion): terza, settima e nona, la fondamentale la suona il basso; il ritmo del comping
+    # soul, in sincope.
+    "rootless": {"grid": "16:", "polyphonic": True,
+                 "bar": [(0.0, ["third", "seventh", "ninth"]), (0.75, ["third", "seventh", "ninth"]), (1.25, "rest"),
+                         (2.0, ["third", "seventh", "ninth"]), (2.75, ["third", "seventh", "ninth"]), (3.25, "rest")],
+                 "variant": [(0.0, ["seventh", "ninth", "third_hi"]), (1.0, "rest"), (1.75, ["third", "seventh", "ninth"]),
+                             (2.5, ["third", "seventh", "ninth"]), (3.0, "rest"), (3.5, ["seventh", "ninth", "third_hi"])]},
     # Rullo di banjo (country): otto note per battuta in gruppi di tre, tre e due (fondamentale, terza, quinta).
     "banjo_roll": {"grid": "8:", "polyphonic": True,
                    "bar": [(0.0, "root"), (0.5, "third"), (1.0, "fifth"), (1.5, "root"), (2.0, "third"), (2.5, "fifth"),
@@ -2224,6 +2238,10 @@ def _resolve_roles(role, span: ChordSpan, next_root_pc: Optional[int]) -> List[T
     names = role if isinstance(role, list) else [role]
     if span.seventh is None:
         names = ["fifth" if name == "seventh" else name for name in names]
+    if span.third == 3:
+        # la nona sugli accordi minori sta un semitono sotto la terza minore, la nota su cui la melodia si posa piu' spesso:
+        # al suo posto la quinta (gli accordi senza fondamentale tengono la nona sui maggiori e sulle dominanti)
+        names = ["fifth" if name == "ninth" else name for name in names]
     out: List[Tuple[int, int]] = []
     for name in names:
         resolved = _resolve_role(name, span, next_root_pc)
@@ -2243,7 +2261,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                            voice_leading: bool = False, key: Optional[str] = None,
                            meter: Optional[str] = None, repeats=(), scale_kind: str = "", figure: str = "",
                            syncopation: Optional[float] = None, appoggiatura: Optional[float] = None,
-                           bass_notes=(), comfort_high: Optional[int] = None) -> str:
+                           bass_notes=(), comfort_high: Optional[int] = None, lift: int = 0) -> str:
     """Genera una linea melodica (strumenti monofonici, vedi RIFF_STYLES) o un
     accompagnamento (strumenti polifonici, vedi COMPING_STYLES) che segue
     'chords' (vedi extract_chords_from_track), nello stile scelto -
@@ -2276,7 +2294,7 @@ def generate_melodic_line(chords: List[ChordSpan], style: str, octave: int,
                                       min_total_beats=min_total_beats, variability=variability, seed=seed,
                                       bar_beats=bar_beats, meter=meter, intensity=intensity,
                                       repeats=repeats, scale_kind=scale_kind, figure=figure,
-                                      bass_notes=bass_notes, comfort_high=comfort_high,
+                                      bass_notes=bass_notes, comfort_high=comfort_high, lift=lift,
                                       **{k: v for k, v in (("syncopation", syncopation), ("appoggiatura", appoggiatura))
                                          if v is not None})
     pattern = (MELODIC_PATTERNS.get(style) or user_styles.get_user_style("comping", style)

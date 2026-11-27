@@ -143,6 +143,8 @@ def generate(text: str, kind: str, options: Optional[dict] = None) -> dict:
         kick = None
         if options.get("kick_track"):
             kick = rg.kick_beats_of_track(project, project.get_track(options["kick_track"]), start_beat) or None
+        elif options.get("kick_beats"):                    # i colpi di cassa gia' noti (il basso 808 dell'hip hop)
+            kick = [float(b) for b in options["kick_beats"]] or None
         out = rg.generate_bass_from_chords(
             chords, options.get("style") or rg.BASS_STYLES[0], octave=int(options.get("octave", 2)),
             variation_every=int(options.get("variation_every", 4)),
@@ -233,9 +235,11 @@ MELODY_MIN_OCTAVE = 4      # la melodia parte almeno dall'ottava 4: chitarre e a
 
 
 def _quick_melody(project, source: str, instrument_name: str, style: str, key: str, bars: int, seed: int,
-                  intensity: str, variation: dict, comfort_high: Optional[int] = None, octave_min: Optional[int] = None) -> str:
+                  intensity: str, variation: dict, comfort_high: Optional[int] = None, octave_min: Optional[int] = None,
+                  lift: int = 0) -> str:
     """La melodia di un brano veloce; 'comfort_high' (facoltativo): la nota piu' alta dove lo strumento suona pieno (un fiato),
-    un tetto sopra il registro scelto (non sposta la melodia, vedi generate_phrase_melody)."""
+    un tetto sopra il registro scelto (non sposta la melodia, vedi generate_phrase_melody); 'lift': lo spostamento in semitoni
+    del centro delle frasi, nello stesso registro."""
     from core import rhythm_generate as rg
     from core.instruments import get_instrument
     chords, _track = _chords_of(project, source, None)
@@ -246,4 +250,4 @@ def _quick_melody(project, source: str, instrument_name: str, style: str, key: s
         range_low=max(instrument.range_low, REAL_LOW.get(instrument_name, 0)),
         range_high=instrument.range_high, polyphonic=False, variation_every=4, min_total_beats=bars * bar_beats,
         bar_beats=bar_beats, intensity=intensity, voice_leading=True, key=key, meter=project.time_sig, repeats=(),
-        **({"comfort_high": comfort_high} if comfort_high else {}), **variation)
+        **({"comfort_high": comfort_high} if comfort_high else {}), **({"lift": lift} if lift else {}), **variation)

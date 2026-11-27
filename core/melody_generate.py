@@ -469,7 +469,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
                            seed: Optional[int] = None, bar_beats: float = 4.0, meter: Optional[str] = None,
                            intensity: str = "normal", repeats=(), scale_kind: str = "", figure: str = "",
                            syncopation: float = DEFAULT_SYNCOPATION, appoggiatura: float = DEFAULT_APPOGGIATURA,
-                           bass_notes=(), comfort_high: Optional[int] = None) -> str:
+                           bass_notes=(), comfort_high: Optional[int] = None, lift: int = 0) -> str:
     """Melodia a frasi (vedi il commento del modulo) sugli accordi 'chords',
     nella tonalita' 'key' (formato di Project.key; None = ricavata dagli
     accordi, vedi estimate_key), all'ottava 'octave' e dentro l'estensione
@@ -481,7 +481,9 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     un'appoggiatura (vedi _add_appoggiature). 'bass_notes': le note del
     basso gia' scritto, [(inizio, fine, nota MIDI)] in beat: dove la nota
     pesa la melodia non fa il tritono con quella che il basso suona;
-    'comfort_high': la nota piu' alta dove lo strumento suona pieno. Solleva
+    'comfort_high': la nota piu' alta dove lo strumento suona pieno;
+    'lift': di quanti semitoni si sposta il centro delle frasi, dentro lo stesso
+    registro (la strofa del grunge, piu' bassa: il ritornello sale). Solleva
     ValueError se lo stile non esiste, gli accordi mancano o l'intensita'
     non e' valida."""
     spec = MELODY_STYLES.get(style)
@@ -553,7 +555,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
     harmony.bass = sorted(bass_notes or ())
 
     # il culmine del brano: nelle forme con la B, le frasi A non arrivano dove arriva la B
-    a_ceiling = center + spec["height"] + 2 if has_b else None
+    a_ceiling = center + lift + spec["height"] + 2 if has_b else None
     space = int(spec.get("space", 0))       # il riff e il blues a botta e risposta: le ultime battute di ogni frase sono della band
 
     motifs: Dict[Tuple[str, int, int], dict] = {}
@@ -570,7 +572,7 @@ def generate_phrase_melody(chords: List[ChordSpan], style: str, octave: int, ran
         level = _intensity_at(intensity, p, n_phrases)
         density = spec["density"] if letter == "A" else spec["b_density"]
         density = max(0, min(2, density + {"light": -1, "normal": 0, "full": 1}[level]))
-        base = center + (spec["b_lift"] if letter == "B" else 0)
+        base = center + lift + (spec["b_lift"] if letter == "B" else 0)
         height = spec["height"] + (2 if letter == "B" else 0)
         ceiling = a_ceiling if letter == "A" else None
         space_p = min(space, phrase_bars_p - 1)      # una frase accorciata (l'ultima) tiene almeno una battuta cantata

@@ -415,6 +415,7 @@ const PACK_FOR_GENRE = {
   elettronica: "elettronico", lofi: "elettronico", orchestrale: "orchestra", marcia: "orchestra",
   ska: "elettrico", grunge: "elettrico", hiphop: "elettronico", polka: "acustico", mazurka: "acustico", tarantella: "acustico",
   pianosolo: "acustico", chitarrasola: "acustico", minuetto: "orchestra", preludio: "acustico", corale: "orchestra",
+  bigband: "acustico", fusion: "elettrico", newwave: "elettronico", psichedelico: "elettrico",
 };
 
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
