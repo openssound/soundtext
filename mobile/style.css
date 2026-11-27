@@ -469,7 +469,8 @@ summary:focus-visible, .button:focus-within {
 .chart-now { font-size: clamp(64px, 26vw, 150px); font-weight: 800; text-align: center; line-height: 1.05; outline: none; }
 .chart-next { font-size: 26px; text-align: center; color: var(--dim); min-height: 1.3em; }
 .chart-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; overflow-y: auto; flex: 1 1 auto; min-height: 120px; align-content: start; }
-.chart-bars button { display: flex; flex-direction: column; align-items: center; min-height: 56px; padding: 4px; font-size: 20px; font-weight: 700; }
+.chart-bars button { display: flex; flex-direction: column; align-items: center; justify-content: center; height: auto; min-height: 56px; padding: 4px; font-size: 20px; font-weight: 700; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.chart-bars button.many { font-size: 15px; }
 .chart-bars button small { font-size: 11px; color: var(--dim); font-weight: 400; }
 .chart-bars button[aria-current=true] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .chart-bars button[aria-current=true] small { color: var(--on-accent); }

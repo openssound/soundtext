@@ -528,7 +528,8 @@ function chartBarLabels(i) {
   const start = bars[i], end = i + 1 < bars.length ? bars[i + 1] : state.timeline.length;
   const labels = [];
   for (const [b, d, label] of chart.data) {
-    if (b < end - 1e-6 && b + d > start + 1e-6) labels.push(label);
+    // l'accordo che arriva dalla battuta prima e quelli che cominciano in questa; lo stesso di fila una volta sola
+    if (b < end - 1e-6 && b + d > start + 1e-6 && labels[labels.length - 1] !== label) labels.push(label);
   }
   return labels;
 }
@@ -550,7 +551,8 @@ function chartRenderBars() {
     const n = document.createElement("small");
     n.textContent = String(i + 1);
     const c = document.createElement("span");
-    c.textContent = labels.join("  ") || "·";
+    c.textContent = labels.join(" ") || "·";
+    if (labels.length > 2 || labels.join("").length > 9) b.classList.add("many");   // tante sigle: piu' piccole, su due righe
     b.append(n, c);
     b.setAttribute("aria-label", t("battuta {n}", { n: i + 1 }) + ": " + (labels.join(", ") || t("nessun accordo")));
     b.onclick = () => { seekTo(state.timeline.bars[i]); chartUpdate().catch(showError); };

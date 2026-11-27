@@ -890,44 +890,178 @@ def strip_comments(text: str) -> str:
     return "\n".join(out).strip("\n") + "\n"
 
 
+_CHART_NAMES = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+# le forme degli accordi della vista accordi: (sigla, intervalli dalla fondamentale, peso); la terza decide maggiore o minore
+_CHART_SHAPES = (("", (0, 4, 7), 0.0), ("m", (0, 3, 7), 0.0), ("7", (0, 4, 7, 10), 0.3), ("maj7", (0, 4, 7, 11), 0.3),
+                 ("m7", (0, 3, 7, 10), 0.3), ("dim", (0, 3, 6), -0.4), ("sus4", (0, 5, 7), -0.3),
+                 ("9", (0, 4, 7, 10, 2), 0.2), ("maj9", (0, 4, 7, 11, 2), 0.2), ("m9", (0, 3, 7, 10, 2), 0.2),
+                 ("add9", (0, 4, 7, 2), 0.1), ("6", (0, 4, 7, 9), 0.1), ("m6", (0, 3, 7, 9), 0.1))
+
+
+def _chart_shape(weights: dict, prefer: Optional[int] = None):
+    """(sigla, quanta parte delle note copre) per un insieme di note ({classe di altezza: peso}): la forma che ne copre
+    di piu' e a cui ne mancano meno; a parita', la fondamentale 'prefer'. None se nessuna forma ha la sua terza."""
+    total = sum(weights.values())
+    best, best_key = None, None
+    for root in range(12):
+        if root not in weights:
+            continue
+        for suffix, shape, bonus in _CHART_SHAPES:
+            if any((root + i) % 12 not in weights for i in shape[1:2]):         # la terza (o la quarta) ci vuole
+                continue
+            if any(weights.get((root + i) % 12, 0.0) < 0.12 * total for i in shape[3:]):
+                continue                                                         # la settima (la nona, la sesta) deve sentirsi
+            tones = {(root + i) % 12 for i in shape}
+            covered = sum(w for pc, w in weights.items() if pc in tones) / total
+            missing = sum(1 for pc in tones if pc not in weights)
+            key = (round(covered, 6), -missing, root == prefer, bonus)
+            if best_key is None or key > best_key:
+                best, best_key = (_CHART_NAMES[root] + suffix, covered), key
+    return best
+
+
+def _chart_name(weights: dict, bass: Optional[int]) -> Optional[str]:
+    """La sigla delle note di un accordo. Se il basso non e' fra le sue note e le completa in un accordo che le contiene
+    tutte, il basso e' la fondamentale: un accordo senza fondamentale sul piano (si, re, fa# sopra il sol: Sol maj7, non
+    Si minore), le due note del «broken chord» sopra la fondamentale suonata da sola."""
+    if not weights:
+        return _CHART_NAMES[bass] if bass is not None else None
+    lowest_first = _chart_shape(weights, bass)
+    if bass is not None and bass not in weights:
+        with_bass = dict(weights)
+        with_bass[bass] = 0.5 * max(weights.values())
+        found = _chart_shape(with_bass, bass)
+        if found and found[0].startswith(_CHART_NAMES[bass]) and found[1] > 0.999 \
+                and found[0][len(_CHART_NAMES[bass]):] in {sfx for sfx, _s, _b in _CHART_SHAPES}:
+            return found[0]
+    if lowest_first:
+        return lowest_first[0]
+    return _CHART_NAMES[bass] if bass is not None else None
+
+
 def chord_chart(text: str) -> list:
-    """Gli accordi del brano, per la clip video: [[battito, durata, sigla]], dalla
-    prima traccia che ne ha (scritti come sigle, Cmaj7 o Am, oppure come blocchi
-    di note, e allora la sigla si ricava dalle note); [] se non ce n'e'. Gli
-    accordi uguali di fila diventano uno solo."""
+    """Gli accordi del brano, per la vista accordi e la clip video: [[battito, durata, sigla]]; [] se non ce n'e'.
+    Si leggono traccia per traccia (non la batteria, la melodia e il basso): ogni accordo suonato prende la sigla dalle
+    sue note, un arpeggio mezza battuta alla volta; il basso serve solo a completare un accordo senza fondamentale. Si
+    tiene la traccia che dice piu' accordi, e dove tace per piu' di una battuta valgono le altre. Gli accordi uguali di
+    fila diventano uno solo e ognuno dura fino al successivo: i colpi ripetuti dello skank o del comping non si ripetono."""
+    import mido
     from core.project_io import parse_project_text
-    from core.rhythm_generate import extract_chords_from_track, parse_track_text
-    names = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+    from core.rhythm_generate import project_bar_beats
+    from st_language.instruments import DRUM_MIDI_CHANNEL
     project = parse_project_text(text, "Brano")
+    try:
+        bar = float(project_bar_beats(project)) or 4.0
+    except Exception:
+        bar = 4.0
+    mid = mido.MidiFile(file=io.BytesIO(_project_midi(project)))
+    per_beat = float(mid.ticks_per_beat)
+    tracks: Dict[str, list] = {}
+    for tr in mid.tracks:
+        at, open_notes, found = 0, {}, []
+        for msg in tr:
+            at += msg.time
+            if not hasattr(msg, "channel") or msg.channel == DRUM_MIDI_CHANNEL:
+                continue
+            if msg.type == "note_on" and msg.velocity > 0:
+                open_notes[(msg.channel, msg.note)] = at
+            elif msg.type in ("note_off", "note_on") and (msg.channel, msg.note) in open_notes:
+                found.append((open_notes.pop((msg.channel, msg.note)) / per_beat, at / per_beat, msg.note))
+        if found:
+            tracks.setdefault(tr.name or str(len(tracks)), []).extend(sorted(found))
+    if not tracks:
+        return []
+
+    def monophonic(notes):
+        return all(b[0] >= a[1] - 0.05 for a, b in zip(notes, notes[1:]))
+    mean = {name: sum(n for _s, _e, n in notes) / len(notes) for name, notes in tracks.items()}
+    mono = [name for name, notes in tracks.items() if monophonic(notes)]
+
+    def mostly_one_voice(notes):
+        """Una voce sola quasi sempre (lo slap e l'umanizzazione accavallano qualche nota)."""
+        overlaps = sum(1 for a, b in zip(notes, notes[1:]) if b[0] < a[1] - 0.05)
+        return overlaps <= 0.1 * len(notes)
+    lowest = min(mean, key=lambda name: mean[name])
+    # il basso: la traccia piu' grave, se suona a una voce sola
+    bass = lowest if len(tracks) > 1 and mostly_one_voice(tracks[lowest]) else None
+    melody = max((m for m in mono if m != bass), key=lambda name: mean[name], default=None)
+    if melody is not None and mean[melody] < max(mean.values()) - 1e-9:
+        melody = None                                                # la voce sola piu' acuta e' sotto un'altra: e' un arpeggio
+
+    def bass_at(t):
+        """La nota del basso all'inizio della finestra (non quelle di passaggio dopo)."""
+        if bass is None:
+            return None
+        under = [b for b in tracks[bass] if b[0] <= t + 0.25 and b[1] > t + 1e-6]
+        if not under:                   # una pausa del basso (lo slap, il reggae): l'ultima nota suonata da meno di una battuta
+            under = [b for b in tracks[bass] if t - bar < b[0] <= t + 1e-6][-1:]
+        return under[0][2] % 12 if under else None
 
     def merged(items):
         chart: list = []
-        for start, duration, label in items:
-            if chart and chart[-1][2] == label and abs(chart[-1][0] + chart[-1][1] - start) < 1e-6:
-                chart[-1][1] = round(chart[-1][1] + duration, 6)
-            else:
-                chart.append([round(start, 6), round(duration, 6), label])
-        return chart
+        for start, duration, label in sorted(items):
+            gap = start - (chart[-1][0] + chart[-1][1]) if chart else None
+            if chart and chart[-1][2] == label and gap < bar - 1e-6:
+                chart[-1][1] = round(max(chart[-1][1], start + duration - chart[-1][0]), 6)
+                continue
+            if chart and gap < bar - 1e-6:
+                chart[-1][1] = round(start - chart[-1][0], 6)        # il precedente dura fino a questo
+            chart.append([round(start, 6), round(duration, 6), label])
+        return [c for c in chart if c[1] > 1e-6]
 
     candidates = []
+    for name, notes in tracks.items():
+        if name in (bass, melody):
+            continue
+        # mezza battuta alla volta (in 4/4; la battuta nelle altre metriche), con tutte le note della traccia che suonano
+        items, weight = [], 0.0
+        poly = not monophonic(notes)
+        step = bar / 2.0 if abs(bar - 4.0) < 1e-6 else bar
+        t, end = 0.0, max(e for _s, e, _n in notes)
+        while t < end - 1e-6:
+            weights: dict = {}
+            first = None
+            for s0, e0, n in notes:
+                if s0 >= t + step - 0.5 - 1e-6 and e0 > t + step + 1e-6:
+                    continue                    # l'anticipo dell'accordo dopo (la nota legata oltre la stanghetta)
+                overlap = min(e0, t + step) - max(s0, t)
+                if overlap > 1e-6:
+                    weights[n % 12] = weights.get(n % 12, 0.0) + overlap
+                    first = s0 if first is None else min(first, s0)
+            if len(weights) >= 2:
+                label = _chart_name(weights, bass_at(t))
+                if label:
+                    items.append((max(t, first), step, label))
+                    weight += step * (1.0 if poly else 0.5)
+            t += step
+        if items:
+            candidates.append((weight, merged(items)))
+    # le sigle scritte (Dm7b5, C/E, Csus4): sono quelle dell'autore e vengono prima di quelle ricavate dalle note
+    from core.rhythm_generate import parse_track_text
+    written_best: list = []
     for track in project.tracks:
         if track.is_audio:
             continue
-        written = [(ev.start, ev.duration, ev.symbol) for ev in
-                   parse_track_text(track.text, project.patterns, default_octave=4, midi_dir=None) if ev.kind == "chord"]
-        if written:
-            candidates.append(merged(written))
-            continue
         try:
-            spans = extract_chords_from_track(track.text, project.patterns, midi_dir=None)
+            symbols = [(ev.start, ev.duration, ev.symbol) for ev in
+                       parse_track_text(track.text, project.patterns, default_octave=4, midi_dir=None) if ev.kind == "chord"]
         except Exception:
             continue
-        if spans:
-            candidates.append(merged((sp.start_beat, sp.duration_beats,
-                                      names[sp.root_pc % 12] + ("m" if sp.third == 3 else "")
-                                      + {10: "7", 11: "maj7"}.get(sp.seventh, "")) for sp in spans))
-    # la traccia che copre piu' brano
-    return max(candidates, key=lambda chart: sum(c[1] for c in chart), default=[])
+        chart = merged(symbols) if symbols else []
+        if sum(c[1] for c in chart) > sum(c[1] for c in written_best):
+            written_best = chart
+    if written_best:
+        candidates.append((float("inf"), written_best))
+    if not candidates:
+        return []
+    candidates.sort(key=lambda c: -c[0])
+    result = [list(c) for c in candidates[0][1]]
+    for _w, chart in candidates[1:]:                                  # dove la traccia migliore tace: le altre
+        for start, duration, label in chart:
+            end = start + duration
+            if all(end <= c[0] + 1e-6 or start >= c[0] + c[1] - 1e-6 for c in result):
+                result.append([start, duration, label])
+    return merged((c[0], c[1], c[2]) for c in result)
 
 
 def track_notes(text: str, track: str) -> list:

@@ -1049,3 +1049,16 @@ def test_import_midi_makes_a_song():
     assert "error" not in r and r["tracks"] >= 1
     assert eng.Engine().load(r["text"], "x.st") is not None
     assert "error" in eng.import_midi(base64.b64encode(b"non e' un midi").decode("ascii"))
+
+
+def test_chord_chart_says_each_chord_once_and_reads_arpeggios_and_rootless_voicings():
+    """La vista accordi: lo skank ripetuto e' un accordo solo (non «G G G G»); il «broken chord» (sol, poi si-re) e' Sol,
+    non Si minore; gli accordi senza fondamentale del piano elettrico prendono la fondamentale dal basso (Sol 9, non Re)."""
+    e = _quick()
+    ska = e.chord_chart(e.quick_song({"genre": "ska", "seed": 1, "duration": 30})["text"])
+    assert all(a[2] != b[2] for a, b in zip(ska, ska[1:]))
+    assert [c[2] for c in ska[:4]] == ["G", "F", "C", "D7"], ska[:4]
+    pop = e.chord_chart(e.quick_song({"genre": "pop", "seed": 1, "duration": 30})["text"])
+    assert [c[2] for c in pop[:2]] == ["G", "Em"], pop[:2]
+    fusion = e.chord_chart(e.quick_song({"genre": "fusion", "seed": 1, "duration": 30})["text"])
+    assert all(c[2].startswith("G") for c in fusion[:4]), fusion[:4]
